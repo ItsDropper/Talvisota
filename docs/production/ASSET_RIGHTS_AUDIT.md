@@ -18,7 +18,7 @@
 
 Every registered record uses `source=project` and `license=project`. The model, material sidecar, texture, and definitions were authored for this repository; no third-party media, stock imagery, scanned photographs, sound recordings, or externally licensed game assets are currently shipped.
 
-The snow albedo image is a small pipeline-validation texture, not final photorealistic terrain artwork. The terrain mesh remains a low-resolution representative surface. The spruce and boulder are original geometric environment assets with material-group separation; they are first environment-composition assets, not final photorealistic production scans or textured hero assets.
+The snow albedo image is a small pipeline-validation texture, not final photorealistic terrain artwork. The terrain mesh remains a low-resolution representative surface. The spruce and boulder are original project-authored geometric environment assets with material-group separation. The spruce has 13,320 positions, UVs, and 19,992 triangles; the boulder has 2,562 positions, spherical UVs, and 5,120 triangles after deterministic multi-frequency displacement. UV coordinates are present, but no normal-map texture or renderer-backed normal mapping is claimed. These remain untextured source meshes rather than final photorealistic hero assets.
 
 ## Third-party code used by the pipeline
 
