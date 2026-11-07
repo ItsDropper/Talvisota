@@ -210,7 +210,7 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
         sample = {0.035F + broad * 0.025F + waveA * 0.004F,
                   0.075F + broad * 0.035F + waveA * 0.006F,
                   0.105F + medium * 0.045F + waveB * 0.009F,
-                  height, 0.13F + medium * 0.10F, 0.98F};
+                  height, 0.13F + medium * 0.10F, 0.92F + broad * 0.07F};
     }
     else
     {
@@ -388,11 +388,13 @@ bool VerifyBmp(const std::filesystem::path& path, std::string& error)
 
     std::uint8_t minimum = 255U;
     std::uint8_t maximum = 0U;
+    std::uint64_t bytesRead = 0U;
     std::array<char, 65536> buffer{};
     while (input)
     {
         input.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
         const std::streamsize count = input.gcount();
+        bytesRead += static_cast<std::uint64_t>(count);
         for (std::streamsize index = 0; index < count; ++index)
         {
             const auto value = static_cast<std::uint8_t>(buffer[static_cast<std::size_t>(index)]);
@@ -400,8 +402,8 @@ bool VerifyBmp(const std::filesystem::path& path, std::string& error)
             maximum = std::max(maximum, value);
         }
     }
-    if (!input.eof() || static_cast<unsigned int>(maximum) -
-            static_cast<unsigned int>(minimum) < 8U)
+    if (!input.eof() || bytesRead != expectedImageBytes ||
+        static_cast<unsigned int>(maximum) - static_cast<unsigned int>(minimum) < 8U)
     {
         error = "Generated texture has insufficient pixel variation or a read error: " + path.string();
         return false;
