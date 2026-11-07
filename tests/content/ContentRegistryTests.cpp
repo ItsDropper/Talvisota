@@ -344,7 +344,13 @@ void TestTypedMissionFactionCharacterAndEquipmentDefinitions()
         "asset\\tmission.first\\tdefinition\\tmissions/first.tmission\\trequired\\tworld.test,character.player,faction.finnish\\tproject\\tproject\\n");
     ContentRegistry registry;
     std::vector<ContentDiagnostic> registryDiagnostics;
-    Require(Load(directory, registry, registryDiagnostics), "Typed definition manifest should load.");
+    if (!Load(directory, registry, registryDiagnostics))
+    {
+        for (const auto& diagnostic : registryDiagnostics)
+            std::cerr << diagnostic.file.generic_string() << ':' << diagnostic.line
+                      << " [" << diagnostic.field << "]: " << diagnostic.message << '\\n';
+        throw std::runtime_error("Typed definition manifest should load.");
+    }
 
     for (const std::string_view relativePath : {
         "factions/finnish.tfaction", "characters/player.tcharacter",

@@ -128,9 +128,14 @@ void TestAudioAssetsFailClosedUntilDecoderExists()
         "asset\\taudio.ambience\\taudio\\taudio/ambience.wav\\trequired\\t-\\tproject\\tproject\\n");
     ContentRegistry registry;
     std::vector<ContentDiagnostic> manifestDiagnostics;
-    Require(LoadContentManifest(directory.Path() / "catalog.tmanifest", directory.Path(),
-                                registry, manifestDiagnostics),
-            "Audio manifest record should be structurally valid.");
+    if (!LoadContentManifest(directory.Path() / "catalog.tmanifest", directory.Path(),
+                             registry, manifestDiagnostics))
+    {
+        for (const auto& diagnostic : manifestDiagnostics)
+            std::cerr << diagnostic.file.generic_string() << ':' << diagnostic.line
+                      << " [" << diagnostic.field << "]: " << diagnostic.message << '\\n';
+        throw std::runtime_error("Audio manifest record should be structurally valid.");
+    }
     EngineAssetSummary summary;
     std::vector<EngineAssetDiagnostic> diagnostics;
     Require(!ValidateEngineAssets(registry, summary, diagnostics),
