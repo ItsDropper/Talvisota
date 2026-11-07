@@ -368,10 +368,11 @@ bool ValidateEngineAssets(const ContentRegistry& registry, EngineAssetSummary& o
                     continue;
                 std::string libraryName;
                 std::string extra;
-                if (!(row >> libraryName) || (row >> extra) || sawMaterialLibrary)
+                if (!(row >> libraryName) || sawMaterialLibrary ||
+                    ((row >> extra) && !extra.starts_with('#')))
                 {
                     Add(diagnostics, canonicalSource, "materialLibrary",
-                        "OBJ must contain at most one mtllib declaration with exactly one relative filename (line " +
+                        "OBJ must contain at most one mtllib declaration with one relative filename (line " +
                         std::to_string(lineNumber) + ").");
                     return false;
                 }
