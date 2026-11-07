@@ -480,15 +480,18 @@ bool GeneratePreset(const std::filesystem::path& outputDirectory,
         {
             const int x0 = Wrap(x - 1, width);
             const int x1 = Wrap(x + 1, width);
-            const float dx = (heights[static_cast<std::size_t>(y) * width + x1] -
-                heights[static_cast<std::size_t>(y) * width + x0]) * normalStrength;
-            const float dy = (heights[static_cast<std::size_t>(y1) * width + x] -
-                heights[static_cast<std::size_t>(y0) * width + x]) * normalStrength;
+            const std::size_t row = static_cast<std::size_t>(y) * static_cast<std::size_t>(width);
+            const std::size_t previousRow = static_cast<std::size_t>(y0) * static_cast<std::size_t>(width);
+            const std::size_t nextRow = static_cast<std::size_t>(y1) * static_cast<std::size_t>(width);
+            const float dx = (heights[row + static_cast<std::size_t>(x1)] -
+                heights[row + static_cast<std::size_t>(x0)]) * normalStrength;
+            const float dy = (heights[nextRow + static_cast<std::size_t>(x)] -
+                heights[previousRow + static_cast<std::size_t>(x)]) * normalStrength;
             const float inverseLength = 1.0F / std::sqrt(dx * dx + dy * dy + 1.0F);
             const float nx = -dx * inverseLength;
             const float ny = -dy * inverseLength;
             const float nz = inverseLength;
-            normal[static_cast<std::size_t>(y) * width + static_cast<std::size_t>(x)] = {
+            normal[row + static_cast<std::size_t>(x)] = {
                 ToByte(nx * 0.5F + 0.5F),
                 ToByte(ny * 0.5F + 0.5F),
                 ToByte(nz * 0.5F + 0.5F)
