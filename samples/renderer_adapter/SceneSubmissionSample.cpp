@@ -13,10 +13,12 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <filesystem>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <string>
 #include <string_view>
