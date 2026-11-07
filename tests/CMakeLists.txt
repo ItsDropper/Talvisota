@@ -1,9 +1,17 @@
-add_executable(talvisota_core_tests
-    core/GameSessionTests.cpp
-)
-
+add_executable(talvisota_core_tests core/GameSessionTests.cpp)
 target_link_libraries(talvisota_core_tests PRIVATE Talvisota::Core)
 target_compile_features(talvisota_core_tests PRIVATE cxx_std_23)
 talvisota_apply_compiler_options(talvisota_core_tests)
-
 add_test(NAME Talvisota.Core.GameSession COMMAND talvisota_core_tests)
+
+add_executable(talvisota_config_tests core/ConfigTests.cpp)
+target_link_libraries(talvisota_config_tests PRIVATE Talvisota::Core)
+target_compile_features(talvisota_config_tests PRIVATE cxx_std_23)
+talvisota_apply_compiler_options(talvisota_config_tests)
+add_test(NAME Talvisota.Core.Configuration COMMAND talvisota_config_tests)
+
+add_executable(talvisota_application_tests app/ApplicationTests.cpp)
+target_link_libraries(talvisota_application_tests PRIVATE Talvisota::Application)
+target_compile_features(talvisota_application_tests PRIVATE cxx_std_23)
+talvisota_apply_compiler_options(talvisota_application_tests)
+add_test(NAME Talvisota.Application.Lifecycle COMMAND talvisota_application_tests)
