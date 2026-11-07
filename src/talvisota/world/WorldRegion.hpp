@@ -6,6 +6,7 @@
 #include <array>
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace talvisota::world
@@ -61,6 +62,18 @@ struct WorldRegionDiagnostic final
     std::string field;
     std::string message;
 };
+
+[[nodiscard]] std::array<float, 16> BuildPlacementTransform(const WorldPlacement& placement) noexcept;
+[[nodiscard]] bool QueryCollision(const WorldRegion& region,
+                                  const std::array<float, 3>& queryMin,
+                                  const std::array<float, 3>& queryMax,
+                                  bool& intersects,
+                                  std::string& error) noexcept;
+[[nodiscard]] bool FindNavigationPath(const WorldRegion& region,
+                                      std::string_view startNode,
+                                      std::string_view goalNode,
+                                      std::vector<std::string>& output,
+                                      std::string& error);
 
 [[nodiscard]] bool LoadWorldRegion(const std::filesystem::path& path,
                                    const content::ContentRegistry& registry,
