@@ -171,7 +171,7 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
         const float scars = std::sin((v * 19.0F + (broad - 0.5F) * 0.18F) * 2.0F * Pi);
         const float scarMask = Smooth((std::abs(scars) - 0.955F) * 24.0F) *
             Smooth((fine - 0.34F) * 2.6F);
-        const smoothGrain = (medium - 0.5F) * 0.045F + (fine - 0.5F) * 0.018F;
+        const float smoothGrain = (medium - 0.5F) * 0.045F + (fine - 0.5F) * 0.018F;
         const float height = 0.50F + scars * 0.018F + smoothGrain - scarMask * 0.065F;
         sample = {0.48F + broad * 0.075F + smoothGrain - scarMask * 0.18F,
                   0.50F + broad * 0.075F + smoothGrain - scarMask * 0.16F,
