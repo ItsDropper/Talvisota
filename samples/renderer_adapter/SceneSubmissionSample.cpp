@@ -193,12 +193,12 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
                     !ResolveImportedTexture(sourceMaterial.ambientOcclusionTexture, material.ambientOcclusionTexture, error))
                     return false;
 
-                if (placement.materialAssetId != "-" && sourceMaterial.name == "snow") {
+                if (!placement.materialAssetId.empty() && placement.materialAssetId != "-" && sourceMaterial.name == "snow") {
                     auto typed = typedMaterials.find(placement.materialAssetId);
                     if (typed == typedMaterials.end()) {
                         const auto* typedAsset = registry.Find(placement.materialAssetId);
                         if (typedAsset == nullptr || typedAsset->kind != talvisota::content::AssetKind::Material) {
-                            error = "Placement references a missing typed material: " + placement.materialAssetId;
+                            error = "Placement " + placement.id + " references a missing typed material: " + placement.materialAssetId;
                             return false;
                         }
                         talvisota::content::MaterialDefinition definition;
