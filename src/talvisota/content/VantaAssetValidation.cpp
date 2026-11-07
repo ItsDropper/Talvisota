@@ -1,4 +1,5 @@
 #include "talvisota/content/VantaAssetValidation.hpp"
+#include "talvisota/content/AudioDecode.hpp"
 
 #include "vanta/assets/ModelAssetStore.hpp"
 #include "vanta/assets/TextureProcessing.hpp"
@@ -344,11 +345,13 @@ bool ValidateEngineAssets(const ContentRegistry& registry, EngineAssetSummary& o
         {
             std::string audioError;
             const std::string extension = LowerExtension(canonicalSource);
-            if (extension != ".wav" || !ValidatePcmWave(canonicalSource, audioError))
+            DecodedAudioInfo compressedInfo;
+            const bool decoded = extension == ".wav"
+                ? ValidatePcmWave(canonicalSource, audioError)
+                : DecodeCompressedAudio(canonicalSource, compressedInfo, audioError);
+            if (!decoded)
             {
-                Add(diagnostics, canonicalSource, "audio",
-                    extension == ".wav" ? audioError :
-                    "Only PCM/IEEE-float WAV decoding is implemented; OGG and FLAC remain unsupported.");
+                Add(diagnostics, canonicalSource, "audio", audioError);
                 return false;
             }
             ++candidate.decodedAudio;
