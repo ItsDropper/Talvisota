@@ -132,22 +132,33 @@ public:
     void WriteBmp(const std::filesystem::path& relative)
     {
         std::filesystem::create_directories((root_ / relative).parent_path());
-        std::vector<std::uint8_t> bytes(58U, 0U);
+        constexpr std::uint32_t width = 4U;
+        constexpr std::uint32_t height = 4U;
+        constexpr std::uint32_t rowStride = 12U;
+        constexpr std::uint32_t pixelBytes = rowStride * height;
+        std::vector<std::uint8_t> bytes(54U + pixelBytes, 0U);
         bytes[0] = 'B'; bytes[1] = 'M';
         const auto put32 = [&bytes](std::size_t offset, std::uint32_t value)
         {
             for (std::size_t index = 0; index < 4U; ++index)
                 bytes[offset + index] = static_cast<std::uint8_t>((value >> (index * 8U)) & 0xffU);
         };
-        bytes[2] = 58U;
+        put32(2U, static_cast<std::uint32_t>(bytes.size()));
         put32(10U, 54U);
         put32(14U, 40U);
-        put32(18U, 1U);
-        put32(22U, 1U);
+        put32(18U, width);
+        put32(22U, height);
         bytes[26U] = 1U;
         bytes[28U] = 24U;
-        put32(34U, 4U);
-        bytes[54U] = 32U; bytes[55U] = 96U; bytes[56U] = 180U;
+        put32(34U, pixelBytes);
+        for (std::uint32_t y = 0; y < height; ++y)
+            for (std::uint32_t x = 0; x < width; ++x)
+            {
+                const std::size_t pixel = 54U + y * rowStride + x * 3U;
+                bytes[pixel] = static_cast<std::uint8_t>(150U + x * 7U);
+                bytes[pixel + 1U] = static_cast<std::uint8_t>(185U + y * 5U);
+                bytes[pixel + 2U] = static_cast<std::uint8_t>(215U + x * 3U + y * 2U);
+            }
         std::ofstream file(root_ / relative, std::ios::binary);
         file.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
         Require(static_cast<bool>(file), "Could not write pipeline BMP.");
