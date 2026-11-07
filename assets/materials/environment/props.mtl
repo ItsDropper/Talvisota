@@ -1,7 +1,7 @@
 # Original Karelian winter environmental prop materials.
 newmtl log_bark
 Kd 1.0 1.0 1.0
-Pr 0.91
+Pr 1.0
 Pm 0.0
 map_Kd ../../textures/environment/bark-albedo.bmp
 map_Bump ../../textures/environment/bark-normal.bmp
@@ -9,7 +9,7 @@ map_Pr ../../textures/environment/bark-roughness.bmp
 map_AO ../../textures/environment/bark-ao.bmp
 newmtl cut_wood
 Kd 1.0 1.0 1.0
-Pr 0.86
+Pr 1.0
 Pm 0.0
 map_Kd ../../textures/environment/bark-albedo.bmp
 map_Bump ../../textures/environment/bark-normal.bmp
@@ -17,7 +17,7 @@ map_Pr ../../textures/environment/bark-roughness.bmp
 map_AO ../../textures/environment/bark-ao.bmp
 newmtl twig
 Kd 1.0 1.0 1.0
-Pr 0.95
+Pr 1.0
 Pm 0.0
 map_Kd ../../textures/environment/bark-albedo.bmp
 map_Bump ../../textures/environment/bark-normal.bmp
@@ -25,7 +25,7 @@ map_Pr ../../textures/environment/bark-roughness.bmp
 map_AO ../../textures/environment/bark-ao.bmp
 newmtl fence_wood
 Kd 1.0 1.0 1.0
-Pr 0.91
+Pr 1.0
 Pm 0.0
 map_Kd ../../textures/environment/bark-albedo.bmp
 map_Bump ../../textures/environment/bark-normal.bmp
@@ -33,7 +33,7 @@ map_Pr ../../textures/environment/bark-roughness.bmp
 map_AO ../../textures/environment/bark-ao.bmp
 newmtl stone
 Kd 1.0 1.0 1.0
-Pr 0.94
+Pr 1.0
 Pm 0.0
 map_Kd ../../textures/environment/granite-albedo.bmp
 map_Bump ../../textures/environment/granite-normal.bmp
@@ -41,7 +41,7 @@ map_Pr ../../textures/environment/granite-roughness.bmp
 map_AO ../../textures/environment/granite-ao.bmp
 newmtl roof_wood
 Kd 1.0 1.0 1.0
-Pr 0.9
+Pr 1.0
 Pm 0.0
 map_Kd ../../textures/environment/bark-albedo.bmp
 map_Bump ../../textures/environment/bark-normal.bmp
@@ -49,7 +49,7 @@ map_Pr ../../textures/environment/bark-roughness.bmp
 map_AO ../../textures/environment/bark-ao.bmp
 newmtl roof_snow
 Kd 1.0 1.0 1.0
-Pr 0.97
+Pr 1.0
 Pm 0.0
 map_Kd ../../textures/environment/snow-albedo.bmp
 map_Bump ../../textures/environment/snow-normal.bmp
@@ -57,7 +57,7 @@ map_Pr ../../textures/environment/snow-roughness.bmp
 map_AO ../../textures/environment/snow-ao.bmp
 newmtl reed_stem
 Kd 1.0 1.0 1.0
-Pr 0.95
+Pr 1.0
 Pm 0.0
 map_Kd ../../textures/environment/reeds-albedo.bmp
 map_Bump ../../textures/environment/reeds-normal.bmp
@@ -65,7 +65,7 @@ map_Pr ../../textures/environment/reeds-roughness.bmp
 map_AO ../../textures/environment/reeds-ao.bmp
 newmtl reed_head
 Kd 1.0 1.0 1.0
-Pr 0.94
+Pr 1.0
 Pm 0.0
 map_Kd ../../textures/environment/reeds-albedo.bmp
 map_Bump ../../textures/environment/reeds-normal.bmp
@@ -73,7 +73,7 @@ map_Pr ../../textures/environment/reeds-roughness.bmp
 map_AO ../../textures/environment/reeds-ao.bmp
 newmtl reed_snow
 Kd 1.0 1.0 1.0
-Pr 0.97
+Pr 1.0
 Pm 0.0
 map_Kd ../../textures/environment/snow-albedo.bmp
 map_Bump ../../textures/environment/snow-normal.bmp
