@@ -1,5 +1,6 @@
 #include "talvisota/content/ContentRegistry.hpp"
 #include "talvisota/content/VantaAssetValidation.hpp"
+#include "vanta/assets/TextureProcessing.hpp"
 
 #include <chrono>
 #include <cstdint>
@@ -93,6 +94,58 @@ void TestImportsRegisteredObjAndDecodesRegisteredTexture()
             "Engine asset summary should count the imported model and unique decoded texture.");
 }
 
+void TestValidatesProcessedTextureContainer()
+{
+    TemporaryDirectory directory;
+    std::vector<vanta::assets::TextureMip> mipChain(1);
+    mipChain[0].width = 1U;
+    mipChain[0].height = 1U;
+    mipChain[0].rgba = {32U, 96U, 180U, 255U};
+    std::string writeError;
+    Require(vanta::assets::WriteProcessedTexture(directory.Path() / "textures/ground.ttex",
+                                                  mipChain, vanta::assets::TextureColorSpace::Srgb,
+                                                  writeError),
+            "Could not write valid processed texture fixture.");
+    directory.Manifest(
+        "talvisota-content-manifest\\t1\\n"
+        "asset\\ttexture.ground\\ttexture\\ttextures/ground.ttex\\trequired\\t-\\tproject\\tproject\\n");
+    ContentRegistry registry;
+    std::vector<ContentDiagnostic> manifestDiagnostics;
+    Require(LoadContentManifest(directory.Path() / "catalog.tmanifest", directory.Path(),
+                                registry, manifestDiagnostics),
+            "Processed texture manifest should load.");
+    EngineAssetSummary summary;
+    std::vector<EngineAssetDiagnostic> diagnostics;
+    Require(ValidateEngineAssets(registry, summary, diagnostics),
+            "Valid TVTTEX01 container should pass engine-backed validation.");
+    Require(summary.decodedTextures == 1U,
+            "Processed texture should be counted as one validated texture.");
+}
+
+void TestObjMaterialLibraryMustBeRegisteredAndDeclared()
+{
+    TemporaryDirectory directory;
+    directory.Write("models/tree.obj",
+        "mtllib tree.mtl\\n"
+        "v 0 0 0\\nv 1 0 0\\nv 0 1 0\\nf 1 2 3\\n");
+    directory.Write("models/tree.mtl", "newmtl bark\\nKd 0.5 0.4 0.3\\n");
+    directory.Manifest(
+        "talvisota-content-manifest\\t1\\n"
+        "asset\\tmodel.tree\\tmodel\\tmodels/tree.obj\\trequired\\t-\\tproject\\tproject\\n"
+        "asset\\tmaterial.tree\\tmaterial\\tmodels/tree.mtl\\trequired\\t-\\tproject\\tproject\\n");
+    ContentRegistry registry;
+    std::vector<ContentDiagnostic> manifestDiagnostics;
+    Require(LoadContentManifest(directory.Path() / "catalog.tmanifest", directory.Path(),
+                                registry, manifestDiagnostics),
+            "OBJ/MTL fixture manifest should load.");
+    EngineAssetSummary summary;
+    std::vector<EngineAssetDiagnostic> diagnostics;
+    Require(!ValidateEngineAssets(registry, summary, diagnostics),
+            "OBJ material library omitted from model dependencies must fail validation.");
+    Require(!diagnostics.empty() && diagnostics.front().field == "materialLibrary",
+            "Undeclared OBJ material library should report its dependency field.");
+}
+
 void TestMalformedTextureFailsWithoutPublishingSummary()
 {
     TemporaryDirectory directory;
@@ -149,6 +202,8 @@ int main()
     try
     {
         TestImportsRegisteredObjAndDecodesRegisteredTexture();
+        TestValidatesProcessedTextureContainer();
+        TestObjMaterialLibraryMustBeRegisteredAndDeclared();
         TestMalformedTextureFailsWithoutPublishingSummary();
         TestAudioAssetsFailClosedUntilDecoderExists();
     }
