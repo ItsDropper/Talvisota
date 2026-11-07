@@ -141,7 +141,7 @@ bool LoadContentManifest(const std::filesystem::path& manifestPath,
     std::ifstream input(manifestPath, std::ios::binary);
     if (!input)
     {
-        AddDiagnostic(diagnostics, 0, "manifest", "Manifest could not be opened.");
+        AddDiagnostic(diagnostics, manifestPath, 0, "manifest", "Manifest could not be opened.");
         return false;
     }
 
@@ -180,43 +180,43 @@ bool LoadContentManifest(const std::filesystem::path& manifestPath,
         const std::vector<std::string_view> fields = SplitTabs(line);
         if (fields.size() != 8)
         {
-            AddDiagnostic(diagnostics, lineNumber, "record",
+            AddDiagnostic(diagnostics, manifestPath, lineNumber, "record",
                           "Asset records require exactly 8 tab-separated fields.");
             continue;
         }
         if (fields[0] != "asset")
         {
-            AddDiagnostic(diagnostics, lineNumber, "record", "Expected an 'asset' record.");
+            AddDiagnostic(diagnostics, manifestPath, lineNumber, "record", "Expected an 'asset' record.");
             continue;
         }
 
         AssetRecord asset;
         asset.id = std::string(fields[1]);
         if (!IsValidId(fields[1]))
-            AddDiagnostic(diagnostics, lineNumber, "id",
+            AddDiagnostic(diagnostics, manifestPath, lineNumber, "id",
                           "ID must start with a lowercase letter or digit and contain only lowercase ASCII letters, digits, '.', '_', '-', or ':'.");
         if (!ParseKind(fields[2], asset.kind))
-            AddDiagnostic(diagnostics, lineNumber, "kind",
+            AddDiagnostic(diagnostics, manifestPath, lineNumber, "kind",
                           "Kind must be model, texture, audio, definition, or material.");
 
         const std::filesystem::path relativePath = std::filesystem::u8path(fields[3].begin(), fields[3].end());
         if (fields[3].empty() || relativePath.is_absolute() || relativePath.has_root_name())
-            AddDiagnostic(diagnostics, lineNumber, "path", "Path must be non-empty and relative to the content root.");
+            AddDiagnostic(diagnostics, manifestPath, lineNumber, "path", "Path must be non-empty and relative to the content root.");
         for (const auto& component : relativePath)
         {
             if (component == "..")
             {
-                AddDiagnostic(diagnostics, lineNumber, "path", "Parent-directory traversal is not allowed.");
+                AddDiagnostic(diagnostics, manifestPath, lineNumber, "path", "Parent-directory traversal is not allowed.");
                 break;
             }
         }
         asset.relativePath = relativePath.lexically_normal();
         if (!HasSupportedExtension(asset.kind, asset.relativePath))
-            AddDiagnostic(diagnostics, lineNumber, "path", "File extension is not supported for the declared asset kind.");
+            AddDiagnostic(diagnostics, manifestPath, lineNumber, "path", "File extension is not supported for the declared asset kind.");
 
         if (fields[4] == "required") asset.required = true;
         else if (fields[4] == "optional") asset.required = false;
-        else AddDiagnostic(diagnostics, lineNumber, "required", "Value must be required or optional.");
+        else AddDiagnostic(diagnostics, manifestPath, lineNumber, "required", "Value must be required or optional.");
 
         if (fields[5] != "-")
         {
@@ -227,7 +227,7 @@ bool LoadContentManifest(const std::filesystem::path& manifestPath,
                 const std::size_t end = separator == std::string_view::npos ? fields[5].size() : separator;
                 const std::string_view dependency = Trim(fields[5].substr(begin, end - begin));
                 if (!IsValidId(dependency))
-                    AddDiagnostic(diagnostics, lineNumber, "dependencies", "Dependency list contains an invalid stable ID.");
+                    AddDiagnostic(diagnostics, manifestPath, lineNumber, "dependencies", "Dependency list contains an invalid stable ID.");
                 else
                     asset.dependencies.emplace_back(dependency);
                 if (separator == std::string_view::npos)
@@ -236,20 +236,20 @@ bool LoadContentManifest(const std::filesystem::path& manifestPath,
             }
             std::sort(asset.dependencies.begin(), asset.dependencies.end());
             if (std::adjacent_find(asset.dependencies.begin(), asset.dependencies.end()) != asset.dependencies.end())
-                AddDiagnostic(diagnostics, lineNumber, "dependencies", "Dependency list contains a duplicate ID.");
+                AddDiagnostic(diagnostics, manifestPath, lineNumber, "dependencies", "Dependency list contains a duplicate ID.");
         }
 
         asset.source = std::string(fields[6]);
         asset.license = std::string(fields[7]);
         if (asset.source.empty() || asset.license.empty() || asset.source == "-" || asset.license == "-")
-            AddDiagnostic(diagnostics, lineNumber, "provenance",
+            AddDiagnostic(diagnostics, manifestPath, lineNumber, "provenance",
                           "Source and license are mandatory; use 'project' for original project assets.");
 
         const std::string pathKey = LowerAscii(asset.relativePath.generic_string());
         if (!seenPaths.insert(pathKey).second)
-            AddDiagnostic(diagnostics, lineNumber, "path", "Two asset IDs may not point to the same path.");
+            AddDiagnostic(diagnostics, manifestPath, lineNumber, "path", "Two asset IDs may not point to the same path.");
         if (candidate.indices_.contains(asset.id))
-            AddDiagnostic(diagnostics, lineNumber, "id", "Duplicate asset ID.");
+            AddDiagnostic(diagnostics, manifestPath, lineNumber, "id", "Duplicate asset ID.");
         else
         {
             candidate.indices_.emplace(asset.id, candidate.assets_.size());
@@ -259,9 +259,9 @@ bool LoadContentManifest(const std::filesystem::path& manifestPath,
     }
 
     if (!input.eof() && input.fail())
-        AddDiagnostic(diagnostics, lineNumber, "manifest", "An I/O error occurred while reading the manifest.");
+        AddDiagnostic(diagnostics, manifestPath, lineNumber, "manifest", "An I/O error occurred while reading the manifest.");
     if (!headerSeen)
-        AddDiagnostic(diagnostics, 0, "header", "Manifest is empty or has no version header.");
+        AddDiagnostic(diagnostics, manifestPath, 0, "header", "Manifest is empty or has no version header.");
     if (!diagnostics.empty())
         return false;
 
