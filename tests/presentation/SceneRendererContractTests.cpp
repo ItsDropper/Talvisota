@@ -79,42 +79,42 @@ int main()
     FakeSceneRenderer fakeRenderer;
     Require(!fakeRenderer.Render(scene, error));
     int nativeWindowToken = 1;
-    assert(fakeRenderer.Initialize(&nativeWindowToken, 1280, 720, error));
-    assert(fakeRenderer.Resize(800, 600, error));
-    assert(fakeRenderer.Render(scene, error));
-    assert(fakeRenderer.renderedFrames == 1U);
+    Require(fakeRenderer.Initialize(&nativeWindowToken, 1280, 720, error));
+    Require(fakeRenderer.Resize(800, 600, error));
+    Require(fakeRenderer.Render(scene, error));
+    Require(fakeRenderer.renderedFrames == 1U);
     fakeRenderer.deviceLost = true;
-    assert(fakeRenderer.IsDeviceLost());
+    Require(fakeRenderer.IsDeviceLost());
 
-    assert(ValidateSceneSnapshot(scene, error));
-    assert(error.empty());
+    Require(ValidateSceneSnapshot(scene, error));
+    Require(error.empty());
 
     SceneSnapshot invalidIndex = ValidScene();
     invalidIndex.meshes[0].indices[2] = 99U;
-    assert(!ValidateSceneSnapshot(invalidIndex, error));
-    assert(!error.empty());
+    Require(!ValidateSceneSnapshot(invalidIndex, error));
+    Require(!error.empty());
 
     SceneSnapshot zeroNormal = ValidScene();
     zeroNormal.meshes[0].vertices[0].normal = {0.0F, 0.0F, 0.0F};
-    assert(!ValidateSceneSnapshot(zeroNormal, error));
+    Require(!ValidateSceneSnapshot(zeroNormal, error));
 
     SceneSnapshot invalidMaterial = ValidScene();
     invalidMaterial.materials[0].roughness = 1.5F;
-    assert(!ValidateSceneSnapshot(invalidMaterial, error));
+    Require(!ValidateSceneSnapshot(invalidMaterial, error));
 
     SceneSnapshot missingResource = ValidScene();
     missingResource.instances[0].meshIndex = 1U;
-    assert(!ValidateSceneSnapshot(missingResource, error));
+    Require(!ValidateSceneSnapshot(missingResource, error));
 
     SceneSnapshot singularTransform = ValidScene();
     singularTransform.instances[0].world[0] = 0.0F;
     singularTransform.instances[0].world[5] = 0.0F;
     singularTransform.instances[0].world[10] = 0.0F;
-    assert(!ValidateSceneSnapshot(singularTransform, error));
+    Require(!ValidateSceneSnapshot(singularTransform, error));
 
     SceneSnapshot invalidCamera = ValidScene();
     invalidCamera.camera.elapsedSeconds = std::numeric_limits<float>::quiet_NaN();
-    assert(!ValidateSceneSnapshot(invalidCamera, error));
+    Require(!ValidateSceneSnapshot(invalidCamera, error));
 
     return 0;
 }
