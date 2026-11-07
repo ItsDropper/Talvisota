@@ -65,6 +65,19 @@ public:
         file.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
         Require(static_cast<bool>(file), "Could not write BMP fixture.");
     }
+    void WritePcmWav(const std::filesystem::path& relative)
+    {
+        std::filesystem::create_directories((path_ / relative).parent_path());
+        const std::vector<std::uint8_t> bytes = {
+            'R','I','F','F', 38,0,0,0, 'W','A','V','E',
+            'f','m','t',' ', 16,0,0,0, 1,0, 1,0,
+            0x40,0x1f,0,0, 0x80,0x3e,0,0, 2,0, 16,0,
+            'd','a','t','a', 2,0,0,0, 0,0
+        };
+        std::ofstream file(path_ / relative, std::ios::binary);
+        file.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+        Require(static_cast<bool>(file), "Could not write PCM WAV fixture.");
+    }
     void Manifest(const std::string& value) { Write("catalog.tmanifest", value); }
     [[nodiscard]] const std::filesystem::path& Path() const { return path_; }
 private:
@@ -172,29 +185,44 @@ void TestMalformedTextureFailsWithoutPublishingSummary()
 }
 
 
-void TestAudioAssetsFailClosedUntilDecoderExists()
+void TestDecodesPcmWaveAssets()
 {
     TemporaryDirectory directory;
-    directory.Write("audio/ambience.wav", "unvalidated audio");
+    directory.WritePcmWav("audio/ambience.wav");
     directory.Manifest(
-        "talvisota-content-manifest\t1\n"
-        "asset\taudio.ambience\taudio\taudio/ambience.wav\trequired\t-\tproject\tproject\n");
+        "talvisota-content-manifest\\t1\\n"
+        "asset\\taudio.ambience\\taudio\\taudio/ambience.wav\\trequired\\t-\\tproject\\tproject\\n");
     ContentRegistry registry;
     std::vector<ContentDiagnostic> manifestDiagnostics;
-    if (!LoadContentManifest(directory.Path() / "catalog.tmanifest", directory.Path(),
-                             registry, manifestDiagnostics))
-    {
-        for (const auto& diagnostic : manifestDiagnostics)
-            std::cerr << diagnostic.file.generic_string() << ':' << diagnostic.line
-                      << " [" << diagnostic.field << "]: " << diagnostic.message << '\n';
-        throw std::runtime_error("Audio manifest record should be structurally valid.");
-    }
+    Require(LoadContentManifest(directory.Path() / "catalog.tmanifest", directory.Path(),
+                                registry, manifestDiagnostics),
+            "PCM WAV manifest should load.");
+    EngineAssetSummary summary;
+    std::vector<EngineAssetDiagnostic> diagnostics;
+    Require(ValidateEngineAssets(registry, summary, diagnostics),
+            "Valid PCM WAV should pass audio decoding and validation.");
+    Require(summary.decodedAudio == 1U,
+            "Validated PCM WAV should be counted as decoded audio.");
+}
+
+void TestUnsupportedCompressedAudioFailsClosed()
+{
+    TemporaryDirectory directory;
+    directory.Write("audio/ambience.ogg", "not an OGG stream");
+    directory.Manifest(
+        "talvisota-content-manifest\\t1\\n"
+        "asset\\taudio.ambience\\taudio\\audio/ambience.ogg\\trequired\\t-\\tproject\\tproject\\n");
+    ContentRegistry registry;
+    std::vector<ContentDiagnostic> manifestDiagnostics;
+    Require(LoadContentManifest(directory.Path() / "catalog.tmanifest", directory.Path(),
+                                registry, manifestDiagnostics),
+            "Compressed audio manifest should load structurally.");
     EngineAssetSummary summary;
     std::vector<EngineAssetDiagnostic> diagnostics;
     Require(!ValidateEngineAssets(registry, summary, diagnostics),
-            "Audio assets must not be reported as validated without a decoder.");
+            "Unsupported compressed audio must fail closed.");
     Require(!diagnostics.empty() && diagnostics.front().field == "audio",
-            "Unsupported audio validation must provide a precise diagnostic.");
+            "Unsupported audio should report a precise diagnostic.");
 }
 
 int main()
@@ -205,7 +233,8 @@ int main()
         TestValidatesProcessedTextureContainer();
         TestObjMaterialLibraryMustBeRegisteredAndDeclared();
         TestMalformedTextureFailsWithoutPublishingSummary();
-        TestAudioAssetsFailClosedUntilDecoderExists();
+        TestDecodesPcmWaveAssets();
+        TestUnsupportedCompressedAudioFailsClosed();
     }
     catch (const std::exception& exception)
     {
