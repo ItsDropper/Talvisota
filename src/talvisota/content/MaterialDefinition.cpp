@@ -70,7 +70,7 @@ bool IsUnit(float value) noexcept
     return value >= 0.0F && value <= 1.0F;
 }
 
-bool ValidateTexture(const std::string& id, const ContentRegistry& registry,
+bool ValidateTexture(const std::string& id, const ContentRegistry& registry, const AssetRecord* owner,
                      const std::filesystem::path& path, std::size_t line,
                      std::string_view field, std::vector<MaterialDiagnostic>& diagnostics)
 {
@@ -87,6 +87,16 @@ bool ValidateTexture(const std::string& id, const ContentRegistry& registry,
         Add(diagnostics, path, line, std::string(field), "Referenced asset is not a texture: " + id);
         return false;
     }
+    if (owner != nullptr &&
+        std::find(owner->dependencies.begin(), owner->dependencies.end(), id) == owner->dependencies.end())
+        Add(diagnostics, path, line, std::string(field),
+            "Referenced texture must also be declared as a manifest dependency: " + id);
+
+    std::error_code fileError;
+    const auto texturePath = std::filesystem::weakly_canonical(registry.Root() / asset->relativePath, fileError);
+    if (fileError || !std::filesystem::is_regular_file(texturePath, fileError) || fileError)
+        Add(diagnostics, path, line, std::string(field),
+            "A material cannot reference a missing or non-regular optional texture asset: " + id);
     return true;
 }
 } // namespace
@@ -264,7 +274,8 @@ bool LoadMaterialDefinition(const std::filesystem::path& path, const ContentRegi
     optionalTexture("orm_texture", candidate.ormTexture);
     optionalTexture("emissive_texture", candidate.emissiveTexture);
 
-    if (const AssetRecord* materialAsset = registry.Find(candidate.id))
+    const AssetRecord* materialAsset = registry.Find(candidate.id);
+    if (materialAsset != nullptr)
     {
         if (materialAsset->kind != AssetKind::Material)
             Add(diagnostics, path, get("id") ? get("id")->second : 0U, "id", "Definition ID resolves to an asset that is not a material.");
@@ -278,10 +289,10 @@ bool LoadMaterialDefinition(const std::filesystem::path& path, const ContentRegi
     else
         Add(diagnostics, path, get("id") ? get("id")->second : 0U, "id", "Material ID is not present in the content manifest.");
 
-    ValidateTexture(candidate.baseColorTexture, registry, path, get("base_color_texture") ? get("base_color_texture")->second : 0U, "base_color_texture", diagnostics);
-    ValidateTexture(candidate.normalTexture, registry, path, get("normal_texture") ? get("normal_texture")->second : 0U, "normal_texture", diagnostics);
-    ValidateTexture(candidate.ormTexture, registry, path, get("orm_texture") ? get("orm_texture")->second : 0U, "orm_texture", diagnostics);
-    ValidateTexture(candidate.emissiveTexture, registry, path, get("emissive_texture") ? get("emissive_texture")->second : 0U, "emissive_texture", diagnostics);
+    ValidateTexture(candidate.baseColorTexture, registry, materialAsset, path, get("base_color_texture") ? get("base_color_texture")->second : 0U, "base_color_texture", diagnostics);
+    ValidateTexture(candidate.normalTexture, registry, materialAsset, path, get("normal_texture") ? get("normal_texture")->second : 0U, "normal_texture", diagnostics);
+    ValidateTexture(candidate.ormTexture, registry, materialAsset, path, get("orm_texture") ? get("orm_texture")->second : 0U, "orm_texture", diagnostics);
+    ValidateTexture(candidate.emissiveTexture, registry, materialAsset, path, get("emissive_texture") ? get("emissive_texture")->second : 0U, "emissive_texture", diagnostics);
 
     if (!diagnostics.empty())
         return false;
