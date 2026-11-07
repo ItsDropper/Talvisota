@@ -218,14 +218,14 @@ void TestObjMaterialLibraryMustBeRegisteredAndDeclared()
     Require(!diagnostics.empty() && diagnostics.front().field == "materialLibrary",
             "Undeclared OBJ material library should report its dependency field.");
 
-    directory.Write("materials/tree.mtl", "newmtl bark\\nKd 0.5 0.4 0.3\\n");
+    directory.Write("materials/tree.mtl", "newmtl bark\nKd 0.5 0.4 0.3\n");
     directory.Write("models/tree.obj",
-        "mtllib ../materials/tree.mtl\\n"
-        "v 0 0 0\\nv 1 0 0\\nv 0 1 0\\nf 1 2 3\\n");
+        "mtllib ../materials/tree.mtl\n"
+        "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n");
     directory.Manifest(
-        "talvisota-content-manifest\\t1\\n"
-        "asset\\tmodel.tree\\tmodel\\tmodels/tree.obj\\trequired\\tmaterial.tree\\tproject\\tproject\\n"
-        "asset\\tmaterial.tree\\tmaterial\\tmaterials/tree.mtl\\trequired\\t-\\tproject\\tproject\\n");
+        "talvisota-content-manifest\t1\n"
+        "asset\tmodel.tree\tmodel\tmodels/tree.obj\trequired\tmaterial.tree\tproject\tproject\n"
+        "asset\tmaterial.tree\tmaterial\tmaterials/tree.mtl\trequired\t-\tproject\tproject\n");
     Require(LoadContentManifest(directory.Path() / "catalog.tmanifest", directory.Path(),
                                 registry, manifestDiagnostics),
             "Contained parent-relative MTL manifest should load.");
@@ -234,8 +234,8 @@ void TestObjMaterialLibraryMustBeRegisteredAndDeclared()
             "OBJ material sidecars may use parent-relative paths that remain inside the content root.");
 
     directory.Write("models/tree.obj",
-        "mtllib ../../outside.mtl\\n"
-        "v 0 0 0\\nv 1 0 0\\nv 0 1 0\\nf 1 2 3\\n");
+        "mtllib ../../outside.mtl\n"
+        "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n");
     diagnostics.clear();
     Require(!ValidateEngineAssets(registry, summary, diagnostics),
             "OBJ material sidecars resolving outside the content root must fail.");
