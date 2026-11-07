@@ -10,7 +10,8 @@
 #include <vector>
 
 #if defined(_MSC_VER)
-#pragma warning(push, 0)
+#pragma warning(push)
+#pragma warning(disable: 4701)
 #endif
 #define DR_FLAC_IMPLEMENTATION
 #include "../../../third_party/dr_flac.h"
