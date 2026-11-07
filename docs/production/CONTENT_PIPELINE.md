@@ -38,3 +38,10 @@ Material assets use the strict, versioned `.tmat` format documented in [material
 The content validator parses every material record after validating the manifest. The shipped `content/catalog.tmanifest` is a real, minimal content catalog containing the initial snow surface material. It is a schema and validation fixture, not a claim of final visual quality or renderer texture support.
 
 Colour-space conventions are explicit: base-colour and emissive texture RGB are sRGB; normal and ORM textures are linear. ORM channels are R=occlusion, G=roughness, B=metallic. These are authoring/import contracts; the current renderer adapter does not yet consume these texture slots.
+
+
+## Typed world definitions
+
+World metadata uses the strict, versioned `.tworld` format documented in [world-definition-v1.md](../../data/schemas/world-definition-v1.md). Version 1 fixes the world coordinate convention to metres, right-handed, +X east, +Y up, and +Z north. Bounds must be finite and strictly ordered on every axis. Optional sea level must fall within the vertical bounds.
+
+The validator parses every manifest definition whose extension is `.tworld`. This is metadata validation only; terrain authoring, collision, vegetation placement, and runtime world loading remain later work.
