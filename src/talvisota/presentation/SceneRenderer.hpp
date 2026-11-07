@@ -32,6 +32,7 @@ struct RenderMaterial final
     std::string roughnessTexture;
     std::string metallicTexture;
     std::string ambientOcclusionTexture;
+    bool packedMetallicRoughness = false;
 };
 
 struct RenderInstance final

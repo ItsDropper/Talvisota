@@ -112,6 +112,13 @@ int main()
         (std::filesystem::temp_directory_path() / "talvisota-normal.png").string();
     Require(ValidateSceneSnapshot(texturedMaterial, error));
 
+    SceneSnapshot packedOrmMaterial = ValidScene();
+    const auto ormPath = std::filesystem::temp_directory_path() / "talvisota-snow-orm.png";
+    packedOrmMaterial.materials[0].roughnessTexture = ormPath.string();
+    packedOrmMaterial.materials[0].ambientOcclusionTexture = ormPath.string();
+    packedOrmMaterial.materials[0].packedMetallicRoughness = true;
+    Require(ValidateSceneSnapshot(packedOrmMaterial, error));
+
     SceneSnapshot unresolvedTexture = ValidScene();
     unresolvedTexture.materials[0].normalTexture = "textures/normal.png";
     Require(!ValidateSceneSnapshot(unresolvedTexture, error));
