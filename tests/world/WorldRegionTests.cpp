@@ -280,11 +280,14 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
                 Require(parsed.ec == std::errc{} && parsed.ptr == end,
                         "Sakkola terrain face vertex indices should be valid integers.");
                 std::size_t textureIndex = 0U;
+                const std::size_t normalSlash = token.find('/', slash + 1U);
                 const char* textureBegin = token.data() + slash + 1U;
-                const char* textureEnd = token.data() + token.size();
+                const char* textureEnd = token.data() +
+                    (normalSlash == std::string::npos ? token.size() : normalSlash);
                 const auto parsedTexture = std::from_chars(textureBegin, textureEnd, textureIndex);
-                Require(parsedTexture.ec == std::errc{} && parsedTexture.ptr == textureEnd &&
-                        textureIndex > 0U && textureIndex <= textureCoordinateCount,
+                Require(textureBegin != textureEnd && parsedTexture.ec == std::errc{} &&
+                        parsedTexture.ptr == textureEnd && textureIndex > 0U &&
+                        textureIndex <= textureCoordinateCount,
                         "Sakkola terrain face UV indices should reference the authored texture grid.");
             }
             visualFaces.push_back(face);
