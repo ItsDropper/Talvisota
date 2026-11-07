@@ -2,6 +2,7 @@
 #include "talvisota/content/WorldDefinition.hpp"
 #include "talvisota/world/WorldRegion.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <filesystem>
