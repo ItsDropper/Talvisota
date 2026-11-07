@@ -1,5 +1,6 @@
 #include "talvisota/content/ContentRegistry.hpp"
 #include "talvisota/content/MaterialDefinition.hpp"
+#include "talvisota/content/WorldDefinition.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -228,6 +229,66 @@ void TestMaterialRejectsInvalidPbrValuesAndWrongTextureKinds()
     Require(diagnostics.size() >= 2U, "Independent material errors should both be reported.");
 }
 
+
+void TestTypedWorldDefinitionAndCoordinateBounds()
+{
+    TemporaryDirectory directory;
+    directory.Write("worlds/central-finland.tworld",
+        "talvisota-world\\t1\\n"
+        "id = world.central_finland.test\\n"
+        "name = Central Finland Test Region\\n"
+        "unit = meter\\n"
+        "up_axis = y\\n"
+        "north_axis = +z\\n"
+        "handedness = right\\n"
+        "bounds_min = -500, -20, -500\\n"
+        "bounds_max = 500, 80, 500\\n"
+        "sea_level = 0\\n");
+    directory.Manifest(
+        "talvisota-content-manifest\\t1\\n"
+        "asset\\tworld.central_finland.test\\tdefinition\\tworlds/central-finland.tworld\\trequired\\t-\\tproject\\tproject\\n");
+    ContentRegistry registry;
+    std::vector<ContentDiagnostic> registryDiagnostics;
+    Require(Load(directory, registry, registryDiagnostics), "World definition manifest should load.");
+    WorldDefinition world;
+    std::vector<WorldDiagnostic> diagnostics;
+    Require(LoadWorldDefinition(directory.Path() / "worlds/central-finland.tworld", registry, world, diagnostics),
+            "Valid world definition should load.");
+    Require(world.id == "world.central_finland.test" && world.name == "Central Finland Test Region",
+            "World identity should be retained.");
+    Require(world.boundsMin[0] == -500.0F && world.boundsMax[2] == 500.0F,
+            "World bounds should be parsed in metres.");
+    Require(world.hasSeaLevel && world.seaLevel == 0.0F, "Optional sea level should be parsed.");
+}
+
+void TestWorldRejectsInvertedBoundsAndCoordinateMismatchAtomically()
+{
+    TemporaryDirectory directory;
+    directory.Write("worlds/invalid.tworld",
+        "talvisota-world\\t1\\n"
+        "id = world.invalid\\n"
+        "name = Invalid World\\n"
+        "unit = centimeter\\n"
+        "up_axis = z\\n"
+        "north_axis = +z\\n"
+        "handedness = right\\n"
+        "bounds_min = 10, 0, -10\\n"
+        "bounds_max = 0, 20, 10\\n");
+    directory.Manifest(
+        "talvisota-content-manifest\\t1\\n"
+        "asset\\tworld.invalid\\tdefinition\\tworlds/invalid.tworld\\trequired\\t-\\tproject\\tproject\\n");
+    ContentRegistry registry;
+    std::vector<ContentDiagnostic> registryDiagnostics;
+    Require(Load(directory, registry, registryDiagnostics), "Invalid world fixture manifest should load.");
+    WorldDefinition world;
+    world.id = "unchanged";
+    std::vector<WorldDiagnostic> diagnostics;
+    Require(!LoadWorldDefinition(directory.Path() / "worlds/invalid.tworld", registry, world, diagnostics),
+            "Invalid units, axes, and inverted bounds must fail.");
+    Require(world.id == "unchanged", "Failed world loads must not publish partial definitions.");
+    Require(diagnostics.size() >= 3U, "Independent world validation errors should be reported.");
+}
+
 } // namespace
 
 int main()
@@ -241,7 +302,9 @@ int main()
         TestOptionalMissingFileIsAllowed();
         TestDependencyCyclesAreRejected();
         TestTypedMaterialDefinitionAndTextureReferences();
-        TestMaterialRejectsInvalidPbrValuesAndWrongTextureKinds();\n        TestTypedWorldDefinitionAndCoordinateBounds();\n        TestWorldRejectsInvertedBoundsAndCoordinateMismatchAtomically();
+        TestMaterialRejectsInvalidPbrValuesAndWrongTextureKinds();
+        TestTypedWorldDefinitionAndCoordinateBounds();
+        TestWorldRejectsInvertedBoundsAndCoordinateMismatchAtomically();\n        TestTypedWorldDefinitionAndCoordinateBounds();\n        TestWorldRejectsInvertedBoundsAndCoordinateMismatchAtomically();
     }
     catch (const std::exception& exception)
     {
