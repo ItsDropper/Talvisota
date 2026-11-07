@@ -31,11 +31,11 @@ map_Kd ../../textures/environment/snow-albedo.bmp
 map_Bump ../../textures/environment/snow-normal.bmp
 map_Pr ../../textures/environment/snow-roughness.bmp
 map_AO ../../textures/environment/snow-ao.bmp
-newmtl lake_water
+newmtl frozen_ice
 Kd 1.0 1.0 1.0
 Pr 1.0
 Pm 0.08
-map_Kd ../../textures/environment/water-albedo.bmp
-map_Bump ../../textures/environment/water-normal.bmp
-map_Pr ../../textures/environment/water-roughness.bmp
-map_AO ../../textures/environment/water-ao.bmp
+map_Kd ../../textures/environment/ice-albedo.bmp
+map_Bump ../../textures/environment/ice-normal.bmp
+map_Pr ../../textures/environment/ice-roughness.bmp
+map_AO ../../textures/environment/ice-ao.bmp
