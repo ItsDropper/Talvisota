@@ -114,6 +114,11 @@ public:
             };
             material.roughness = source.roughness;
             material.metallic = source.metallic;
+            material.baseColorTexture = source.baseColorTexture;
+            material.normalTexture = source.normalTexture;
+            material.roughnessTexture = source.roughnessTexture;
+            material.metallicTexture = source.metallicTexture;
+            material.ambientOcclusionTexture = source.ambientOcclusionTexture;
             const auto handle = m_scene.CreateMaterial(std::move(material));
             if (!handle.IsValid()) {
                 error = "VantaEngine rejected a game-owned material during scene translation.";
