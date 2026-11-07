@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <cstdint>
+#include <filesystem>
 #include <string>
 #include <limits>
 
@@ -101,6 +102,15 @@ int main()
     SceneSnapshot invalidMaterial = ValidScene();
     invalidMaterial.materials[0].roughness = 1.5F;
     Require(!ValidateSceneSnapshot(invalidMaterial, error));
+
+    SceneSnapshot texturedMaterial = ValidScene();
+    texturedMaterial.materials[0].normalTexture =
+        (std::filesystem::temp_directory_path() / "talvisota-normal.png").string();
+    Require(ValidateSceneSnapshot(texturedMaterial, error));
+
+    SceneSnapshot unresolvedTexture = ValidScene();
+    unresolvedTexture.materials[0].normalTexture = "textures/normal.png";
+    Require(!ValidateSceneSnapshot(unresolvedTexture, error));
 
     SceneSnapshot missingResource = ValidScene();
     missingResource.instances[0].meshIndex = 1U;
