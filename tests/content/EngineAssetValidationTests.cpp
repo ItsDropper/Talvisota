@@ -111,8 +111,8 @@ void TestMissingOptionalAssetIsSkipped()
 {
     TemporaryDirectory directory;
     directory.Manifest(
-        "talvisota-content-manifest\\t1\\n"
-        "asset\\ttexture.optional\\ttexture\\ttextures/optional.bmp\\toptional\\t-\\tproject\\tproject\\n");
+        "talvisota-content-manifest\t1\n"
+        "asset\ttexture.optional\ttexture\ttextures/optional.bmp\toptional\t-\tproject\tproject\n");
     ContentRegistry registry;
     std::vector<ContentDiagnostic> manifestDiagnostics;
     Require(LoadContentManifest(directory.Path() / "catalog.tmanifest", directory.Path(),
@@ -210,8 +210,8 @@ void TestDecodesPcmWaveAssets()
     TemporaryDirectory directory;
     directory.WritePcmWav("audio/ambience.wav");
     directory.Manifest(
-        "talvisota-content-manifest\\t1\\n"
-        "asset\\taudio.ambience\\taudio\\taudio/ambience.wav\\trequired\\t-\\tproject\\tproject\\n");
+        "talvisota-content-manifest\t1\n"
+        "asset\taudio.ambience\taudio\taudio/ambience.wav\trequired\t-\tproject\tproject\n");
     ContentRegistry registry;
     std::vector<ContentDiagnostic> manifestDiagnostics;
     Require(LoadContentManifest(directory.Path() / "catalog.tmanifest", directory.Path(),
@@ -230,8 +230,8 @@ void TestUnsupportedCompressedAudioFailsClosed()
     TemporaryDirectory directory;
     directory.Write("audio/ambience.ogg", "not an OGG stream");
     directory.Manifest(
-        "talvisota-content-manifest\\t1\\n"
-        "asset\\taudio.ambience\\taudio\\audio/ambience.ogg\\trequired\\t-\\tproject\\tproject\\n");
+        "talvisota-content-manifest\t1\n"
+        "asset\taudio.ambience\taudio\\audio/ambience.ogg\trequired\t-\tproject\tproject\n");
     ContentRegistry registry;
     std::vector<ContentDiagnostic> manifestDiagnostics;
     Require(LoadContentManifest(directory.Path() / "catalog.tmanifest", directory.Path(),
