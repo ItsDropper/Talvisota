@@ -53,6 +53,16 @@ constexpr std::string_view Header = "talvisota-content-manifest\t1";
     });
 }
 
+[[nodiscard]] bool IsSafeProvenance(std::string_view value) noexcept
+{
+    if (value.empty() || value == "-")
+        return false;
+    return std::all_of(value.begin(), value.end(), [](unsigned char character)
+    {
+        return character >= 0x20U && character != 0x7fU;
+    });
+}
+
 [[nodiscard]] bool ParseKind(std::string_view value, AssetKind& output) noexcept
 {
     if (value == "model") output = AssetKind::Model;
@@ -247,9 +257,9 @@ bool LoadContentManifest(const std::filesystem::path& manifestPath,
 
         asset.source = std::string(fields[6]);
         asset.license = std::string(fields[7]);
-        if (asset.source.empty() || asset.license.empty() || asset.source == "-" || asset.license == "-")
+        if (!IsSafeProvenance(asset.source) || !IsSafeProvenance(asset.license))
             AddDiagnostic(diagnostics, manifestPath, lineNumber, "provenance",
-                          "Source and license are mandatory; use 'project' for original project assets.");
+                          "Source and license are mandatory, may not contain control characters, and may not be '-'; use 'project' for original project assets.");
 
         const std::string pathKey = LowerAscii(asset.relativePath.generic_string());
         if (!seenPaths.insert(pathKey).second)
