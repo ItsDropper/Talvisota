@@ -147,10 +147,13 @@ public:
         view.frameNumber = snapshot.camera.frameNumber;
         const vanta::renderer::SceneFrame frame = m_scene.BuildFrame(view);
 
-        if (m_d3d12)
-            m_d3d12->Render(frame);
-        else
-            m_d3d11->Render(frame);
+        const bool rendered = m_d3d12 ? m_d3d12->Render(frame) : m_d3d11->Render(frame);
+        if (!rendered) {
+            error = IsDeviceLost()
+                ? "The graphics device was removed while rendering the submitted scene."
+                : "VantaEngine failed to render the submitted scene frame.";
+            return false;
+        }
 
         if (IsDeviceLost()) {
             error = "The graphics device was removed while rendering the submitted scene.";
