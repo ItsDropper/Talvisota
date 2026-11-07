@@ -2,6 +2,7 @@
 #include "talvisota/content/AuthoredDefinition.hpp"
 #include "talvisota/content/MaterialDefinition.hpp"
 #include "talvisota/content/WorldDefinition.hpp"
+#include "talvisota/world/WorldRegion.hpp"
 
 #include <windows.h>
 #include <bcrypt.h>
@@ -271,6 +272,23 @@ void Add(std::vector<EngineAssetDiagnostic>& diagnostics, const std::filesystem:
 [[nodiscard]] bool ValidateTypedDefinitions(const ContentRegistry& registry,
                                             std::vector<EngineAssetDiagnostic>& diagnostics)
 {
+    std::unordered_map<std::string, WorldDefinition> worlds;
+    for (const AssetRecord& asset : registry.Assets())
+    {
+        if (asset.kind != AssetKind::Definition || LowerExtension(asset.relativePath) != ".tworld")
+            continue;
+        const auto path = registry.Root() / asset.relativePath;
+        WorldDefinition definition;
+        std::vector<WorldDiagnostic> issues;
+        if (!LoadWorldDefinition(path, registry, definition, issues))
+        {
+            for (const auto& issue : issues)
+                Add(diagnostics, issue.file, issue.field, issue.message);
+            return false;
+        }
+        worlds.emplace(definition.id, std::move(definition));
+    }
+
     for (const AssetRecord& asset : registry.Assets())
     {
         const auto path = registry.Root() / asset.relativePath;
@@ -292,9 +310,36 @@ void Add(std::vector<EngineAssetDiagnostic>& diagnostics, const std::filesystem:
             const std::string extension = LowerExtension(asset.relativePath);
             if (extension == ".tworld")
             {
-                WorldDefinition definition;
-                std::vector<WorldDiagnostic> issues;
-                if (!LoadWorldDefinition(path, registry, definition, issues))
+                continue;
+            }
+            else if (extension == ".tregion")
+            {
+                const WorldDefinition* parentWorld = nullptr;
+                for (const auto& dependency : asset.dependencies)
+                {
+                    const auto* dependencyAsset = registry.Find(dependency);
+                    if (dependencyAsset != nullptr && dependencyAsset->kind == AssetKind::Definition &&
+                        LowerExtension(dependencyAsset->relativePath) == ".tworld")
+                    {
+                        if (parentWorld != nullptr)
+                        {
+                            Add(diagnostics, path, "world",
+                                "Region must declare exactly one parent world dependency.");
+                            return false;
+                        }
+                        const auto found = worlds.find(dependency);
+                        if (found != worlds.end())
+                            parentWorld = &found->second;
+                    }
+                }
+                if (parentWorld == nullptr)
+                {
+                    Add(diagnostics, path, "world", "Region parent world dependency is missing or invalid.");
+                    return false;
+                }
+                world::WorldRegion region;
+                std::vector<world::WorldRegionDiagnostic> issues;
+                if (!world::LoadWorldRegion(path, registry, *parentWorld, region, issues))
                 {
                     for (const auto& issue : issues)
                         Add(diagnostics, issue.file, issue.field, issue.message);
