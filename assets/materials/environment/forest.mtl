@@ -3,27 +3,55 @@ newmtl pine_bark
 Kd 0.29 0.16 0.085
 Pr 0.88
 Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
 newmtl pine_needles
 Kd 0.075 0.16 0.075
 Pr 0.91
 Pm 0.0
+map_Kd ../../textures/environment/pine_needles-albedo.bmp
+map_Bump ../../textures/environment/pine_needles-normal.bmp
+map_Pr ../../textures/environment/pine_needles-roughness.bmp
+map_AO ../../textures/environment/pine_needles-ao.bmp
 newmtl birch_bark
 Kd 0.73 0.72 0.64
 Pr 0.84
 Pm 0.0
+map_Kd ../../textures/environment/birch_bark-albedo.bmp
+map_Bump ../../textures/environment/birch_bark-normal.bmp
+map_Pr ../../textures/environment/birch_bark-roughness.bmp
+map_AO ../../textures/environment/birch_bark-ao.bmp
 newmtl birch_dark
 Kd 0.13 0.105 0.075
 Pr 0.93
 Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
 newmtl aspen_bark
 Kd 0.62 0.60 0.52
 Pr 0.87
 Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
 newmtl alder_bark
 Kd 0.29 0.23 0.16
 Pr 0.91
 Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
 newmtl twig
 Kd 0.25 0.17 0.11
 Pr 0.94
 Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
