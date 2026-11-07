@@ -35,6 +35,29 @@ public:
             "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n");
         Write("models/tree.mtl",
             "newmtl bark\nKd 0.5 0.4 0.3\nmap_Kd ../textures/albedo.bmp\n");
+        Write("models/embedded.gltf", R"json({
+  "asset":{"version":"2.0"},
+  "scene":0,
+  "scenes":[{"nodes":[0]}],
+  "nodes":[{"mesh":0}],
+  "meshes":[{"primitives":[{"attributes":{"POSITION":0,"NORMAL":1,"TEXCOORD_0":2},"indices":3,"material":0}]}],
+  "materials":[{"pbrMetallicRoughness":{"baseColorTexture":{"index":0},"roughnessFactor":0.8,"metallicFactor":0.0}}],
+  "textures":[{"source":0}],
+  "images":[{"uri":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAHUlEQVR42gESAO3/AOHr+P/r8vr/ANfk9f/m7/r/hy0PF2JNGOQAAAAASUVORK5CYII="}],
+  "buffers":[{"uri":"data:application/octet-stream;base64,AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAgD8AAAAAAACAPwAAgD8AAAAAAACAPwAAgD8AAAAAAACAPwAAgD8AAAAAAAAAAAAAAAAAAIA/AAAAAAAAgD8AAIA/AAABAAIA","byteLength":102}],
+  "bufferViews":[
+    {"buffer":0,"byteOffset":0,"byteLength":36},
+    {"buffer":0,"byteOffset":36,"byteLength":36},
+    {"buffer":0,"byteOffset":72,"byteLength":24},
+    {"buffer":0,"byteOffset":96,"byteLength":6}
+  ],
+  "accessors":[
+    {"bufferView":0,"componentType":5126,"count":3,"type":"VEC3","min":[0,0,0],"max":[1,1,0]},
+    {"bufferView":1,"componentType":5126,"count":3,"type":"VEC3"},
+    {"bufferView":2,"componentType":5126,"count":3,"type":"VEC2"},
+    {"bufferView":3,"componentType":5123,"count":3,"type":"SCALAR"}
+  ]
+})json");
         WriteBmp("textures/albedo.bmp");
         WritePcmWav("audio/wind.wav");
         WriteProcessedTexture("textures/ground.ttex");
@@ -43,6 +66,7 @@ public:
             "asset\taudio.wind\taudio\taudio/wind.wav\trequired\t-\tproject\tproject\n"
             "asset\tmaterial.tree\tmaterial\tmodels/tree.mtl\trequired\t-\tproject\tproject\n"
             "asset\tmodel.tree\tmodel\tmodels/tree.obj\trequired\tmaterial.tree,texture.albedo\tproject\tproject\n"
+            "asset\tmodel.embedded\tmodel\tmodels/embedded.gltf\trequired\t-\tproject\tproject\n"
             "asset\ttexture.albedo\ttexture\ttextures/albedo.bmp\trequired\t-\tproject\tproject\n"
             "asset\ttexture.ground\ttexture\ttextures/ground.ttex\trequired\t-\tproject\tproject\n");
     }
@@ -127,13 +151,13 @@ void TestCompleteAssetImportValidationAndPackagingPath()
     std::vector<EngineAssetDiagnostic> diagnostics;
     Require(ValidateEngineAssets(registry, media, diagnostics),
             "OBJ/MTL, external image, processed texture, and WAV assets should all validate.");
-    Require(media.importedModels == 1U && media.decodedTextures == 2U && media.decodedAudio == 1U,
+    Require(media.importedModels == 2U && media.decodedTextures == 3U && media.decodedAudio == 1U,
             "Media validation summary should account for every unique source asset.");
 
     AssetPackageSummary built;
     Require(BuildAssetPackage(registry, fixture.Package(), built, diagnostics),
             "Complete validated asset set should package successfully.");
-    Require(built.assetCount == 5U, "Package should contain all five registered source assets.");
+    Require(built.assetCount == 6U, "Package should contain all five registered source assets.");
 
     AssetPackageSummary verified;
     Require(ValidateAssetPackage(fixture.Package(), verified, diagnostics),
