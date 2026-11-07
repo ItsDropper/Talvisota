@@ -22,6 +22,7 @@
 #include <map>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <system_error>
 #include <utility>
 #include <vector>
@@ -156,12 +157,28 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
                 }
                 const auto& sourceMaterial = imported.materials[submesh.materialIndex];
                 RenderMesh mesh;
-                mesh.vertices.reserve(imported.vertices.size());
-                for (const auto& vertex : imported.vertices)
-                    mesh.vertices.push_back({{vertex.position.x, vertex.position.y, vertex.position.z},
-                        {vertex.normal.x, vertex.normal.y, vertex.normal.z}, vertex.u, vertex.v});
+                mesh.vertices.reserve(submesh.indexCount);
+                mesh.indices.reserve(submesh.indexCount);
+                std::unordered_map<std::uint32_t, std::uint32_t> vertexRemap;
+                vertexRemap.reserve(submesh.indexCount);
                 const auto first = imported.indices.begin() + submesh.firstIndex;
-                mesh.indices.assign(first, first + submesh.indexCount);
+                for (std::uint32_t indexOffset = 0U; indexOffset < submesh.indexCount; ++indexOffset) {
+                    const std::uint32_t sourceIndex = *(first + indexOffset);
+                    if (sourceIndex >= imported.vertices.size()) {
+                        error = "Model submesh references a vertex outside its source vertex buffer: " +
+                            placement.modelAssetId;
+                        return false;
+                    }
+                    auto remapped = vertexRemap.find(sourceIndex);
+                    if (remapped == vertexRemap.end()) {
+                        const auto& vertex = imported.vertices[sourceIndex];
+                        const auto destinationIndex = static_cast<std::uint32_t>(mesh.vertices.size());
+                        mesh.vertices.push_back({{vertex.position.x, vertex.position.y, vertex.position.z},
+                            {vertex.normal.x, vertex.normal.y, vertex.normal.z}, vertex.u, vertex.v});
+                        remapped = vertexRemap.emplace(sourceIndex, destinationIndex).first;
+                    }
+                    mesh.indices.push_back(remapped->second);
+                }
 
                 RenderMaterial material;
                 material.baseColor = {sourceMaterial.baseColor.x, sourceMaterial.baseColor.y,
@@ -233,9 +250,32 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
         scene.environment.windStrength = world.environment.windStrength;
     }
 
+    std::uint64_t uniqueVertices = 0U;
+    std::uint64_t uniqueIndices = 0U;
+    std::uint64_t expandedVertices = 0U;
+    std::uint64_t expandedIndices = 0U;
+    for (const auto& mesh : scene.meshes) {
+        uniqueVertices += mesh.vertices.size();
+        uniqueIndices += mesh.indices.size();
+    }
+    for (const auto& instance : scene.instances) {
+        const auto& mesh = scene.meshes[instance.meshIndex];
+        expandedVertices += mesh.vertices.size();
+        expandedIndices += mesh.indices.size();
+    }
+    const std::uint64_t uniqueGeometryBytes =
+        uniqueVertices * sizeof(talvisota::presentation::RenderVertex) +
+        uniqueIndices * sizeof(std::uint32_t);
+    const std::uint64_t expandedGeometryBytes =
+        expandedVertices * sizeof(talvisota::presentation::RenderVertex) +
+        expandedIndices * sizeof(std::uint32_t);
     std::cout << "Loaded " << region.id << ": " << placementCount << " placements, "
         << importedModelCount << " distinct OBJ models, " << scene.meshes.size()
-        << " submeshes, " << drawCount << " material-bound draw instances.\n";
+        << " submeshes, " << drawCount << " material-bound draw instances; "
+        << uniqueVertices << " unique mesh vertices, " << expandedVertices
+        << " expanded instance vertices, " << uniqueGeometryBytes
+        << " bytes unique mesh data, estimated " << expandedGeometryBytes
+        << " bytes expanded draw data.\n";
     return true;
 }
 
