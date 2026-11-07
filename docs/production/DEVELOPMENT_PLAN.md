@@ -125,50 +125,28 @@ Known M2 scope boundary: persistent per-mesh GPU caches and texture-backed game 
 
 ## M3 — Content and asset pipeline
 
-**Goal:** Make authored content loadable, traceable, validated, and safe to fail.
+**Implementation status (2026-11-07): implementation complete; final CI verification pending.**
 
-**Implementation status (2026-11-07): In progress.** The backend-independent content foundation includes a versioned manifest, stable-ID registry, root-contained paths, required/optional assets, provenance metadata, dependency validation, deterministic load ordering, cycle detection, actionable diagnostics, and atomic registry publication. Typed v1 material and world parsers validate manifest identity and source-path ownership. Strict v1 mission, faction, character, and equipment parsers now validate required/known/unique fields, manifest identity, expected reference types, referenced file presence, and explicit dependency edges. Unknown schema versions fail closed.
+M3 delivers the v1 content pipeline from authored source through typed validation, engine-backed import/decode, deterministic texture processing, catalog-bearing packaging, and semantic/integrity revalidation. Talvisota pins VantaEngine to `deac34682fdcb22c9eda104a1de6e0f8d43e1c01`.
 
-Generic media import belongs to VantaEngine, not the Talvisota content library. The pinned engine provides CPU OBJ/glTF/GLB model import, material extraction, WIC image decoding, deterministic CPU mip-chain processing, and strict reading of the processed `.ttex` format. Talvisota's optional Windows/MSVC adapter imports models, decodes registered textures, validates processed textures, verifies registered/dependent OBJ MTL sidecars and model texture references, and decodes bounded PCM/IEEE-float WAV streams. It does not create a graphics device. VantaEngine is pinned to `deac34682fdcb22c9eda104a1de6e0f8d43e1c01`, which includes strict OBJ material-library parsing, named material/submesh assignment, and base64/percent-encoded glTF data-URI plus GLB buffer-view image import.
+Delivered:
 
-Delivered so far:
-- `Talvisota::Content` remains backend-independent and has no VantaEngine or Direct3D dependency.
-- Stable IDs independent of source paths and deterministic dependency ordering.
-- Strict v1 parsers for materials, worlds, missions, factions, characters, and equipment.
-- Fail-closed validation with no partial registry or definition publication.
-- Explicit external source and licence/permission metadata.
-- Headless content validator and Debug/Release regression coverage.
-- Optional engine-backed media validation using VantaEngine's model and WIC texture importers.
-- Deterministic `.ttex` texture processing and strict read-back validation.
-- Registered OBJ MTL sidecars and declared dependency validation.
-- Bounded PCM/IEEE-float WAV sample decoding; unsupported OGG/FLAC fail closed.
-- Deterministic staged content package creation with SHA-256 inventory, integrity verification, and protection against path traversal and unindexed files.
-- Package build/verify CLI, regression tests, and CI smoke coverage.
-- A multi-asset end-to-end regression fixture covering OBJ/MTL dependencies, external BMP and processed `.ttex` textures, PCM WAV decoding, packaging, and SHA-256 revalidation. This fixture verifies pipeline integration; it is not a substitute for a real authored environment asset.
+- Stable asset IDs, strict UTF-8 manifest parsing, dependency graph validation, root-contained paths, and source/licence provenance.
+- Typed v1 material, world, mission, faction, character, and equipment definitions. World terrain references must resolve to a present model and be explicit manifest dependencies.
+- OBJ import with multiple MTL libraries, named material/submesh assignment, registered sidecar dependencies, and canonical root-containment checks.
+- glTF 2.0/GLB mesh import, external images, base64 and percent-encoded data-URI images, and GLB buffer-view images. Embedded payloads remain owned by CPU materials; no sidecar extraction occurs.
+- WIC external/embedded texture decoding, strict processed `.ttex` read-back, and deterministic CPU mip generation.
+- Full bounded decoding of PCM/IEEE-float WAV, Ogg Vorbis, and FLAC, including format, duration, channel, sample-rate, frame-count, and finite-sample checks.
+- Deterministic packages containing a normalized `content.tmanifest` and SHA-256 `package.tmanifest`. Package verification reloads the packaged catalog, validates dependencies and typed definitions, reimports/decodes packaged media, and verifies exact inventory/file correspondence.
+- Original 64-metre terrain validation region with OBJ/MTL geometry, snow albedo source texture, a PBR material definition, and a world definition.
+- End-to-end CI coverage for OBJ/MTL, embedded glTF image decode, BMP-to-mip-chain-to-`.ttex` processing, WAV/OGG/FLAC decoding, packaging, and package revalidation.
+- Current shipped-media provenance and vendored-code licence audit: [ASSET_RIGHTS_AUDIT.md](ASSET_RIGHTS_AUDIT.md).
 
-Remaining M3 work is limited to broader importer hardening and any additional formats explicitly selected for production. Embedded glTF data-URI/GLB images, OGG Vorbis and FLAC decoding, shipped-asset provenance audit, and a representative terrain asset passing the import → validation → texture processing → packaging → integrity revalidation path are implemented. There is no historical schema version to migrate: current authored formats are v1-only, so a migration executable would have no valid source schema and would be scaffolding. Add a deterministic migration tool when a real v2 schema and supported v1-to-v2 transformation are defined. The package inventory detects corruption but is not a signature or proof of asset ownership. The current engine-backed media path is Windows/WIC dependent. It is CPU import validation, not real GPU upload or renderer integration. M3 is not complete.
+The terrain region is a pipeline validation asset, not the final photorealistic game environment. The embedded image path is imported and CPU-decoded here; GPU material upload/render integration belongs to the renderer milestones. Audio is decoded for content validation; runtime playback is a separate subsystem.
 
-Work:
-- Define stable IDs for assets and authored content; do not use file paths as persistent identity.
-- Define versioned schemas for world, mission, character, faction, equipment, and material definitions.
-- Build a manifest-based content registry with explicit dependency resolution.
-- Add validation for missing references, duplicate IDs, unsupported formats, invalid values, and version mismatch.
-- Define model scale, coordinate system, material, texture colour-space, and audio format conventions.
-- Separate source assets from processed runtime assets.
-- Build deterministic import/processing tools with actionable diagnostics.
-- Add provenance and licence metadata for every external asset.
-- Define loading policy for required versus optional assets and clean failure behavior.
-- Add embedded glTF image support without extracting mutable sidecar files into source content.
-- Add schema migration tooling with explicit source/target versions and deterministic diagnostics.
-- Run the complete package build and verify against representative environment assets and audit every external asset's permission/licence evidence.
+There is no historical content schema version to migrate. The current authored formats are v1-only; an empty migration framework would be scaffolding. A deterministic migration tool is required when a real v2 schema and supported v1-to-v2 transformation are defined.
 
-Exit criteria:
-- A clean content build validates all shipped definitions and references.
-- Invalid content fails with exact file and field diagnostics.
-- Asset IDs remain stable when files move.
-- Importing the same source with the same tool version/settings produces reproducible output where the format permits it.
-- Failed loads never publish partially initialized resources.
-- Every shipped external asset has a recorded permission/licence basis.
+**M3 closure gate:** the final Talvisota Windows x64/MSVC CI run must pass all three configurations, including engine-backed media tests and the real repository content package build/verify. M2 remains independently open for actual D3D11/D3D12 hardware verification.
 
 ## M4 — World foundation and first representative environment
 
