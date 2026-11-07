@@ -19,15 +19,16 @@ The first non-empty line is:
 talvisota-content-package<TAB>1
 ```
 
-Each following non-empty line is exactly six fields:
+Each following non-empty line is exactly eight fields:
 
 ```text
-asset<TAB>stable-id<TAB>kind<TAB>relative-path<TAB>byte-count<TAB>sha256
+asset<TAB>stable-id<TAB>kind<TAB>relative-path<TAB>byte-count<TAB>sha256<TAB>source<TAB>licence
 ```
 
 Supported kinds are `model`, `texture`, `audio`, `definition`, and `material`.
 The byte count is an unsigned decimal integer. SHA-256 is 64 lowercase hexadecimal
-characters and covers the complete packaged file bytes.
+characters and covers the complete packaged file bytes. Source and licence/permission
+fields are copied from the source manifest and must be non-empty and not `-`.
 
 ## Validation requirements
 
