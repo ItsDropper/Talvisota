@@ -60,7 +60,8 @@ int main(int argc, char** argv)
 
         std::size_t materialCount = 0;
         std::size_t worldCount = 0;
-        std::size_t decodedTextureCount = 0;\n        std::size_t importedModelCount = 0;
+        std::size_t decodedTextureCount = 0;
+        std::size_t importedModelCount = 0;
         for (const auto& asset : registry.Assets())
         {
             if (asset.kind == talvisota::content::AssetKind::Model)
@@ -127,7 +128,7 @@ int main(int argc, char** argv)
         }
 
         std::cout << "Validated " << registry.Assets().size() << " content assets, "
-                  << materialCount << " typed materials, " << worldCount << " typed worlds, and "
+                  << materialCount << " typed materials, " << worldCount << " typed worlds, "
                   << decodedTextureCount << " decoded BMP/TGA textures, and "
                   << importedModelCount << " imported OBJ models.\n";
         for (const std::size_t index : registry.LoadOrder())
