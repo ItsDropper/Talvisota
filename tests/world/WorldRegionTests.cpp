@@ -39,6 +39,8 @@ public:
         output << data;
         Require(static_cast<bool>(output), "Could not write world fixture.");
     }
+private:
+    std::filesystem::path path_;
 };
 
 constexpr const char* WorldText =
