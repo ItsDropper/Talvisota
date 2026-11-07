@@ -68,7 +68,7 @@ struct WorldRegionDiagnostic final
                                   const std::array<float, 3>& queryMin,
                                   const std::array<float, 3>& queryMax,
                                   bool& intersects,
-                                  std::string& error;
+                                  std::string& error);
 [[nodiscard]] bool FindNavigationPath(const WorldRegion& region,
                                       std::string_view startNode,
                                       std::string_view goalNode,
