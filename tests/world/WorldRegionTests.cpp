@@ -159,6 +159,102 @@ void TestShippedTerrainHeightfieldMatchesVisualMeshVertices()
             "Terrain OBJ vertex count must exactly match the authored heightfield grid.");
 }
 
+void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
+{
+    const std::filesystem::path root = TALVISOTA_SOURCE_DIR;
+    talvisota::content::ContentRegistry registry;
+    std::vector<talvisota::content::ContentDiagnostic> manifestDiagnostics;
+    Require(talvisota::content::LoadContentManifest(root / "content/catalog.tmanifest",
+            root, registry, manifestDiagnostics), "Sakkola content manifest should load.");
+
+    talvisota::content::WorldDefinition world;
+    std::vector<talvisota::content::WorldDiagnostic> worldDiagnostics;
+    Require(talvisota::content::LoadWorldDefinition(root / "content/worlds/sakkola.tworld",
+            registry, world, worldDiagnostics), "Sakkola world definition should load.");
+    Require(world.id == "world.sakkola" && world.terrainModelId == "model.terrain.sakkola",
+            "Sakkola world should own its registered terrain model.");
+
+    talvisota::world::WorldRegion region;
+    std::vector<talvisota::world::WorldRegionDiagnostic> regionDiagnostics;
+    Require(talvisota::world::LoadWorldRegion(root / "content/worlds/sakkola-church-village.tregion",
+            registry, world, region, regionDiagnostics), "Sakkola church-village region should load.");
+    Require(region.id == "region.sakkola.church_village",
+            "The first Karelian region should retain its stable Sakkola identity.");
+    Require(region.terrain.rows == 129U && region.terrain.columns == 129U &&
+            region.terrain.spacingX == 4.0F && region.terrain.spacingZ == 4.0F,
+            "Sakkola should provide a 512 metre terrain block with a 4 metre collision heightfield.");
+
+    const auto vegetation = std::count_if(region.placements.begin(), region.placements.end(),
+        [](const auto& item) { return item.category == talvisota::world::PlacementCategory::Vegetation; });
+    const auto structures = std::count_if(region.placements.begin(), region.placements.end(),
+        [](const auto& item) { return item.category == talvisota::world::PlacementCategory::Structure; });
+    const auto rocks = std::count_if(region.placements.begin(), region.placements.end(),
+        [](const auto& item) { return item.category == talvisota::world::PlacementCategory::Rock; });
+    Require(vegetation == 170U && structures == 5U && rocks == 8U,
+            "Sakkola should retain its authored forest, village buildings, and rock outcrops.");
+
+    std::vector<std::string> species;
+    for (const auto& item : region.placements) {
+        if (item.category == talvisota::world::PlacementCategory::Vegetation)
+            species.push_back(item.modelAssetId);
+    }
+    std::sort(species.begin(), species.end());
+    species.erase(std::unique(species.begin(), species.end()), species.end());
+    Require(species.size() == 5U,
+            "Sakkola forest should mix spruce, pine, birch, aspen, and alder rather than repeat one tree model.");
+
+    const auto water = std::find_if(region.placements.begin(), region.placements.end(),
+        [](const auto& item) { return item.id == "water.suvanto"; });
+    Require(water != region.placements.end() &&
+            water->modelAssetId == "model.environment.suvanto_water",
+            "Sakkola region should include the Suvanto shoreline surface.");
+
+    std::vector<std::string> path;
+    std::string navigationError;
+    Require(talvisota::world::FindNavigationPath(region, "path.west", "path.church",
+            path, navigationError), "Sakkola village path should connect the west approach to the church.");
+    Require(path == std::vector<std::string>({"path.west", "path.crossroads", "path.church"}),
+            "Sakkola village navigation should preserve its authored route.");
+
+    const auto* terrainAsset = registry.Find("model.terrain.sakkola");
+    Require(terrainAsset != nullptr, "Sakkola terrain model must remain registered.");
+    std::ifstream model(root / terrainAsset->relativePath);
+    Require(static_cast<bool>(model), "Sakkola terrain model should be readable.");
+    std::size_t vertexIndex = 0U;
+    std::string line;
+    while (std::getline(model, line)) {
+        std::istringstream record(line);
+        std::string type;
+        record >> type;
+        if (type != "v")
+            continue;
+        float x = 0.0F, y = 0.0F, z = 0.0F;
+        Require(static_cast<bool>(record >> x >> y >> z),
+                "Sakkola terrain vertices should contain three coordinates.");
+        const std::size_t row = vertexIndex / region.terrain.columns;
+        const std::size_t column = vertexIndex % region.terrain.columns;
+        Require(row < region.terrain.rows,
+                "Sakkola terrain model must not exceed its authored heightfield.");
+        const float sampleX = region.terrain.originX +
+            static_cast<float>(column) * region.terrain.spacingX;
+        const float sampleZ = region.terrain.originZ +
+            static_cast<float>(row) * region.terrain.spacingZ;
+        float sampledHeight = 0.0F;
+        std::array<float, 3> normal{};
+        std::string error;
+        Require(talvisota::world::SampleTerrainHeight(region, sampleX, sampleZ,
+                sampledHeight, normal, error),
+                "Sakkola terrain model vertices should have matching heightfield samples.");
+        Require(std::abs(sampledHeight - y) <= 1.0e-4F &&
+                std::abs(x - sampleX) <= 1.0e-4F &&
+                std::abs(z - sampleZ) <= 1.0e-4F,
+                "Sakkola collision heightfield must match all visual terrain vertices.");
+        ++vertexIndex;
+    }
+    Require(vertexIndex == region.terrain.rows * region.terrain.columns,
+            "Sakkola visual terrain and collision heightfield must have identical grid dimensions.");
+}
+
 void TestLoadsComposedRegionAndIndependentSpatialData()
 {
     TemporaryDirectory directory;
@@ -322,6 +418,7 @@ int main()
     try
     {
         TestShippedTerrainHeightfieldMatchesVisualMeshVertices();
+        TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition();
         TestLoadsComposedRegionAndIndependentSpatialData();
         TestRejectsMissingDependenciesAndInvalidSpatialRecords();
         TestSessionLoadReloadFailureAndUnloadAreAtomic();
