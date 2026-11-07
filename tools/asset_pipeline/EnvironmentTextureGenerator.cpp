@@ -524,15 +524,15 @@ int main(int argc, char** argv)
         std::string error;
         if (!VerifyAll(std::filesystem::path(argv[2]), error))
         {
-            std::cerr << error << '\\n';
+            std::cerr << error << '\n';
             return 1;
         }
-        std::cout << "Verified all 32 environment PBR maps.\\n";
+        std::cout << "Verified all 32 environment PBR maps.\n";
         return 0;
     }
     if (argc != 2)
     {
-        std::cerr << "Usage: talvisota_environment_texture_gen <output-directory>\\n";
+        std::cerr << "Usage: talvisota_environment_texture_gen <output-directory>\n";
         return 2;
     }
 
