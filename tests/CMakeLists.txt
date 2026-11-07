@@ -21,3 +21,9 @@ target_link_libraries(talvisota_renderer_contract_tests PRIVATE Talvisota::Rende
 target_compile_features(talvisota_renderer_contract_tests PRIVATE cxx_std_23)
 talvisota_apply_compiler_options(talvisota_renderer_contract_tests)
 add_test(NAME Talvisota.Presentation.SceneRendererContract COMMAND talvisota_renderer_contract_tests)
+
+add_executable(talvisota_content_tests content/ContentRegistryTests.cpp)
+target_link_libraries(talvisota_content_tests PRIVATE Talvisota::Content)
+target_compile_features(talvisota_content_tests PRIVATE cxx_std_23)
+talvisota_apply_compiler_options(talvisota_content_tests)
+add_test(NAME Talvisota.Content.Registry COMMAND talvisota_content_tests)
