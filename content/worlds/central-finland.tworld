@@ -6,5 +6,5 @@ up_axis = y
 north_axis = +z
 handedness = right
 bounds_min = -32, -5, -32
-bounds_max = 32, 5, 32
+bounds_max = 32, 20, 32
 terrain_model_id = model.terrain.central_finland
