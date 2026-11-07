@@ -4,7 +4,7 @@
 
 The repository is being established with explicit boundaries between engine technology, game rules, historical content, and presentation. The goal is a maintainable codebase that can grow into a large project without turning the renderer, mission logic, or content data into one tightly coupled codebase.
 
-> **Project status:** architecture and core lifecycle foundation. This repository does not yet contain a playable game or a game-owned rendering integration. VantaEngine's current public renderer still creates its own sample world; Talvisota will connect to it through a proper game-scene submission API rather than depending on renderer internals.
+> **Project status:** M0 engineering foundation is complete. M1 provides a native application shell, configuration, logging, user paths, and terminate diagnostics. The project is not yet playable and does not yet submit a game-owned scene to VantaEngine. The interactive runtime is intentionally deferred until the M2 engine integration contract exists.
 
 ## Development plan
 
@@ -103,7 +103,24 @@ cmake --build --preset windows-release
 ctest --preset windows-release
 ```
 
+Run the application shell after building:
+
+```powershell
+.\build\windows-ninja\talvisota.exe --help
+.\build\windows-ninja\talvisota.exe
+```
+
+The application creates a versioned `config.ini`, a timestamped log, and a terminate-report location under the current user's application-data directories. A custom configuration file can be selected with `--config <file>`. Unknown options and invalid configuration are reported as errors.
+
 The initial CI matrix builds and tests Debug and Release on Windows x64 with warnings treated as errors.
+
+## Application lifecycle boundary
+
+The application composition root owns startup ordering and shutdown. Core configuration and logging do not depend on a window or graphics device. Partial initialization failures are reported and unwind through the same shutdown path.
+
+The current crash diagnostic is a C++ terminate report. It is not an OS minidump, and it cannot recover from power loss or arbitrary forced process termination.
+
+The executable currently initializes core services and exits. It does not pretend to run a game loop. Interactive runtime work starts after the public game-owned scene API is ready in M2.
 
 ## Engine boundary
 
