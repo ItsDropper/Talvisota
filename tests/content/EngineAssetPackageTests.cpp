@@ -96,6 +96,15 @@ void TestBuildsAndVerifiesDeterministicInventory()
     }
     Require(firstText.find("\tproject\tproject\n") != std::string::npos,
             "Package inventory must preserve source and licence metadata.");
+    std::string packagedCatalog;
+    {
+        std::ifstream catalog(fixture.Package() / "content.tmanifest", std::ios::binary);
+        packagedCatalog.assign(std::istreambuf_iterator<char>(catalog),
+                               std::istreambuf_iterator<char>());
+    }
+    Require(packagedCatalog.find("world.optional") != std::string::npos &&
+            packagedCatalog.find("definitions/world.tworld") != std::string::npos,
+            "Package must retain the complete dependency/requiredness catalog, including absent optional records.");
     AssetPackageSummary rebuilt;
     Require(BuildAssetPackage(registry, fixture.Package(), rebuilt, diagnostics),
             "Rebuilding an existing package should replace it after validation.");
@@ -130,6 +139,29 @@ void TestRejectsUnindexedPackageFile()
             "Unindexed files should report an inventory diagnostic.");
 }
 
+void TestRejectsModifiedPackageCatalog()
+{
+    Fixture fixture;
+    ContentRegistry registry;
+    std::vector<ContentDiagnostic> manifestDiagnostics;
+    Require(LoadContentManifest(fixture.Root() / "catalog.tmanifest", fixture.Root(),
+                                registry, manifestDiagnostics),
+            "Catalog tamper fixture manifest should load.");
+    AssetPackageSummary built;
+    std::vector<EngineAssetDiagnostic> diagnostics;
+    Require(BuildAssetPackage(registry, fixture.Package(), built, diagnostics),
+            "Package builder should create catalog tamper fixture.");
+    {
+        std::ofstream catalog(fixture.Package() / "content.tmanifest", std::ios::binary | std::ios::app);
+        catalog << "# modified catalog\n";
+    }
+    AssetPackageSummary verified;
+    Require(!ValidateAssetPackage(fixture.Package(), verified, diagnostics),
+            "Package verification must reject a modified source catalog.");
+    Require(!diagnostics.empty() && diagnostics.front().field == "catalogIntegrity",
+            "Modified package catalog must report a catalog integrity diagnostic.");
+}
+
 void TestRejectsModifiedPackageAsset()
 {
     Fixture fixture;
@@ -161,6 +193,7 @@ int main()
     {
         TestBuildsAndVerifiesDeterministicInventory();
         TestRejectsUnindexedPackageFile();
+        TestRejectsModifiedPackageCatalog();
         TestRejectsModifiedPackageAsset();
     }
     catch (const std::exception& exception)
