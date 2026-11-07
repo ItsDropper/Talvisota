@@ -135,6 +135,7 @@ Delivered so far:
 - Fail-closed validation with no partial registry publication.
 - Explicit external source and licence/permission metadata.
 - CI-registered content registry tests.
+- A command-line manifest validator with actionable diagnostics, deterministic load-order output, and a CI help/smoke check.
 
 Remaining M3 work includes domain-specific versioned schemas and parsing, manifest-driven shipped content, migrations/compatibility policy, import/processing tools, media decoding/validation, deterministic processed outputs, and clean content packaging.
 
