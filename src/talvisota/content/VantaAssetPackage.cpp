@@ -10,6 +10,7 @@
 #include <fstream>
 #include <iomanip>
 #include <locale>
+#include <limits>
 #include <set>
 #include <sstream>
 #include <string_view>
@@ -176,6 +177,18 @@ void Add(std::vector<EngineAssetDiagnostic>& diagnostics, const std::filesystem:
     return result.ec == std::errc{} && result.ptr == text.data() + text.size();
 }
 
+[[nodiscard]] bool IsStableId(std::string_view value)
+{
+    if (value.empty() || !((value.front() >= 'a' && value.front() <= 'z') ||
+                           (value.front() >= '0' && value.front() <= '9')))
+        return false;
+    return std::all_of(value.begin(), value.end(), [](char c)
+    {
+        return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
+               c == '.' || c == '_' || c == '-' || c == ':';
+    });
+}
+
 [[nodiscard]] bool IsHexDigest(std::string_view value)
 {
     return value.size() == 64U && std::all_of(value.begin(), value.end(), [](char c)
@@ -216,10 +229,12 @@ bool ValidateAssetPackage(const std::filesystem::path& packageRoot, AssetPackage
         if (line.empty())
             continue;
         const auto fields = SplitTabs(line);
-        if (fields.size() != 6U || fields[0] != "asset" || fields[1].empty() ||
+        if (fields.size() != 6U || fields[0] != "asset" || !IsStableId(fields[1]) ||
             (fields[2] != "model" && fields[2] != "texture" && fields[2] != "audio" &&
              fields[2] != "definition" && fields[2] != "material") ||
-            fields[3].empty() || fields[3] == InventoryName || !IsHexDigest(fields[5]) ||
+            fields[3].empty() || fields[3] == InventoryName ||
+            fields[3].find('\\\\') != std::string_view::npos ||
+            fields[3].find('\\0') != std::string_view::npos || !IsHexDigest(fields[5]) ||
             !ids.insert(std::string(fields[1])).second ||
             !paths.insert(std::string(fields[3])).second)
         {
@@ -262,6 +277,11 @@ bool ValidateAssetPackage(const std::filesystem::path& packageRoot, AssetPackage
         {
             Add(diagnostics, file, "integrity",
                 hashError.empty() ? "Package size or SHA-256 digest does not match inventory." : hashError);
+            return false;
+        }
+        if (candidate.totalBytes > std::numeric_limits<std::uint64_t>::max() - actualSize)
+        {
+            Add(diagnostics, file, "size", "Package total byte count overflows the supported range.");
             return false;
         }
         ++candidate.assetCount;
