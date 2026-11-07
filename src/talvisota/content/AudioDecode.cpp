@@ -9,16 +9,9 @@
 #include <string_view>
 #include <vector>
 
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable: 4701)
-#endif
 #define DR_FLAC_IMPLEMENTATION
 #include "../../../third_party/dr_flac.h"
 #include "../../../third_party/stb_vorbis.c"
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
 
 namespace talvisota::content
 {
