@@ -35,6 +35,13 @@ target_compile_features(talvisota_content PUBLIC cxx_std_23)
 target_include_directories(talvisota_content PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>")
 talvisota_apply_compiler_options(talvisota_content)
 
+add_library(talvisota_world STATIC src/talvisota/world/WorldRegion.cpp)
+add_library(Talvisota::World ALIAS talvisota_world)
+target_compile_features(talvisota_world PUBLIC cxx_std_23)
+target_include_directories(talvisota_world PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>")
+target_link_libraries(talvisota_world PUBLIC Talvisota::Content)
+talvisota_apply_compiler_options(talvisota_world)
+
 add_library(talvisota_platform STATIC
     src/talvisota/platform/CrashDiagnostics.cpp
     src/talvisota/platform/UserPaths.cpp
