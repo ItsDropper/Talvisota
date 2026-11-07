@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <filesystem>
 #include <string>
 #include <string_view>
@@ -30,6 +31,7 @@ struct AssetRecord final
 
 struct ContentDiagnostic final
 {
+    std::filesystem::path file;
     std::size_t line = 0;
     std::string field;
     std::string message;
@@ -38,7 +40,7 @@ struct ContentDiagnostic final
 class ContentRegistry final
 {
 public:
-    [[nodiscard]] const AssetRecord* Find(std::string_view id) const noexcept;
+    [[nodiscard]] const AssetRecord* Find(std::string_view id) const;
     [[nodiscard]] const std::vector<AssetRecord>& Assets() const noexcept;
     [[nodiscard]] const std::vector<std::size_t>& LoadOrder() const noexcept;
     [[nodiscard]] const std::filesystem::path& Root() const noexcept;
