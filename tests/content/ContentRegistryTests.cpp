@@ -234,19 +234,19 @@ void TestTypedWorldDefinitionAndCoordinateBounds()
 {
     TemporaryDirectory directory;
     directory.Write("worlds/central-finland.tworld",
-        "talvisota-world\\t1\\n"
-        "id = world.central_finland.test\\n"
-        "name = Central Finland Test Region\\n"
-        "unit = meter\\n"
-        "up_axis = y\\n"
-        "north_axis = +z\\n"
-        "handedness = right\\n"
-        "bounds_min = -500, -20, -500\\n"
-        "bounds_max = 500, 80, 500\\n"
-        "sea_level = 0\\n");
+        "talvisota-world\t1\n"
+        "id = world.central_finland.test\n"
+        "name = Central Finland Test Region\n"
+        "unit = meter\n"
+        "up_axis = y\n"
+        "north_axis = +z\n"
+        "handedness = right\n"
+        "bounds_min = -500, -20, -500\n"
+        "bounds_max = 500, 80, 500\n"
+        "sea_level = 0\n");
     directory.Manifest(
-        "talvisota-content-manifest\\t1\\n"
-        "asset\\tworld.central_finland.test\\tdefinition\\tworlds/central-finland.tworld\\trequired\\t-\\tproject\\tproject\\n");
+        "talvisota-content-manifest\t1\n"
+        "asset\tworld.central_finland.test\tdefinition\tworlds/central-finland.tworld\trequired\t-\tproject\tproject\n");
     ContentRegistry registry;
     std::vector<ContentDiagnostic> registryDiagnostics;
     Require(Load(directory, registry, registryDiagnostics), "World definition manifest should load.");
@@ -265,18 +265,18 @@ void TestWorldRejectsInvertedBoundsAndCoordinateMismatchAtomically()
 {
     TemporaryDirectory directory;
     directory.Write("worlds/invalid.tworld",
-        "talvisota-world\\t1\\n"
-        "id = world.invalid\\n"
-        "name = Invalid World\\n"
-        "unit = centimeter\\n"
-        "up_axis = z\\n"
-        "north_axis = +z\\n"
-        "handedness = right\\n"
-        "bounds_min = 10, 0, -10\\n"
-        "bounds_max = 0, 20, 10\\n");
+        "talvisota-world\t1\n"
+        "id = world.invalid\n"
+        "name = Invalid World\n"
+        "unit = centimeter\n"
+        "up_axis = z\n"
+        "north_axis = +z\n"
+        "handedness = right\n"
+        "bounds_min = 10, 0, -10\n"
+        "bounds_max = 0, 20, 10\n");
     directory.Manifest(
-        "talvisota-content-manifest\\t1\\n"
-        "asset\\tworld.invalid\\tdefinition\\tworlds/invalid.tworld\\trequired\\t-\\tproject\\tproject\\n");
+        "talvisota-content-manifest\t1\n"
+        "asset\tworld.invalid\tdefinition\tworlds/invalid.tworld\trequired\t-\tproject\tproject\n");
     ContentRegistry registry;
     std::vector<ContentDiagnostic> registryDiagnostics;
     Require(Load(directory, registry, registryDiagnostics), "Invalid world fixture manifest should load.");
@@ -304,13 +304,13 @@ int main()
         TestTypedMaterialDefinitionAndTextureReferences();
         TestMaterialRejectsInvalidPbrValuesAndWrongTextureKinds();
         TestTypedWorldDefinitionAndCoordinateBounds();
-        TestWorldRejectsInvertedBoundsAndCoordinateMismatchAtomically();\n        TestTypedWorldDefinitionAndCoordinateBounds();\n        TestWorldRejectsInvertedBoundsAndCoordinateMismatchAtomically();
+        TestWorldRejectsInvertedBoundsAndCoordinateMismatchAtomically();
     }
     catch (const std::exception& exception)
     {
-        std::cerr << "Content registry test failure: " << exception.what() << '\n';
+        std::cerr << "Content registry test failure: " << exception.what() << '\\n';
         return 1;
     }
-    std::cout << "All content registry tests passed.\n";
+    std::cout << "All content registry tests passed.\\n";
     return 0;
 }
