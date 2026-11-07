@@ -15,13 +15,13 @@ namespace talvisota::content
 {
 namespace
 {
-constexpr std::string_view Header = "talvisota-content-manifest\\t1";
+constexpr std::string_view Header = "talvisota-content-manifest\t1";
 
 [[nodiscard]] std::string_view Trim(std::string_view value) noexcept
 {
-    while (!value.empty() && (value.front() == ' ' || value.front() == '\\t'))
+    while (!value.empty() && (value.front() == ' ' || value.front() == '\t'))
         value.remove_prefix(1);
-    while (!value.empty() && (value.back() == ' ' || value.back() == '\\t' || value.back() == '\\r'))
+    while (!value.empty() && (value.back() == ' ' || value.back() == '\t' || value.back() == '\r'))
         value.remove_suffix(1);
     return value;
 }
@@ -32,7 +32,7 @@ constexpr std::string_view Header = "talvisota-content-manifest\\t1";
     std::string_view remaining(line);
     for (;;)
     {
-        const std::size_t separator = remaining.find('\\t');
+        const std::size_t separator = remaining.find('\t');
         if (separator == std::string_view::npos)
         {
             fields.push_back(Trim(remaining));
