@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -88,6 +89,54 @@ void Prepare(TemporaryDirectory& directory)
         "asset\tmodel.terrain\tmodel\tmodels/terrain.obj\trequired\t-\tproject\tproject\n"
         "asset\tmodel.tree\tmodel\tmodels/tree.obj\trequired\t-\tproject\tproject\n"
         "asset\tmaterial.snow\tmaterial\tmaterials/snow.tmat\trequired\t-\tproject\tproject\n");
+}
+
+void TestShippedTerrainHeightfieldMatchesVisualMeshVertices()
+{
+    const std::filesystem::path root = TALVISOTA_SOURCE_DIR;
+    talvisota::content::ContentRegistry registry;
+    std::vector<talvisota::content::ContentDiagnostic> manifestDiagnostics;
+    Require(talvisota::content::LoadContentManifest(root / "content/catalog.tmanifest",
+            root, registry, manifestDiagnostics), "Shipped content manifest should load.");
+    talvisota::content::WorldDefinition world;
+    std::vector<talvisota::content::WorldDiagnostic> worldDiagnostics;
+    Require(talvisota::content::LoadWorldDefinition(root / "content/worlds/central-finland.tworld",
+            registry, world, worldDiagnostics), "Shipped Central Finland world should load.");
+    talvisota::world::WorldRegion region;
+    std::vector<talvisota::world::WorldRegionDiagnostic> regionDiagnostics;
+    Require(talvisota::world::LoadWorldRegion(root / "content/worlds/central-finland.tregion",
+            registry, world, region, regionDiagnostics), "Shipped Central Finland region should load.");
+    std::ifstream model(root / "assets/models/terrain/central-finland.obj");
+    Require(static_cast<bool>(model), "Shipped terrain OBJ should be readable.");
+    std::size_t vertexIndex = 0U;
+    std::string line;
+    while (std::getline(model, line))
+    {
+        std::istringstream record(line);
+        std::string type;
+        record >> type;
+        if (type != "v")
+            continue;
+        float x = 0.0F, y = 0.0F, z = 0.0F;
+        Require(static_cast<bool>(record >> x >> y >> z), "Terrain OBJ vertex must contain three coordinates.");
+        const std::size_t row = vertexIndex / region.terrain.columns;
+        const std::size_t column = vertexIndex % region.terrain.columns;
+        Require(row < region.terrain.rows, "Terrain OBJ has more vertices than the authored heightfield.");
+        const float sampleX = region.terrain.originX + static_cast<float>(column) * region.terrain.spacingX;
+        const float sampleZ = region.terrain.originZ + static_cast<float>(row) * region.terrain.spacingZ;
+        float sampledHeight = 0.0F;
+        std::array<float, 3> normal{};
+        std::string error;
+        Require(talvisota::world::SampleTerrainHeight(region, sampleX, sampleZ,
+                sampledHeight, normal, error), "Terrain mesh vertex must have a corresponding surface sample.");
+        Require(std::abs(sampledHeight - y) <= 1.0e-4F,
+                "Terrain collision heightfield must match the visual OBJ vertex elevation.");
+        Require(std::abs(x - sampleX) <= 1.0e-4F && std::abs(z - sampleZ) <= 1.0e-4F,
+                "Terrain OBJ grid coordinates must match the heightfield origin and spacing.");
+        ++vertexIndex;
+    }
+    Require(vertexIndex == region.terrain.rows * region.terrain.columns,
+            "Terrain OBJ vertex count must exactly match the authored heightfield grid.");
 }
 
 void TestLoadsComposedRegionAndIndependentSpatialData()
@@ -252,6 +301,7 @@ int main()
 {
     try
     {
+        TestShippedTerrainHeightfieldMatchesVisualMeshVertices();
         TestLoadsComposedRegionAndIndependentSpatialData();
         TestRejectsMissingDependenciesAndInvalidSpatialRecords();
         TestSessionLoadReloadFailureAndUnloadAreAtomic();
