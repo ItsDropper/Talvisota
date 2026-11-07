@@ -72,6 +72,7 @@ if(TALVISOTA_ENABLE_VANTA_ENGINE)
     )
     add_library(Talvisota::RendererAdapter ALIAS talvisota_renderer_adapter)
     target_compile_features(talvisota_renderer_adapter PUBLIC cxx_std_23)
+    target_compile_definitions(talvisota_renderer_adapter PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
     target_include_directories(talvisota_renderer_adapter PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
     )
