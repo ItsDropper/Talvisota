@@ -10,11 +10,45 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace
 {
 using namespace talvisota::content;
+
+
+std::string DecodeBase64(std::string_view input)
+{
+    const auto decode = [](char value) -> int
+    {
+        if (value >= 'A' && value <= 'Z') return value - 'A';
+        if (value >= 'a' && value <= 'z') return value - 'a' + 26;
+        if (value >= '0' && value <= '9') return value - '0' + 52;
+        if (value == '+') return 62;
+        if (value == '/') return 63;
+        return -1;
+    };
+    std::string output;
+    for (std::size_t offset = 0; offset + 4U <= input.size(); offset += 4U)
+    {
+        const int a = decode(input[offset]);
+        const int b = decode(input[offset + 1U]);
+        const bool padC = input[offset + 2U] == '=';
+        const bool padD = input[offset + 3U] == '=';
+        const int c = padC ? 0 : decode(input[offset + 2U]);
+        const int d = padD ? 0 : decode(input[offset + 3U]);
+        if (a < 0 || b < 0 || c < 0 || d < 0) return {};
+        const std::uint32_t packed = (static_cast<std::uint32_t>(a) << 18U) |
+                                     (static_cast<std::uint32_t>(b) << 12U) |
+                                     (static_cast<std::uint32_t>(c) << 6U) |
+                                     static_cast<std::uint32_t>(d);
+        output.push_back(static_cast<char>((packed >> 16U) & 0xffU));
+        if (!padC) output.push_back(static_cast<char>((packed >> 8U) & 0xffU));
+        if (!padD) output.push_back(static_cast<char>(packed & 0xffU));
+    }
+    return output;
+}
 
 void Require(bool condition, const char* message)
 {
@@ -60,10 +94,16 @@ public:
 })json");
         WriteBmp("textures/albedo.bmp");
         WritePcmWav("audio/wind.wav");
+        WriteBase64("audio/wind.ogg",
+            "T2dnUwACAAAAAAAAAAA0djN/AAAAAKWOI+wBHgF2b3JiaXMAAAAAAUAfAAAAAAAAcGIAAAAAAACZAU9nZ1MAAAAAAAAAAAAANHYzfwEAAAAl6HyIC1r///////////+1A3ZvcmJpczQAAABYaXBoLk9yZyBsaWJWb3JiaXMgSSAyMDIwMDcwNCAoUmVkdWNpbmcgRW52aXJvbm1lbnQpAQAAABIAAABFTkNPREVSPWxpYnNuZGZpbGUBBXZvcmJpcxJCQ1YBAAABAAxSFCElGVNKYwiVUlIpBR1jUFtHHWPUOUYhZBBTiEkZpXtPKpVYSsgRUlgpRR1TTFNJlVKWKUUdYxRTSCFT1jFloXMUS4ZJCSVsTa50FkvomWOWMUYdY85aSp1j1jFFHWNSUkmhcxg6ZiVkFDpGxehifDA6laJCKL7H3lLpLYWKW4q91xpT6y2EGEtpwQhhc+211dxKasUYY4wxxsXiUyiC0JBVAAABAABABAFCQ1YBAAoAAMJQDEVRgNCQVQBABgCAABRFcRTHcRxHkiTLAkJDVgEAQAAAAgAAKI7hKJIjSZJkWZZlWZameZaouaov+64u667t6roOhIasBADIAAAYhiGH3knMkFOQSSYpVcw5CKH1DjnlFGTSUsaYYoxRzpBTDDEFMYbQKYUQ1E45pQwiCENInWTOIEs96OBi5zgQGrIiAIgCAACMQYwhxpBzDEoGIXKOScggRM45KZ2UTEoorbSWSQktldYi55yUTkompbQWUsuklNZCKwUAAAQ4AAAEWAiFhqwIAKIAABCDkFJIKcSUYk4xh5RSjinHkFLMOcWYcowx6CBUzDHIHIRIKcUYc0455iBkDCrmHIQMMgEAAAEOAAABFkKhISsCgDgBAIMkaZqlaaJoaZooeqaoqqIoqqrleabpmaaqeqKpqqaquq6pqq5seZ5peqaoqp4pqqqpqq5rqqrriqpqy6ar2rbpqrbsyrJuu7Ks256qyrapurJuqq5tu7Js664s27rkearqmabreqbpuqrr2rLqurLtmabriqor26bryrLryratyrKua6bpuqKr2q6purLtyq5tu7Ks+6br6rbqyrquyrLu27au+7KtC7vourauyq6uq7Ks67It67Zs20LJ81TVM03X9UzTdVXXtW3VdW1bM03XNV1XlkXVdWXVlXVddWVb90zTdU1XlWXTVWVZlWXddmVXl0XXtW1Vln1ddWVfl23d92VZ133TdXVblWXbV2VZ92Vd94VZt33dU1VbN11X103X1X1b131htm3fF11X11XZ1oVVlnXf1n1lmHWdMLqurqu27OuqLOu+ruvGMOu6MKy6bfyurQvDq+vGseu+rty+j2rbvvDqtjG8um4cu7Abv+37xrGpqm2brqvrpivrumzrvm/runGMrqvrqiz7uurKvm/ruvDrvi8Mo+vquirLurDasq/Lui4Mu64bw2rbwu7aunDMsi4Mt+8rx68LQ9W2heHVdaOr28ZvC8PSN3a+AACAAQcAgAATykChISsCgDgBAAYhCBVjECrGIIQQUgohpFQxBiFjDkrGHJQQSkkhlNIqxiBkjknIHJMQSmiplNBKKKWlUEpLoZTWUmotptRaDKG0FEpprZTSWmopttRSbBVjEDLnpGSOSSiltFZKaSlzTErGoKQOQiqlpNJKSa1lzknJoKPSOUippNJSSam1UEproZTWSkqxpdJKba3FGkppLaTSWkmptdRSba21WiPGIGSMQcmck1JKSamU0lrmnJQOOiqZg5JKKamVklKsmJPSQSglg4xKSaW1kkoroZTWSkqxhVJaa63VmFJLNZSSWkmpxVBKa621GlMrNYVQUgultBZKaa21VmtqLbZQQmuhpBZLKjG1FmNtrcUYSmmtpBJbKanFFluNrbVYU0s1lpJibK3V2EotOdZaa0ot1tJSjK21mFtMucVYaw0ltBZKaa2U0lpKrcXWWq2hlNZKKrGVklpsrdXYWow1lNJiKSm1kEpsrbVYW2w1ppZibLHVWFKLMcZYc0u11ZRai621WEsrNcYYa2415VIAAMCAAwBAgAlloNCQlQBAFAAAYAxjjEFoFHLMOSmNUs45JyVzDkIIKWXOQQghpc45CKW01DkHoZSUQikppRRbKCWl1losAACgwAEAIMAGTYnFAQoNWQkARAEAIMYoxRiExiClGIPQGKMUYxAqpRhzDkKlFGPOQcgYc85BKRljzkEnJYQQQimlhBBCKKWUAgAAChwAAAJs0JRYHKDQkBUBQBQAAGAMYgwxhiB0UjopEYRMSielkRJaCylllkqKJcbMWomtxNhICa2F1jJrJcbSYkatxFhiKgAA7MABAOzAQig0ZCUAkAcAQBijFGPOOWcQYsw5CCE0CDHmHIQQKsaccw5CCBVjzjkHIYTOOecghBBC55xzEEIIoYMQQgillNJBCCGEUkrpIIQQQimldBBCCKGUUgoAACpwAAAIsFFkc4KRoEJDVgIAeQAAgDFKOSclpUYpxiCkFFujFGMQUmqtYgxCSq3FWDEGIaXWYuwgpNRajLV2EFJqLcZaQ0qtxVhrziGl1mKsNdfUWoy15tx7ai3GWnPOuQAA3AUHALADG0U2JxgJKjRkJQCQBwBAIKQUY4w5h5RijDHnnENKMcaYc84pxhhzzjnnFGOMOeecc4wx55xzzjnGmHPOOeecc84556CDkDnnnHPQQeicc845CCF0zjnnHIQQCgAAKnAAAAiwUWRzgpGgQkNWAgDhAACAMZRSSimllFJKqKOUUkoppZRSAiGllFJKKaWUUkoppZRSSimllFJKKaWUUkoppZRSSimllFJKKaWUUkoppZRSSimllFJKKaWUUkoppZRSSimllFJKKaWUUkoppZRSSimllFJKKaWUUkoppZRSSimllFJKKaWUUkoppZRSSimVUkoppZRSSimllFJKKaUAIN8KBwD/BxtnWEk6KxwNLjRkJQAQDgAAGMMYhIw5JyWlhjEIpXROSkklNYxBKKVzElJKKYPQWmqlpNJSShmElGILIZWUWgqltFZrKam1lFIoKcUaS0qppdYy5ySkklpLrbaYOQelpNZaaq3FEEJKsbXWUmuxdVJSSa211lptLaSUWmstxtZibCWlllprqcXWWkyptRZbSy3G1mJLrcXYYosxxhoLAOBucACASLBxhpWks8LR4EJDVgIAIQEABDJKOeecgxBCCCFSijHnoIMQQgghREox5pyDEEIIIYSMMecghBBCCKGUkDHmHIQQQgghhFI65yCEUEoJpZRSSucchBBCCKWUUkoJIYQQQiillFJKKSGEEEoppZRSSiklhBBCKKWUUkoppYQQQiillFJKKaWUEEIopZRSSimllBJCCKGUUkoppZRSQgillFJKKaWUUkooIYRSSimllFJKCSWUUkoppZRSSikhlFJKKaWUUkoppQAAgAMHAIAAI+gko8oibDThwgMQAAAAAgACTACBAYKCUQgChBEIAAAAAAAIAPgAAEgKgIiIaOYMDhASFBYYGhweICIkAAAAAAAAAAAAAAAABE9nZ1MABCADAAAAAAAANHYzfwIAAACkIk3lBRcWFBgWjpWZeeUVAPzTXQAAANJsV3SWdftspiKWl5ndTeYBAAAAABzLAACECm9pcQEDlpeZ3U3mAQAAAAAoAwAQKlTqwQCOlpkn8woAe+fuAgDABmku+v7UyF3HQQBqhlVd5esNLBGgAQC8ghrm8fmWaTY2");
+        WriteBase64("audio/ice.flac",
+            "ZkxhQwAAACIQABAAAAHcAAHcAfQA8AAAAyB/a20x6fr45hR4Z2rR3N4jhAAAKCAAAAByZWZlcmVuY2UgbGliRkxBQyAxLjQuMyAyMDIzMDYyMwAAAAD/+HQIAAMf90gAAAisEFEWCRkmtK+Fbvap73OYBPsxBhBiGb1SnOr9EMQYIRjZ+5zqWpDCGEGYkilc51/IxhhDCEupRVKXxkMMIYxkWOc5XXoZhAhBDSdTlOr9kYMQQQjWupxV7wzGGGIIlzlcp+uxBDDDEZl7nK5VSIIEIII29Kope9JjDDCGI1flFUr7MQYQYhm9Upzq/RDEGCEY2fuc6lqQwhhBmJIpXOdfyMYYQwhLqUVSl8ZDDCGMZFjnOV16GYQIQQ0nU5Tq/ZCCDDEM1rqcVe8MxhhiCJc5XKfrsQQwwxGZe5yuVUiCBCCCNvSqKXvSYwwwhiNX5RVK+zEGEGIZveOpSr0QxBghGNn7nOpakMIYQZiSKVznX8jGGEMIS6lFUpfGQwwhjGRY5zldehmECEENJ1OU6v2QggwxDNa6nFXvDMYYYgiXOVyn67EEMMMRmXucrlVIggQggjb1zld3pMYYYQxGr8oqlfZiDCDEM3qlOdX6IYgwQjGz9znUtSGEMIMxJFK5zr+RjDCGEJdSiqUvjIYYQxjIsc5yuvQzCBCCGk6nKdX7IQQYYhmtdTir3hmMMMQRLnK5T9diCGGGIzL3OVyqkQQIQQRt65yu70mMMMIYjVzqTg==");
         WriteProcessedTexture("textures/ground.ttex");
         Write("catalog.tmanifest",
             "talvisota-content-manifest\t1\n"
             "asset\taudio.wind\taudio\taudio/wind.wav\trequired\t-\tproject\tproject\n"
+            "asset\taudio.ambience\taudio\taudio/wind.ogg\trequired\t-\tproject\tproject\n"
+            "asset\taudio.ice\taudio\taudio/ice.flac\trequired\t-\tproject\tproject\n"
             "asset\tmaterial.tree\tmaterial\tmodels/tree.mtl\trequired\t-\tproject\tproject\n"
             "asset\tmodel.tree\tmodel\tmodels/tree.obj\trequired\tmaterial.tree,texture.albedo\tproject\tproject\n"
             "asset\tmodel.embedded\tmodel\tmodels/embedded.gltf\trequired\t-\tproject\tproject\n"
@@ -82,6 +122,12 @@ public:
         std::ofstream file(root_ / relative, std::ios::binary);
         file.write(value.data(), static_cast<std::streamsize>(value.size()));
         Require(static_cast<bool>(file), "Could not write pipeline fixture.");
+    }
+    void WriteBase64(const std::filesystem::path& relative, std::string_view encoded)
+    {
+        const std::string decoded = DecodeBase64(encoded);
+        Require(!decoded.empty(), "Could not decode compressed audio fixture.");
+        Write(relative, decoded);
     }
     void WriteBmp(const std::filesystem::path& relative)
     {
@@ -151,13 +197,13 @@ void TestCompleteAssetImportValidationAndPackagingPath()
     std::vector<EngineAssetDiagnostic> diagnostics;
     Require(ValidateEngineAssets(registry, media, diagnostics),
             "OBJ/MTL, external image, processed texture, and WAV assets should all validate.");
-    Require(media.importedModels == 2U && media.decodedTextures == 3U && media.decodedAudio == 1U,
+    Require(media.importedModels == 2U && media.decodedTextures == 3U && media.decodedAudio == 3U,
             "Media validation summary should account for every unique source asset.");
 
     AssetPackageSummary built;
     Require(BuildAssetPackage(registry, fixture.Package(), built, diagnostics),
             "Complete validated asset set should package successfully.");
-    Require(built.assetCount == 6U, "Package should contain all five registered source assets.");
+    Require(built.assetCount == 8U, "Package should contain all five registered source assets.");
 
     AssetPackageSummary verified;
     Require(ValidateAssetPackage(fixture.Package(), verified, diagnostics),
