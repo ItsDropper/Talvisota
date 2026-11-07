@@ -308,9 +308,9 @@ int main()
     }
     catch (const std::exception& exception)
     {
-        std::cerr << "Content registry test failure: " << exception.what() << '\\n';
+        std::cerr << "Content registry test failure: " << exception.what() << '\n';
         return 1;
     }
-    std::cout << "All content registry tests passed.\\n";
+    std::cout << "All content registry tests passed.\n";
     return 0;
 }
