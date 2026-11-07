@@ -81,6 +81,14 @@ if(TALVISOTA_ENABLE_VANTA_ENGINE)
         VantaEngine::Runtime
     )
     talvisota_apply_compiler_options(talvisota_renderer_adapter)
+
+    add_executable(talvisota_renderer_sample WIN32
+        samples/renderer_adapter/SceneSubmissionSample.cpp
+    )
+    target_compile_features(talvisota_renderer_sample PRIVATE cxx_std_23)
+    target_compile_definitions(talvisota_renderer_sample PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
+    target_link_libraries(talvisota_renderer_sample PRIVATE Talvisota::RendererAdapter)
+    talvisota_apply_compiler_options(talvisota_renderer_sample)
 endif()
 
 add_executable(talvisota src/talvisota/app/main.cpp)
