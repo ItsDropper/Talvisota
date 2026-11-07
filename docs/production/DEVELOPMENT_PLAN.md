@@ -89,7 +89,7 @@ M1 is closed after the successful CI rerun following the strict-warning fix in `
 
 **Goal:** Make the engine capable of rendering a scene owned by Talvisota through public APIs.
 
-**Implementation status (2026-11-07):** VantaEngine now exposes a renderer-independent scene contract consumed by both D3D11 and D3D12. Submitted geometry is validated, transformed into world space with inverse-transpose normal handling, uploaded through backend-owned frame resources, rendered in the visible pass, and included in cascaded shadow passes. D3D12 frame-slot upload buffers remain alive until the matching fence completes; D3D11 uses dynamic write-discard buffers. Both backends expose frame success and device-removal state. VantaEngine includes a separate game-owned scene sample. Talvisota now has a backend-independent `ISceneRenderer` contract, snapshot validation, an optional adapter pinned to `7dd8ade9583db2f76f71977a9777ba4de7618cb5`, and a standalone Win32 sample. The adapter build is opt-in and requires Windows x64/MSVC. M2 remains open until the pinned adapter build passes CI and both backends are exercised on a real device.
+**Implementation status (2026-11-07):** VantaEngine now exposes a renderer-independent scene contract consumed by both D3D11 and D3D12. Submitted geometry is validated, transformed into world space with inverse-transpose normal handling, uploaded through backend-owned frame resources, rendered in the visible pass, and included in cascaded shadow passes. D3D12 frame-slot upload buffers remain alive until the matching fence completes; D3D11 uses dynamic write-discard buffers. Both backends expose frame success and device-removal state. VantaEngine includes a separate game-owned scene sample. Talvisota now has a backend-independent `ISceneRenderer` contract, snapshot validation, an optional adapter pinned to `2b2765d08cf2ce9a9b8ea14e14a29075db66c66f`, and a standalone Win32 sample. The adapter build is opt-in and requires Windows x64/MSVC. M2 remains open until the pinned adapter build passes CI and both backends are exercised on a real device.
 
 
 This is a cross-repository milestone. Engine-side implementation belongs in VantaEngine; game-side integration belongs here.
@@ -386,8 +386,7 @@ Deferred does not mean rejected. These features must earn their complexity throu
 1. **M0 is closed:** the latest complete Debug/Release CI run passed.
 2. **M1 is closed:** Debug/Release CI and headless application tests passed.
 3. **Finish the M2 gate:** pass the pinned MSVC adapter CI job and run the Talvisota-owned sample on both D3D11 and D3D12 hardware paths.
-4. **Only then begin M3:** build the content schema and validation path with stable IDs, manifests, references, provenance, and clean failure behavior.
-5. **Build the content schema and validation path:** stable IDs, manifests, references, provenance, and clean failure behavior.
+4. **Begin M3 only after M2 closes:** build the content schema and validation path with stable IDs, manifests, references, provenance, and clean failure behavior.
 6. **Build one small game-owned environment:** prove the asset pipeline, scene submission, world ownership, and runtime lifecycle together.
 7. **Implement the minimum player loop and one mission:** keep scope narrow and complete it end-to-end.
 8. **Capture and review the first vertical slice:** use runtime evidence to decide what visual, gameplay, and performance work comes next.
