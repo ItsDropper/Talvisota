@@ -24,7 +24,8 @@ Subsequent records use unique `key = value` assignments. Blank lines and lines w
 | Field | Type | Default |
 |---|---|---|
 | `sea_level` | finite float in metres | Not defined; when supplied it must lie within the vertical world bounds. |
+| `terrain_model_id` | model stable ID | Optional terrain geometry asset; when supplied it must be a registered model and an explicit dependency of the world manifest record. |
 
 The coordinate convention is fixed for v1 rather than configurable per world. This prevents silent axis conversion and unit-scale mismatches between authored terrain, meshes, collision, camera movement, and environmental simulation. A future incompatible convention requires a new schema version and explicit migration.
 
-This schema defines world identity, coordinate space, and bounds only. It does not claim that terrain, vegetation, collision, streaming, or renderer-backed world loading is implemented.
+This schema defines world identity, coordinate space, bounds, and an optional validated terrain-model reference. It does not claim that vegetation, collision, streaming, or renderer-backed world loading is implemented.
