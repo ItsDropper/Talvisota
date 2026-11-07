@@ -9,12 +9,16 @@
 | `world.central_finland` | `content/worlds/central-finland.tworld` | Original Talvisota project metadata | Project-owned |
 | `material.environment.snow` | `content/materials/snow.tmat` | Original Talvisota project material definition | Project-owned |
 | `model.terrain.central_finland` | `assets/models/terrain/central-finland.obj` | Original deterministic terrain mesh authored for this repository | Project-owned |
-| `material.terrain.snow_mtl` | `assets/models/terrain/snow.mtl` | Original Talvisota material sidecar | Project-owned |
+| `model.environment.spruce` | `assets/models/environment/spruce.obj` | Original procedurally authored Norway spruce geometry | Project-owned |
+| `material.environment.spruce_mtl` | `assets/materials/environment/spruce.mtl` | Original spruce bark, needle, and snow material definitions | Project-owned |
+| `model.environment.boulder` | `assets/models/environment/boulder.obj` | Original procedurally authored irregular boulder geometry | Project-owned |
+| `material.environment.boulder_mtl` | `assets/materials/environment/boulder.mtl` | Original rock and snow material definitions | Project-owned |
+| `material.terrain.snow_mtl` | `assets/materials/terrain/snow.mtl` | Original Talvisota material sidecar | Project-owned |
 | `texture.environment.snow_albedo` | `assets/textures/snow-albedo.bmp` | Original small authored validation texture | Project-owned |
 
 Every registered record uses `source=project` and `license=project`. The model, material sidecar, texture, and definitions were authored for this repository; no third-party media, stock imagery, scanned photographs, sound recordings, or externally licensed game assets are currently shipped.
 
-The snow albedo image is a small pipeline-validation texture, not final photorealistic terrain artwork. The terrain mesh is a representative importer/package fixture and makes no claim about final game-world fidelity.
+The snow albedo image is a small pipeline-validation texture, not final photorealistic terrain artwork. The terrain mesh remains a low-resolution representative surface. The spruce and boulder are original geometric environment assets with material-group separation; they are first environment-composition assets, not final photorealistic production scans or textured hero assets.
 
 ## Third-party code used by the pipeline
 
