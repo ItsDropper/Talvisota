@@ -32,4 +32,4 @@ Every remaining record is one unique `key = value` assignment. Blank lines and l
 
 Texture references must resolve to manifest assets of kind `texture`. The texture slots define colour-space interpretation: base-colour and emissive RGB data are sRGB; normal and packed occlusion/roughness/metallic (ORM) data are linear. ORM channel packing is R=occlusion, G=roughness, B=metallic. Importers must preserve these semantics; they must not infer colour space from filenames.
 
-This schema describes authored material intent. It does not claim the current renderer adapter uploads textures or implements alpha blending, normal mapping, or the complete material model yet. Renderer support remains a separate, explicitly gated capability.
+This schema describes authored material intent. VantaEngine's submitted-scene API now accepts base-colour, tangent-space normal, roughness, metallic, and ambient-occlusion maps, and both D3D11 and D3D12 shaders sample them. The typed `.tmat` to runtime `MaterialDescription` bridge and alpha-blend pipeline are still separate integration work; do not infer that every schema field is already active in the game renderer.
