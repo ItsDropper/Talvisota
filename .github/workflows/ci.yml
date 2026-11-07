@@ -51,7 +51,7 @@ jobs:
         run: .\build\talvisota_content_validate.exe --help
 
       - name: Validate shipped content
-        run: .\build\talvisota_content_validate.exe content/catalog.tmanifest content
+        run: .\build\talvisota_content_validate.exe content/catalog.tmanifest .
 
   windows-msvc-renderer-adapter:
     name: Windows x64 / MSVC renderer adapter
@@ -83,10 +83,10 @@ jobs:
         run: .\build-msvc\talvisota_asset_validate.exe content/catalog.tmanifest content
 
       - name: Build deterministic content package
-        run: .\build-msvc\talvisota_content_package.exe content/catalog.tmanifest content build-msvc/content-package
+        run: .\build-msvc\talvisota_content_package.exe content/catalog.tmanifest . "$env:RUNNER_TEMP\talvisota-content-package"
 
       - name: Verify packaged content integrity
-        run: .\build-msvc\talvisota_content_package.exe --verify build-msvc/content-package
+        run: .\build-msvc\talvisota_content_package.exe --verify "$env:RUNNER_TEMP\talvisota-content-package"
 
       - name: Texture processor help smoke test
         run: .\build-msvc\talvisota_texture_process.exe --help
