@@ -279,13 +279,28 @@ bool LoadContentManifest(const std::filesystem::path& manifestPath,
             filesystemError.clear();
             continue;
         }
-        const bool exists = std::filesystem::is_regular_file(resolved, filesystemError);
+        bool exists = std::filesystem::exists(resolved, filesystemError);
+        if (filesystemError == std::errc::no_such_file_or_directory ||
+            filesystemError == std::errc::not_a_directory)
+        {
+            filesystemError.clear();
+            exists = false;
+        }
         if (filesystemError)
         {
             AddDiagnostic(diagnostics, manifestPath, recordLines[index], "path", "Could not inspect asset file: " + asset.id);
             filesystemError.clear();
+            continue;
         }
-        else if (asset.required && !exists)
+        if (exists)
+        {
+            const bool regularFile = std::filesystem::is_regular_file(resolved, filesystemError);
+            if (filesystemError || !regularFile)
+                AddDiagnostic(diagnostics, manifestPath, recordLines[index], "path",
+                              "Asset path does not resolve to a regular file: " + asset.id);
+            filesystemError.clear();
+        }
+        else if (asset.required)
             AddDiagnostic(diagnostics, manifestPath, recordLines[index], "path", "Required asset file is missing: " + asset.id);
     }
 
