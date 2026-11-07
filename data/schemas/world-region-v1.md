@@ -15,6 +15,15 @@ Every record is tab-separated. The region asset itself must be registered as a d
 | bounds_min | X,Y,Z | Finite metre coordinates. |
 | bounds_max | X,Y,Z | Finite metre coordinates, strictly greater than the minimum and contained by parent-world bounds. |
 
+## Terrain heightfield records
+
+A region may declare one sampled terrain surface:
+
+    heightfield<TAB>columns<TAB>rows<TAB>origin_x<TAB>origin_z<TAB>spacing_x<TAB>spacing_z
+    height_row<TAB>row_index<TAB>elevation_0,...,elevation_columns_minus_1
+
+Dimensions must each be 2..257. Rows are ordered by increasing world Z; columns are ordered by increasing world X. Samples are metres above the world origin, with positive finite spacing. The complete grid must fit inside region X/Z bounds and every elevation must fit inside region Y bounds. Each row must occur exactly once. Runtime sampling uses bilinear interpolation and returns the normalized surface normal derived from the interpolated cell gradient. Samples outside the grid fail without modifying caller outputs.
+
 ## Repeated visual placement records
 
     placement<TAB>id<TAB>category<TAB>model_id<TAB>material_id-or--<TAB>x<TAB>y<TAB>z<TAB>yaw_degrees<TAB>uniform_scale
@@ -25,7 +34,7 @@ Categories are terrain, vegetation, rock, structure, and prop. Placement IDs are
 
     collision<TAB>id<TAB>center_x<TAB>center_y<TAB>center_z<TAB>half_x<TAB>half_y<TAB>half_z
 
-Collision boxes are game-owned axis-aligned volumes, independent of visual model geometry. IDs are unique across all region records. Centers must be finite, half-extents must be positive, and the complete box must fit within region bounds. Runtime collision queries will consume this data without depending on renderer meshes.
+Collision boxes are game-owned axis-aligned volumes, independent of visual model geometry. IDs are unique across all region records. Centers must be finite, half-extents must be positive, and the complete box must fit within region bounds. Runtime collision queries consume this data without depending on renderer meshes.
 
 ## Navigation records
 
@@ -38,4 +47,4 @@ Node IDs are unique across all region records. Node positions must be finite and
 
 The v1 loader rejects files larger than 16 MiB, lines longer than 4096 bytes, more than 200000 records, unknown record types, malformed fields, non-finite values, invalid bounds, unresolved assets, missing manifest dependencies, and invalid navigation references. Failed loads do not modify the caller's previous output. Region-session reload is transactional: a failed replacement preserves the previously active region; unload clears the active region.
 
-The current runtime implementation loads and validates authored composition and spatial metadata, builds placement transforms, executes axis-aligned collision overlap queries, and finds deterministic shortest paths across directed navigation edges. It does not yet claim renderer-backed presentation, asynchronous region streaming, or measured large-world memory/performance behavior. Those remain distinct M4 integrations with their own tests and measured need.
+The current runtime implementation loads and validates authored composition and spatial metadata, builds placement transforms, bilinearly samples terrain elevation and surface normals, executes axis-aligned collision overlap queries, and finds deterministic shortest paths across directed navigation edges. It does not yet claim renderer-backed presentation, asynchronous region streaming, or measured large-world memory/performance behavior. Those remain distinct M4 integrations with their own tests and measured need.
