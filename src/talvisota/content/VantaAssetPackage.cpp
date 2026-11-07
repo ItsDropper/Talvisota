@@ -210,7 +210,9 @@ bool ValidateAssetPackage(const std::filesystem::path& packageRoot, AssetPackage
             continue;
         const auto fields = SplitTabs(line);
         if (fields.size() != 6U || fields[0] != "asset" || fields[1].empty() ||
-            fields[2].empty() || fields[3].empty() || !IsHexDigest(fields[5]) ||
+            (fields[2] != "model" && fields[2] != "texture" && fields[2] != "audio" &&
+             fields[2] != "definition" && fields[2] != "material") ||
+            fields[3].empty() || fields[3] == InventoryName || !IsHexDigest(fields[5]) ||
             !ids.insert(std::string(fields[1])).second ||
             !paths.insert(std::string(fields[3])).second)
         {
@@ -316,22 +318,29 @@ bool BuildAssetPackage(const ContentRegistry& registry, const std::filesystem::p
         Add(diagnostics, registry.Root(), "contentRoot", "Could not canonicalize content root.");
         return false;
     }
-    const auto absoluteDestination = std::filesystem::absolute(destination, error).lexically_normal();
+    const auto requestedDestination = std::filesystem::absolute(destination, error).lexically_normal();
     if (error)
     {
         Add(diagnostics, destination, "destination", "Could not resolve package destination.");
         return false;
     }
-    if (IsWithin(root, absoluteDestination) || absoluteDestination == root)
-    {
-        Add(diagnostics, destination, "destination", "Package destination must be outside the source content root.");
-        return false;
-    }
-    const auto parent = absoluteDestination.parent_path();
+    const auto parent = requestedDestination.parent_path();
     std::filesystem::create_directories(parent, error);
     if (error)
     {
         Add(diagnostics, parent, "destination", "Could not create package parent directory.");
+        return false;
+    }
+    const auto canonicalParent = std::filesystem::canonical(parent, error);
+    if (error)
+    {
+        Add(diagnostics, parent, "destination", "Could not canonicalize package parent directory.");
+        return false;
+    }
+    const auto absoluteDestination = canonicalParent / requestedDestination.filename();
+    if (IsWithin(root, absoluteDestination) || absoluteDestination == root)
+    {
+        Add(diagnostics, destination, "destination", "Package destination must be outside the source content root.");
         return false;
     }
     const auto nonce = std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
@@ -375,6 +384,12 @@ bool BuildAssetPackage(const ContentRegistry& registry, const std::filesystem::p
             return false;
         }
         const auto relative = asset.relativePath.lexically_normal();
+        if (relative.generic_string() == InventoryName)
+        {
+            Add(diagnostics, source, "path", "The reserved package inventory path cannot be used by a content asset.");
+            cleanup();
+            return false;
+        }
         const auto target = staging / relative;
         std::filesystem::create_directories(target.parent_path(), error);
         if (error)
