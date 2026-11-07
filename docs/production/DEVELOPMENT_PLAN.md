@@ -118,7 +118,8 @@ Exit criteria:
 - [x] CPU resource handles, stale-handle rejection, resource replacement, visibility, and snapshot lifetime have unit coverage.
 - [ ] The pinned MSVC adapter configuration and game-owned contract tests pass CI.
 - [ ] Real-device D3D11 and D3D12 smoke tests confirm transforms, materials, visibility, shadows, resize, and device-loss reporting.
-- [ ] Persistent per-mesh GPU caches and texture-backed game materials are deferred; the current upload path is per-frame and scalar-PBR only.
+
+Known M2 scope boundary: persistent per-mesh GPU caches and texture-backed game materials are deferred. The current upload path is per-frame and scalar-PBR only.
 
 **Blocking rule:** Do not build the real game world, content placement pipeline, or presentation features around renderer internals before M2 is complete.
 
@@ -383,9 +384,9 @@ Deferred does not mean rejected. These features must earn their complexity throu
 ## 7. Immediate execution order
 
 1. **M0 is closed:** the latest complete Debug/Release CI run passed.
-2. **M1 is implemented:** verify its new Debug/Release CI and headless application tests before closing the gate.
-3. **Turn the engine integration contract into actionable work:** identify missing public interfaces and implement them in VantaEngine, not Talvisota.
-4. **Integrate VantaEngine only after its public API is ready:** test the game adapter against that exact revision.
+2. **M1 is closed:** Debug/Release CI and headless application tests passed.
+3. **Finish the M2 gate:** pass the pinned MSVC adapter CI job and run the Talvisota-owned sample on both D3D11 and D3D12 hardware paths.
+4. **Only then begin M3:** build the content schema and validation path with stable IDs, manifests, references, provenance, and clean failure behavior.
 5. **Build the content schema and validation path:** stable IDs, manifests, references, provenance, and clean failure behavior.
 6. **Build one small game-owned environment:** prove the asset pipeline, scene submission, world ownership, and runtime lifecycle together.
 7. **Implement the minimum player loop and one mission:** keep scope narrow and complete it end-to-end.
