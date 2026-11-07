@@ -18,11 +18,11 @@ Do not use filesystem paths as persistent gameplay identifiers. Content referenc
 
 On Windows x64/MSVC, configure with `TALVISOTA_ENABLE_VANTA_ENGINE=ON`. The optional `talvisota_asset_validate` command uses VantaEngine's `ModelAssetStore`, OBJ/glTF/GLB importers, and WIC texture decoder. It validates imported geometry and materials, decodes registered texture assets, and checks that model-referenced textures remain inside the content root, resolve to manifest texture assets, and are declared as model dependencies. This path is CPU-only and does not initialize a graphics device.
 
-The pinned VantaEngine revision supports Wavefront OBJ, glTF 2.0/GLB static meshes and WIC-supported external texture images. Embedded glTF data-URI/GLB images are explicitly rejected by the engine importer. Texture source support follows installed WIC codecs; the Talvisota manifest accepts BMP, PNG, JPEG, and TIFF variants for this path.
+The pinned VantaEngine revision supports Wavefront OBJ, glTF 2.0/GLB static meshes and WIC-supported external texture images. OBJ `mtllib` sidecars must be registered as `.mtl` material assets and declared as model dependencies; MTL texture maps must also be registered texture assets and declared as model dependencies. Multiple `mtllib` declarations in one OBJ are currently rejected by the importer. Embedded glTF data-URI/GLB images remain unsupported and are rejected by the engine importer. Texture source support follows installed WIC codecs; the Talvisota manifest accepts BMP, PNG, JPEG, and TIFF variants for this path.
 
 ## Deterministic texture processing
 
-The `talvisota_texture_process <source> <output.ttex> <srgb|linear>` command is available with the optional engine adapter. It decodes the source through VantaEngine WIC, builds a full CPU mip chain, filters sRGB RGB channels in linear light, averages alpha and linear data channels without gamma conversion, and writes a deterministic little-endian `TVTTEX01` container. The output contains a version, dimensions, RGBA8 format, colour-space tag, mip count, and pixel bytes; it contains no timestamps, absolute paths, or host-endian metadata.
+The `talvisota_texture_process <source> <output.ttex> <srgb|linear>` command is available with the optional engine adapter. It decodes the source through VantaEngine WIC, builds a full CPU mip chain, filters sRGB RGB channels in linear light, averages alpha and linear data channels without gamma conversion, and writes a deterministic little-endian `TVTTEX01` container. The output contains a version, dimensions, RGBA8 format, colour-space tag, mip count, and pixel bytes; it contains no timestamps, absolute paths, or host-endian metadata. The engine-backed validator reads `.ttex` files with the strict VantaEngine container reader, including dimension/mip-chain/size/trailing-byte validation.
 
 ## Typed PBR materials
 
@@ -42,4 +42,4 @@ The content library parses strict v1 `.tmission`, `.tfaction`, `.tcharacter`, an
 
 ## Packaging and provenance
 
-Every manifest record requires source and licence/permission metadata. Keep source media immutable; write processed outputs into a separate build directory. A clean content build must validate all shipped definitions and references before packaging. External asset rights must be documented before an asset is committed.
+Every manifest record requires source and licence/permission metadata. Keep source media immutable; write processed outputs into a separate build directory. A clean content build must validate all shipped definitions and references before packaging. External asset rights must be documented before an asset is committed. Optional manifest assets may be absent; when present, they are validated with the same strict rules as required assets. Audio decoding is not yet implemented: WAV/OGG/FLAC entries remain fail-closed in engine-backed validation and must not be treated as validated.
