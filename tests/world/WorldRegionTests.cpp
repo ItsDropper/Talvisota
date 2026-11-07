@@ -60,6 +60,10 @@ constexpr const char* RegionText =
     "world\tworld.test\n"
     "bounds_min\t-16,-5,-16\n"
     "bounds_max\t16,10,16\n"
+    "heightfield\t3\t3\t-16\t-16\t16\t16\n"
+    "height_row\t0\t1,1,1\n"
+    "height_row\t1\t1,1,1\n"
+    "height_row\t2\t1,1,1\n"
     "placement\tterrain.main\tterrain\tmodel.terrain\tmaterial.snow\t0\t0\t0\t0\t1\n"
     "placement\ttree.01\tvegetation\tmodel.tree\t-\t4\t0\t3\t25\t1.2\n"
     "collision\trock.blocker\t-2\t0\t-2\t1\t1.5\t1\n"
@@ -113,6 +117,21 @@ void TestLoadsComposedRegionAndIndependentSpatialData()
             "Collision boxes should be represented independently of visual placements.");
     Require(region.navigationNodes.size() == 3U && region.navigationEdges.size() == 2U,
             "Navigation graph should be loaded independently of collision and visual geometry.");
+    Require(region.terrain.rows == 3U && region.terrain.columns == 3U,
+            "Terrain heightfield dimensions should be retained.");
+    float terrainHeight = -99.0F;
+    std::array<float, 3> terrainNormal{9.0F, 9.0F, 9.0F};
+    std::string terrainError;
+    Require(talvisota::world::SampleTerrainHeight(region, -8.0F, -8.0F,
+            terrainHeight, terrainNormal, terrainError),
+            "Terrain surface should be sampleable inside its bounds.");
+    Require(terrainHeight == 1.0F && terrainNormal == std::array<float, 3>{0.0F, 1.0F, 0.0F},
+            "Bilinear terrain sampling should preserve a flat surface and upward normal.");
+    Require(!talvisota::world::SampleTerrainHeight(region, 17.0F, 0.0F,
+            terrainHeight, terrainNormal, terrainError),
+            "Terrain sampling outside the authored grid must fail.");
+    Require(terrainHeight == 1.0F && terrainNormal == std::array<float, 3>{0.0F, 1.0F, 0.0F},
+            "Failed terrain sampling must preserve caller outputs.");
     const auto transform = talvisota::world::BuildPlacementTransform(region.placements[1]);
     Require(transform[12] == 4.0F && transform[13] == 0.0F && transform[14] == 3.0F,
             "Placement transforms should preserve world-space translation.");
