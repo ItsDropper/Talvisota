@@ -1,6 +1,7 @@
 #include "talvisota/content/VantaAssetValidation.hpp"
 
 #include "vanta/assets/ModelAssetStore.hpp"
+#include "vanta/assets/TextureProcessing.hpp"
 #include "vanta/assets/WicTextureLoader.hpp"
 
 #include <algorithm>
@@ -111,12 +112,45 @@ bool ValidateEngineAssets(const ContentRegistry& registry, EngineAssetSummary& o
     {
         const AssetRecord& asset = registry.Assets()[assetIndex];
         const auto sourcePath = root / asset.relativePath;
+        std::error_code sourceError;
+        const auto canonicalSource = std::filesystem::weakly_canonical(sourcePath, sourceError);
+        if (sourceError)
+        {
+            Add(diagnostics, sourcePath, "path", "Could not resolve registered asset path.");
+            return false;
+        }
+        if (!std::filesystem::exists(canonicalSource, sourceError))
+        {
+            if (!asset.required && !sourceError)
+                continue;
+            Add(diagnostics, sourcePath, "path", "Required registered asset is missing.");
+            return false;
+        }
+        if (sourceError || !std::filesystem::is_regular_file(canonicalSource, sourceError) ||
+            sourceError || !IsWithinRoot(root, canonicalSource))
+        {
+            Add(diagnostics, sourcePath, "path", "Registered asset is not a regular file inside the content root.");
+            return false;
+        }
         if (asset.kind == AssetKind::Texture)
         {
-            if (!decodeTexture(sourcePath, nullptr, sourcePath, "texture"))
+            if (canonicalSource.extension() == ".ttex")
+            {
+                vanta::assets::ProcessedTexture processed;
+                std::string textureError;
+                if (!vanta::assets::LoadProcessedTexture(canonicalSource, processed, textureError))
+                {
+                    Add(diagnostics, canonicalSource, "processedTexture", textureError);
+                    return false;
+                }
+                ++candidate.decodedTextures;
+            }
+            else if (!decodeTexture(canonicalSource, nullptr, canonicalSource, "texture"))
                 return false;
             continue;
         }
+        if (asset.kind == AssetKind::Material && canonicalSource.extension() == ".mtl")
+            continue;
         if (asset.kind == AssetKind::Audio)
         {
             Add(diagnostics, sourcePath, "audio",
@@ -140,6 +174,29 @@ bool ValidateEngineAssets(const ContentRegistry& registry, EngineAssetSummary& o
             Add(diagnostics, sourcePath, "model", "Model store published no readable CPU model.");
             return false;
         }
+        bool dependenciesValid = true;
+        for (const auto& materialLibrary : model->materialLibraries)
+        {
+            std::error_code libraryError;
+            const auto canonicalLibrary = std::filesystem::weakly_canonical(materialLibrary, libraryError);
+            if (libraryError || !IsWithinRoot(root, canonicalLibrary))
+            {
+                Add(diagnostics, sourcePath, "materialLibrary",
+                    "OBJ material library is missing or escapes the content root.");
+                dependenciesValid = false;
+                continue;
+            }
+            const auto registeredLibrary = assetsByCanonicalPath.find(canonicalLibrary.generic_string());
+            if (registeredLibrary == assetsByCanonicalPath.end() ||
+                registeredLibrary->second->kind != AssetKind::Material ||
+                std::find(asset.dependencies.begin(), asset.dependencies.end(),
+                          registeredLibrary->second->id) == asset.dependencies.end())
+            {
+                Add(diagnostics, sourcePath, "materialLibrary",
+                    "OBJ material library must be registered as a material asset and declared as a model dependency.");
+                dependenciesValid = false;
+            }
+        }
         const auto validateMaterialTexture = [&](const std::filesystem::path& texturePath,
                                                  const char* field) -> bool
         {
@@ -149,7 +206,7 @@ bool ValidateEngineAssets(const ContentRegistry& registry, EngineAssetSummary& o
                 ? texturePath : sourcePath.parent_path() / texturePath;
             return decodeTexture(resolved, &asset, sourcePath, field);
         };
-        bool texturesValid = true;
+        bool texturesValid = dependenciesValid;
         for (const vanta::assets::CpuMaterial& material : model->materials)
         {
             texturesValid = validateMaterialTexture(material.diffuseTexture, "baseColorTexture") && texturesValid;
