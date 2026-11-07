@@ -2,6 +2,7 @@
 #include "talvisota/content/MaterialDefinition.hpp"
 #include "talvisota/content/WorldDefinition.hpp"
 #include "talvisota/content/AuthoredDefinition.hpp"
+#include "talvisota/world/WorldRegion.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -10,6 +11,7 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 namespace
@@ -67,9 +69,40 @@ int main(int argc, char** argv)
             return 1;
         }
 
+        std::unordered_map<std::string, talvisota::content::WorldDefinition> worlds;
+        for (const auto& asset : registry.Assets())
+        {
+            if (asset.kind != talvisota::content::AssetKind::Definition ||
+                LowerExtension(asset.relativePath) != ".tworld")
+                continue;
+            if (!asset.required)
+            {
+                std::error_code optionalError;
+                const bool present = std::filesystem::exists(contentRoot / asset.relativePath, optionalError);
+                if (optionalError)
+                {
+                    PrintDiagnostic(contentRoot / asset.relativePath, 0U, "path", "Could not inspect optional world.");
+                    return 1;
+                }
+                if (!present)
+                    continue;
+            }
+            talvisota::content::WorldDefinition world;
+            std::vector<talvisota::content::WorldDiagnostic> worldDiagnostics;
+            if (!talvisota::content::LoadWorldDefinition(contentRoot / asset.relativePath, registry,
+                                                         world, worldDiagnostics))
+            {
+                for (const auto& diagnostic : worldDiagnostics)
+                    PrintDiagnostic(diagnostic.file, diagnostic.line, diagnostic.field, diagnostic.message);
+                return 1;
+            }
+            worlds.emplace(world.id, std::move(world));
+        }
+
         std::size_t materialCount = 0;
         std::size_t worldCount = 0;
         std::size_t authoredDefinitionCount = 0;
+        std::size_t regionCount = 0;
         for (const auto& asset : registry.Assets())
         {
             if (!asset.required)
@@ -88,16 +121,48 @@ int main(int argc, char** argv)
             if (asset.kind == talvisota::content::AssetKind::Definition &&
                 LowerExtension(asset.relativePath) == ".tworld")
             {
-                talvisota::content::WorldDefinition world;
-                std::vector<talvisota::content::WorldDiagnostic> worldDiagnostics;
-                if (!talvisota::content::LoadWorldDefinition(contentRoot / asset.relativePath, registry,
-                                                             world, worldDiagnostics))
+                ++worldCount;
+                continue;
+            }
+
+            if (asset.kind == talvisota::content::AssetKind::Definition &&
+                LowerExtension(asset.relativePath) == ".tregion")
+            {
+                const talvisota::content::WorldDefinition* parentWorld = nullptr;
+                for (const auto& dependency : asset.dependencies)
                 {
-                    for (const auto& diagnostic : worldDiagnostics)
+                    const auto* dependencyAsset = registry.Find(dependency);
+                    if (dependencyAsset != nullptr &&
+                        dependencyAsset->kind == talvisota::content::AssetKind::Definition &&
+                        LowerExtension(dependencyAsset->relativePath) == ".tworld")
+                    {
+                        if (parentWorld != nullptr)
+                        {
+                            PrintDiagnostic(contentRoot / asset.relativePath, 0U, "world",
+                                            "Region must declare exactly one parent world dependency.");
+                            return 1;
+                        }
+                        const auto found = worlds.find(dependency);
+                        if (found != worlds.end())
+                            parentWorld = &found->second;
+                    }
+                }
+                if (parentWorld == nullptr)
+                {
+                    PrintDiagnostic(contentRoot / asset.relativePath, 0U, "world",
+                                    "Region parent world dependency is missing or invalid.");
+                    return 1;
+                }
+                talvisota::world::WorldRegion region;
+                std::vector<talvisota::world::WorldRegionDiagnostic> regionDiagnostics;
+                if (!talvisota::world::LoadWorldRegion(contentRoot / asset.relativePath, registry,
+                                                       *parentWorld, region, regionDiagnostics))
+                {
+                    for (const auto& diagnostic : regionDiagnostics)
                         PrintDiagnostic(diagnostic.file, diagnostic.line, diagnostic.field, diagnostic.message);
                     return 1;
                 }
-                ++worldCount;
+                ++regionCount;
                 continue;
             }
 
@@ -141,7 +206,8 @@ int main(int argc, char** argv)
 
         std::cout << "Validated " << registry.Assets().size() << " content assets, "
                   << materialCount << " typed materials, " << worldCount << " typed worlds, "
-                  << authoredDefinitionCount << " typed mission/faction/character/equipment definitions.\n";
+                  << authoredDefinitionCount << " typed mission/faction/character/equipment definitions, "
+                  << regionCount << " validated world regions.\n";
         for (const std::size_t index : registry.LoadOrder())
             std::cout << "  " << registry.Assets()[index].id << '\n';
         return 0;
