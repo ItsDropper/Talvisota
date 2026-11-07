@@ -22,15 +22,15 @@ void Require(bool condition, const char* message)
 const std::string& WorldText()
 {
     static const std::string value =
-        "talvisota-world\\t1\\n"
-        "id = world.fixture\\n"
-        "name = Package Fixture\\n"
-        "unit = meter\\n"
-        "up_axis = y\\n"
-        "north_axis = +z\\n"
-        "handedness = right\\n"
-        "bounds_min = -1, -1, -1\\n"
-        "bounds_max = 1, 1, 1\\n";
+        "talvisota-world\t1\n"
+        "id = world.fixture\n"
+        "name = Package Fixture\n"
+        "unit = meter\n"
+        "up_axis = y\n"
+        "north_axis = +z\n"
+        "handedness = right\n"
+        "bounds_min = -1, -1, -1\n"
+        "bounds_max = 1, 1, 1\n";
     return value;
 }
 
