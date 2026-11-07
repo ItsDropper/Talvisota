@@ -285,21 +285,21 @@ void TestWorldTerrainModelReferenceRequiresManifestDependency()
 {
     TemporaryDirectory directory;
     directory.Write("worlds/terrain.tworld",
-        "talvisota-world\\t1\\n"
-        "id = world.terrain\\n"
-        "name = Terrain World\\n"
-        "unit = meter\\n"
-        "up_axis = y\\n"
-        "north_axis = +z\\n"
-        "handedness = right\\n"
-        "bounds_min = -10, -5, -10\\n"
-        "bounds_max = 10, 5, 10\\n"
-        "terrain_model_id = model.terrain\\n");
-    directory.Write("models/terrain.obj", "v 0 0 0\\nv 1 0 0\\nv 0 1 0\\nf 1 2 3\\n");
+        "talvisota-world\t1\n"
+        "id = world.terrain\n"
+        "name = Terrain World\n"
+        "unit = meter\n"
+        "up_axis = y\n"
+        "north_axis = +z\n"
+        "handedness = right\n"
+        "bounds_min = -10, -5, -10\n"
+        "bounds_max = 10, 5, 10\n"
+        "terrain_model_id = model.terrain\n");
+    directory.Write("models/terrain.obj", "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n");
     directory.Manifest(
-        "talvisota-content-manifest\\t1\\n"
-        "asset\\tworld.terrain\\tdefinition\\tworlds/terrain.tworld\\trequired\\tmodel.terrain\\tproject\\tproject\\n"
-        "asset\\tmodel.terrain\\tmodel\\tmodels/terrain.obj\\trequired\\t-\\tproject\\tproject\\n");
+        "talvisota-content-manifest\t1\n"
+        "asset\tworld.terrain\tdefinition\tworlds/terrain.tworld\trequired\tmodel.terrain\tproject\tproject\n"
+        "asset\tmodel.terrain\tmodel\tmodels/terrain.obj\trequired\t-\tproject\tproject\n");
     ContentRegistry registry;
     std::vector<ContentDiagnostic> manifestDiagnostics;
     Require(Load(directory, registry, manifestDiagnostics), "World and terrain manifest should load.");
@@ -310,9 +310,9 @@ void TestWorldTerrainModelReferenceRequiresManifestDependency()
     Require(world.terrainModelId == "model.terrain", "World should retain its terrain model ID.");
 
     directory.Manifest(
-        "talvisota-content-manifest\\t1\\n"
-        "asset\\tworld.terrain\\tdefinition\\tworlds/terrain.tworld\\trequired\\t-\\tproject\\tproject\\n"
-        "asset\\tmodel.terrain\\tmodel\\tmodels/terrain.obj\\trequired\\t-\\tproject\\tproject\\n");
+        "talvisota-content-manifest\t1\n"
+        "asset\tworld.terrain\tdefinition\tworlds/terrain.tworld\trequired\t-\tproject\tproject\n"
+        "asset\tmodel.terrain\tmodel\tmodels/terrain.obj\trequired\t-\tproject\tproject\n");
     Require(Load(directory, registry, manifestDiagnostics), "Manifest without world dependency should load structurally.");
     diagnostics.clear();
     Require(!LoadWorldDefinition(directory.Path() / "worlds/terrain.tworld", registry, world, diagnostics),
@@ -322,9 +322,9 @@ void TestWorldTerrainModelReferenceRequiresManifestDependency()
 
     std::filesystem::remove(directory.Path() / "models/terrain.obj");
     directory.Manifest(
-        "talvisota-content-manifest\\t1\\n"
-        "asset\\tworld.terrain\\tdefinition\\tworlds/terrain.tworld\\trequired\\tmodel.terrain\\tproject\\tproject\\n"
-        "asset\\tmodel.terrain\\tmodel\\tmodels/terrain.obj\\toptional\\t-\\tproject\\tproject\\n");
+        "talvisota-content-manifest\t1\n"
+        "asset\tworld.terrain\tdefinition\tworlds/terrain.tworld\trequired\tmodel.terrain\tproject\tproject\n"
+        "asset\tmodel.terrain\tmodel\tmodels/terrain.obj\toptional\t-\tproject\tproject\n");
     Require(Load(directory, registry, manifestDiagnostics),
             "An absent optional model may remain in the registry when not referenced.");
     diagnostics.clear();
