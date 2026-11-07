@@ -1,5 +1,6 @@
 #include "talvisota/presentation/SceneRenderer.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <filesystem>
 #include <limits>
