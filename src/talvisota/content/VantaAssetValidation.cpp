@@ -27,6 +27,15 @@ void Add(std::vector<EngineAssetDiagnostic>& diagnostics, const std::filesystem:
     diagnostics.push_back({path, std::move(field), std::move(message)});
 }
 
+[[nodiscard]] std::filesystem::path PathFromUtf8(const std::string& value)
+{
+    std::u8string encoded;
+    encoded.reserve(value.size());
+    for (const unsigned char byte : value)
+        encoded.push_back(static_cast<char8_t>(byte));
+    return std::filesystem::path(encoded);
+}
+
 [[nodiscard]] std::string LowerExtension(const std::filesystem::path& path)
 {
     std::string extension = path.extension().string();
@@ -377,7 +386,7 @@ bool ValidateEngineAssets(const ContentRegistry& registry, EngineAssetSummary& o
                     return false;
                 }
                 sawMaterialLibrary = true;
-                const std::filesystem::path relativeLibrary = std::filesystem::u8path(libraryName);
+                const std::filesystem::path relativeLibrary = PathFromUtf8(libraryName);
                 if (relativeLibrary.is_absolute() || relativeLibrary.has_root_name())
                 {
                     Add(diagnostics, canonicalSource, "materialLibrary",
