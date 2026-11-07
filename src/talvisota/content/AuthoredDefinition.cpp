@@ -48,7 +48,7 @@ void Add(std::vector<AuthoredDefinitionDiagnostic>& diagnostics,
     return found == values.end() ? nullptr : &found->second;
 }
 
-[[nodiscard]] bool ValidateReference(std::string_view id, AssetKind expectedKind,
+bool ValidateReference(std::string_view id, AssetKind expectedKind,
                                      std::string_view expectedExtension,
                                      const ContentRegistry& registry,
                                      const AssetRecord* owner,
