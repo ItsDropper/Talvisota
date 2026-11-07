@@ -46,3 +46,29 @@ jobs:
 
       - name: Application smoke test
         run: .\build\talvisota.exe --help
+
+  windows-msvc-renderer-adapter:
+    name: Windows x64 / MSVC renderer adapter
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Configure MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure pinned VantaEngine adapter
+        run: >-
+          cmake -S . -B build-msvc -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DBUILD_TESTING=ON
+          -DTALVISOTA_WARNINGS_AS_ERRORS=ON
+          -DTALVISOTA_ENABLE_VANTA_ENGINE=ON
+
+      - name: Build renderer adapter and game-owned sample
+        run: cmake --build build-msvc --target talvisota_renderer_sample talvisota_renderer_contract_tests --parallel
+
+      - name: Test game-owned renderer contract
+        run: ctest --test-dir build-msvc --output-on-failure -R Talvisota.Presentation.SceneRendererContract
