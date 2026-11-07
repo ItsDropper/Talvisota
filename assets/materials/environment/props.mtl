@@ -3,39 +3,79 @@ newmtl log_bark
 Kd 0.25 0.15 0.085
 Pr 0.91
 Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
 newmtl cut_wood
 Kd 0.54 0.39 0.23
 Pr 0.86
 Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
 newmtl twig
 Kd 0.22 0.14 0.08
 Pr 0.95
 Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
 newmtl fence_wood
 Kd 0.23 0.15 0.09
 Pr 0.91
 Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
 newmtl stone
 Kd 0.32 0.33 0.31
 Pr 0.94
 Pm 0.0
+map_Kd ../../textures/environment/granite-albedo.bmp
+map_Bump ../../textures/environment/granite-normal.bmp
+map_Pr ../../textures/environment/granite-roughness.bmp
+map_AO ../../textures/environment/granite-ao.bmp
 newmtl roof_wood
 Kd 0.20 0.17 0.13
 Pr 0.9
 Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
 newmtl roof_snow
 Kd 0.85 0.90 0.96
 Pr 0.97
 Pm 0.0
+map_Kd ../../textures/environment/snow-albedo.bmp
+map_Bump ../../textures/environment/snow-normal.bmp
+map_Pr ../../textures/environment/snow-roughness.bmp
+map_AO ../../textures/environment/snow-ao.bmp
 newmtl reed_stem
 Kd 0.42 0.36 0.23
 Pr 0.95
 Pm 0.0
+map_Kd ../../textures/environment/reeds-albedo.bmp
+map_Bump ../../textures/environment/reeds-normal.bmp
+map_Pr ../../textures/environment/reeds-roughness.bmp
+map_AO ../../textures/environment/reeds-ao.bmp
 newmtl reed_head
 Kd 0.39 0.27 0.15
 Pr 0.94
 Pm 0.0
+map_Kd ../../textures/environment/reeds-albedo.bmp
+map_Bump ../../textures/environment/reeds-normal.bmp
+map_Pr ../../textures/environment/reeds-roughness.bmp
+map_AO ../../textures/environment/reeds-ao.bmp
 newmtl reed_snow
 Kd 0.89 0.92 0.97
 Pr 0.97
 Pm 0.0
+map_Kd ../../textures/environment/snow-albedo.bmp
+map_Bump ../../textures/environment/snow-normal.bmp
+map_Pr ../../textures/environment/snow-roughness.bmp
+map_AO ../../textures/environment/snow-ao.bmp
