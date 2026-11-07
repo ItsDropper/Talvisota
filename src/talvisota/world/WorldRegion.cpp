@@ -150,6 +150,9 @@ bool SampleTerrainHeight(const WorldRegion& region, float x, float z,
     const auto& terrain = region.terrain;
     if (terrain.rows < 2U || terrain.columns < 2U ||
         terrain.elevations.size() != terrain.rows * terrain.columns ||
+        !std::isfinite(terrain.originX) || !std::isfinite(terrain.originZ) ||
+        !std::isfinite(terrain.spacingX) || !std::isfinite(terrain.spacingZ) ||
+        terrain.spacingX <= 0.0F || terrain.spacingZ <= 0.0F ||
         !std::isfinite(x) || !std::isfinite(z))
     {
         error = "Terrain heightfield is absent, malformed, or queried with non-finite coordinates.";
@@ -536,8 +539,6 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
             bool valid = true;
             for (std::size_t i = 0; i < 3U; ++i) valid = ParseFloat(fields[2U + i], node.position[i]) && valid;
             if (!valid) Add(diagnostics, path, lineNumber, "nav_node.position", "Navigation position must contain finite coordinates.");
-            else if (!Inside(node.position, candidate.boundsMin, candidate.boundsMax))
-                Add(diagnostics, path, lineNumber, "nav_node.position", "Navigation node must lie inside region bounds.");
             candidate.navigationNodes.push_back(std::move(node));
         }
         else if (fields[0] == "nav_edge")
@@ -574,6 +575,9 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
                 break;
             }
     }
+    for (const auto& node : candidate.navigationNodes)
+        if (!Inside(node.position, candidate.boundsMin, candidate.boundsMax))
+            Add(diagnostics, path, 0, "nav_node.position", "Navigation node must lie inside region bounds.");
     for (const auto& placement : candidate.placements)
         if (!Inside(placement.position, candidate.boundsMin, candidate.boundsMax))
             Add(diagnostics, path, 0, "placement.position", "Placement origin must lie inside the region bounds.");
