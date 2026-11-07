@@ -9,6 +9,7 @@ project(Talvisota
 include(CTest)
 
 option(TALVISOTA_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" ON)
+option(TALVISOTA_ENABLE_VANTA_ENGINE "Build the optional VantaEngine renderer adapter (MSVC x64)" OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(TalvisotaCompilerOptions)
@@ -38,6 +39,48 @@ target_compile_features(talvisota_application PUBLIC cxx_std_23)
 target_include_directories(talvisota_application PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>")
 target_link_libraries(talvisota_application PUBLIC Talvisota::Core Talvisota::Platform)
 talvisota_apply_compiler_options(talvisota_application)
+
+add_library(talvisota_renderer_contract STATIC
+    src/talvisota/presentation/SceneRenderer.cpp
+)
+add_library(Talvisota::RendererContract ALIAS talvisota_renderer_contract)
+target_compile_features(talvisota_renderer_contract PUBLIC cxx_std_23)
+target_include_directories(talvisota_renderer_contract PUBLIC
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
+)
+talvisota_apply_compiler_options(talvisota_renderer_contract)
+
+if(TALVISOTA_ENABLE_VANTA_ENGINE)
+    if(NOT WIN32 OR NOT MSVC)
+        message(FATAL_ERROR "TALVISOTA_ENABLE_VANTA_ENGINE requires Windows x64 and MSVC because VantaEngine uses the Windows SDK and WRL.")
+    endif()
+
+    include(FetchContent)
+    set(TALVISOTA_VANTA_ENGINE_REVISION "50c09adb967af7504415ebf1434c1453c4bf31c5")
+    set(_talvisota_build_testing "${BUILD_TESTING}")
+    set(BUILD_TESTING OFF)
+    FetchContent_Declare(vantaengine
+        GIT_REPOSITORY https://github.com/ItsDropper/VantaEngine.git
+        GIT_TAG "${TALVISOTA_VANTA_ENGINE_REVISION}"
+        GIT_SHALLOW FALSE
+    )
+    FetchContent_MakeAvailable(vantaengine)
+    set(BUILD_TESTING "${_talvisota_build_testing}")
+
+    add_library(talvisota_renderer_adapter STATIC
+        src/talvisota/presentation/VantaSceneRenderer.cpp
+    )
+    add_library(Talvisota::RendererAdapter ALIAS talvisota_renderer_adapter)
+    target_compile_features(talvisota_renderer_adapter PUBLIC cxx_std_23)
+    target_include_directories(talvisota_renderer_adapter PUBLIC
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
+    )
+    target_link_libraries(talvisota_renderer_adapter PUBLIC
+        Talvisota::RendererContract
+        VantaEngine::Runtime
+    )
+    talvisota_apply_compiler_options(talvisota_renderer_adapter)
+endif()
 
 add_executable(talvisota src/talvisota/app/main.cpp)
 target_link_libraries(talvisota PRIVATE Talvisota::Application)
