@@ -3,6 +3,7 @@
 #include "talvisota/world/WorldRegion.hpp"
 
 #include <chrono>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -132,6 +133,16 @@ void TestLoadsComposedRegionAndIndependentSpatialData()
             "Terrain sampling outside the authored grid must fail.");
     Require(terrainHeight == 1.0F && terrainNormal == std::array<float, 3>{0.0F, 1.0F, 0.0F},
             "Failed terrain sampling must preserve caller outputs.");
+    Require(talvisota::world::SampleTerrainHeight(region, 16.0F, 16.0F,
+            terrainHeight, terrainNormal, terrainError),
+            "The final terrain grid vertex must be sampleable.");
+    region.terrain.elevations = {0.0F, 1.0F, 2.0F, 0.0F, 1.0F, 2.0F, 0.0F, 1.0F, 2.0F};
+    Require(talvisota::world::SampleTerrainHeight(region, -8.0F, -8.0F,
+            terrainHeight, terrainNormal, terrainError),
+            "A sloped terrain cell must be sampleable.");
+    Require(std::abs(terrainHeight - 0.5F) < 1.0e-6F &&
+            terrainNormal[0] < 0.0F && terrainNormal[1] > 0.99F,
+            "Bilinear interpolation and gradient normals must follow the sampled terrain slope.");
     const auto transform = talvisota::world::BuildPlacementTransform(region.placements[1]);
     Require(transform[12] == 4.0F && transform[13] == 0.0F && transform[14] == 3.0F,
             "Placement transforms should preserve world-space translation.");
