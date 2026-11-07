@@ -13,6 +13,7 @@ struct WorldDefinition final
 {
     std::string id;
     std::string name;
+    std::string terrainModelId;
     // World-space bounds in metres, with +X east, +Y up, and +Z north.
     std::array<float, 3> boundsMin{};
     std::array<float, 3> boundsMax{};
