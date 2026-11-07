@@ -60,7 +60,7 @@ endif()
 
 add_executable(talvisota_world_tests world/WorldRegionTests.cpp)
 target_link_libraries(talvisota_world_tests PRIVATE Talvisota::World)
-target_compile_definitions(talvisota_world_tests PRIVATE TALVISOTA_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+target_compile_definitions(talvisota_world_tests PRIVATE TALVISOTA_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\")
 target_compile_features(talvisota_world_tests PRIVATE cxx_std_23)
 talvisota_apply_compiler_options(talvisota_world_tests)
 add_test(NAME Talvisota.World.RegionLifecycle COMMAND talvisota_world_tests)
