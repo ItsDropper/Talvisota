@@ -124,8 +124,8 @@ void TestAudioAssetsFailClosedUntilDecoderExists()
     TemporaryDirectory directory;
     directory.Write("audio/ambience.wav", "unvalidated audio");
     directory.Manifest(
-        "talvisota-content-manifest\\t1\\n"
-        "asset\\taudio.ambience\\taudio\\taudio/ambience.wav\\trequired\\t-\\tproject\\tproject\\n");
+        "talvisota-content-manifest\t1\n"
+        "asset\taudio.ambience\taudio\taudio/ambience.wav\trequired\t-\tproject\tproject\n");
     ContentRegistry registry;
     std::vector<ContentDiagnostic> manifestDiagnostics;
     if (!LoadContentManifest(directory.Path() / "catalog.tmanifest", directory.Path(),
