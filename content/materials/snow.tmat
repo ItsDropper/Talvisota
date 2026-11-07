@@ -8,4 +8,6 @@ normal_scale = 1.0
 occlusion_strength = 1.0
 alpha_mode = opaque
 double_sided = false
-base_color_texture = texture.environment.snow_albedo
+base_color_texture = texture.environment.snow_pbr_albedo
+normal_texture = texture.environment.snow_pbr_normal
+orm_texture = texture.environment.snow_pbr_orm
