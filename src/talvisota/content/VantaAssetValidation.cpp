@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <fstream>
 #include <limits>
+#include <sstream>
 #include <system_error>
 #include <unordered_map>
 #include <unordered_set>
@@ -345,6 +346,78 @@ bool ValidateEngineAssets(const ContentRegistry& registry, EngineAssetSummary& o
         }
         if (asset.kind != AssetKind::Model)
             continue;
+
+        if (LowerExtension(canonicalSource) == ".obj")
+        {
+            std::ifstream obj(canonicalSource);
+            if (!obj)
+            {
+                Add(diagnostics, canonicalSource, "model", "Could not open OBJ for material dependency preflight.");
+                return false;
+            }
+            bool sawMaterialLibrary = false;
+            std::string line;
+            std::size_t lineNumber = 0U;
+            while (std::getline(obj, line))
+            {
+                ++lineNumber;
+                std::istringstream row(line);
+                std::string tag;
+                row >> tag;
+                if (tag != "mtllib")
+                    continue;
+                std::string libraryName;
+                std::string extra;
+                if (!(row >> libraryName) || (row >> extra) || sawMaterialLibrary)
+                {
+                    Add(diagnostics, canonicalSource, "materialLibrary",
+                        "OBJ must contain at most one mtllib declaration with exactly one relative filename (line " +
+                        std::to_string(lineNumber) + ").");
+                    return false;
+                }
+                sawMaterialLibrary = true;
+                const std::filesystem::path relativeLibrary = std::filesystem::u8path(libraryName);
+                if (relativeLibrary.is_absolute() || relativeLibrary.has_root_name())
+                {
+                    Add(diagnostics, canonicalSource, "materialLibrary",
+                        "OBJ material library path must be relative to the model.");
+                    return false;
+                }
+                for (const auto& component : relativeLibrary)
+                {
+                    if (component == "..")
+                    {
+                        Add(diagnostics, canonicalSource, "materialLibrary",
+                            "OBJ material library path may not traverse parent directories.");
+                        return false;
+                    }
+                }
+                std::error_code libraryError;
+                const auto libraryPath = std::filesystem::weakly_canonical(
+                    canonicalSource.parent_path() / relativeLibrary, libraryError);
+                if (libraryError || !IsWithinRoot(root, libraryPath))
+                {
+                    Add(diagnostics, canonicalSource, "materialLibrary",
+                        "OBJ material library resolves outside the content root or cannot be resolved.");
+                    return false;
+                }
+                const auto registered = assetsByCanonicalPath.find(libraryPath.generic_string());
+                if (registered == assetsByCanonicalPath.end() ||
+                    registered->second->kind != AssetKind::Material ||
+                    std::find(asset.dependencies.begin(), asset.dependencies.end(),
+                              registered->second->id) == asset.dependencies.end())
+                {
+                    Add(diagnostics, canonicalSource, "materialLibrary",
+                        "OBJ material library must be registered as a material asset and declared as a model dependency.");
+                    return false;
+                }
+            }
+            if (!obj.eof())
+            {
+                Add(diagnostics, canonicalSource, "materialLibrary", "I/O error during OBJ material dependency preflight.");
+                return false;
+            }
+        }
 
         vanta::assets::ModelHandle handle;
         std::string importError;
