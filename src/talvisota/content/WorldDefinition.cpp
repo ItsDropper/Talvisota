@@ -237,6 +237,15 @@ bool LoadWorldDefinition(const std::filesystem::path& path, const ContentRegistr
                                candidate.terrainModelId) == worldAsset->dependencies.end())
                 Add(diagnostics, path, get("terrain_model_id")->second, "terrain_model_id",
                     "Terrain model must be declared as a world manifest dependency.");
+            else
+            {
+                std::error_code terrainError;
+                const auto terrainPath = std::filesystem::weakly_canonical(
+                    registry.Root() / terrain->relativePath, terrainError);
+                if (terrainError || !std::filesystem::is_regular_file(terrainPath, terrainError) || terrainError)
+                    Add(diagnostics, path, get("terrain_model_id")->second, "terrain_model_id",
+                        "World terrain model must exist as a regular file, even when its manifest record is optional.");
+            }
         }
     }
 
