@@ -206,7 +206,7 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
             (broad - 0.5F) * 0.22F) * 2.0F * Pi);
         const float waveB = std::sin((u * 31.0F - v * 8.0F +
             (medium - 0.5F) * 0.12F) * 2.0F * Pi);
-        const float height = 0.50F + waveA * 0.012F + waveB * 0.006F + (fine - 0.5F) * 0.006F;
+        const float height = 0.50F + waveA * 0.022F + waveB * 0.012F + (fine - 0.5F) * 0.05F;
         sample = {0.035F + broad * 0.025F + waveA * 0.004F,
                   0.075F + broad * 0.035F + waveA * 0.006F,
                   0.105F + medium * 0.045F + waveB * 0.009F,
@@ -473,7 +473,7 @@ bool GeneratePreset(const std::filesystem::path& outputDirectory,
         }
     }
 
-    const float normalStrength = preset == "water" ? 2.4F :
+    const float normalStrength = preset == "water" ? 14.0F :
         preset == "snow" ? 4.5F : preset == "packed_snow" ? 5.2F : 8.0F;
     for (int y = 0; y < height; ++y)
     {
