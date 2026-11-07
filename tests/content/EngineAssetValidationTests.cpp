@@ -133,7 +133,7 @@ void TestAudioAssetsFailClosedUntilDecoderExists()
     {
         for (const auto& diagnostic : manifestDiagnostics)
             std::cerr << diagnostic.file.generic_string() << ':' << diagnostic.line
-                      << " [" << diagnostic.field << "]: " << diagnostic.message << '\\n';
+                      << " [" << diagnostic.field << "]: " << diagnostic.message << '\n';
         throw std::runtime_error("Audio manifest record should be structurally valid.");
     }
     EngineAssetSummary summary;

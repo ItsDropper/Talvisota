@@ -348,7 +348,7 @@ void TestTypedMissionFactionCharacterAndEquipmentDefinitions()
     {
         for (const auto& diagnostic : registryDiagnostics)
             std::cerr << diagnostic.file.generic_string() << ':' << diagnostic.line
-                      << " [" << diagnostic.field << "]: " << diagnostic.message << '\\n';
+                      << " [" << diagnostic.field << "]: " << diagnostic.message << '\n';
         throw std::runtime_error("Typed definition manifest should load.");
     }
 
