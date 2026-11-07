@@ -24,6 +24,14 @@ target_compile_features(talvisota_core PUBLIC cxx_std_23)
 target_include_directories(talvisota_core PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>")
 talvisota_apply_compiler_options(talvisota_core)
 
+add_library(talvisota_content STATIC
+    src/talvisota/content/ContentRegistry.cpp
+)
+add_library(Talvisota::Content ALIAS talvisota_content)
+target_compile_features(talvisota_content PUBLIC cxx_std_23)
+target_include_directories(talvisota_content PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>")
+talvisota_apply_compiler_options(talvisota_content)
+
 add_library(talvisota_platform STATIC
     src/talvisota/platform/CrashDiagnostics.cpp
     src/talvisota/platform/UserPaths.cpp
