@@ -1,9 +1,13 @@
 #include "talvisota/content/VantaAssetPackage.hpp"
+#include "talvisota/content/AuthoredDefinition.hpp"
+#include "talvisota/content/MaterialDefinition.hpp"
+#include "talvisota/content/WorldDefinition.hpp"
 
 #include <windows.h>
 #include <bcrypt.h>
 
 #include <algorithm>
+#include <cctype>
 #include <array>
 #include <charconv>
 #include <chrono>
@@ -15,6 +19,7 @@
 #include <sstream>
 #include <string_view>
 #include <system_error>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -26,6 +31,7 @@ namespace
 {
 constexpr std::string_view PackageHeader = "talvisota-content-package\t1";
 constexpr std::string_view InventoryName = "package.tmanifest";
+constexpr std::string_view CatalogName = "content.tmanifest";
 
 void Add(std::vector<EngineAssetDiagnostic>& diagnostics, const std::filesystem::path& path,
          std::string field, std::string message)
@@ -197,6 +203,139 @@ void Add(std::vector<EngineAssetDiagnostic>& diagnostics, const std::filesystem:
         {
             return character >= 0x20U && character != 0x7fU;
         });
+}
+
+
+[[nodiscard]] std::string LowerExtension(const std::filesystem::path& path)
+{
+    std::string extension = path.extension().string();
+    std::transform(extension.begin(), extension.end(), extension.begin(),
+                   [](unsigned char value) { return static_cast<char>(std::tolower(value)); });
+    return extension;
+}
+
+[[nodiscard]] bool WriteCatalogManifest(const ContentRegistry& registry,
+                                        const std::filesystem::path& destination,
+                                        std::string& error)
+{
+    std::vector<const AssetRecord*> assets;
+    assets.reserve(registry.Assets().size());
+    for (const AssetRecord& asset : registry.Assets())
+        assets.push_back(&asset);
+    std::sort(assets.begin(), assets.end(), [](const AssetRecord* left, const AssetRecord* right)
+    {
+        return left->id < right->id;
+    });
+
+    std::ostringstream manifest;
+    manifest.imbue(std::locale::classic());
+    manifest << "talvisota-content-manifest\t1\n";
+    for (const AssetRecord* asset : assets)
+    {
+        std::vector<std::string> dependencies = asset->dependencies;
+        std::sort(dependencies.begin(), dependencies.end());
+        std::string dependencyList = "-";
+        if (!dependencies.empty())
+        {
+            dependencyList.clear();
+            for (std::size_t index = 0; index < dependencies.size(); ++index)
+            {
+                if (index != 0U)
+                    dependencyList.push_back(',');
+                dependencyList += dependencies[index];
+            }
+        }
+        manifest << "asset\t" << asset->id << '\t' << KindName(asset->kind) << '\t'
+                 << PathUtf8(asset->relativePath.lexically_normal()) << '\t'
+                 << (asset->required ? "required" : "optional") << '\t'
+                 << dependencyList << '\t' << asset->source << '\t' << asset->license << '\n';
+    }
+
+    const std::string content = manifest.str();
+    std::ofstream output(destination, std::ios::binary | std::ios::trunc);
+    output.write(content.data(), static_cast<std::streamsize>(content.size()));
+    if (!output)
+    {
+        error = "Could not write packaged content catalog.";
+        return false;
+    }
+    return true;
+}
+
+[[nodiscard]] bool ValidateTypedDefinitions(const ContentRegistry& registry,
+                                            std::vector<EngineAssetDiagnostic>& diagnostics)
+{
+    for (const AssetRecord& asset : registry.Assets())
+    {
+        const auto path = registry.Root() / asset.relativePath;
+        if (!asset.required)
+        {
+            std::error_code error;
+            const bool exists = std::filesystem::exists(path, error);
+            if (error)
+            {
+                Add(diagnostics, path, "path", "Could not inspect optional packaged asset.");
+                return false;
+            }
+            if (!exists)
+                continue;
+        }
+
+        if (asset.kind == AssetKind::Definition)
+        {
+            const std::string extension = LowerExtension(asset.relativePath);
+            if (extension == ".tworld")
+            {
+                WorldDefinition definition;
+                std::vector<WorldDiagnostic> issues;
+                if (!LoadWorldDefinition(path, registry, definition, issues))
+                {
+                    for (const auto& issue : issues)
+                        Add(diagnostics, issue.file, issue.field, issue.message);
+                    return false;
+                }
+            }
+            else if (extension == ".tmission" || extension == ".tfaction" ||
+                     extension == ".tcharacter" || extension == ".tequipment")
+            {
+                AuthoredDefinition definition;
+                std::vector<AuthoredDefinitionDiagnostic> issues;
+                if (!LoadAuthoredDefinition(path, registry, definition, issues))
+                {
+                    for (const auto& issue : issues)
+                        Add(diagnostics, issue.file, issue.field, issue.message);
+                    return false;
+                }
+            }
+            else
+            {
+                Add(diagnostics, path, "format",
+                    "Packaged definition has no implemented typed parser.");
+                return false;
+            }
+        }
+        else if (asset.kind == AssetKind::Material && LowerExtension(asset.relativePath) == ".tmat")
+        {
+            MaterialDefinition definition;
+            std::vector<MaterialDiagnostic> issues;
+            if (!LoadMaterialDefinition(path, registry, definition, issues))
+            {
+                for (const auto& issue : issues)
+                    Add(diagnostics, issue.file, issue.field, issue.message);
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+[[nodiscard]] bool ValidatePackageSemantics(const ContentRegistry& registry,
+                                            std::vector<EngineAssetDiagnostic>& diagnostics)
+{
+    if (!ValidateTypedDefinitions(registry, diagnostics))
+        return false;
+    EngineAssetSummary media;
+    return ValidateEngineAssets(registry, media, diagnostics);
 }
 
 [[nodiscard]] bool IsHexDigest(std::string_view value)
