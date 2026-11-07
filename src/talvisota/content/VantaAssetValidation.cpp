@@ -263,6 +263,18 @@ bool ValidateEngineAssets(const ContentRegistry& registry, EngineAssetSummary& o
         }
         if (!decodedTexturePaths.insert(canonical.generic_string()).second)
             return true;
+        if (LowerExtension(canonical) == ".ttex")
+        {
+            vanta::assets::ProcessedTexture processed;
+            std::string textureError;
+            if (!vanta::assets::LoadProcessedTexture(canonical, processed, textureError))
+            {
+                Add(diagnostics, canonical, "processedTexture", textureError);
+                return false;
+            }
+            ++candidate.decodedTextures;
+            return true;
+        }
 
         vanta::assets::CpuTexture texture;
         if (!vanta::assets::LoadWicTexture(canonical, texture))
@@ -311,18 +323,7 @@ bool ValidateEngineAssets(const ContentRegistry& registry, EngineAssetSummary& o
         }
         if (asset.kind == AssetKind::Texture)
         {
-            if (LowerExtension(canonicalSource) == ".ttex")
-            {
-                vanta::assets::ProcessedTexture processed;
-                std::string textureError;
-                if (!vanta::assets::LoadProcessedTexture(canonicalSource, processed, textureError))
-                {
-                    Add(diagnostics, canonicalSource, "processedTexture", textureError);
-                    return false;
-                }
-                ++candidate.decodedTextures;
-            }
-            else if (!decodeTexture(canonicalSource, nullptr, canonicalSource, "texture"))
+            if (!decodeTexture(canonicalSource, nullptr, canonicalSource, "texture"))
                 return false;
             continue;
         }
