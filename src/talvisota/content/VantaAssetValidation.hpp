@@ -19,6 +19,7 @@ struct EngineAssetSummary final
 {
     std::size_t importedModels = 0;
     std::size_t decodedTextures = 0;
+    std::size_t decodedAudio = 0;
 };
 
 // Uses VantaEngine's CPU asset services to import registered OBJ/glTF/GLB
