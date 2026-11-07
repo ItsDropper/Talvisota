@@ -74,7 +74,7 @@ jobs:
           -DTALVISOTA_ENABLE_VANTA_ENGINE=ON
 
       - name: Build renderer adapter and content asset tools
-        run: cmake --build build-msvc --target talvisota_renderer_sample talvisota_renderer_contract_tests talvisota_asset_validate talvisota_texture_process talvisota_engine_asset_validation_tests --parallel
+        run: cmake --build build-msvc --target talvisota_renderer_sample talvisota_renderer_contract_tests talvisota_asset_validate talvisota_content_package talvisota_texture_process talvisota_engine_asset_validation_tests talvisota_engine_asset_package_tests --parallel
 
       - name: Test game-owned renderer and asset contracts
         run: ctest --test-dir build-msvc --output-on-failure -R "Talvisota.Presentation.SceneRendererContract|Talvisota.Content.EngineAssetValidation"
