@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <bit>
+#include <cctype>
 #include <cmath>
 #include <cstdint>
 #include <fstream>
@@ -163,16 +164,38 @@ void Add(std::vector<EngineAssetDiagnostic>& diagnostics, const std::filesystem:
         error = "WAV is missing format/data, has incomplete sample frames, or exceeds the frame limit.";
         return false;
     }
-    if (format == 3U)
+    const std::size_t bytesPerSample = bitsPerSample / 8U;
+    for (std::size_t offset = dataOffset; offset < dataOffset + dataSize; offset += bytesPerSample)
     {
-        for (std::size_t offset = dataOffset; offset < dataOffset + dataSize; offset += 4U)
+        float decoded = 0.0F;
+        if (format == 3U)
         {
-            const float sample = std::bit_cast<float>(ReadU32(bytes, offset));
-            if (!std::isfinite(sample))
+            decoded = std::bit_cast<float>(ReadU32(bytes, offset));
+            if (!std::isfinite(decoded))
             {
                 error = "WAV floating-point audio contains a non-finite sample.";
                 return false;
             }
+        }
+        else if (bitsPerSample == 8U)
+            decoded = (static_cast<float>(bytes[offset]) - 128.0F) / 128.0F;
+        else if (bitsPerSample == 16U)
+            decoded = static_cast<float>(std::bit_cast<std::int16_t>(ReadU16(bytes, offset))) / 32768.0F;
+        else if (bitsPerSample == 24U)
+        {
+            std::int32_t sample = static_cast<std::int32_t>(bytes[offset]) |
+                (static_cast<std::int32_t>(bytes[offset + 1U]) << 8U) |
+                (static_cast<std::int32_t>(bytes[offset + 2U]) << 16U);
+            if ((sample & 0x00800000) != 0)
+                sample |= static_cast<std::int32_t>(0xff000000U);
+            decoded = static_cast<float>(sample) / 8388608.0F;
+        }
+        else
+            decoded = static_cast<float>(std::bit_cast<std::int32_t>(ReadU32(bytes, offset))) / 2147483648.0F;
+        if (!std::isfinite(decoded))
+        {
+            error = "WAV sample decoding produced a non-finite value.";
+            return false;
         }
     }
     return true;
