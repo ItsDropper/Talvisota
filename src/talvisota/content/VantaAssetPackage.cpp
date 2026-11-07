@@ -9,6 +9,7 @@
 #include <chrono>
 #include <fstream>
 #include <iomanip>
+#include <locale>
 #include <set>
 #include <sstream>
 #include <string_view>
@@ -40,6 +41,12 @@ void Add(std::vector<EngineAssetDiagnostic>& diagnostics, const std::filesystem:
         if (component == "..")
             return false;
     return true;
+}
+
+[[nodiscard]] std::string PathUtf8(const std::filesystem::path& path)
+{
+    const std::u8string encoded = path.generic_u8string();
+    return std::string(reinterpret_cast<const char*>(encoded.data()), encoded.size());
 }
 
 [[nodiscard]] std::string KindName(const AssetKind kind)
@@ -277,7 +284,7 @@ bool ValidateAssetPackage(const std::filesystem::path& packageRoot, AssetPackage
         }
         if (std::filesystem::is_regular_file(status))
         {
-            const auto relative = it->path().lexically_relative(root).generic_string();
+            const auto relative = PathUtf8(it->path().lexically_relative(root));
             if (!actualFiles.insert(relative).second)
                 continue;
         }
@@ -357,6 +364,7 @@ bool BuildAssetPackage(const ContentRegistry& registry, const std::filesystem::p
     const auto cleanup = [&]() { std::error_code ignored; std::filesystem::remove_all(staging, ignored); };
 
     std::ostringstream inventory;
+    inventory.imbue(std::locale::classic());
     inventory << PackageHeader << '\n';
     AssetPackageSummary candidate;
     for (const std::size_t index : registry.LoadOrder())
@@ -384,7 +392,7 @@ bool BuildAssetPackage(const ContentRegistry& registry, const std::filesystem::p
             return false;
         }
         const auto relative = asset.relativePath.lexically_normal();
-        if (relative.generic_string() == InventoryName)
+        if (PathUtf8(relative) == InventoryName)
         {
             Add(diagnostics, source, "path", "The reserved package inventory path cannot be used by a content asset.");
             cleanup();
@@ -415,7 +423,7 @@ bool BuildAssetPackage(const ContentRegistry& registry, const std::filesystem::p
             return false;
         }
         inventory << "asset\t" << asset.id << '\t' << KindName(asset.kind) << '\t'
-                  << relative.generic_string() << '\t' << size << '\t' << digest << '\n';
+                  << PathUtf8(relative) << '\t' << size << '\t' << digest << '\n';
         ++candidate.assetCount;
         candidate.totalBytes += size;
     }
@@ -436,9 +444,16 @@ bool BuildAssetPackage(const ContentRegistry& registry, const std::filesystem::p
         cleanup();
         return false;
     }
-    if (std::filesystem::exists(absoluteDestination, error))
+    const bool destinationExists = std::filesystem::exists(absoluteDestination, error);
+    if (error)
     {
-        if (error || !std::filesystem::is_directory(absoluteDestination, error) || error)
+        Add(diagnostics, absoluteDestination, "destination", "Could not inspect existing package destination.");
+        cleanup();
+        return false;
+    }
+    if (destinationExists)
+    {
+        if (!std::filesystem::is_directory(absoluteDestination, error) || error)
         {
             Add(diagnostics, absoluteDestination, "destination", "Existing package destination is not a directory.");
             cleanup();
