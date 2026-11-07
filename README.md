@@ -6,6 +6,10 @@ The repository is being established with explicit boundaries between engine tech
 
 > **Project status:** architecture and core lifecycle foundation. This repository does not yet contain a playable game or a game-owned rendering integration. VantaEngine's current public renderer still creates its own sample world; Talvisota will connect to it through a proper game-scene submission API rather than depending on renderer internals.
 
+## Development plan
+
+The authoritative milestone sequence, exit criteria, architecture rules, and immediate execution order are documented in [docs/production/DEVELOPMENT_PLAN.md](docs/production/DEVELOPMENT_PLAN.md). Work should follow those gates; do not skip ahead based on visual ambition alone.
+
 ## Project principles
 
 - **Game owns the game.** Missions, world definitions, factions, characters, equipment, interaction rules, progression, and game-specific UI belong here.
