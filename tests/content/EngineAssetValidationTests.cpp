@@ -231,7 +231,7 @@ void TestUnsupportedCompressedAudioFailsClosed()
     directory.Write("audio/ambience.ogg", "not an OGG stream");
     directory.Manifest(
         "talvisota-content-manifest\t1\n"
-        "asset\taudio.ambience\taudio\\audio/ambience.ogg\trequired\t-\tproject\tproject\n");
+        "asset\taudio.ambience\taudio/ambience.ogg\trequired\t-\tproject\tproject\n");
     ContentRegistry registry;
     std::vector<ContentDiagnostic> manifestDiagnostics;
     Require(LoadContentManifest(directory.Path() / "catalog.tmanifest", directory.Path(),
