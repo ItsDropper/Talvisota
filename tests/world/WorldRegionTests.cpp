@@ -3,6 +3,7 @@
 #include "talvisota/world/WorldRegion.hpp"
 
 #include <algorithm>
+#include <charconv>
 #include <chrono>
 #include <cmath>
 #include <filesystem>
@@ -225,6 +226,7 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
     std::ifstream model(root / terrainAsset->relativePath);
     Require(static_cast<bool>(model), "Sakkola terrain model should be readable.");
     std::size_t vertexIndex = 0U;
+    std::size_t textureCoordinateCount = 0U;
     std::vector<std::array<float, 3>> visualVertices;
     std::vector<std::array<std::size_t, 3>> visualFaces;
     std::string line;
@@ -257,15 +259,31 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
             visualVertices.push_back({x, y, z});
             ++vertexIndex;
         }
+        else if (type == "vt") {
+            float u = 0.0F, v = 0.0F;
+            Require(static_cast<bool>(record >> u >> v) && std::isfinite(u) && std::isfinite(v),
+                    "Sakkola terrain texture coordinates should be finite.");
+            ++textureCoordinateCount;
+        }
         else if (type == "f") {
             std::array<std::size_t, 3> face{};
-            Require(static_cast<bool>(record >> face[0] >> face[1] >> face[2]),
-                    "Sakkola terrain faces should contain three vertex indices.");
+            for (std::size_t corner = 0; corner < face.size(); ++corner) {
+                std::string token;
+                Require(static_cast<bool>(record >> token),
+                        "Sakkola terrain faces should contain three vertex/UV indices.");
+                const std::size_t slash = token.find('/');
+                const char* begin = token.data();
+                const char* end = begin + (slash == std::string::npos ? token.size() : slash);
+                const auto parsed = std::from_chars(begin, end, face[corner]);
+                Require(parsed.ec == std::errc{} && parsed.ptr == end,
+                        "Sakkola terrain face vertex indices should be valid integers.");
+            }
             visualFaces.push_back(face);
         }
     }
-    Require(vertexIndex == region.terrain.rows * region.terrain.columns,
-            "Sakkola visual terrain and collision heightfield must have identical grid dimensions.");
+    Require(vertexIndex == region.terrain.rows * region.terrain.columns &&
+            textureCoordinateCount == vertexIndex,
+            "Sakkola visual terrain, UV grid and collision heightfield must have identical dimensions.");
     Require(!visualFaces.empty(), "Sakkola terrain must contain indexed surface triangles.");
     for (const auto& face : visualFaces) {
         Require(face[0] > 0U && face[1] > 0U && face[2] > 0U &&
