@@ -146,7 +146,7 @@ std::array<float, 16> BuildPlacementTransform(const WorldPlacement& placement) n
 
 bool QueryCollision(const WorldRegion& region, const std::array<float, 3>& queryMin,
                     const std::array<float, 3>& queryMax, bool& intersects,
-                    std::string& error) noexcept
+                    std::string& error)
 {
     for (std::size_t axis = 0; axis < 3U; ++axis)
     {
