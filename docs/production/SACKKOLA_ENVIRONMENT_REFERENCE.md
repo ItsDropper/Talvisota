@@ -51,7 +51,7 @@ The current geometry is a substantive environment foundation, not a photorealism
 
 1. Digitize the Sakkola sheet's contours and shoreline into a georeferenced terrain source, with a documented coordinate transform and vertical datum.
 2. Reconcile village roads, field boundaries, farmstead footprints, and shoreline placement against the historical sheet.
-3. Add high-resolution, seamless albedo, tangent-space normal, roughness, and ambient-occlusion maps for bark, needles, birch bark, granite, soil, packed snow, and wind-crusted snow.
+3. Calibrate the current 32 generated 1024x1024 seamless PBR maps (albedo, tangent-space normal, roughness, AO) for bark, needles, birch bark, granite, snow, packed snow, water, and reeds; replace or augment procedural first-pass detail with reference-based hand-authored or properly licensed scanned materials where they materially improve realism.
 4. Add more local model variation (tree age, crown shape, branch damage, deadwood, stumps, saplings, and rock silhouettes) without turning the forest into a uniform scatter.
 5. Validate material texture decoding, mip generation, tangent frames, shadow response, snow accumulation, and the final environment on real D3D11 and D3D12 hardware.
 6. Capture a genuine renderer framebuffer only after the environment reaches the visual review threshold. Never substitute a generated or composited image for a renderer capture.
