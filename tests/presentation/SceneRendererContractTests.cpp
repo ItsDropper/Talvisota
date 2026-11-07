@@ -9,6 +9,45 @@ using namespace talvisota::presentation;
 
 namespace
 {
+class FakeSceneRenderer final : public ISceneRenderer
+{
+public:
+    bool Initialize(void* nativeWindow, int width, int height, std::string& error) override
+    {
+        if (nativeWindow == nullptr || width <= 0 || height <= 0) {
+            error = "invalid initialization";
+            return false;
+        }
+        initialized = true;
+        error.clear();
+        return true;
+    }
+
+    bool Resize(int width, int height, std::string& error) override
+    {
+        if (!initialized || width <= 0 || height <= 0) {
+            error = "invalid resize";
+            return false;
+        }
+        error.clear();
+        return true;
+    }
+
+    bool Render(const SceneSnapshot& scene, std::string& error) override
+    {
+        if (!initialized || !ValidateSceneSnapshot(scene, error))
+            return false;
+        ++renderedFrames;
+        return true;
+    }
+
+    bool IsDeviceLost() const noexcept override { return deviceLost; }
+
+    bool initialized = false;
+    bool deviceLost = false;
+    std::uint32_t renderedFrames = 0;
+};
+
 SceneSnapshot ValidScene()
 {
     SceneSnapshot scene;
@@ -30,6 +69,16 @@ int main()
 {
     std::string error;
     SceneSnapshot scene = ValidScene();
+    FakeSceneRenderer fakeRenderer;
+    assert(!fakeRenderer.Render(scene, error));
+    int nativeWindowToken = 1;
+    assert(fakeRenderer.Initialize(&nativeWindowToken, 1280, 720, error));
+    assert(fakeRenderer.Resize(800, 600, error));
+    assert(fakeRenderer.Render(scene, error));
+    assert(fakeRenderer.renderedFrames == 1U);
+    fakeRenderer.deviceLost = true;
+    assert(fakeRenderer.IsDeviceLost());
+
     assert(ValidateSceneSnapshot(scene, error));
     assert(error.empty());
 
