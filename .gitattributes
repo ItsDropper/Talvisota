@@ -1,0 +1,26 @@
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.tga binary
+*.dds binary
+*.ktx binary
+*.ktx2 binary
+*.hdr binary
+*.exr binary
+*.wav binary
+*.ogg binary
+*.flac binary
+*.mp3 binary
+*.fbx binary
+*.gltf text
+*.glb binary
+*.obj text
+*.mtl text
+*.blend binary
+*.psd binary
+*.kra binary
+*.zip binary
+*.7z binary
+*.pak binary
