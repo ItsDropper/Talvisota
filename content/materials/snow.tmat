@@ -1,10 +1,11 @@
 talvisota-material	1
 id = material.environment.snow
-base_color = 0.78, 0.82, 0.86
-roughness = 0.93
+base_color = 0.88, 0.92, 0.98
+roughness = 0.95
 metallic = 0.0
 emissive = 0.0, 0.0, 0.0
 normal_scale = 1.0
 occlusion_strength = 1.0
 alpha_mode = opaque
 double_sided = false
+base_color_texture = texture.environment.snow_albedo
