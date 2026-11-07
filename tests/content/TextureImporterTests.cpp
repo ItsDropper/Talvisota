@@ -1,6 +1,8 @@
 #include "talvisota/content/TextureImporter.hpp"
 
 #include <cstdint>
+#include <chrono>
+#include <fstream>
 #include <filesystem>
 #include <iostream>
 #include <stdexcept>
@@ -85,6 +87,30 @@ void TestDecodesTopDown32BitBgrxAsOpaque()
             "32-bit BI_RGB reserved byte must not be mistaken for alpha.");
 }
 
+
+void TestLoadsBmpFileFromDisk()
+{
+    const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+    const auto directory = std::filesystem::temp_directory_path() /
+        ("talvisota-texture-importer-" + std::to_string(stamp));
+    std::filesystem::create_directories(directory);
+    const auto path = directory / "source.bmp";
+    const auto bytes = MakeBmp24();
+    {
+        std::ofstream file(path, std::ios::binary);
+        file.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+        Require(static_cast<bool>(file), "Could not write BMP file fixture.");
+    }
+    DecodedTexture image;
+    std::vector<TextureDiagnostic> diagnostics;
+    const bool loaded = LoadBmp(path, image, diagnostics);
+    std::error_code ignored;
+    std::filesystem::remove_all(directory, ignored);
+    Require(loaded, "LoadBmp should read and decode a valid file.");
+    Require(image.width == 2U && image.height == 2U && image.rgba8.size() == 16U,
+            "LoadBmp should publish decoded dimensions and pixels.");
+}
+
 void TestRejectsMalformedAndUnsupportedHeadersAtomically()
 {
     DecodedTexture image;
@@ -117,6 +143,7 @@ int main()
     {
         TestDecodesBottomUpPaddedBgrToTopDownRgba();
         TestDecodesTopDown32BitBgrxAsOpaque();
+        TestLoadsBmpFileFromDisk();
         TestRejectsMalformedAndUnsupportedHeadersAtomically();
     }
     catch (const std::exception& exception)

@@ -1,6 +1,7 @@
 #include "talvisota/content/ContentRegistry.hpp"
 #include "talvisota/content/MaterialDefinition.hpp"
 #include "talvisota/content/WorldDefinition.hpp"
+#include "talvisota/content/TextureImporter.hpp"
 
 #include <exception>
 #include <filesystem>
@@ -58,8 +59,23 @@ int main(int argc, char** argv)
 
         std::size_t materialCount = 0;
         std::size_t worldCount = 0;
+        std::size_t decodedBmpCount = 0;
         for (const auto& asset : registry.Assets())
         {
+            if (asset.kind == talvisota::content::AssetKind::Texture &&
+                asset.relativePath.extension() == ".bmp")
+            {
+                talvisota::content::DecodedTexture texture;
+                std::vector<talvisota::content::TextureDiagnostic> textureDiagnostics;
+                if (!talvisota::content::LoadBmp(contentRoot / asset.relativePath, texture, textureDiagnostics))
+                {
+                    for (const auto& diagnostic : textureDiagnostics)
+                        PrintDiagnostic(diagnostic.file, 0U, diagnostic.field, diagnostic.message);
+                    return 1;
+                }
+                ++decodedBmpCount;
+                continue;
+            }
             if (asset.kind == talvisota::content::AssetKind::Definition &&
                 asset.relativePath.extension() == ".tworld")
             {
@@ -91,7 +107,8 @@ int main(int argc, char** argv)
         }
 
         std::cout << "Validated " << registry.Assets().size() << " content assets, "
-                  << materialCount << " typed materials, and " << worldCount << " typed worlds.\n";
+                  << materialCount << " typed materials, " << worldCount << " typed worlds, and "
+                  << decodedBmpCount << " decoded BMP textures.\n";
         for (const std::size_t index : registry.LoadOrder())
             std::cout << "  " << registry.Assets()[index].id << '\n';
         return 0;
