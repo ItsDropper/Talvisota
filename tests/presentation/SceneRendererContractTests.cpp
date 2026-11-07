@@ -71,7 +71,7 @@ SceneSnapshot ValidScene()
     material.baseColor = {0.2F, 0.5F, 0.8F};
     material.roughness = 0.7F;
     material.metallic = 0.1F;
-    scene.materials.push_back(std::move(material));
+    scene.materials.push_back(material);
     scene.instances.push_back({0U, 0U});
     return scene;
 }
