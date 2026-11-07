@@ -1,0 +1,11 @@
+talvisota-region	1
+id	region.central_finland
+world	world.central_finland
+bounds_min	-32,-5,-32
+bounds_max	32,5,32
+placement	terrain.main	terrain	model.terrain.central_finland	material.environment.snow	0	0	0	0	1
+nav_node	trail.west	-20	0	0
+nav_node	trail.center	0	0	0
+nav_node	trail.east	20	0	0
+nav_edge	trail.west	trail.center
+nav_edge	trail.center	trail.east
