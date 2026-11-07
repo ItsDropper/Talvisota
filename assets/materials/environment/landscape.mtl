@@ -1,0 +1,21 @@
+# Original Sakkola winter landscape materials.
+newmtl snow
+Kd 0.84 0.89 0.96
+Pr 0.94
+Pm 0.0
+newmtl frozen_field
+Kd 0.67 0.70 0.72
+Pr 0.91
+Pm 0.0
+newmtl packed_track
+Kd 0.34 0.35 0.34
+Pr 0.83
+Pm 0.0
+newmtl shore_snow
+Kd 0.77 0.82 0.87
+Pr 0.96
+Pm 0.0
+newmtl lake_water
+Kd 0.045 0.085 0.12
+Pr 0.16
+Pm 0.08
