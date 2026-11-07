@@ -278,6 +278,18 @@ void Add(std::vector<EngineAssetDiagnostic>& diagnostics, const std::filesystem:
         if (asset.kind != AssetKind::Definition || LowerExtension(asset.relativePath) != ".tworld")
             continue;
         const auto path = registry.Root() / asset.relativePath;
+        if (!asset.required)
+        {
+            std::error_code optionalError;
+            const bool present = std::filesystem::exists(path, optionalError);
+            if (optionalError)
+            {
+                Add(diagnostics, path, "path", "Could not inspect optional world definition.");
+                return false;
+            }
+            if (!present)
+                continue;
+        }
         WorldDefinition definition;
         std::vector<WorldDiagnostic> issues;
         if (!LoadWorldDefinition(path, registry, definition, issues))
