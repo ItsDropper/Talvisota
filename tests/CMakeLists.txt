@@ -64,3 +64,8 @@ target_compile_definitions(talvisota_world_tests PRIVATE TALVISOTA_SOURCE_DIR=\"
 target_compile_features(talvisota_world_tests PRIVATE cxx_std_23)
 talvisota_apply_compiler_options(talvisota_world_tests)
 add_test(NAME Talvisota.World.RegionLifecycle COMMAND talvisota_world_tests)
+
+add_test(NAME Talvisota.Environment.PbrMaps
+    COMMAND talvisota_environment_texture_gen --verify
+        "${PROJECT_SOURCE_DIR}/assets/textures/environment"
+)
