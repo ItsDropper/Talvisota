@@ -1,6 +1,7 @@
 #include "talvisota/presentation/SceneRenderer.hpp"
 
 #include <cmath>
+#include <filesystem>
 #include <limits>
 
 namespace talvisota::presentation
@@ -81,6 +82,18 @@ bool ValidateSceneSnapshot(const SceneSnapshot& scene, std::string& error)
             material.metallic < 0.0F || material.metallic > 1.0F) {
             error = "Material " + std::to_string(materialIndex) + " has invalid PBR values.";
             return false;
+        }
+        const std::array<const std::string*, 5> texturePaths = {
+            &material.baseColorTexture, &material.normalTexture, &material.roughnessTexture,
+            &material.metallicTexture, &material.ambientOcclusionTexture
+        };
+        for (const std::string* texturePath : texturePaths) {
+            if (texturePath->find('\\0') != std::string::npos ||
+                (!texturePath->empty() && !std::filesystem::path(*texturePath).is_absolute())) {
+                error = "Material " + std::to_string(materialIndex) +
+                    " contains a texture path that is not a resolved absolute file path.";
+                return false;
+            }
         }
     }
 
