@@ -459,7 +459,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         return 1;
     }
     std::cout << "Sakkola renderer backend: " << (useD3D11 ? "D3D11" : "D3D12")
-        << "; capture mode: " << (captureRequested ? "enabled" : "disabled") << ".\\n";
+        << "; capture mode: " << (captureRequested ? "enabled" : "disabled") << ".\n";
 
     SceneSnapshot scene;
     std::size_t placements = 0, draws = 0;
@@ -502,7 +502,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     UpdateWindow(window);
     SetForegroundWindow(window);
 
-    auto renderer = talvisota::presentation::CreateVantaSceneRenderer(d3d11
+    auto renderer = talvisota::presentation::CreateVantaSceneRenderer(useD3D11
         ? talvisota::presentation::RendererBackend::Direct3D11
         : talvisota::presentation::RendererBackend::Direct3D12);
     RECT client{};
