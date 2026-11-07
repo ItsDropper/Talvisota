@@ -40,6 +40,16 @@ bool ParseFloat(std::string_view value, float& output)
     return result.ec == std::errc{} && result.ptr == value.data() + value.size() && std::isfinite(output);
 }
 
+bool ParseVector2(std::string_view value, std::array<float, 2>& output)
+{
+    const std::size_t separator = value.find(',');
+    if (separator == std::string_view::npos ||
+        !ParseFloat(value.substr(0, separator), output[0]) ||
+        !ParseFloat(value.substr(separator + 1U), output[1]))
+        return false;
+    return true;
+}
+
 bool ParseVector3(std::string_view value, std::array<float, 3>& output)
 {
     for (std::size_t index = 0; index < output.size(); ++index)
@@ -141,7 +151,9 @@ bool LoadWorldDefinition(const std::filesystem::path& path, const ContentRegistr
 
     static constexpr std::string_view allowed[] = {
         "id", "name", "unit", "up_axis", "north_axis", "handedness",
-        "bounds_min", "bounds_max", "sea_level", "terrain_model_id"
+        "bounds_min", "bounds_max", "sea_level", "terrain_model_id",
+        "sun_direction", "sun_color", "sun_intensity", "ambient_color", "ambient_intensity",
+        "fog_color", "fog_density", "fog_start", "wind_direction", "wind_strength"
     };
     for (const auto& [key, value] : values)
     {
@@ -215,6 +227,77 @@ bool LoadWorldDefinition(const std::filesystem::path& path, const ContentRegistr
             if (candidate.seaLevel < candidate.boundsMin[1] || candidate.seaLevel > candidate.boundsMax[1])
                 Add(diagnostics, path, value->second, "sea_level", "Sea level must lie within the world's vertical bounds.");
         }
+    }
+
+    constexpr std::array<std::string_view, 10> environmentFields = {
+        "sun_direction", "sun_color", "sun_intensity", "ambient_color", "ambient_intensity",
+        "fog_color", "fog_density", "fog_start", "wind_direction", "wind_strength"
+    };
+    std::size_t environmentFieldCount = 0U;
+    for (const auto field : environmentFields)
+        environmentFieldCount += get(field) == nullptr ? 0U : 1U;
+    if (environmentFieldCount != 0U && environmentFieldCount != environmentFields.size())
+        Add(diagnostics, path, 0, "environment",
+            "Environment settings must be supplied as a complete ten-field group.");
+
+    if (environmentFieldCount == environmentFields.size()) {
+        auto& environment = candidate.environment;
+        const auto parseVector = [&](std::string_view key, std::array<float, 3>& destination) {
+            const auto* value = get(key);
+            if (!ParseVector3(value->first, destination))
+                Add(diagnostics, path, value->second, std::string(key),
+                    "Expected three finite comma-separated values.");
+        };
+        const auto parseScalar = [&](std::string_view key, float& destination) {
+            const auto* value = get(key);
+            if (!ParseFloat(value->first, destination))
+                Add(diagnostics, path, value->second, std::string(key), "Expected a finite scalar value.");
+        };
+        parseVector("sun_direction", environment.sunDirection);
+        parseVector("sun_color", environment.sunColor);
+        parseScalar("sun_intensity", environment.sunIntensity);
+        parseVector("ambient_color", environment.ambientColor);
+        parseScalar("ambient_intensity", environment.ambientIntensity);
+        parseVector("fog_color", environment.fogColor);
+        parseScalar("fog_density", environment.fogDensity);
+        parseScalar("fog_start", environment.fogStart);
+        const auto* windDirection = get("wind_direction");
+        if (!ParseVector2(windDirection->first, environment.windDirection))
+            Add(diagnostics, path, windDirection->second, "wind_direction",
+                "Expected two finite comma-separated values.");
+        parseScalar("wind_strength", environment.windStrength);
+
+        const auto length3 = [](const std::array<float, 3>& v) {
+            return std::sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+        };
+        const float sunLength = length3(environment.sunDirection);
+        const float windLength = std::hypot(environment.windDirection[0], environment.windDirection[1]);
+        if (std::abs(sunLength - 1.0F) > 0.02F)
+            Add(diagnostics, path, get("sun_direction")->second, "sun_direction",
+                "Sun direction must be normalized.");
+        if (std::abs(windLength - 1.0F) > 0.02F)
+            Add(diagnostics, path, get("wind_direction")->second, "wind_direction",
+                "Wind direction must be normalized.");
+        const auto validColor = [](const std::array<float, 3>& v) {
+            return std::all_of(v.begin(), v.end(), [](float x) { return x >= 0.0F && x <= 16.0F; });
+        };
+        if (!validColor(environment.sunColor))
+            Add(diagnostics, path, get("sun_color")->second, "sun_color", "Linear color channels must be within [0,16].");
+        if (!validColor(environment.ambientColor))
+            Add(diagnostics, path, get("ambient_color")->second, "ambient_color", "Linear color channels must be within [0,16].");
+        if (!validColor(environment.fogColor))
+            Add(diagnostics, path, get("fog_color")->second, "fog_color", "Linear color channels must be within [0,16].");
+        if (environment.sunIntensity < 0.0F || environment.sunIntensity > 10.0F)
+            Add(diagnostics, path, get("sun_intensity")->second, "sun_intensity", "Sun intensity must be within [0,10].");
+        if (environment.ambientIntensity < 0.0F || environment.ambientIntensity > 4.0F)
+            Add(diagnostics, path, get("ambient_intensity")->second, "ambient_intensity", "Ambient intensity must be within [0,4].");
+        if (environment.fogDensity < 0.0F || environment.fogDensity > 0.1F)
+            Add(diagnostics, path, get("fog_density")->second, "fog_density", "Fog density must be within [0,0.1].");
+        if (environment.fogStart < 0.0F || environment.fogStart > 1000.0F)
+            Add(diagnostics, path, get("fog_start")->second, "fog_start", "Fog start must be within [0,1000] metres.");
+        if (environment.windStrength < 0.0F || environment.windStrength > 1.0F)
+            Add(diagnostics, path, get("wind_strength")->second, "wind_strength", "Wind strength must be within [0,1].");
+        candidate.hasEnvironment = true;
     }
 
     const AssetRecord* worldAsset = registry.Find(candidate.id);

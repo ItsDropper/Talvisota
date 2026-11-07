@@ -41,6 +41,36 @@ bool ValidateSceneSnapshot(const SceneSnapshot& scene, std::string& error)
         return false;
     }
 
+    if (scene.environment.enabled) {
+        const auto length3 = [](const std::array<float, 3>& v) {
+            return std::sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+        };
+        const float sunLength = length3(scene.environment.sunDirection);
+        const float windLength = std::hypot(scene.environment.windDirection[0],
+            scene.environment.windDirection[1]);
+        const auto validColor = [](const std::array<float, 3>& v) {
+            return std::all_of(v.begin(), v.end(), [](float x) {
+                return std::isfinite(x) && x >= 0.0F && x <= 16.0F;
+            });
+        };
+        if (!validColor(scene.environment.sunColor) || !validColor(scene.environment.ambientColor) ||
+            !validColor(scene.environment.fogColor) || !std::isfinite(sunLength) ||
+            std::abs(sunLength - 1.0F) > 0.02F || !std::isfinite(windLength) ||
+            std::abs(windLength - 1.0F) > 0.02F ||
+            !std::isfinite(scene.environment.sunIntensity) || scene.environment.sunIntensity < 0.0F ||
+            scene.environment.sunIntensity > 10.0F ||
+            !std::isfinite(scene.environment.ambientIntensity) || scene.environment.ambientIntensity < 0.0F ||
+            scene.environment.ambientIntensity > 4.0F ||
+            !std::isfinite(scene.environment.fogDensity) || scene.environment.fogDensity < 0.0F ||
+            scene.environment.fogDensity > 0.1F ||
+            !std::isfinite(scene.environment.fogStart) || scene.environment.fogStart < 0.0F ||
+            !std::isfinite(scene.environment.windStrength) || scene.environment.windStrength < 0.0F ||
+            scene.environment.windStrength > 1.0F) {
+            error = "Scene environment contains invalid lighting, fog, or wind parameters.";
+            return false;
+        }
+    }
+
     for (std::size_t meshIndex = 0; meshIndex < scene.meshes.size(); ++meshIndex) {
         const RenderMesh& mesh = scene.meshes[meshIndex];
         if (mesh.vertices.empty() || mesh.indices.empty() || mesh.indices.size() % 3U != 0U) {

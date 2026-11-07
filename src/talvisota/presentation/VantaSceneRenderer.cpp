@@ -151,6 +151,22 @@ public:
         };
         view.elapsedSeconds = snapshot.camera.elapsedSeconds;
         view.frameNumber = snapshot.camera.frameNumber;
+        view.environment.enabled = snapshot.environment.enabled;
+        view.environment.sunDirection = {snapshot.environment.sunDirection[0],
+            snapshot.environment.sunDirection[1], snapshot.environment.sunDirection[2]};
+        view.environment.sunColor = {snapshot.environment.sunColor[0],
+            snapshot.environment.sunColor[1], snapshot.environment.sunColor[2]};
+        view.environment.sunIntensity = snapshot.environment.sunIntensity;
+        view.environment.ambientColor = {snapshot.environment.ambientColor[0],
+            snapshot.environment.ambientColor[1], snapshot.environment.ambientColor[2]};
+        view.environment.ambientIntensity = snapshot.environment.ambientIntensity;
+        view.environment.fogColor = {snapshot.environment.fogColor[0],
+            snapshot.environment.fogColor[1], snapshot.environment.fogColor[2]};
+        view.environment.fogDensity = snapshot.environment.fogDensity;
+        view.environment.fogStart = snapshot.environment.fogStart;
+        view.environment.windDirection = {snapshot.environment.windDirection[0],
+            snapshot.environment.windDirection[1]};
+        view.environment.windStrength = snapshot.environment.windStrength;
         const vanta::renderer::SceneFrame frame = m_scene.BuildFrame(view);
 
         const bool rendered = m_d3d12 ? m_d3d12->Render(frame) : m_d3d11->Render(frame);

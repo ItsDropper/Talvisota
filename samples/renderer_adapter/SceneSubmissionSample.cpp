@@ -219,6 +219,20 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
         error = "Sakkola scene import produced no renderable world content.";
         return false;
     }
+    if (world.hasEnvironment) {
+        scene.environment.enabled = true;
+        scene.environment.sunDirection = world.environment.sunDirection;
+        scene.environment.sunColor = world.environment.sunColor;
+        scene.environment.sunIntensity = world.environment.sunIntensity;
+        scene.environment.ambientColor = world.environment.ambientColor;
+        scene.environment.ambientIntensity = world.environment.ambientIntensity;
+        scene.environment.fogColor = world.environment.fogColor;
+        scene.environment.fogDensity = world.environment.fogDensity;
+        scene.environment.fogStart = world.environment.fogStart;
+        scene.environment.windDirection = world.environment.windDirection;
+        scene.environment.windStrength = world.environment.windStrength;
+    }
+
     std::cout << "Loaded " << region.id << ": " << placementCount << " placements, "
         << importedModelCount << " distinct OBJ models, " << scene.meshes.size()
         << " submeshes, " << drawCount << " material-bound draw instances.\n";

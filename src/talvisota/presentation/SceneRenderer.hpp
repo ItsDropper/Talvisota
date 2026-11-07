@@ -68,6 +68,21 @@ struct CameraFrame final
     std::uint64_t frameNumber = 0;
 };
 
+struct RenderEnvironment final
+{
+    bool enabled = false;
+    std::array<float, 3> sunDirection{-0.45F, 0.28F, -0.85F};
+    std::array<float, 3> sunColor{1.0F, 0.88F, 0.72F};
+    float sunIntensity = 2.4F;
+    std::array<float, 3> ambientColor{0.32F, 0.42F, 0.56F};
+    float ambientIntensity = 0.9F;
+    std::array<float, 3> fogColor{0.55F, 0.66F, 0.78F};
+    float fogDensity = 0.0035F;
+    float fogStart = 40.0F;
+    std::array<float, 2> windDirection{0.914F, 0.406F};
+    float windStrength = 0.06F;
+};
+
 struct SceneSnapshot final
 {
     CameraFrame camera;
