@@ -26,6 +26,14 @@ void Add(std::vector<EngineAssetDiagnostic>& diagnostics, const std::filesystem:
     diagnostics.push_back({path, std::move(field), std::move(message)});
 }
 
+[[nodiscard]] std::string LowerExtension(const std::filesystem::path& path)
+{
+    std::string extension = path.extension().string();
+    std::transform(extension.begin(), extension.end(), extension.begin(),
+                   [](unsigned char value) { return static_cast<char>(std::tolower(value)); });
+    return extension;
+}
+
 [[nodiscard]] bool IsWithinRoot(const std::filesystem::path& root,
                                 const std::filesystem::path& candidate)
 {
@@ -303,7 +311,7 @@ bool ValidateEngineAssets(const ContentRegistry& registry, EngineAssetSummary& o
         }
         if (asset.kind == AssetKind::Texture)
         {
-            if (canonicalSource.extension() == ".ttex")
+            if (LowerExtension(canonicalSource) == ".ttex")
             {
                 vanta::assets::ProcessedTexture processed;
                 std::string textureError;
@@ -318,14 +326,12 @@ bool ValidateEngineAssets(const ContentRegistry& registry, EngineAssetSummary& o
                 return false;
             continue;
         }
-        if (asset.kind == AssetKind::Material && canonicalSource.extension() == ".mtl")
+        if (asset.kind == AssetKind::Material && LowerExtension(canonicalSource) == ".mtl")
             continue;
         if (asset.kind == AssetKind::Audio)
         {
             std::string audioError;
-            std::string extension = canonicalSource.extension().string();
-            std::transform(extension.begin(), extension.end(), extension.begin(),
-                           [](unsigned char value) { return static_cast<char>(std::tolower(value)); });
+            const std::string extension = LowerExtension(canonicalSource);
             if (extension != ".wav" || !ValidatePcmWave(canonicalSource, audioError))
             {
                 Add(diagnostics, canonicalSource, "audio",
