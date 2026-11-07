@@ -74,9 +74,9 @@ talvisota_apply_compiler_options(talvisota_environment_texture_gen)
 add_custom_target(talvisota_environment_textures ALL
     COMMAND $<TARGET_FILE:talvisota_environment_texture_gen>
         "${CMAKE_CURRENT_SOURCE_DIR}/assets/textures/environment"
-    DEPENDS talvisota_environment_texture_gen
     VERBATIM
 )
+add_dependencies(talvisota_environment_textures talvisota_environment_texture_gen)
 add_dependencies(talvisota_content_validate talvisota_environment_textures)
 
 add_library(talvisota_renderer_contract STATIC
