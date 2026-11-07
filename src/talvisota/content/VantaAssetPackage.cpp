@@ -502,11 +502,7 @@ bool ValidateAssetPackage(const std::filesystem::path& packageRoot, AssetPackage
             Add(diagnostics, issue.file, issue.field, issue.message);
         return false;
     }
-    if (packagedRegistry.Assets().size() < records.size())
-    {
-        Add(diagnostics, catalogPath, "catalog", "Packaged catalog contains fewer assets than the integrity inventory.");
-        return false;
-    }
+    std::size_t presentCatalogAssets = 0U;
     for (const AssetRecord& asset : packagedRegistry.Assets())
     {
         std::error_code existsError;
@@ -518,6 +514,7 @@ bool ValidateAssetPackage(const std::filesystem::path& packageRoot, AssetPackage
         }
         if (!exists && !asset.required)
             continue;
+        ++presentCatalogAssets;
         const auto found = records.find(asset.id);
         if (found == records.end() || found->second.kind != KindName(asset.kind) ||
             found->second.path != PathUtf8(asset.relativePath.lexically_normal()) ||
@@ -528,7 +525,16 @@ bool ValidateAssetPackage(const std::filesystem::path& packageRoot, AssetPackage
             return false;
         }
     }
-    if (records.size() != candidate.assetCount)
+    for (const auto& [id, record] : records)
+    {
+        if (packagedRegistry.Find(id) == nullptr)
+        {
+            Add(diagnostics, root / record.path, "catalog",
+                "Integrity inventory contains an asset ID absent from the packaged catalog.");
+            return false;
+        }
+    }
+    if (records.size() != presentCatalogAssets || records.size() != candidate.assetCount)
     {
         Add(diagnostics, catalogPath, "catalog", "Packaged catalog and inventory asset counts differ.");
         return false;
