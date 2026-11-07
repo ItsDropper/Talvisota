@@ -211,8 +211,10 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
     for (const auto& placement : region.placements) {
         const bool tree = placement.category == talvisota::world::PlacementCategory::Vegetation;
         const bool boulder = placement.category == talvisota::world::PlacementCategory::Rock;
+        const bool fallenLog = placement.id.rfind("prop.fallen_log.", 0) == 0;
+        const bool stump = placement.id.rfind("prop.stump.", 0) == 0;
         const bool shorelineReed = placement.id.rfind("prop.reeds.", 0) == 0;
-        if (!tree && !boulder && !shorelineReed)
+        if (!tree && !boulder && !fallenLog && !stump && !shorelineReed)
             continue;
 
         float surfaceHeight = 0.0F;
@@ -224,13 +226,14 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
         Require(std::abs(placement.position[1] - surfaceHeight) <= 0.002F,
                 "Trees, boulders, and shoreline reeds must rest on the sampled terrain surface.");
 
-        if (tree) {
-            const auto trunk = std::find_if(region.collision.begin(), region.collision.end(),
-                [&placement](const auto& box) { return box.id == placement.id + ".trunk"; });
-            Require(trunk != region.collision.end(),
-                    "Every Sakkola tree placement must have its matching trunk collision volume.");
-            Require(std::abs((trunk->center[1] - trunk->halfExtents[1]) - surfaceHeight) <= 0.002F,
-                    "Tree trunk collision bottoms must agree with the visual tree base and terrain surface.");
+        if (tree || fallenLog || stump) {
+            const std::string collisionId = placement.id + (tree ? ".trunk" : ".collision");
+            const auto collision = std::find_if(region.collision.begin(), region.collision.end(),
+                [&collisionId](const auto& box) { return box.id == collisionId; });
+            Require(collision != region.collision.end(),
+                    "Every grounded tree, fallen log, and stump must have its matching collision volume.");
+            Require(std::abs((collision->center[1] - collision->halfExtents[1]) - surfaceHeight) <= 0.002F,
+                    "Grounded vegetation and deadwood collision bottoms must agree with the terrain surface.");
         }
     }
 

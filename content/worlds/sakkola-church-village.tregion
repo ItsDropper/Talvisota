@@ -486,42 +486,42 @@ collision	tree.spruce.169.trunk	-219.29	8.360	-114.09	0.23	2.87	0.23
 placement	tree.birch.170	vegetation	model.environment.birch	-	-61.66	5.580	-7.79	24.6	1.182
 collision	tree.birch.170.trunk	-61.66	9.540	-7.79	0.28	3.96	0.28
 placement	rock.granite.1	rock	model.environment.boulder	-	-211.00	5.412	5.00	118.7	1.328
-collision	rock.granite.1.collision	-211.00	6.141	5.00	1.59	1.06	1.33
+collision	rock.granite.1.collision	-211.00	6.472	5.00	1.59	1.06	1.33
 placement	rock.granite.2	rock	model.environment.boulder	-	-178.00	7.346	92.00	281.7	1.038
-collision	rock.granite.2.collision	-178.00	7.919	92.00	1.25	0.83	1.04
+collision	rock.granite.2.collision	-178.00	8.176	92.00	1.25	0.83	1.04
 placement	rock.granite.3	rock	model.environment.boulder	-	198.00	9.348	42.00	297.2	0.795
-collision	rock.granite.3.collision	198.00	9.790	42.00	0.95	0.64	0.80
+collision	rock.granite.3.collision	198.00	9.988	42.00	0.95	0.64	0.80
 placement	rock.granite.4	rock	model.environment.boulder	-	216.00	7.812	156.00	348.2	1.277
-collision	rock.granite.4.collision	216.00	8.510	156.00	1.53	1.02	1.28
+collision	rock.granite.4.collision	216.00	8.832	156.00	1.53	1.02	1.28
 placement	rock.granite.5	rock	model.environment.boulder	-	-204.00	4.784	185.00	205.6	1.186
-collision	rock.granite.5.collision	-204.00	5.440	185.00	1.42	0.95	1.19
+collision	rock.granite.5.collision	-204.00	5.734	185.00	1.42	0.95	1.19
 placement	rock.granite.6	rock	model.environment.boulder	-	130.00	7.620	-80.00	237.5	1.059
-collision	rock.granite.6.collision	130.00	8.199	-80.00	1.27	0.85	1.06
+collision	rock.granite.6.collision	130.00	8.470	-80.00	1.27	0.85	1.06
 placement	rock.granite.7	rock	model.environment.boulder	-	-132.00	4.521	-118.00	199.1	1.314
-collision	rock.granite.7.collision	-132.00	5.239	-118.00	1.58	1.05	1.31
+collision	rock.granite.7.collision	-132.00	5.571	-118.00	1.58	1.05	1.31
 placement	rock.granite.8	rock	model.environment.boulder	-	35.00	1.780	-168.00	281.6	0.890
-collision	rock.granite.8.collision	35.00	2.269	-168.00	1.07	0.71	0.89
-placement	prop.fallen_log.01	prop	model.environment.fallen_log	-	-130.10	7.696	84.07	11.5	1.293
-placement	prop.fallen_log.02	prop	model.environment.fallen_log	-	173.39	8.066	-141.05	188.5	1.060
+collision	rock.granite.8.collision	35.00	2.490	-168.00	1.07	0.71	0.89
+placement	prop.fallen_log.01	prop	model.environment.fallen_log	-	-130.10	7.695	84.07	11.5	1.293
+placement	prop.fallen_log.02	prop	model.environment.fallen_log	-	173.39	7.702	-141.05	188.5	1.060
 placement	prop.fallen_log.03	prop	model.environment.fallen_log	-	-210.27	6.915	60.24	264.4	1.329
-placement	prop.fallen_log.04	prop	model.environment.fallen_log	-	137.06	8.612	181.41	9.4	1.420
-placement	prop.fallen_log.05	prop	model.environment.fallen_log	-	-217.85	5.104	134.53	215.8	1.111
-placement	prop.fallen_log.06	prop	model.environment.fallen_log	-	138.84	8.564	-4.12	33.2	1.218
-placement	prop.fallen_log.07	prop	model.environment.fallen_log	-	-80.29	5.349	17.14	14.0	1.212
-placement	prop.fallen_log.08	prop	model.environment.fallen_log	-	-110.96	4.241	-129.89	51.8	1.321
+placement	prop.fallen_log.04	prop	model.environment.fallen_log	-	137.06	8.611	181.41	9.4	1.420
+placement	prop.fallen_log.05	prop	model.environment.fallen_log	-	-217.85	5.108	134.53	215.8	1.111
+placement	prop.fallen_log.06	prop	model.environment.fallen_log	-	138.84	8.565	-4.12	33.2	1.218
+placement	prop.fallen_log.07	prop	model.environment.fallen_log	-	-80.29	5.350	17.14	14.0	1.212
+placement	prop.fallen_log.08	prop	model.environment.fallen_log	-	-110.96	4.242	-129.89	51.8	1.321
 placement	prop.fallen_log.09	prop	model.environment.fallen_log	-	207.62	9.226	38.25	30.7	1.202
 placement	prop.fallen_log.10	prop	model.environment.fallen_log	-	-124.45	7.946	103.81	166.9	1.221
-placement	prop.fallen_log.11	prop	model.environment.fallen_log	-	25.07	8.850	3.40	201.7	1.342
-placement	prop.fallen_log.12	prop	model.environment.fallen_log	-	-117.44	8.069	123.92	86.8	0.962
-placement	prop.stump.01	prop	model.environment.stump	-	208.90	8.042	-126.49	215.6	1.043
-placement	prop.stump.02	prop	model.environment.stump	-	-42.32	6.302	5.07	11.3	0.889
-placement	prop.stump.03	prop	model.environment.stump	-	-129.00	7.550	142.92	128.0	1.139
-placement	prop.stump.04	prop	model.environment.stump	-	-219.09	4.227	-63.02	223.7	0.941
-placement	prop.stump.05	prop	model.environment.stump	-	89.05	7.321	-33.20	85.7	1.042
+placement	prop.fallen_log.11	prop	model.environment.fallen_log	-	25.07	8.848	3.40	201.7	1.342
+placement	prop.fallen_log.12	prop	model.environment.fallen_log	-	-117.44	8.068	123.92	86.8	0.962
+placement	prop.stump.01	prop	model.environment.stump	-	208.90	8.043	-126.49	215.6	1.043
+placement	prop.stump.02	prop	model.environment.stump	-	-42.32	6.303	5.07	11.3	0.889
+placement	prop.stump.03	prop	model.environment.stump	-	-129.00	7.549	142.92	128.0	1.139
+placement	prop.stump.04	prop	model.environment.stump	-	-219.09	4.228	-63.02	223.7	0.941
+placement	prop.stump.05	prop	model.environment.stump	-	89.05	7.322	-33.20	85.7	1.042
 placement	prop.stump.06	prop	model.environment.stump	-	-68.80	4.402	-85.81	245.9	1.116
-placement	prop.stump.07	prop	model.environment.stump	-	113.24	7.968	-143.19	259.5	1.019
-placement	prop.stump.08	prop	model.environment.stump	-	-197.44	4.805	185.15	37.3	0.761
-placement	prop.stump.09	prop	model.environment.stump	-	80.72	8.200	201.52	42.9	0.853
+placement	prop.stump.07	prop	model.environment.stump	-	113.24	7.965	-143.19	259.5	1.019
+placement	prop.stump.08	prop	model.environment.stump	-	-197.44	4.806	185.15	37.3	0.761
+placement	prop.stump.09	prop	model.environment.stump	-	80.72	8.202	201.52	42.9	0.853
 placement	prop.stump.10	prop	model.environment.stump	-	208.81	9.319	9.92	257.2	0.955
 placement	prop.woodpile.west	prop	model.environment.woodpile	-	-54.00	8.066	119.00	18.0	1.000
 placement	prop.woodpile.east	prop	model.environment.woodpile	-	51.00	8.184	128.00	210.0	0.920
@@ -550,28 +550,28 @@ placement	prop.reeds.09	prop	model.environment.reeds	-	105.61	2.332	-159.00	284.
 placement	prop.reeds.10	prop	model.environment.reeds	-	144.16	2.246	-155.98	351.8	1.026
 placement	prop.reeds.11	prop	model.environment.reeds	-	176.28	2.390	-154.11	151.7	1.314
 placement	prop.reeds.12	prop	model.environment.reeds	-	220.62	2.434	-169.25	227.7	1.480
-collision	prop.fallen_log.01.collision	-130.10	7.98	84.07	1.20	0.28	0.38
-collision	prop.fallen_log.02.collision	173.39	8.35	-141.05	1.20	0.28	0.38
-collision	prop.fallen_log.03.collision	-210.27	7.20	60.24	1.20	0.28	0.38
-collision	prop.fallen_log.04.collision	137.06	8.89	181.41	1.20	0.28	0.38
-collision	prop.fallen_log.05.collision	-217.85	5.38	134.53	1.20	0.28	0.38
-collision	prop.fallen_log.06.collision	138.84	8.84	-4.12	1.20	0.28	0.38
-collision	prop.fallen_log.07.collision	-80.29	5.63	17.14	1.20	0.28	0.38
-collision	prop.fallen_log.08.collision	-110.96	4.52	-129.89	1.20	0.28	0.38
-collision	prop.fallen_log.09.collision	207.62	9.51	38.25	1.20	0.28	0.38
-collision	prop.fallen_log.10.collision	-124.45	8.23	103.81	1.20	0.28	0.38
-collision	prop.fallen_log.11.collision	25.07	9.13	3.40	1.20	0.28	0.38
-collision	prop.fallen_log.12.collision	-117.44	8.35	123.92	1.20	0.28	0.38
-collision	prop.stump.01.collision	208.90	8.46	-126.49	0.45	0.42	0.45
-collision	prop.stump.02.collision	-42.32	6.72	5.07	0.45	0.42	0.45
-collision	prop.stump.03.collision	-129.00	7.97	142.92	0.45	0.42	0.45
-collision	prop.stump.04.collision	-219.09	4.65	-63.02	0.45	0.42	0.45
-collision	prop.stump.05.collision	89.05	7.74	-33.20	0.45	0.42	0.45
-collision	prop.stump.06.collision	-68.80	4.82	-85.81	0.45	0.42	0.45
-collision	prop.stump.07.collision	113.24	8.39	-143.19	0.45	0.42	0.45
-collision	prop.stump.08.collision	-197.44	5.23	185.15	0.45	0.42	0.45
-collision	prop.stump.09.collision	80.72	8.62	201.52	0.45	0.42	0.45
-collision	prop.stump.10.collision	208.81	9.74	9.92	0.45	0.42	0.45
+collision	prop.fallen_log.01.collision	-130.10	7.975	84.07	1.20	0.28	0.38
+collision	prop.fallen_log.02.collision	173.39	7.982	-141.05	1.20	0.28	0.38
+collision	prop.fallen_log.03.collision	-210.27	7.195	60.24	1.20	0.28	0.38
+collision	prop.fallen_log.04.collision	137.06	8.891	181.41	1.20	0.28	0.38
+collision	prop.fallen_log.05.collision	-217.85	5.388	134.53	1.20	0.28	0.38
+collision	prop.fallen_log.06.collision	138.84	8.845	-4.12	1.20	0.28	0.38
+collision	prop.fallen_log.07.collision	-80.29	5.630	17.14	1.20	0.28	0.38
+collision	prop.fallen_log.08.collision	-110.96	4.522	-129.89	1.20	0.28	0.38
+collision	prop.fallen_log.09.collision	207.62	9.506	38.25	1.20	0.28	0.38
+collision	prop.fallen_log.10.collision	-124.45	8.226	103.81	1.20	0.28	0.38
+collision	prop.fallen_log.11.collision	25.07	9.128	3.40	1.20	0.28	0.38
+collision	prop.fallen_log.12.collision	-117.44	8.348	123.92	1.20	0.28	0.38
+collision	prop.stump.01.collision	208.90	8.463	-126.49	0.45	0.42	0.45
+collision	prop.stump.02.collision	-42.32	6.723	5.07	0.45	0.42	0.45
+collision	prop.stump.03.collision	-129.00	7.969	142.92	0.45	0.42	0.45
+collision	prop.stump.04.collision	-219.09	4.648	-63.02	0.45	0.42	0.45
+collision	prop.stump.05.collision	89.05	7.742	-33.20	0.45	0.42	0.45
+collision	prop.stump.06.collision	-68.80	4.822	-85.81	0.45	0.42	0.45
+collision	prop.stump.07.collision	113.24	8.385	-143.19	0.45	0.42	0.45
+collision	prop.stump.08.collision	-197.44	5.226	185.15	0.45	0.42	0.45
+collision	prop.stump.09.collision	80.72	8.622	201.52	0.45	0.42	0.45
+collision	prop.stump.10.collision	208.81	9.739	9.92	0.45	0.42	0.45
 collision	prop.woodpile.west.collision	-54.00	8.97	119.00	1.30	0.90	0.80
 collision	prop.woodpile.east.collision	51.00	8.98	128.00	1.20	0.80	0.70
 collision	prop.well.farmstead.collision	-57.00	10.09	129.00	1.10	1.80	1.10
