@@ -150,6 +150,8 @@ There is no historical content schema version to migrate. The current authored f
 
 ## M4 — World foundation and first representative environment
 
+**Implementation status (2026-11-07): in progress.** The first game-owned region composition slice is implemented: `.tregion` v1 defines bounded visual placements, independent collision boxes, and directed navigation nodes/edges; the loader validates parent-world containment, stable asset references, explicit manifest dependencies, finite transforms, unique local IDs, collision extents, and navigation references. Region load/reload is transactional and unload clears the active region. The initial Central Finland region is registered in the shipped content catalog. Headless Debug/Release CI verification is pending for this change. This does not yet implement collision queries, pathfinding, renderer-backed presentation, environment lighting/weather, or streaming, and M4 is not complete.
+
 **Goal:** Prove the game can own, load, traverse, and present a complete environment.
 
 Work:
