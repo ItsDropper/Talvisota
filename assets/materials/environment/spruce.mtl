@@ -1,6 +1,6 @@
 newmtl bark
 Kd 1.0 1.0 1.0
-Pr 0.94
+Pr 1.0
 Pm 0.0
 map_Kd ../../textures/environment/bark-albedo.bmp
 map_Bump ../../textures/environment/bark-normal.bmp
@@ -9,7 +9,7 @@ map_AO ../../textures/environment/bark-ao.bmp
 
 newmtl needles
 Kd 1.0 1.0 1.0
-Pr 0.91
+Pr 1.0
 Pm 0.0
 map_Kd ../../textures/environment/pine_needles-albedo.bmp
 map_Bump ../../textures/environment/pine_needles-normal.bmp
@@ -18,7 +18,7 @@ map_AO ../../textures/environment/pine_needles-ao.bmp
 
 newmtl snow
 Kd 1.0 1.0 1.0
-Pr 0.87
+Pr 1.0
 Pm 0.0
 map_Kd ../../textures/environment/snow-albedo.bmp
 map_Bump ../../textures/environment/snow-normal.bmp
