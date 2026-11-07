@@ -13,6 +13,7 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
+#include <cstdio>
 #include <filesystem>
 #include <iostream>
 #include <map>
@@ -287,8 +288,15 @@ bool CaptureClientPng(HWND window, const std::filesystem::path& path, std::strin
     if (SUCCEEDED(hr)) hr = encoder->Commit();
     if (FAILED(hr)) { error = "PNG encoding failed with HRESULT " +
         std::to_string(static_cast<unsigned long>(hr)); return false; }
+    std::error_code sizeError;
+    const auto bytes = std::filesystem::file_size(path, sizeError);
+    if (sizeError || bytes < 1024U) {
+        error = "Screenshot encoder returned success but the PNG file is absent or implausibly small.";
+        return false;
+    }
     error.clear();
-    std::cout << "Captured " << path.string() << " (" << width << "x" << height << ").\n";
+    std::cout << "Captured " << path.string() << " (" << width << "x" << height
+        << ", " << bytes << " bytes).\n";
     return true;
 }
 
@@ -303,6 +311,12 @@ constexpr std::array<CaptureView, 5> Views = {{
 }
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR commandLine, int showCommand) {
+    if (AttachConsole(ATTACH_PARENT_PROCESS)) {
+        FILE* console = nullptr;
+        (void)freopen_s(&console, "CONOUT$", "w", stdout);
+        (void)freopen_s(&console, "CONOUT$", "w", stderr);
+        std::ios::sync_with_stdio(true);
+    }
     const HRESULT comResult = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     const bool ownsCom = SUCCEEDED(comResult);
     if (FAILED(comResult) && comResult != RPC_E_CHANGED_MODE) return 1;
@@ -381,7 +395,12 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR commandLine, int showCo
     std::uint64_t frameNumber = 0;
     if (!captureDir.empty()) {
         const std::filesystem::path output(captureDir);
+        std::error_code directoryError;
+        std::filesystem::create_directories(output, directoryError);
+        if (directoryError)
+            error = "Could not create screenshot output directory: " + directoryError.message();
         for (const auto& view : Views) {
+            if (!error.empty()) break;
             GetClientRect(window, &client);
             if (!SetCamera(scene, view.eye, view.target, client.right - client.left, client.bottom - client.top)) {
                 error = "Could not construct a valid Sakkola capture camera.";

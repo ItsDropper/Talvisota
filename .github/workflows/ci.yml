@@ -93,12 +93,20 @@ jobs:
 
       - name: Render Sakkola terrain viewpoints
         timeout-minutes: 20
-        run: .\build-msvc\talvisota_renderer_sample.exe --backend=d3d12 --capture-dir=$env:RUNNER_TEMP\sakkola-captures --frames-per-view=5
+        shell: pwsh
+        run: |
+          $captureDir = Join-Path $env:RUNNER_TEMP 'sakkola-captures'
+          New-Item -ItemType Directory -Force -Path $captureDir | Out-Null
+          & .\build-msvc\talvisota_renderer_sample.exe "--backend=d3d12" "--capture-dir=$captureDir" "--frames-per-view=5"
+          if ($LASTEXITCODE -ne 0) { throw "Sakkola renderer exited with code $LASTEXITCODE" }
+          $captures = @(Get-ChildItem -LiteralPath $captureDir -Filter '*.png' -File)
+          if ($captures.Count -ne 5) { throw "Expected five rendered PNGs, found $($captures.Count)" }
+          $captures | Format-Table Name, Length
 
       - name: Upload Sakkola terrain screenshots
         uses: actions/upload-artifact@v4
         with:
           name: talvisota-sakkola-terrain-screenshots
-          path: ${{ runner.temp }}\sakkola-captures\*.png
+          path: ${{ runner.temp }}/sakkola-captures/*.png
           if-no-files-found: error
           retention-days: 30
