@@ -46,6 +46,8 @@ jobs:
 
       - name: Application smoke test
         run: .\build\talvisota.exe --help
+\n      - name: Content validator smoke test
+        run: .\build\talvisota_content_validate.exe --help
 
   windows-msvc-renderer-adapter:
     name: Windows x64 / MSVC renderer adapter
