@@ -43,7 +43,7 @@ public:
         root_ = std::filesystem::temp_directory_path() / ("talvisota-package-" + std::to_string(stamp));
         package_ = root_.parent_path() / (root_.filename().string() + "-output");
         std::filesystem::create_directories(root_);
-        Write("definitions/world.tworld", "fixture definition\n");
+        Write("definitions/world.tworld", WorldText());
         Write("catalog.tmanifest",
             "talvisota-content-manifest\t1\n"
             "asset\tworld.fixture\tdefinition\tdefinitions/world.tworld\trequired\t-\tproject\tproject\n"
@@ -81,7 +81,7 @@ void TestBuildsAndVerifiesDeterministicInventory()
     std::vector<EngineAssetDiagnostic> diagnostics;
     Require(BuildAssetPackage(registry, fixture.Package(), built, diagnostics),
             "Package builder should publish a valid package.");
-    Require(built.assetCount == 1U && built.totalBytes == std::string("fixture definition\n").size(),
+    Require(built.assetCount == 1U && built.totalBytes == WorldText().size(),
             "Package should include the required file and omit the absent optional file.");
     AssetPackageSummary verified;
     Require(ValidateAssetPackage(fixture.Package(), verified, diagnostics),
