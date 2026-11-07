@@ -111,6 +111,30 @@ void TestLoadsComposedRegionAndIndependentSpatialData()
             "Collision boxes should be represented independently of visual placements.");
     Require(region.navigationNodes.size() == 3U && region.navigationEdges.size() == 2U,
             "Navigation graph should be loaded independently of collision and visual geometry.");
+    const auto transform = talvisota::world::BuildPlacementTransform(region.placements[1]);
+    Require(transform[12] == 4.0F && transform[13] == 0.0F && transform[14] == 3.0F,
+            "Placement transforms should preserve world-space translation.");
+    std::vector<std::string> path;
+    std::string pathError;
+    Require(talvisota::world::FindNavigationPath(region, "path.start", "path.end", path, pathError),
+            "Directed navigation path should be found.");
+    Require(path == std::vector<std::string>({"path.start", "path.middle", "path.end"}),
+            "Pathfinding should return the connected route in order.");
+    const auto previousPath = path;
+    Require(!talvisota::world::FindNavigationPath(region, "path.end", "path.start", path, pathError),
+            "Navigation edges must remain directed.");
+    Require(path == previousPath, "Failed pathfinding must preserve caller output.");
+    bool intersects = false;
+    Require(talvisota::world::QueryCollision(region, {-2.5F, 0.0F, -2.5F},
+            {-1.5F, 0.5F, -1.5F}, intersects, pathError) && intersects,
+            "Collision query should detect overlap with authored collision boxes.");
+    Require(talvisota::world::QueryCollision(region, {8.0F, 2.0F, 8.0F},
+            {9.0F, 3.0F, 9.0F}, intersects, pathError) && !intersects,
+            "Collision query should report clear space.");
+    intersects = true;
+    Require(!talvisota::world::QueryCollision(region, {2.0F, 0.0F, 0.0F},
+            {1.0F, 1.0F, 1.0F}, intersects, pathError) && intersects,
+            "Invalid collision bounds must fail without modifying the result.");
 }
 
 void TestRejectsMissingDependenciesAndInvalidSpatialRecords()
