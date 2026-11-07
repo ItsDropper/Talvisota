@@ -110,6 +110,7 @@ void TestImportsRegisteredObjAndDecodesRegisteredTexture()
 void TestValidatesProcessedTextureContainer()
 {
     TemporaryDirectory directory;
+    directory.Write("textures/.keep", "");
     std::vector<vanta::assets::TextureMip> mipChain(1);
     mipChain[0].width = 1U;
     mipChain[0].height = 1U;
