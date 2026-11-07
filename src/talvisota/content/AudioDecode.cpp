@@ -1,6 +1,7 @@
 #include "talvisota/content/AudioDecode.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <array>
 #include <cmath>
 #include <fstream>
