@@ -12,6 +12,7 @@
 #include <fstream>
 #include <limits>
 #include <sstream>
+#include <span>
 #include <system_error>
 #include <unordered_map>
 #include <unordered_set>
@@ -242,6 +243,7 @@ bool ValidateEngineAssets(const ContentRegistry& registry, EngineAssetSummary& o
         return false;
 
     std::unordered_set<std::string> decodedTexturePaths;
+    std::unordered_set<const vanta::assets::CpuEmbeddedImage*> decodedEmbeddedImages;
     const auto decodeTexture = [&](const std::filesystem::path& sourcePath,
                                    const AssetRecord* owner,
                                    const std::filesystem::path& diagnosticPath,
@@ -476,6 +478,34 @@ bool ValidateEngineAssets(const ContentRegistry& registry, EngineAssetSummary& o
                 ? texturePath : sourcePath.parent_path() / texturePath;
             return decodeTexture(resolved, &asset, sourcePath, field);
         };
+        const auto validateEmbeddedTexture = [&](const std::shared_ptr<const vanta::assets::CpuEmbeddedImage>& image,
+                                                 const char* field) -> bool
+        {
+            if (!image)
+                return true;
+            if (!decodedEmbeddedImages.insert(image.get()).second)
+                return true;
+            vanta::assets::CpuTexture texture;
+            std::string textureError;
+            if (!vanta::assets::LoadWicTexture(
+                    std::span<const std::uint8_t>(image->encodedBytes.data(), image->encodedBytes.size()),
+                    texture, textureError))
+            {
+                Add(diagnostics, sourcePath, field,
+                    "WIC could not decode an embedded glTF image: " + textureError);
+                return false;
+            }
+            const std::uint64_t expectedBytes =
+                static_cast<std::uint64_t>(texture.width) * texture.height * 4ULL;
+            if (texture.width == 0U || texture.height == 0U || expectedBytes != texture.rgba.size())
+            {
+                Add(diagnostics, sourcePath, field,
+                    "WIC returned inconsistent dimensions or RGBA8 storage for an embedded glTF image.");
+                return false;
+            }
+            ++candidate.decodedTextures;
+            return true;
+        };
         bool texturesValid = dependenciesValid;
         for (const vanta::assets::CpuMaterial& material : model->materials)
         {
@@ -484,6 +514,11 @@ bool ValidateEngineAssets(const ContentRegistry& registry, EngineAssetSummary& o
             texturesValid = validateMaterialTexture(material.roughnessTexture, "roughnessTexture") && texturesValid;
             texturesValid = validateMaterialTexture(material.metallicTexture, "metallicTexture") && texturesValid;
             texturesValid = validateMaterialTexture(material.ambientOcclusionTexture, "occlusionTexture") && texturesValid;
+            texturesValid = validateEmbeddedTexture(material.embeddedDiffuseTexture, "embeddedBaseColorTexture") && texturesValid;
+            texturesValid = validateEmbeddedTexture(material.embeddedNormalTexture, "embeddedNormalTexture") && texturesValid;
+            texturesValid = validateEmbeddedTexture(material.embeddedRoughnessTexture, "embeddedRoughnessTexture") && texturesValid;
+            texturesValid = validateEmbeddedTexture(material.embeddedMetallicTexture, "embeddedMetallicTexture") && texturesValid;
+            texturesValid = validateEmbeddedTexture(material.embeddedAmbientOcclusionTexture, "embeddedOcclusionTexture") && texturesValid;
         }
         (void)modelStore.Unload(handle);
         if (!texturesValid)
