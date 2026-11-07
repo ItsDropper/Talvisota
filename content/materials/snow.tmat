@@ -1,4 +1,4 @@
-talvisota-material\t1
+talvisota-material	1
 id = material.environment.snow
 base_color = 0.78, 0.82, 0.86
 roughness = 0.93
