@@ -95,7 +95,7 @@ if(TALVISOTA_ENABLE_VANTA_ENGINE)
     endif()
 
     include(FetchContent)
-    set(TALVISOTA_VANTA_ENGINE_REVISION "dd9952ea1f6fde097f34df149022f1a900a75446")
+    set(TALVISOTA_VANTA_ENGINE_REVISION "1063f792bc63d8396fe34d684b5a378f50045efc")
     set(_talvisota_build_testing "${BUILD_TESTING}")
     set(BUILD_TESTING OFF)
     FetchContent_Declare(vantaengine
@@ -164,7 +164,16 @@ if(TALVISOTA_ENABLE_VANTA_ENGINE)
     )
     target_compile_features(talvisota_renderer_sample PRIVATE cxx_std_23)
     target_compile_definitions(talvisota_renderer_sample PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
-    target_link_libraries(talvisota_renderer_sample PRIVATE Talvisota::RendererAdapter)
+    target_link_libraries(talvisota_renderer_sample PRIVATE
+        Talvisota::RendererAdapter
+        Talvisota::Content
+        Talvisota::World
+        VantaEngine::Runtime
+        windowscodecs
+        ole32
+        gdi32
+        dwmapi
+    )
     talvisota_apply_compiler_options(talvisota_renderer_sample)
 endif()
 

@@ -68,7 +68,7 @@ jobs:
       - name: Configure pinned VantaEngine adapter
         run: >-
           cmake -S . -B build-msvc -G Ninja
-          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_BUILD_TYPE=Release
           -DBUILD_TESTING=ON
           -DTALVISOTA_WARNINGS_AS_ERRORS=ON
           -DTALVISOTA_ENABLE_VANTA_ENGINE=ON
@@ -90,3 +90,15 @@ jobs:
 
       - name: Texture processor help smoke test
         run: .\build-msvc\talvisota_texture_process.exe --help
+
+      - name: Render Sakkola terrain viewpoints
+        timeout-minutes: 20
+        run: .\build-msvc\talvisota_renderer_sample.exe --backend=d3d12 --capture-dir=$env:RUNNER_TEMP\sakkola-captures --frames-per-view=5
+
+      - name: Upload Sakkola terrain screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: talvisota-sakkola-terrain-screenshots
+          path: ${{ runner.temp }}\sakkola-captures\*.png
+          if-no-files-found: error
+          retention-days: 30
