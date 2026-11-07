@@ -43,6 +43,17 @@ struct NavigationEdge final
     std::string to;
 };
 
+struct TerrainHeightfield final
+{
+    std::size_t rows = 0;
+    std::size_t columns = 0;
+    float originX = 0.0F;
+    float originZ = 0.0F;
+    float spacingX = 1.0F;
+    float spacingZ = 1.0F;
+    std::vector<float> elevations;
+};
+
 struct WorldRegion final
 {
     std::string id;
@@ -50,6 +61,7 @@ struct WorldRegion final
     std::array<float, 3> boundsMin{};
     std::array<float, 3> boundsMax{};
     std::vector<WorldPlacement> placements;
+    TerrainHeightfield terrain;
     std::vector<CollisionBox> collision;
     std::vector<NavigationNode> navigationNodes;
     std::vector<NavigationEdge> navigationEdges;
@@ -64,6 +76,9 @@ struct WorldRegionDiagnostic final
 };
 
 [[nodiscard]] std::array<float, 16> BuildPlacementTransform(const WorldPlacement& placement) noexcept;
+[[nodiscard]] bool SampleTerrainHeight(const WorldRegion& region, float x, float z,
+                                      float& height, std::array<float, 3>& normal,
+                                      std::string& error);
 [[nodiscard]] bool QueryCollision(const WorldRegion& region,
                                   const std::array<float, 3>& queryMin,
                                   const std::array<float, 3>& queryMax,
