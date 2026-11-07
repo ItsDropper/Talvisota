@@ -1,5 +1,5 @@
 #include "talvisota/content/ContentRegistry.hpp"
-#include "talvisota/content/MaterialDefinition.hpp"
+#include "talvisota/content/MaterialDefinition.hpp"\n#include "talvisota/content/WorldDefinition.hpp"
 
 #include <exception>
 #include <filesystem>
@@ -58,6 +58,20 @@ int main(int argc, char** argv)
         std::size_t materialCount = 0;
         for (const auto& asset : registry.Assets())
         {
+            if (asset.kind == talvisota::content::AssetKind::Definition &&
+                asset.relativePath.extension() == ".tworld")
+            {
+                talvisota::content::WorldDefinition world;
+                std::vector<talvisota::content::WorldDiagnostic> worldDiagnostics;
+                if (!talvisota::content::LoadWorldDefinition(contentRoot / asset.relativePath, registry,
+                                                             world, worldDiagnostics))
+                {
+                    for (const auto& diagnostic : worldDiagnostics)
+                        PrintDiagnostic(diagnostic.file, diagnostic.line, diagnostic.field, diagnostic.message);
+                    return 1;
+                }
+                continue;
+            }
             if (asset.kind != talvisota::content::AssetKind::Material)
                 continue;
 
