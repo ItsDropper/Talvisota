@@ -226,17 +226,21 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
                   0.76F + broad * 0.07F + scuff * 0.03F,
                   height, 0.86F + medium * 0.11F, 0.94F - Smooth((scuff - 0.8F) * 3.0F) * 0.13F};
     }
-    else if (preset == "water")
+    else if (preset == "ice")
     {
-        const float waveA = std::sin((u * 13.0F + v * 3.0F +
-            (broad - 0.5F) * 0.22F) * 2.0F * Pi);
-        const float waveB = std::sin((u * 31.0F - v * 8.0F +
-            (medium - 0.5F) * 0.12F) * 2.0F * Pi);
-        const float height = 0.50F + waveA * 0.022F + waveB * 0.012F + (fine - 0.5F) * 0.05F;
-        sample = {0.035F + broad * 0.025F + waveA * 0.004F,
-                  0.075F + broad * 0.035F + waveA * 0.006F,
-                  0.105F + medium * 0.045F + waveB * 0.009F,
-                  height, 0.13F + medium * 0.10F, 0.92F + broad * 0.07F};
+        const float fractureNoise = Fbm(u, v, 12, seed ^ 0x5be0cd19U, 4);
+        const float fractureLines = std::sin((u * 18.0F + v * 7.0F +
+            (broad - 0.5F) * 0.8F) * 2.0F * Pi);
+        const float fracture = Smooth((std::abs(fractureLines) - 0.91F) * 18.0F) *
+            Smooth((fractureNoise - 0.24F) * 2.2F);
+        const float frost = Smooth((medium - 0.42F) * 2.1F);
+        const float height = 0.50F + (fractureNoise - 0.5F) * 0.075F +
+            (fine - 0.5F) * 0.035F + fracture * 0.055F;
+        sample = {0.43F + broad * 0.10F + frost * 0.15F - fracture * 0.24F,
+                  0.57F + medium * 0.11F + frost * 0.16F - fracture * 0.22F,
+                  0.68F + fine * 0.10F + frost * 0.17F - fracture * 0.18F,
+                  height, 0.18F + frost * 0.34F + medium * 0.08F,
+                  0.98F - fracture * 0.58F};
     }
     else
     {
@@ -441,7 +445,7 @@ bool VerifyAll(const std::filesystem::path& directory, std::string& error)
 {
     constexpr std::array<std::string_view, 10> presets = {
         "bark", "pine_needles", "birch_bark", "aspen_bark", "alder_bark",
-        "granite", "snow", "packed_snow", "water", "reeds"
+        "granite", "snow", "packed_snow", "ice", "reeds"
     };
     constexpr std::array<std::string_view, 4> channels = {
         "albedo", "normal", "roughness", "ao"
@@ -499,7 +503,7 @@ bool GeneratePreset(const std::filesystem::path& outputDirectory,
         }
     }
 
-    const float normalStrength = preset == "water" ? 14.0F :
+    const float normalStrength = preset == "ice" ? 12.0F :
         preset == "snow" ? 4.5F : preset == "packed_snow" ? 5.2F : 8.0F;
     for (int y = 0; y < height; ++y)
     {
@@ -548,7 +552,7 @@ int main(int argc, char** argv)
                   << "Usage: talvisota_environment_texture_gen <output-directory>\n"
                   << "       talvisota_environment_texture_gen --verify <output-directory>\n"
                   << "Generates 1024x1024 seamless albedo, tangent-normal, roughness and AO BMP maps, plus a packed ORM map for typed snow\n"
-                  << "for bark, pine_needles, birch_bark, aspen_bark, alder_bark, granite, snow, packed_snow, water and reeds.\n";
+                  << "for bark, pine_needles, birch_bark, aspen_bark, alder_bark, granite, snow, packed_snow, ice and reeds.\n";
         return 0;
     }
     if (argc == 3 && std::string_view(argv[1]) == "--verify")
