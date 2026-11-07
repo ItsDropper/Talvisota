@@ -538,18 +538,18 @@ placement	prop.fence.09	prop	model.environment.fence	-	-60.00	9.292	184.00	90.0	
 placement	prop.fence.10	prop	model.environment.fence	-	-40.00	9.739	184.00	90.0	1.000
 placement	prop.fence.11	prop	model.environment.fence	-	40.00	8.972	184.00	90.0	1.000
 placement	prop.fence.12	prop	model.environment.fence	-	60.00	8.810	184.00	90.0	1.000
-placement	prop.reeds.01	prop	model.environment.reeds	-	-219.04	8.103	-170.23	143.6	1.092
-placement	prop.reeds.02	prop	model.environment.reeds	-	-180.62	7.068	-158.79	73.2	0.855
-placement	prop.reeds.03	prop	model.environment.reeds	-	-145.51	5.766	-160.24	325.5	0.881
-placement	prop.reeds.04	prop	model.environment.reeds	-	-99.79	3.896	-161.18	236.0	1.106
-placement	prop.reeds.05	prop	model.environment.reeds	-	-54.85	3.643	-159.84	170.7	0.815
-placement	prop.reeds.06	prop	model.environment.reeds	-	-19.65	4.079	-168.81	32.8	0.869
-placement	prop.reeds.07	prop	model.environment.reeds	-	17.57	4.977	-186.49	337.8	1.196
-placement	prop.reeds.08	prop	model.environment.reeds	-	54.93	5.154	-195.61	102.9	1.395
-placement	prop.reeds.09	prop	model.environment.reeds	-	105.61	5.601	-195.60	284.3	1.259
-placement	prop.reeds.10	prop	model.environment.reeds	-	144.16	5.534	-198.64	351.8	1.026
-placement	prop.reeds.11	prop	model.environment.reeds	-	176.28	5.749	-197.21	151.7	1.314
-placement	prop.reeds.12	prop	model.environment.reeds	-	220.62	7.441	-184.06	227.7	1.480
+placement	prop.reeds.01	prop	model.environment.reeds	-	-219.04	7.771	-181.59	143.6	1.092
+placement	prop.reeds.02	prop	model.environment.reeds	-	-180.62	6.008	-195.41	73.2	0.855
+placement	prop.reeds.03	prop	model.environment.reeds	-	-145.51	4.937	-194.21	325.5	0.881
+placement	prop.reeds.04	prop	model.environment.reeds	-	-99.79	3.771	-191.27	236.0	1.106
+placement	prop.reeds.05	prop	model.environment.reeds	-	-54.85	3.755	-194.23	170.7	0.815
+placement	prop.reeds.06	prop	model.environment.reeds	-	-19.65	4.381	-185.08	32.8	0.869
+placement	prop.reeds.07	prop	model.environment.reeds	-	17.57	4.892	-165.88	337.8	1.196
+placement	prop.reeds.08	prop	model.environment.reeds	-	54.93	5.884	-155.77	102.9	1.395
+placement	prop.reeds.09	prop	model.environment.reeds	-	105.61	7.912	-159.00	284.3	1.259
+placement	prop.reeds.10	prop	model.environment.reeds	-	144.16	8.031	-155.98	351.8	1.026
+placement	prop.reeds.11	prop	model.environment.reeds	-	176.28	7.930	-154.11	151.7	1.314
+placement	prop.reeds.12	prop	model.environment.reeds	-	220.62	8.068	-169.25	227.7	1.480
 collision	prop.fallen_log.01.collision	-130.10	7.98	84.07	1.20	0.28	0.38
 collision	prop.fallen_log.02.collision	173.39	8.35	-141.05	1.20	0.28	0.38
 collision	prop.fallen_log.03.collision	-210.27	7.20	60.24	1.20	0.28	0.38
