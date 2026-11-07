@@ -190,8 +190,12 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
         [](const auto& item) { return item.category == talvisota::world::PlacementCategory::Structure; });
     const auto rocks = std::count_if(region.placements.begin(), region.placements.end(),
         [](const auto& item) { return item.category == talvisota::world::PlacementCategory::Rock; });
-    Require(vegetation == 170U && structures == 5U && rocks == 8U,
-            "Sakkola should retain its authored forest, village buildings, and rock outcrops.");
+    const auto props = std::count_if(region.placements.begin(), region.placements.end(),
+        [](const auto& item) { return item.category == talvisota::world::PlacementCategory::Prop; });
+    Require(vegetation == 170U && structures == 5U && rocks == 8U && props == 50U,
+            "Sakkola should retain its mixed forest, village buildings, lake, deadwood, stumps, fences, well, woodpiles and shoreline reeds.");
+    Require(region.placements.size() == 234U,
+            "Sakkola region composition should remain complete and deterministic.");
 
     std::vector<std::string> species;
     for (const auto& item : region.placements) {
