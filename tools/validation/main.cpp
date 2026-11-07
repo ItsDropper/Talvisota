@@ -1,5 +1,6 @@
 #include "talvisota/content/ContentRegistry.hpp"
-#include "talvisota/content/MaterialDefinition.hpp"\n#include "talvisota/content/WorldDefinition.hpp"
+#include "talvisota/content/MaterialDefinition.hpp"
+#include "talvisota/content/WorldDefinition.hpp"
 
 #include <exception>
 #include <filesystem>
@@ -12,9 +13,12 @@ namespace
 {
 void PrintUsage(std::ostream& output)
 {
-    output << "Talvisota content validator\n"
-           << "Usage: talvisota_content_validate <manifest-path> <content-root>\n"
-           << "       talvisota_content_validate --help\n";
+    output << "Talvisota content validator
+"
+           << "Usage: talvisota_content_validate <manifest-path> <content-root>
+"
+           << "       talvisota_content_validate --help
+";
 }
 
 void PrintDiagnostic(const std::filesystem::path& file, std::size_t line,
@@ -25,7 +29,8 @@ void PrintDiagnostic(const std::filesystem::path& file, std::size_t line,
         std::cerr << ':' << line;
     if (!field.empty())
         std::cerr << " [" << field << ']';
-    std::cerr << ": " << message << '\n';
+    std::cerr << ": " << message << '
+';
 }
 }
 
@@ -88,14 +93,17 @@ int main(int argc, char** argv)
         }
 
         std::cout << "Validated " << registry.Assets().size() << " content assets and "
-                  << materialCount << " typed materials.\n";
+                  << materialCount << " typed materials.
+";
         for (const std::size_t index : registry.LoadOrder())
-            std::cout << "  " << registry.Assets()[index].id << '\n';
+            std::cout << "  " << registry.Assets()[index].id << '
+';
         return 0;
     }
     catch (const std::exception& exception)
     {
-        std::cerr << "Content validation failed: " << exception.what() << '\n';
+        std::cerr << "Content validation failed: " << exception.what() << '
+';
         return 1;
     }
 }
