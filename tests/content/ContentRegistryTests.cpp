@@ -84,9 +84,19 @@ void TestDuplicateIdsAreRejectedAtomically()
         "asset\tduplicate\tdefinition\tb.json\trequired\t-\tproject\tproject\n");
     talvisota::content::ContentRegistry registry;
     std::vector<talvisota::content::ContentDiagnostic> diagnostics;
+    directory.Write("valid.json", "{}");
+    directory.Manifest("talvisota-content-manifest\t1\nasset\tstable.asset\tdefinition\tvalid.json\trequired\t-\tproject\tproject\n");
+    Require(Load(directory, registry, diagnostics), "A valid registry should load before atomicity is checked.");
+    directory.Manifest(
+        "talvisota-content-manifest\t1\n"
+        "asset\tduplicate\tdefinition\ta.json\trequired\t-\tproject\tproject\n"
+        "asset\tduplicate\tdefinition\tb.json\trequired\t-\tproject\tproject\n");
     Require(!Load(directory, registry, diagnostics), "Duplicate IDs must fail.");
     Require(!diagnostics.empty(), "Duplicate ID failure must include a diagnostic.");
-    Require(registry.Assets().empty(), "Failed loads must not publish partial registry state.");
+    Require(diagnostics.front().file == directory.Path() / "catalog.tmanifest", "Diagnostics must identify the exact manifest file.");
+    Require(diagnostics.front().line == 3U, "Duplicate diagnostics must identify the offending line.");
+    Require(registry.Assets().size() == 1U && registry.Find("stable.asset") != nullptr,
+            "Failed reloads must preserve the previously published registry.");
 }
 
 void TestTraversalAndUnsupportedExtensionsAreRejected()
