@@ -337,6 +337,100 @@ bool WriteBmp(const std::filesystem::path& path, const std::vector<Rgb8>& pixels
     return true;
 }
 
+std::uint16_t ReadU16(const std::array<char, 54>& header, const std::size_t offset) noexcept
+{
+    const auto a = static_cast<std::uint8_t>(header[offset]);
+    const auto b = static_cast<std::uint8_t>(header[offset + 1U]);
+    return static_cast<std::uint16_t>(static_cast<std::uint16_t>(a) |
+        (static_cast<std::uint16_t>(b) << 8U));
+}
+
+std::uint32_t ReadU32(const std::array<char, 54>& header, const std::size_t offset) noexcept
+{
+    const auto a = static_cast<std::uint8_t>(header[offset]);
+    const auto b = static_cast<std::uint8_t>(header[offset + 1U]);
+    const auto c = static_cast<std::uint8_t>(header[offset + 2U]);
+    const auto d = static_cast<std::uint8_t>(header[offset + 3U]);
+    return static_cast<std::uint32_t>(a) |
+        (static_cast<std::uint32_t>(b) << 8U) |
+        (static_cast<std::uint32_t>(c) << 16U) |
+        (static_cast<std::uint32_t>(d) << 24U);
+}
+
+bool VerifyBmp(const std::filesystem::path& path, std::string& error)
+{
+    std::ifstream input(path, std::ios::binary);
+    if (!input)
+    {
+        error = "Generated texture is missing: " + path.string();
+        return false;
+    }
+    std::array<char, 54> header{};
+    input.read(header.data(), static_cast<std::streamsize>(header.size()));
+    if (!input || header[0] != 'B' || header[1] != 'M' ||
+        ReadU32(header, 10U) != 54U || ReadU32(header, 14U) != 40U ||
+        ReadU16(header, 26U) != 1U || ReadU16(header, 28U) != 24U ||
+        ReadU32(header, 30U) != 0U ||
+        ReadU32(header, 18U) != static_cast<std::uint32_t>(TextureSize) ||
+        ReadU32(header, 22U) != static_cast<std::uint32_t>(TextureSize))
+    {
+        error = "Generated texture has an invalid 24-bit BMP header: " + path.string();
+        return false;
+    }
+    const std::uint32_t rowBytes = static_cast<std::uint32_t>(TextureSize) * 3U;
+    const std::uint32_t stride = (rowBytes + 3U) & ~3U;
+    const std::uint32_t expectedImageBytes = stride * static_cast<std::uint32_t>(TextureSize);
+    if (ReadU32(header, 34U) != expectedImageBytes)
+    {
+        error = "Generated texture BMP image size does not match its dimensions: " + path.string();
+        return false;
+    }
+
+    std::uint8_t minimum = 255U;
+    std::uint8_t maximum = 0U;
+    std::array<char, 65536> buffer{};
+    while (input)
+    {
+        input.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+        const std::streamsize count = input.gcount();
+        for (std::streamsize index = 0; index < count; ++index)
+        {
+            const auto value = static_cast<std::uint8_t>(buffer[static_cast<std::size_t>(index)]);
+            minimum = std::min(minimum, value);
+            maximum = std::max(maximum, value);
+        }
+    }
+    if (!input.eof() || static_cast<unsigned int>(maximum) -
+            static_cast<unsigned int>(minimum) < 8U)
+    {
+        error = "Generated texture has insufficient pixel variation or a read error: " + path.string();
+        return false;
+    }
+    return true;
+}
+
+bool VerifyAll(const std::filesystem::path& directory, std::string& error)
+{
+    constexpr std::array<std::string_view, 8> presets = {
+        "bark", "pine_needles", "birch_bark", "granite",
+        "snow", "packed_snow", "water", "reeds"
+    };
+    constexpr std::array<std::string_view, 4> channels = {
+        "albedo", "normal", "roughness", "ao"
+    };
+    for (const auto preset : presets)
+    {
+        for (const auto channel : channels)
+        {
+            const std::string filename = std::string(preset) + "-" +
+                std::string(channel) + ".bmp";
+            if (!VerifyBmp(directory / filename, error))
+                return false;
+        }
+    }
+    return true;
+}
+
 bool GeneratePreset(const std::filesystem::path& outputDirectory,
                     const std::string_view preset, const std::uint32_t seed,
                     std::string& error)
@@ -415,13 +509,25 @@ int main(int argc, char** argv)
     {
         std::cout << "Talvisota deterministic environment PBR texture generator\n"
                   << "Usage: talvisota_environment_texture_gen <output-directory>\n"
+                  << "       talvisota_environment_texture_gen --verify <output-directory>\n"
                   << "Generates 1024x1024 seamless albedo, tangent-normal, roughness and AO BMP maps\n"
                   << "for bark, pine_needles, birch_bark, granite, snow, packed_snow, water and reeds.\n";
         return 0;
     }
+    if (argc == 3 && std::string_view(argv[1]) == "--verify")
+    {
+        std::string error;
+        if (!VerifyAll(std::filesystem::path(argv[2]), error))
+        {
+            std::cerr << error << '\\n';
+            return 1;
+        }
+        std::cout << "Verified all 32 environment PBR maps.\\n";
+        return 0;
+    }
     if (argc != 2)
     {
-        std::cerr << "Usage: talvisota_environment_texture_gen <output-directory>\n";
+        std::cerr << "Usage: talvisota_environment_texture_gen <output-directory>\\n";
         return 2;
     }
 
