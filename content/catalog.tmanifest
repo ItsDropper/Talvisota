@@ -1,7 +1,11 @@
 talvisota-content-manifest	1
 asset	world.central_finland	definition	content/worlds/central-finland.tworld	required	model.terrain.central_finland	project	project
-asset	region.central_finland	definition	content/worlds/central-finland.tregion	required	world.central_finland,model.terrain.central_finland,material.environment.snow	project	project
+asset	region.central_finland	definition	content/worlds/central-finland.tregion	required	world.central_finland,model.terrain.central_finland,material.environment.snow,model.environment.spruce,model.environment.boulder	project	project
 asset	material.environment.snow	material	content/materials/snow.tmat	required	texture.environment.snow_albedo	project	project
 asset	model.terrain.central_finland	model	assets/models/terrain/central-finland.obj	required	material.terrain.snow_mtl,texture.environment.snow_albedo	project	project
 asset	material.terrain.snow_mtl	material	assets/materials/terrain/snow.mtl	required	-	project	project
 asset	texture.environment.snow_albedo	texture	assets/textures/snow-albedo.bmp	required	-	project	project
+asset	material.environment.spruce_mtl	material	assets/materials/environment/spruce.mtl	required	-	project	project
+asset	model.environment.spruce	model	assets/models/environment/spruce.obj	required	material.environment.spruce_mtl	project	project
+asset	material.environment.boulder_mtl	material	assets/materials/environment/boulder.mtl	required	-	project	project
+asset	model.environment.boulder	model	assets/models/environment/boulder.obj	required	material.environment.boulder_mtl	project	project
