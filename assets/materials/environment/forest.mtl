@@ -35,18 +35,18 @@ newmtl aspen_bark
 Kd 1.0 1.0 1.0
 Pr 1.0
 Pm 0.0
-map_Kd ../../textures/environment/bark-albedo.bmp
-map_Bump ../../textures/environment/bark-normal.bmp
-map_Pr ../../textures/environment/bark-roughness.bmp
-map_AO ../../textures/environment/bark-ao.bmp
+map_Kd ../../textures/environment/aspen_bark-albedo.bmp
+map_Bump ../../textures/environment/aspen_bark-normal.bmp
+map_Pr ../../textures/environment/aspen_bark-roughness.bmp
+map_AO ../../textures/environment/aspen_bark-ao.bmp
 newmtl alder_bark
 Kd 1.0 1.0 1.0
 Pr 1.0
 Pm 0.0
-map_Kd ../../textures/environment/bark-albedo.bmp
-map_Bump ../../textures/environment/bark-normal.bmp
-map_Pr ../../textures/environment/bark-roughness.bmp
-map_AO ../../textures/environment/bark-ao.bmp
+map_Kd ../../textures/environment/alder_bark-albedo.bmp
+map_Bump ../../textures/environment/alder_bark-normal.bmp
+map_Pr ../../textures/environment/alder_bark-roughness.bmp
+map_AO ../../textures/environment/alder_bark-ao.bmp
 newmtl twig
 Kd 1.0 1.0 1.0
 Pr 1.0
