@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstdint>
 #include <string>
+#include <limits>
 
 using namespace talvisota::presentation;
 
@@ -13,9 +14,9 @@ SceneSnapshot ValidScene()
     SceneSnapshot scene;
     RenderMesh mesh;
     mesh.vertices = {
-        {{{-1.0F, 0.0F, 0.0F}}, {{0.0F, 1.0F, 0.0F}}, 0.0F, 0.0F},
-        {{{1.0F, 0.0F, 0.0F}}, {{0.0F, 1.0F, 0.0F}}, 1.0F, 0.0F},
-        {{{0.0F, 1.0F, 0.0F}}, {{0.0F, 1.0F, 0.0F}}, 0.5F, 1.0F}
+        {{-1.0F, 0.0F, 0.0F}, {0.0F, 1.0F, 0.0F}, 0.0F, 0.0F},
+        {{1.0F, 0.0F, 0.0F}, {0.0F, 1.0F, 0.0F}, 1.0F, 0.0F},
+        {{0.0F, 1.0F, 0.0F}, {0.0F, 1.0F, 0.0F}, 0.5F, 1.0F}
     };
     mesh.indices = {0U, 1U, 2U};
     scene.meshes.push_back(mesh);
@@ -56,7 +57,7 @@ int main()
     assert(!ValidateSceneSnapshot(singularTransform, error));
 
     SceneSnapshot invalidCamera = ValidScene();
-    invalidCamera.camera.elapsedSeconds = 0.0F / 0.0F;
+    invalidCamera.camera.elapsedSeconds = std::numeric_limits<float>::quiet_NaN();
     assert(!ValidateSceneSnapshot(invalidCamera, error));
 
     return 0;
