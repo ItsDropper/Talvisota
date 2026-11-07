@@ -60,3 +60,8 @@ The current geometry is a substantive environment foundation, not a photorealism
 ## Provenance
 
 All newly authored OBJ and MTL content in this region is original project content. The historical map is used as a reference and is not bundled. Keep the map attribution and its terms attached to any future derived data; confirm reuse rights before distributing a georeferenced derivative.
+
+
+### Mature forest stand pass
+
+The Sakkola region now contains 290 tree placements across the five regional species families. A further 120 mature trees were placed as a deterministic, fixed-content forest pass using seed `0x5A4B2026`. Candidate stands are concentrated in the western and eastern woodland belts and the northern tree line, rather than uniformly filling village fields or the frozen lake. Candidate placement rejects steep sampled terrain, existing tree spacing below 9 m, building clearances below 14 m, prop clearances below 7 m, and authored navigation corridors below 7 m. The new mature layer targets approximately 11–19 m tree heights and has independently aligned trunk collision volumes. These are authored environmental-art distributions, not claims about surveyed 1939 tree locations.

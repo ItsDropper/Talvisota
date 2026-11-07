@@ -197,9 +197,9 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
         [](const auto& item) { return item.category == talvisota::world::PlacementCategory::Rock; });
     const auto props = std::count_if(region.placements.begin(), region.placements.end(),
         [](const auto& item) { return item.category == talvisota::world::PlacementCategory::Prop; });
-    Require(vegetation == 170U && structures == 5U && rocks == 8U && props == 50U,
+    Require(vegetation == 290U && structures == 5U && rocks == 8U && props == 50U,
             "Sakkola should retain its mixed forest, village buildings, lake, deadwood, stumps, fences, well, woodpiles and shoreline reeds.");
-    Require(region.placements.size() == 234U,
+    Require(region.placements.size() == 354U,
             "Sakkola region composition should remain complete and deterministic.");
 
     std::vector<std::string> species;
@@ -212,6 +212,7 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
     Require(species.size() == 5U,
             "Sakkola forest should mix spruce, pine, birch, aspen, and alder rather than repeat one tree model.");
 
+    std::size_t matureTreeCount = 0U;
     for (const auto& placement : region.placements) {
         const bool tree = placement.category == talvisota::world::PlacementCategory::Vegetation;
         const bool boulder = placement.category == talvisota::world::PlacementCategory::Rock;
@@ -238,8 +239,12 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
                     "Every grounded tree, fallen log, and stump must have its matching collision volume.");
             Require(std::abs((collision->center[1] - collision->halfExtents[1]) - surfaceHeight) <= 0.002F,
                     "Grounded vegetation and deadwood collision bottoms must agree with the terrain surface.");
+            if (tree && collision->halfExtents[1] * 2.0F >= 11.0F)
+                ++matureTreeCount;
         }
     }
+    Require(matureTreeCount >= 100U,
+            "Sakkola forest must include a mature canopy layer in addition to younger tree growth.");
 
     const auto water = std::find_if(region.placements.begin(), region.placements.end(),
         [](const auto& item) { return item.id == "ice.suvanto"; });
