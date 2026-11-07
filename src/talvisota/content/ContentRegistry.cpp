@@ -82,13 +82,13 @@ constexpr std::string_view Header = "talvisota-content-manifest\t1";
         return extension == ".gltf" || extension == ".glb" || extension == ".obj";
     case AssetKind::Texture:
         return extension == ".png" || extension == ".jpg" || extension == ".jpeg" ||
-               extension == ".tga" || extension == ".dds" || extension == ".ktx2" ||
-               extension == ".bmp";
+               extension == ".bmp" || extension == ".tif" || extension == ".tiff";
     case AssetKind::Audio:
         return extension == ".wav" || extension == ".ogg" || extension == ".flac";
     case AssetKind::Definition:
-        return extension == ".tworld" || extension == ".json" || extension == ".toml" ||
-               extension == ".yaml" || extension == ".yml";
+        return extension == ".tworld" || extension == ".tmission" || extension == ".tfaction" ||
+               extension == ".tcharacter" || extension == ".tequipment" || extension == ".json" ||
+               extension == ".toml" || extension == ".yaml" || extension == ".yml";
     case AssetKind::Material:
         return extension == ".tmat";
     }

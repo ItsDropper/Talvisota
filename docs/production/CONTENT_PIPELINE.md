@@ -2,58 +2,44 @@
 
 ## Separation of concerns
 
-- `assets/` contains binary source and processed media: models, textures, materials, audio, and UI assets.
+- `assets/` contains source and processed media: models, textures, materials, audio, and UI assets.
 - `content/` contains authored game definitions that refer to assets by stable identifiers.
 - `data/schemas/` contains versioned schemas used to validate authored definitions.
-- `data/localization/` contains locale data, not hard-coded UI strings.
-- `tools/asset_pipeline/` contains import, validation, conversion, and packaging tools.
+- `tools/asset_pipeline/` contains game-specific orchestration and packaging commands.
+- Generic model import, image decoding, CPU asset validation, mip processing, and GPU resource ownership belong to VantaEngine.
 
-Do not use filesystem paths as persistent gameplay identifiers. Content references should use stable IDs resolved through a manifest or asset registry.
+Do not use filesystem paths as persistent gameplay identifiers. Content references use stable IDs resolved through the Talvisota manifest.
 
-## Validation requirements
+## Headless content validation
 
-Before content can ship, validation should check:
+`talvisota_content_validate <manifest> <content-root>` validates the manifest, path containment, provenance, dependency graph, typed PBR materials, typed world definitions, and typed mission/faction/character/equipment definitions. It does not claim to decode media.
 
-- Unique stable IDs and valid references.
-- Schema and content-version compatibility.
-- Missing files and case-sensitive path mismatches.
-- Unsupported formats and invalid dimensions.
-- Texture colour-space and channel conventions.
-- Model scale, coordinate-system, and material consistency.
-- Audio sample rate, channel count, and loudness constraints.
-- Localization key completeness and fallback availability.
-- Duplicate or unused assets where safe to detect.
+## Engine-backed media validation
 
-Validation must fail with actionable file paths and field names. Do not silently substitute missing required content.
+On Windows x64/MSVC, configure with `TALVISOTA_ENABLE_VANTA_ENGINE=ON`. The optional `talvisota_asset_validate` command uses VantaEngine's `ModelAssetStore`, OBJ/glTF/GLB importers, and WIC texture decoder. It validates imported geometry and materials, decodes registered texture assets, and checks that model-referenced textures remain inside the content root, resolve to manifest texture assets, and are declared as model dependencies. This path is CPU-only and does not initialize a graphics device.
 
-## Runtime loading
+The pinned VantaEngine revision supports Wavefront OBJ, glTF 2.0/GLB static meshes and WIC-supported external texture images. Embedded glTF data-URI/GLB images are explicitly rejected by the engine importer. Texture source support follows installed WIC codecs; the Talvisota manifest accepts BMP, PNG, JPEG, and TIFF variants for this path.
 
-Runtime content loading must distinguish required and optional assets, report failures with context, and avoid publishing partially initialized resources. GPU resource lifetime remains owned by the engine adapter/renderer, not by mission definitions.
+## Deterministic texture processing
 
+The `talvisota_texture_process <source> <output.ttex> <srgb|linear>` command is available with the optional engine adapter. It decodes the source through VantaEngine WIC, builds a full CPU mip chain, filters sRGB RGB channels in linear light, averages alpha and linear data channels without gamma conversion, and writes a deterministic little-endian `TVTTEX01` container. The output contains a version, dimensions, RGBA8 format, colour-space tag, mip count, and pixel bytes; it contains no timestamps, absolute paths, or host-endian metadata.
 
-## Typed PBR material definitions
+## Typed PBR materials
 
-Material assets use the strict, versioned `.tmat` format documented in [material-definition-v1.md](../../data/schemas/material-definition-v1.md). The runtime parser validates finite numeric values, physically based parameter ranges, stable material identity, manifest ownership, and texture-slot references. A referenced texture must be a texture-kind asset, be present as a regular file, and be listed as a dependency of the material so deterministic load order remains meaningful.
+Material assets use the strict, versioned `.tmat` format documented in [material-definition-v1.md](../../data/schemas/material-definition-v1.md). The parser validates finite numeric values, physically based parameter ranges, stable material identity, manifest ownership, and texture-slot references. A referenced texture must be a texture-kind asset, be present as a regular file, and be listed as a dependency of the material.
 
-The content validator parses every material record after validating the manifest. The shipped `content/catalog.tmanifest` is a real, minimal content catalog containing the initial snow surface material. It is a schema and validation fixture, not a claim of final visual quality or renderer texture support.
-
-Colour-space conventions are explicit: base-colour and emissive texture RGB are sRGB; normal and ORM textures are linear. ORM channels are R=occlusion, G=roughness, B=metallic. These are authoring/import contracts; the current renderer adapter does not yet consume these texture slots.
-
+Base-colour and emissive texture RGB are sRGB; normal and ORM textures are linear. ORM channels are R=occlusion, G=roughness, B=metallic. These are authoring/import contracts; renderer consumption remains subject to the pinned engine's material API.
 
 ## Typed world definitions
 
-World metadata uses the strict, versioned `.tworld` format documented in [world-definition-v1.md](../../data/schemas/world-definition-v1.md). Version 1 fixes the world coordinate convention to metres, right-handed, +X east, +Y up, and +Z north. Bounds must be finite and strictly ordered on every axis. Optional sea level must fall within the vertical bounds.
+World metadata uses the strict, versioned `.tworld` format documented in [world-definition-v1.md](../../data/schemas/world-definition-v1.md). Version 1 fixes the world coordinate convention to metres, right-handed, +X east, +Y up, and +Z north. Bounds must be finite and strictly ordered on every axis. Optional sea level must fall within vertical bounds.
 
-The validator parses every manifest definition whose extension is `.tworld`. This is metadata validation only; terrain authoring, collision, vegetation placement, and runtime world loading remain later work.
+This is metadata validation only; terrain authoring, collision, vegetation placement, and runtime world loading remain later work.
 
-## Texture source decoding (first supported format)
+## Typed mission, faction, character, and equipment definitions
 
-The content library exposes DecodeBmp and LoadBmp in TextureImporter.hpp. The implemented subset is Windows BMP with a BITMAPINFOHEADER-compatible DIB header, one plane, 24-bit BGR or 32-bit BGRX pixels, and BI_RGB (uncompressed) storage. Both positive-height bottom-up and negative-height top-down images are normalized to top-left-origin, tightly packed RGBA8. BI_RGB's fourth byte is reserved rather than a reliable alpha channel, so decoded pixels are opaque. Pixel RGB bytes remain sRGB-encoded; decoding does not perform a transfer-function conversion.
+The content library parses strict v1 `.tmission`, `.tfaction`, `.tcharacter`, and `.tequipment` records. Their required fields and reference types are documented in [authored-definitions-v1.md](../../data/schemas/authored-definitions-v1.md). The parser validates type/version headers, unique and known fields, required values, manifest identity/path ownership, expected referenced asset kinds, referenced file presence, and explicit manifest dependencies. Failed parsing leaves the caller's previous output unchanged. Generic JSON/TOML/YAML definitions fail closed until parsers are implemented.
 
-The content validator invokes the decoder for every manifest-registered .bmp texture and fails with the source path and field diagnostic if decoding fails. The decoder validates the signature, header and pixel offsets, dimensions, row padding, declared file/image sizes, source bounds, and decoded allocation size before publishing output. It preserves the caller's previous image on failure. Source reads are capped at 1 GiB and decoded RGBA8 output at 512 MiB. This is intentionally a narrow, tested decoder; manifest-recognized PNG/JPEG/TGA/DDS/KTX2 files are not yet decoded. Processed texture serialization, mip generation, and renderer upload remain future M3/M2 work.
+## Packaging and provenance
 
-## Texture decoding and offline processing
-
-The content library currently decodes uncompressed 24-bit BGR and 32-bit BGRX BI_RGB BMP, plus true-colour TGA type 2 (raw) and type 10 (packet RLE), at 24 or 32 bits per pixel. TGA decoding handles all four origin combinations and preserves the 8-bit alpha channel when declared. Both decoders normalize to top-left-origin RGBA8. The validator decodes registered BMP/TGA files and fails with file/field diagnostics; extension recognition for PNG/JPEG/DDS/KTX2 is not decoder support.
-
-The offline `talvisota_texture_process` tool accepts a BMP or TGA source, an output `.ttex` path, and an explicit `srgb` or `linear` RGB interpretation. It builds a complete box-filtered mip chain and writes the deterministic little-endian TVTTEX01 container. sRGB RGB channels are filtered in linear light using a fixed 8-bit transfer lookup table; alpha and linear textures are averaged in linear channel space. The container records version, dimensions, RGBA8 format, colour space, mip count, and each mip's dimensions and bytes. It deliberately omits timestamps, absolute paths, and machine-specific metadata.
+Every manifest record requires source and licence/permission metadata. Keep source media immutable; write processed outputs into a separate build directory. A clean content build must validate all shipped definitions and references before packaging. External asset rights must be documented before an asset is committed.

@@ -1,54 +1,58 @@
-#include "talvisota/content/TextureProcessing.hpp"
-#include "talvisota/content/TextureSource.hpp"
+#include "vanta/assets/TextureProcessing.hpp"
+#include "vanta/assets/WicTextureLoader.hpp"
 
+#include <filesystem>
 #include <iostream>
 #include <string_view>
+#include <vector>
 
 int main(int argc, char** argv)
 {
     if (argc == 2 && std::string_view(argv[1]) == "--help")
     {
-        std::cout << "Talvisota texture processor\n"
-                  << "Usage: talvisota_texture_process <source.bmp|source.tga> <output.ttex> <srgb|linear>\n";
+        std::cout << "Talvisota texture processor (VantaEngine WIC + CPU mip pipeline)\n"
+                  << "Usage: talvisota_texture_process <source-image> <output.ttex> <srgb|linear>\n";
         return 0;
     }
     if (argc != 4)
     {
-        std::cerr << "Usage: talvisota_texture_process <source.bmp|source.tga> <output.ttex> <srgb|linear>\n";
+        std::cerr << "Usage: talvisota_texture_process <source-image> <output.ttex> <srgb|linear>\n";
         return 2;
     }
+    const std::filesystem::path sourcePath(argv[1]);
+    const std::filesystem::path outputPath(argv[2]);
+    if (outputPath.extension() != ".ttex")
+    {
+        std::cerr << "Output path must use the .ttex extension.\n";
+        return 2;
+    }
+    vanta::assets::TextureColorSpace colorSpace;
     const std::string_view colorArgument(argv[3]);
-    talvisota::content::TextureColorSpace colorSpace;
     if (colorArgument == "srgb")
-        colorSpace = talvisota::content::TextureColorSpace::Srgb;
+        colorSpace = vanta::assets::TextureColorSpace::Srgb;
     else if (colorArgument == "linear")
-        colorSpace = talvisota::content::TextureColorSpace::Linear;
+        colorSpace = vanta::assets::TextureColorSpace::Linear;
     else
     {
         std::cerr << "Colour space must be exactly 'srgb' or 'linear'.\n";
         return 2;
     }
 
-    talvisota::content::DecodedTexture decoded;
-    std::vector<talvisota::content::TextureDiagnostic> decodeDiagnostics;
-    if (!talvisota::content::LoadTextureSource(argv[1], decoded, decodeDiagnostics))
+    vanta::assets::CpuTexture source;
+    if (!vanta::assets::LoadWicTexture(sourcePath, source))
     {
-        for (const auto& diagnostic : decodeDiagnostics)
-            std::cerr << diagnostic.file.generic_string() << " [" << diagnostic.field << "]: "
-                      << diagnostic.message << '\n';
+        std::cerr << "VantaEngine WIC could not decode the source image.\n";
         return 1;
     }
-    std::vector<talvisota::content::TextureMip> mipChain;
-    std::vector<talvisota::content::TextureProcessingDiagnostic> processingDiagnostics;
-    if (!talvisota::content::BuildTextureMipChain(decoded, colorSpace, mipChain, processingDiagnostics) ||
-        !talvisota::content::WriteProcessedTexture(argv[2], mipChain, colorSpace, processingDiagnostics))
+    std::vector<vanta::assets::TextureMip> mipChain;
+    std::string error;
+    if (!vanta::assets::BuildTextureMipChain(source, colorSpace, mipChain, error) ||
+        !vanta::assets::WriteProcessedTexture(outputPath, mipChain, colorSpace, error))
     {
-        for (const auto& diagnostic : processingDiagnostics)
-            std::cerr << diagnostic.file.generic_string() << " [" << diagnostic.field << "]: "
-                      << diagnostic.message << '\n';
+        std::cerr << error << '\n';
         return 1;
     }
-    std::cout << "Processed " << decoded.width << 'x' << decoded.height << " texture into "
-              << mipChain.size() << " mip levels: " << argv[2] << '\n';
+    std::cout << "Processed " << source.width << 'x' << source.height
+              << " into " << mipChain.size() << " mip levels: " << outputPath.string() << '\n';
     return 0;
 }

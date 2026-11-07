@@ -28,11 +28,7 @@ add_library(talvisota_content STATIC
     src/talvisota/content/ContentRegistry.cpp
     src/talvisota/content/MaterialDefinition.cpp
     src/talvisota/content/WorldDefinition.cpp
-    src/talvisota/content/TextureImporter.cpp
-    src/talvisota/content/TgaImporter.cpp
-    src/talvisota/content/TextureSource.cpp
-    src/talvisota/content/TextureProcessing.cpp
-    src/talvisota/content/ObjImporter.cpp
+    src/talvisota/content/AuthoredDefinition.cpp
 )
 add_library(Talvisota::Content ALIAS talvisota_content)
 target_compile_features(talvisota_content PUBLIC cxx_std_23)
@@ -55,11 +51,6 @@ target_include_directories(talvisota_application PUBLIC "$<BUILD_INTERFACE:${CMA
 target_link_libraries(talvisota_application PUBLIC Talvisota::Core Talvisota::Platform)
 talvisota_apply_compiler_options(talvisota_application)
 
-add_executable(talvisota_texture_process tools/asset_pipeline/TextureProcess.cpp)
-target_compile_features(talvisota_texture_process PRIVATE cxx_std_23)
-target_link_libraries(talvisota_texture_process PRIVATE Talvisota::Content)
-talvisota_apply_compiler_options(talvisota_texture_process)
-
 add_executable(talvisota_content_validate tools/validation/main.cpp)
 target_compile_features(talvisota_content_validate PRIVATE cxx_std_23)
 target_link_libraries(talvisota_content_validate PRIVATE Talvisota::Content)
@@ -81,7 +72,7 @@ if(TALVISOTA_ENABLE_VANTA_ENGINE)
     endif()
 
     include(FetchContent)
-    set(TALVISOTA_VANTA_ENGINE_REVISION "694256a9d4724f2d273c8122e821fd99a6627fbf")
+    set(TALVISOTA_VANTA_ENGINE_REVISION "c35690e9e9ed4ec83c879df7dd18d92913cd05a1")
     set(_talvisota_build_testing "${BUILD_TESTING}")
     set(BUILD_TESTING OFF)
     FetchContent_Declare(vantaengine
@@ -91,6 +82,34 @@ if(TALVISOTA_ENABLE_VANTA_ENGINE)
     )
     FetchContent_MakeAvailable(vantaengine)
     set(BUILD_TESTING "${_talvisota_build_testing}")
+
+
+    add_library(talvisota_engine_asset_validation STATIC
+        src/talvisota/content/VantaAssetValidation.cpp
+    )
+    add_library(Talvisota::EngineAssetValidation ALIAS talvisota_engine_asset_validation)
+    target_compile_features(talvisota_engine_asset_validation PUBLIC cxx_std_23)
+    target_compile_definitions(talvisota_engine_asset_validation PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
+    target_include_directories(talvisota_engine_asset_validation PUBLIC
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
+    )
+    target_link_libraries(talvisota_engine_asset_validation PUBLIC
+        Talvisota::Content
+        VantaEngine::Runtime
+    )
+    talvisota_apply_compiler_options(talvisota_engine_asset_validation)
+
+    add_executable(talvisota_asset_validate tools/validation/engine_assets_main.cpp)
+    target_compile_features(talvisota_asset_validate PRIVATE cxx_std_23)
+    target_compile_definitions(talvisota_asset_validate PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
+    target_link_libraries(talvisota_asset_validate PRIVATE Talvisota::EngineAssetValidation)
+    talvisota_apply_compiler_options(talvisota_asset_validate)
+
+    add_executable(talvisota_texture_process tools/asset_pipeline/TextureProcess.cpp)
+    target_compile_features(talvisota_texture_process PRIVATE cxx_std_23)
+    target_compile_definitions(talvisota_texture_process PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
+    target_link_libraries(talvisota_texture_process PRIVATE VantaEngine::Runtime)
+    talvisota_apply_compiler_options(talvisota_texture_process)
 
     add_library(talvisota_renderer_adapter STATIC
         src/talvisota/presentation/VantaSceneRenderer.cpp

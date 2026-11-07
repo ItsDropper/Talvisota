@@ -1,4 +1,5 @@
 #include "talvisota/content/ContentRegistry.hpp"
+#include "talvisota/content/AuthoredDefinition.hpp"
 #include "talvisota/content/MaterialDefinition.hpp"
 #include "talvisota/content/WorldDefinition.hpp"
 
@@ -9,6 +10,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace
@@ -289,6 +291,96 @@ void TestWorldRejectsInvertedBoundsAndCoordinateMismatchAtomically()
     Require(diagnostics.size() >= 3U, "Independent world validation errors should be reported.");
 }
 
+
+void TestTypedMissionFactionCharacterAndEquipmentDefinitions()
+{
+    TemporaryDirectory directory;
+    directory.Write("worlds/test.tworld",
+        "talvisota-world\\t1\\n"
+        "id = world.test\\n"
+        "name = Test World\\n"
+        "unit = meter\\n"
+        "up_axis = y\\n"
+        "north_axis = +z\\n"
+        "handedness = right\\n"
+        "bounds_min = -10, -10, -10\\n"
+        "bounds_max = 10, 10, 10\\n");
+    directory.Write("factions/finnish.tfaction",
+        "talvisota-faction\\t1\\n"
+        "id = faction.finnish\\n"
+        "name = Finnish Forces\\n"
+        "side = finnish\\n");
+    directory.Write("characters/player.tcharacter",
+        "talvisota-character\\t1\\n"
+        "id = character.player\\n"
+        "name = Player Character\\n"
+        "faction_id = faction.finnish\\n"
+        "model_id = model.player\\n"
+        "portrait_texture_id = texture.portrait\\n");
+    directory.Write("equipment/uniform.tequipment",
+        "talvisota-equipment\\t1\\n"
+        "id = equipment.uniform\\n"
+        "name = Winter Uniform\\n"
+        "category = clothing\\n"
+        "model_id = model.player\\n"
+        "icon_texture_id = texture.portrait\\n");
+    directory.Write("missions/first.tmission",
+        "talvisota-mission\\t1\\n"
+        "id = mission.first\\n"
+        "name = First Mission\\n"
+        "world_id = world.test\\n"
+        "player_character_id = character.player\\n"
+        "faction_id = faction.finnish\\n");
+    directory.Write("models/player.obj", "v 0 0 0\\nv 1 0 0\\nv 0 1 0\\nf 1 2 3\\n");
+    directory.Write("textures/portrait.bmp", "fixture");
+    directory.Manifest(
+        "talvisota-content-manifest\\t1\\n"
+        "asset\\tworld.test\\tdefinition\\tworlds/test.tworld\\trequired\\t-\\tproject\\tproject\\n"
+        "asset\\tfaction.finnish\\tdefinition\\tfactions/finnish.tfaction\\trequired\\t-\\tproject\\tproject\\n"
+        "asset\\tmodel.player\\tmodel\\tmodels/player.obj\\trequired\\t-\\tproject\\tproject\\n"
+        "asset\\ttexture.portrait\\ttexture\\ttextures/portrait.bmp\\trequired\\t-\\tproject\\tproject\\n"
+        "asset\\tcharacter.player\\tdefinition\\tcharacters/player.tcharacter\\trequired\\tfaction.finnish,model.player,texture.portrait\\tproject\\tproject\\n"
+        "asset\\tequipment.uniform\\tdefinition\\tequipment/uniform.tequipment\\trequired\\tmodel.player,texture.portrait\\tproject\\tproject\\n"
+        "asset\\tmission.first\\tdefinition\\tmissions/first.tmission\\trequired\\tworld.test,character.player,faction.finnish\\tproject\\tproject\\n");
+    ContentRegistry registry;
+    std::vector<ContentDiagnostic> registryDiagnostics;
+    Require(Load(directory, registry, registryDiagnostics), "Typed definition manifest should load.");
+
+    for (const std::string_view relativePath : {
+        "factions/finnish.tfaction", "characters/player.tcharacter",
+        "equipment/uniform.tequipment", "missions/first.tmission"})
+    {
+        AuthoredDefinition definition;
+        std::vector<AuthoredDefinitionDiagnostic> diagnostics;
+        Require(LoadAuthoredDefinition(directory.Path() / relativePath, registry, definition, diagnostics),
+                "Valid typed authored definition should load.");
+    }
+}
+
+void TestTypedDefinitionRejectsUndeclaredDependenciesAtomically()
+{
+    TemporaryDirectory directory;
+    directory.Write("factions/finnish.tfaction",
+        "talvisota-faction\\t1\\nid = faction.finnish\\nname = Finnish\\nside = finnish\\n");
+    directory.Write("characters/player.tcharacter",
+        "talvisota-character\\t1\\nid = character.player\\nname = Player\\nfaction_id = faction.finnish\\n");
+    directory.Manifest(
+        "talvisota-content-manifest\\t1\\n"
+        "asset\\tfaction.finnish\\tdefinition\\tfactions/finnish.tfaction\\trequired\\t-\\tproject\\tproject\\n"
+        "asset\\tcharacter.player\\tdefinition\\tcharacters/player.tcharacter\\trequired\\t-\\tproject\\tproject\\n");
+    ContentRegistry registry;
+    std::vector<ContentDiagnostic> registryDiagnostics;
+    Require(Load(directory, registry, registryDiagnostics), "Manifest should load before reference dependency validation.");
+    AuthoredDefinition definition;
+    definition.id = "unchanged";
+    std::vector<AuthoredDefinitionDiagnostic> diagnostics;
+    Require(!LoadAuthoredDefinition(directory.Path() / "characters/player.tcharacter",
+                                    registry, definition, diagnostics),
+            "References omitted from the dependency list must fail.");
+    Require(definition.id == "unchanged" && !diagnostics.empty(),
+            "Failed authored-definition loads must preserve output and diagnose the dependency.");
+}
+
 } // namespace
 
 int main()
@@ -305,6 +397,8 @@ int main()
         TestMaterialRejectsInvalidPbrValuesAndWrongTextureKinds();
         TestTypedWorldDefinitionAndCoordinateBounds();
         TestWorldRejectsInvertedBoundsAndCoordinateMismatchAtomically();
+        TestTypedMissionFactionCharacterAndEquipmentDefinitions();
+        TestTypedDefinitionRejectsUndeclaredDependenciesAtomically();
     }
     catch (const std::exception& exception)
     {

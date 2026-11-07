@@ -1,7 +1,5 @@
-# Content runtime
+# Content library
 
-Owns manifest loading, schema validation, version compatibility, and stable-ID resolution. Treat external content as untrusted input.
+The backend-independent `Talvisota::Content` library owns stable asset IDs, the versioned content manifest, dependency resolution, provenance metadata, typed PBR/world definitions, and strict mission/faction/character/equipment parsers. It does not include Direct3D or VantaEngine types.
 
-The first runtime contract is ContentRegistry: it loads the versioned tab-separated manifest described in [content-manifest-v1.md](../../../data/schemas/content-manifest-v1.md), validates stable IDs, supported kind/extension pairs, root-contained paths, required/optional files, provenance, and dependency references, then publishes an immutable-by-interface registry with deterministic dependency-first load order. Failed loads do not replace an existing registry.
-
-The content library also exposes typed material/world parsers and a bounded BMP texture decoder. The command-line content validator decodes manifest-registered BMP texture assets through the texture importer. The manifest registry itself does not decode media; PNG/JPEG/TGA/DDS/KTX2 decoding and model import remain unsupported. Mission, faction, character, and equipment definitions are not yet implemented.
+Generic OBJ/glTF/GLB model import, WIC image decoding, CPU asset stores, and deterministic texture processing belong to VantaEngine. Talvisota's optional engine-backed validation target connects the content manifest to those services without introducing renderer types into the core content library.

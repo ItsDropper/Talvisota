@@ -1,11 +1,9 @@
 # Texture assets
 
-Document intended colour space and channel packing for every map. Base colour is not interchangeable with linear data maps.
+Talvisota records source textures and their colour-space/channel semantics; generic image decoding and CPU texture processing belong to VantaEngine.
 
-Implemented source decoding:
-- BMP: uncompressed 24-bit BGR and 32-bit BGRX BI_RGB; top-down and bottom-up; fourth byte ignored and output opaque.
-- TGA: true-colour type 2 raw and type 10 packet-RLE; 24-bit BGR and 32-bit BGRA; all four origin combinations; declared alpha preserved.
+The optional Windows/MSVC `talvisota_asset_validate` command decodes registered texture assets through the engine's Windows Imaging Component (WIC) loader. The supported manifest source extensions for this path are BMP, PNG, JPEG, and TIFF variants. Actual codec availability is provided by Windows WIC.
 
-Both decode to top-left-origin RGBA8. The offline `talvisota_texture_process` tool generates complete box-filtered mip chains and deterministic `.ttex` files. Select sRGB for base-colour/emissive RGB and linear for normal/ORM/data maps. sRGB RGB channels are filtered in linear light; alpha is linear.
+The optional `talvisota_texture_process` command writes deterministic `.ttex` mip-chain containers. Choose sRGB for base-colour/emissive RGB and linear for normal/ORM/data maps. sRGB RGB is filtered in linear light; alpha is always linear. ORM channel packing is R=occlusion, G=roughness, B=metallic.
 
-PNG, JPEG, DDS and KTX2 decoding, compressed GPU texture formats, and renderer upload are not implemented. Keep source files unchanged and retain manifest provenance.
+Keep source files unchanged, retain manifest provenance, and write processed outputs separately. GPU texture upload remains engine-renderer work and is not performed by the offline processor.

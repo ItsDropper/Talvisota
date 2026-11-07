@@ -127,19 +127,21 @@ Known M2 scope boundary: persistent per-mesh GPU caches and texture-backed game 
 
 **Goal:** Make authored content loadable, traceable, validated, and safe to fail.
 
-**Implementation status (2026-11-07): In progress.** The production foundation includes a versioned UTF-8 content manifest, stable-ID registry, kind/extension checks, root-contained path validation (including canonicalized symlink targets), required/optional file policy, mandatory source/licence metadata, dependency validation, deterministic dependency-first ordering, cycle detection, exact manifest/line/field diagnostics, and atomic registry publication. Typed v1 PBR material and world definition parsers now validate stable identity and manifest-path ownership. Materials validate linear base/emissive values, roughness/metallic ranges, normal and occlusion factors, alpha mode, sidedness, and texture-slot references restricted to declared texture dependencies. World definitions enforce a fixed metre-based right-handed coordinate system (+X east, +Y up, +Z north), finite ordered bounds, and optional sea level. Texture slots define sRGB versus linear interpretation and ORM channel packing in [material-definition-v1.md](../../data/schemas/material-definition-v1.md). Headless tests cover manifest, typed material, and typed world-definition success/failure paths. This is still an early M3 slice, not completion of the content or media pipeline.
+**Implementation status (2026-11-07): In progress.** The backend-independent content foundation includes a versioned manifest, stable-ID registry, root-contained paths, required/optional assets, provenance metadata, dependency validation, deterministic load ordering, cycle detection, actionable diagnostics, and atomic registry publication. Typed v1 material and world parsers validate manifest identity and source-path ownership. Strict v1 mission, faction, character, and equipment parsers now validate required/known/unique fields, manifest identity, expected reference types, referenced file presence, and explicit dependency edges. Unknown schema versions fail closed.
+
+Generic media import belongs to VantaEngine, not the Talvisota content library. The pinned engine provides CPU OBJ/glTF/GLB model import, material extraction, WIC image decoding, and a deterministic CPU mip-chain processor. Talvisota now has an optional Windows/MSVC adapter that connects manifest assets to those services: it imports models, decodes registered textures, and verifies that model-referenced textures remain inside the content root, resolve to registered texture assets, and are declared as model dependencies. It does not create a graphics device.
 
 Delivered so far:
-- `Talvisota::Content` runtime library with no renderer or VantaEngine dependency.
+- `Talvisota::Content` remains backend-independent and has no VantaEngine or Direct3D dependency.
 - Stable IDs independent of source paths and deterministic dependency ordering.
-- Fail-closed validation with no partial registry publication.
+- Strict v1 parsers for materials, worlds, missions, factions, characters, and equipment.
+- Fail-closed validation with no partial registry or definition publication.
 - Explicit external source and licence/permission metadata.
-- CI-registered content registry tests.
-- A command-line content validator with actionable manifest/material/world diagnostics, deterministic load-order output, and a CI check against the shipped content catalog.
+- Headless content validator and Debug/Release regression coverage.
+- Optional engine-backed media validation using VantaEngine's model and WIC texture importers.
+- Deterministic `.ttex` texture processing with full mip chains, sRGB-correct RGB filtering, linear alpha/data filtering, and a versioned little-endian output format.
 
-A bounded BMP decoder and a true-colour TGA decoder are now available. BMP supports uncompressed 24-bit BGR and 32-bit BGRX BI_RGB; TGA supports raw type 2 and packet-RLE type 10 at 24/32 bits, with all origin combinations. Both normalize to RGBA8 and are exercised by malformed-input regression tests. The validator decodes registered BMP/TGA assets. An offline texture processor generates full mip chains and deterministic little-endian TVTTEX01 files, filtering sRGB RGB channels in linear light and preserving linear alpha semantics. Debug/Release CI covers decoder and deterministic-output tests. PNG/JPEG/DDS/KTX2 decoders, glTF/GLB import, MTL material/texture resolution, runtime GPU upload, and the broader content definition families remain outstanding. A bounded Wavefront OBJ geometry importer now validates and triangulates faces, resolves positive/negative indices, applies explicit source-unit scaling, preserves material grouping names, and generates missing flat normals; the content validator imports registered OBJ assets and fails explicitly on unsupported glTF/GLB.
-
-Remaining M3 work includes glTF/GLB model decoding, MTL material/texture resolution, PNG/JPEG/DDS/KTX2 image decoding, mission/character/faction/equipment schemas and cross-reference validation, migrations/compatibility policy, processed-asset cataloguing, audio validation, and clean content packaging. The current M3 implementation remains incomplete. The material schema is authoring data only; it does not claim that the current renderer adapter supports texture-backed materials.
+Remaining M3 work includes a deterministic content package/index, audio validation, broader importer hardening and supported-format coverage, embedded glTF images, schema migration tooling, and final clean-package validation. The current engine-backed media path is Windows/WIC dependent. It is CPU import validation, not real GPU upload or renderer integration. M3 is not complete.
 
 Work:
 - Define stable IDs for assets and authored content; do not use file paths as persistent identity.
