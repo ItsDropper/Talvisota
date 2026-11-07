@@ -1,0 +1,29 @@
+# Original physically-based winter forest material set. Values are linear reflectance factors.
+newmtl pine_bark
+Kd 0.29 0.16 0.085
+Pr 0.88
+Pm 0.0
+newmtl pine_needles
+Kd 0.075 0.16 0.075
+Pr 0.91
+Pm 0.0
+newmtl birch_bark
+Kd 0.73 0.72 0.64
+Pr 0.84
+Pm 0.0
+newmtl birch_dark
+Kd 0.13 0.105 0.075
+Pr 0.93
+Pm 0.0
+newmtl aspen_bark
+Kd 0.62 0.60 0.52
+Pr 0.87
+Pm 0.0
+newmtl alder_bark
+Kd 0.29 0.23 0.16
+Pr 0.91
+Pm 0.0
+newmtl twig
+Kd 0.25 0.17 0.11
+Pr 0.94
+Pm 0.0
