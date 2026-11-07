@@ -69,3 +69,11 @@ add_test(NAME Talvisota.Environment.PbrMaps
     COMMAND talvisota_environment_texture_gen --verify
         "${PROJECT_SOURCE_DIR}/assets/textures/environment"
 )
+
+add_dependencies(talvisota_content_tests talvisota_environment_textures)
+add_dependencies(talvisota_world_tests talvisota_environment_textures)
+if(TARGET talvisota_engine_asset_validation_tests)
+    add_dependencies(talvisota_engine_asset_validation_tests talvisota_environment_textures)
+    add_dependencies(talvisota_engine_asset_package_tests talvisota_environment_textures)
+    add_dependencies(talvisota_engine_asset_pipeline_tests talvisota_environment_textures)
+endif()
