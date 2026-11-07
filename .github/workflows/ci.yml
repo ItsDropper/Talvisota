@@ -80,7 +80,7 @@ jobs:
         run: ctest --test-dir build-msvc --output-on-failure -R "Talvisota.Presentation.SceneRendererContract|Talvisota.Content.EngineAssetValidation|Talvisota.Content.EngineAssetPackage|Talvisota.Content.EngineAssetPipeline"
 
       - name: Engine-backed content asset validation smoke test
-        run: .\build-msvc\talvisota_asset_validate.exe content/catalog.tmanifest content
+        run: .\build-msvc\talvisota_asset_validate.exe content/catalog.tmanifest .
 
       - name: Build deterministic content package
         run: .\build-msvc\talvisota_content_package.exe content/catalog.tmanifest . "$env:RUNNER_TEMP\talvisota-content-package"
