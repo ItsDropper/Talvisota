@@ -1,5 +1,5 @@
 # Original Talvisota terrain test region; units are metres.
-mtllib snow.mtl
+mtllib ../../materials/terrain/snow.mtl
 usemtl snow
 v -32.0000 0.0299 -32.0000
 v -28.0000 -0.0621 -32.0000
