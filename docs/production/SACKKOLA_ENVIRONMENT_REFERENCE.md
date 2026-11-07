@@ -35,7 +35,7 @@ The current region is a **512 x 512 metre playable slice**, not a full 10 km map
 
 - 129 x 129 terrain heightfield, 4 m spacing.
 - Terrain OBJ vertex grid matches the collision/query heightfield.
-- Irregular Suvanto water-surface blockout at the southern edge.
+- Frozen Suvanto ice surface at the southern edge.
 - A packed rural track and frozen agricultural clearings.
 - 170 vegetation placements using five distinct models: Norway spruce, Scots pine, silver birch, aspen, and alder.
 - Eight granite boulder placements.
