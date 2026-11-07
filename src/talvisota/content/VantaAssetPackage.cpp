@@ -371,6 +371,48 @@ bool ValidateAssetPackage(const std::filesystem::path& packageRoot, AssetPackage
         Add(diagnostics, root / InventoryName, "header", "Unsupported package inventory version.");
         return false;
     }
+    if (!std::getline(inventory, line))
+    {
+        Add(diagnostics, root / InventoryName, "catalog", "Package inventory is missing its content catalog record.");
+        return false;
+    }
+    const auto catalogFields = SplitTabs(line);
+    std::uint64_t expectedCatalogSize = 0U;
+    if (catalogFields.size() != 3U || catalogFields[0] != "catalog" ||
+        !ParseSize(catalogFields[1], expectedCatalogSize) || !IsHexDigest(catalogFields[2]))
+    {
+        Add(diagnostics, root / InventoryName, "catalog", "Malformed package content catalog record.");
+        return false;
+    }
+    const auto catalogPath = std::filesystem::canonical(root / CatalogName, error);
+    if (error || !IsWithin(root, catalogPath) ||
+        !std::filesystem::is_regular_file(catalogPath, error) || error)
+    {
+        Add(diagnostics, root / CatalogName, "catalog", "Packaged content catalog is missing or escapes package root.");
+        return false;
+    }
+    std::string actualCatalogDigest;
+    std::uint64_t actualCatalogSize = 0U;
+    std::string catalogHashError;
+    if (!HashFile(catalogPath, actualCatalogDigest, actualCatalogSize, catalogHashError) ||
+        actualCatalogSize != expectedCatalogSize || actualCatalogDigest != catalogFields[2])
+    {
+        Add(diagnostics, catalogPath, "catalogIntegrity",
+            catalogHashError.empty() ? "Packaged content catalog size or SHA-256 does not match inventory."
+                                     : catalogHashError);
+        return false;
+    }
+
+    struct InventoryRecord final
+    {
+        std::string kind;
+        std::string path;
+        std::string source;
+        std::string license;
+        std::uint64_t size = 0U;
+        std::string digest;
+    };
+    std::unordered_map<std::string, InventoryRecord> records;
     std::set<std::string> ids;
     std::set<std::string> paths;
     while (std::getline(inventory, line))
@@ -434,6 +476,9 @@ bool ValidateAssetPackage(const std::filesystem::path& packageRoot, AssetPackage
             Add(diagnostics, file, "size", "Package total byte count overflows the supported range.");
             return false;
         }
+        records.emplace(std::string(fields[1]), InventoryRecord{
+            std::string(fields[2]), std::string(fields[3]), std::string(fields[6]),
+            std::string(fields[7]), actualSize, actualDigest});
         ++candidate.assetCount;
         candidate.totalBytes += actualSize;
     }
@@ -443,7 +488,47 @@ bool ValidateAssetPackage(const std::filesystem::path& packageRoot, AssetPackage
         return false;
     }
 
-    std::set<std::string> actualFiles{std::string(InventoryName)};
+    ContentRegistry packagedRegistry;
+    std::vector<ContentDiagnostic> catalogDiagnostics;
+    if (!LoadContentManifest(catalogPath, root, packagedRegistry, catalogDiagnostics))
+    {
+        for (const auto& issue : catalogDiagnostics)
+            Add(diagnostics, issue.file, issue.field, issue.message);
+        return false;
+    }
+    if (packagedRegistry.Assets().size() < records.size())
+    {
+        Add(diagnostics, catalogPath, "catalog", "Packaged catalog contains fewer assets than the integrity inventory.");
+        return false;
+    }
+    for (const AssetRecord& asset : packagedRegistry.Assets())
+    {
+        std::error_code existsError;
+        const bool exists = std::filesystem::exists(root / asset.relativePath, existsError);
+        if (existsError)
+        {
+            Add(diagnostics, root / asset.relativePath, "path", "Could not inspect packaged asset referenced by catalog.");
+            return false;
+        }
+        if (!exists && !asset.required)
+            continue;
+        const auto found = records.find(asset.id);
+        if (found == records.end() || found->second.kind != KindName(asset.kind) ||
+            found->second.path != PathUtf8(asset.relativePath.lexically_normal()) ||
+            found->second.source != asset.source || found->second.license != asset.license)
+        {
+            Add(diagnostics, root / asset.relativePath, "catalog",
+                "Packaged catalog metadata does not match its integrity inventory record.");
+            return false;
+        }
+    }
+    if (records.size() != candidate.assetCount)
+    {
+        Add(diagnostics, catalogPath, "catalog", "Packaged catalog and inventory asset counts differ.");
+        return false;
+    }
+
+    std::set<std::string> actualFiles{std::string(InventoryName), std::string(CatalogName)};
     for (std::filesystem::recursive_directory_iterator it(root, error), end; it != end && !error; it.increment(error))
     {
         const auto status = it->symlink_status(error);
@@ -464,7 +549,7 @@ bool ValidateAssetPackage(const std::filesystem::path& packageRoot, AssetPackage
         Add(diagnostics, root, "enumeration", "Could not enumerate package files.");
         return false;
     }
-    if (actualFiles.size() != paths.size() + 1U)
+    if (actualFiles.size() != paths.size() + 2U)
     {
         Add(diagnostics, root, "inventory", "Package contains unindexed files or missing inventory entries.");
         return false;
@@ -475,6 +560,8 @@ bool ValidateAssetPackage(const std::filesystem::path& packageRoot, AssetPackage
             Add(diagnostics, root / path, "inventory", "Inventory entry does not correspond to a package file.");
             return false;
         }
+    if (!ValidatePackageSemantics(packagedRegistry, diagnostics))
+        return false;
     output = candidate;
     return true;
 }
