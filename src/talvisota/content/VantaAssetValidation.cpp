@@ -397,15 +397,6 @@ bool ValidateEngineAssets(const ContentRegistry& registry, EngineAssetSummary& o
                             "OBJ material library path must be relative to the model.");
                         return false;
                     }
-                    for (const auto& component : relativeLibrary)
-                    {
-                        if (component == "..")
-                        {
-                            Add(diagnostics, canonicalSource, "materialLibrary",
-                                "OBJ material library path may not traverse parent directories.");
-                            return false;
-                        }
-                    }
                     std::error_code libraryError;
                     const auto libraryPath = std::filesystem::weakly_canonical(
                         canonicalSource.parent_path() / relativeLibrary, libraryError);
