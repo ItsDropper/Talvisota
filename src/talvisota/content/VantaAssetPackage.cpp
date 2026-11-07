@@ -15,6 +15,7 @@
 #include <sstream>
 #include <string_view>
 #include <system_error>
+#include <utility>
 #include <vector>
 
 #pragma comment(lib, "bcrypt.lib")
