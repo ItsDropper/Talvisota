@@ -133,6 +133,18 @@ int main()
     singularTransform.instances[0].world[10] = 0.0F;
     Require(!ValidateSceneSnapshot(singularTransform, error));
 
+    SceneSnapshot winterEnvironment = ValidScene();
+    winterEnvironment.environment.enabled = true;
+    winterEnvironment.environment.sunDirection = {-0.45F, 0.28F, -0.85F};
+    winterEnvironment.environment.windDirection = {0.914F, 0.406F};
+    winterEnvironment.environment.sunIntensity = 2.4F;
+    winterEnvironment.environment.fogDensity = 0.0035F;
+    Require(ValidateSceneSnapshot(winterEnvironment, error));
+
+    SceneSnapshot invalidEnvironment = winterEnvironment;
+    invalidEnvironment.environment.sunDirection = {0.0F, 0.0F, 0.0F};
+    Require(!ValidateSceneSnapshot(invalidEnvironment, error));
+
     SceneSnapshot invalidCamera = ValidScene();
     invalidCamera.camera.elapsedSeconds = std::numeric_limits<float>::quiet_NaN();
     Require(!ValidateSceneSnapshot(invalidCamera, error));
