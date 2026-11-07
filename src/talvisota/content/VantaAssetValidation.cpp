@@ -5,6 +5,11 @@
 #include "vanta/assets/WicTextureLoader.hpp"
 
 #include <algorithm>
+#include <bit>
+#include <cmath>
+#include <cstdint>
+#include <fstream>
+#include <limits>
 #include <system_error>
 #include <unordered_map>
 #include <unordered_set>
@@ -29,6 +34,147 @@ void Add(std::vector<EngineAssetDiagnostic>& diagnostics, const std::filesystem:
     for (const auto& component : relative)
         if (component == "..")
             return false;
+    return true;
+}
+[[nodiscard]] std::uint16_t ReadU16(const std::vector<std::uint8_t>& bytes, std::size_t offset)
+{
+    return static_cast<std::uint16_t>(bytes[offset]) |
+           static_cast<std::uint16_t>(static_cast<std::uint16_t>(bytes[offset + 1U]) << 8U);
+}
+
+[[nodiscard]] std::uint32_t ReadU32(const std::vector<std::uint8_t>& bytes, std::size_t offset)
+{
+    return static_cast<std::uint32_t>(bytes[offset]) |
+           (static_cast<std::uint32_t>(bytes[offset + 1U]) << 8U) |
+           (static_cast<std::uint32_t>(bytes[offset + 2U]) << 16U) |
+           (static_cast<std::uint32_t>(bytes[offset + 3U]) << 24U);
+}
+
+[[nodiscard]] bool ValidatePcmWave(const std::filesystem::path& path, std::string& error)
+{
+    std::error_code sizeError;
+    const std::uintmax_t fileSize = std::filesystem::file_size(path, sizeError);
+    constexpr std::uintmax_t maximumFileSize = 512ULL * 1024ULL * 1024ULL;
+    if (sizeError || fileSize < 44U || fileSize > maximumFileSize ||
+        fileSize > static_cast<std::uintmax_t>(std::numeric_limits<std::size_t>::max()))
+    {
+        error = "WAV file size is invalid or exceeds the 512 MiB validation limit.";
+        return false;
+    }
+    std::vector<std::uint8_t> bytes(static_cast<std::size_t>(fileSize));
+    std::ifstream input(path, std::ios::binary);
+    if (!input || !input.read(reinterpret_cast<char*>(bytes.data()),
+                              static_cast<std::streamsize>(bytes.size())))
+    {
+        error = "Could not read complete WAV file.";
+        return false;
+    }
+    const auto tag = [&bytes](std::size_t offset, const char* expected)
+    {
+        return offset + 4U <= bytes.size() &&
+               bytes[offset] == static_cast<std::uint8_t>(expected[0]) &&
+               bytes[offset + 1U] == static_cast<std::uint8_t>(expected[1]) &&
+               bytes[offset + 2U] == static_cast<std::uint8_t>(expected[2]) &&
+               bytes[offset + 3U] == static_cast<std::uint8_t>(expected[3]);
+    };
+    if (!tag(0U, "RIFF") || !tag(8U, "WAVE") ||
+        static_cast<std::uint64_t>(ReadU32(bytes, 4U)) + 8ULL != bytes.size())
+    {
+        error = "WAV must be a complete RIFF/WAVE container with no truncated or trailing bytes.";
+        return false;
+    }
+
+    bool haveFormat = false;
+    bool haveData = false;
+    std::uint16_t format = 0U;
+    std::uint16_t channels = 0U;
+    std::uint16_t bitsPerSample = 0U;
+    std::uint16_t blockAlign = 0U;
+    std::uint32_t sampleRate = 0U;
+    std::size_t dataOffset = 0U;
+    std::size_t dataSize = 0U;
+    std::size_t cursor = 12U;
+    while (cursor < bytes.size())
+    {
+        if (bytes.size() - cursor < 8U)
+        {
+            error = "WAV contains a truncated chunk header.";
+            return false;
+        }
+        const std::uint32_t chunkSize = ReadU32(bytes, cursor + 4U);
+        const std::size_t payload = cursor + 8U;
+        if (static_cast<std::uint64_t>(chunkSize) > bytes.size() - payload)
+        {
+            error = "WAV chunk extends beyond the RIFF container.";
+            return false;
+        }
+        if (tag(cursor, "fmt "))
+        {
+            if (haveFormat || chunkSize < 16U)
+            {
+                error = "WAV must contain exactly one format chunk of at least 16 bytes.";
+                return false;
+            }
+            format = ReadU16(bytes, payload);
+            channels = ReadU16(bytes, payload + 2U);
+            sampleRate = ReadU32(bytes, payload + 4U);
+            const std::uint32_t byteRate = ReadU32(bytes, payload + 8U);
+            blockAlign = ReadU16(bytes, payload + 12U);
+            bitsPerSample = ReadU16(bytes, payload + 14U);
+            haveFormat = true;
+            const bool supportedPcm = format == 1U &&
+                (bitsPerSample == 8U || bitsPerSample == 16U ||
+                 bitsPerSample == 24U || bitsPerSample == 32U);
+            const bool supportedFloat = format == 3U && bitsPerSample == 32U;
+            const std::uint32_t expectedAlign =
+                static_cast<std::uint32_t>(channels) * (bitsPerSample / 8U);
+            if ((!supportedPcm && !supportedFloat) || channels == 0U || channels > 8U ||
+                sampleRate < 8000U || sampleRate > 192000U ||
+                expectedAlign == 0U || expectedAlign > std::numeric_limits<std::uint16_t>::max() ||
+                blockAlign != expectedAlign ||
+                byteRate != sampleRate * expectedAlign)
+            {
+                error = "WAV format must be PCM 8/16/24/32-bit or IEEE float32, 1-8 channels, 8-192 kHz, with consistent alignment.";
+                return false;
+            }
+        }
+        else if (tag(cursor, "data"))
+        {
+            if (haveData)
+            {
+                error = "WAV contains multiple data chunks, which are not supported.";
+                return false;
+            }
+            dataOffset = payload;
+            dataSize = chunkSize;
+            haveData = true;
+        }
+        const std::uint64_t next = static_cast<std::uint64_t>(payload) + chunkSize + (chunkSize & 1U);
+        if (next > bytes.size())
+        {
+            error = "WAV chunk padding extends beyond the RIFF container.";
+            return false;
+        }
+        cursor = static_cast<std::size_t>(next);
+    }
+    if (!haveFormat || !haveData || dataSize == 0U || dataSize % blockAlign != 0U ||
+        dataSize / blockAlign > 100000000U)
+    {
+        error = "WAV is missing format/data, has incomplete sample frames, or exceeds the frame limit.";
+        return false;
+    }
+    if (format == 3U)
+    {
+        for (std::size_t offset = dataOffset; offset < dataOffset + dataSize; offset += 4U)
+        {
+            const float sample = std::bit_cast<float>(ReadU32(bytes, offset));
+            if (!std::isfinite(sample))
+            {
+                error = "WAV floating-point audio contains a non-finite sample.";
+                return false;
+            }
+        }
+    }
     return true;
 }
 } // namespace
@@ -153,9 +299,19 @@ bool ValidateEngineAssets(const ContentRegistry& registry, EngineAssetSummary& o
             continue;
         if (asset.kind == AssetKind::Audio)
         {
-            Add(diagnostics, sourcePath, "audio",
-                "Audio decoding/validation is not implemented in the pinned engine integration; this asset cannot be marked validated.");
-            return false;
+            std::string audioError;
+            std::string extension = canonicalSource.extension().string();
+            std::transform(extension.begin(), extension.end(), extension.begin(),
+                           [](unsigned char value) { return static_cast<char>(std::tolower(value)); });
+            if (extension != ".wav" || !ValidatePcmWave(canonicalSource, audioError))
+            {
+                Add(diagnostics, canonicalSource, "audio",
+                    extension == ".wav" ? audioError :
+                    "Only PCM/IEEE-float WAV decoding is implemented; OGG and FLAC remain unsupported.");
+                return false;
+            }
+            ++candidate.decodedAudio;
+            continue;
         }
         if (asset.kind != AssetKind::Model)
             continue;
