@@ -79,7 +79,7 @@ void TestBuildsAndVerifiesDeterministicInventory()
         firstText.assign(std::istreambuf_iterator<char>(firstInventory),
                          std::istreambuf_iterator<char>());
     }
-    Require(firstText.find("\\tproject\\tproject\\n") != std::string::npos,
+    Require(firstText.find("\tproject\tproject\n") != std::string::npos,
             "Package inventory must preserve source and licence metadata.");
     AssetPackageSummary rebuilt;
     Require(BuildAssetPackage(registry, fixture.Package(), rebuilt, diagnostics),
