@@ -225,38 +225,62 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
     std::ifstream model(root / terrainAsset->relativePath);
     Require(static_cast<bool>(model), "Sakkola terrain model should be readable.");
     std::size_t vertexIndex = 0U;
+    std::vector<std::array<float, 3>> visualVertices;
+    std::vector<std::array<std::size_t, 3>> visualFaces;
     std::string line;
     while (std::getline(model, line)) {
         std::istringstream record(line);
         std::string type;
         record >> type;
-        if (type != "v")
-            continue;
-        float x = 0.0F, y = 0.0F, z = 0.0F;
-        Require(static_cast<bool>(record >> x >> y >> z),
-                "Sakkola terrain vertices should contain three coordinates.");
-        const std::size_t row = vertexIndex / region.terrain.columns;
-        const std::size_t column = vertexIndex % region.terrain.columns;
-        Require(row < region.terrain.rows,
-                "Sakkola terrain model must not exceed its authored heightfield.");
-        const float sampleX = region.terrain.originX +
-            static_cast<float>(column) * region.terrain.spacingX;
-        const float sampleZ = region.terrain.originZ +
-            static_cast<float>(row) * region.terrain.spacingZ;
-        float sampledHeight = 0.0F;
-        std::array<float, 3> normal{};
-        std::string error;
-        Require(talvisota::world::SampleTerrainHeight(region, sampleX, sampleZ,
-                sampledHeight, normal, error),
-                "Sakkola terrain model vertices should have matching heightfield samples.");
-        Require(std::abs(sampledHeight - y) <= 1.0e-4F &&
-                std::abs(x - sampleX) <= 1.0e-4F &&
-                std::abs(z - sampleZ) <= 1.0e-4F,
-                "Sakkola collision heightfield must match all visual terrain vertices.");
-        ++vertexIndex;
+        if (type == "v") {
+            float x = 0.0F, y = 0.0F, z = 0.0F;
+            Require(static_cast<bool>(record >> x >> y >> z),
+                    "Sakkola terrain vertices should contain three coordinates.");
+            const std::size_t row = vertexIndex / region.terrain.columns;
+            const std::size_t column = vertexIndex % region.terrain.columns;
+            Require(row < region.terrain.rows,
+                    "Sakkola terrain model must not exceed its authored heightfield.");
+            const float sampleX = region.terrain.originX +
+                static_cast<float>(column) * region.terrain.spacingX;
+            const float sampleZ = region.terrain.originZ +
+                static_cast<float>(row) * region.terrain.spacingZ;
+            float sampledHeight = 0.0F;
+            std::array<float, 3> normal{};
+            std::string error;
+            Require(talvisota::world::SampleTerrainHeight(region, sampleX, sampleZ,
+                    sampledHeight, normal, error),
+                    "Sakkola terrain model vertices should have matching heightfield samples.");
+            Require(std::abs(sampledHeight - y) <= 1.0e-4F &&
+                    std::abs(x - sampleX) <= 1.0e-4F &&
+                    std::abs(z - sampleZ) <= 1.0e-4F && normal[1] > 0.0F,
+                    "Sakkola collision heightfield must match visual vertices and return upward normals.");
+            visualVertices.push_back({x, y, z});
+            ++vertexIndex;
+        }
+        else if (type == "f") {
+            std::array<std::size_t, 3> face{};
+            Require(static_cast<bool>(record >> face[0] >> face[1] >> face[2]),
+                    "Sakkola terrain faces should contain three vertex indices.");
+            visualFaces.push_back(face);
+        }
     }
     Require(vertexIndex == region.terrain.rows * region.terrain.columns,
             "Sakkola visual terrain and collision heightfield must have identical grid dimensions.");
+    Require(!visualFaces.empty(), "Sakkola terrain must contain indexed surface triangles.");
+    for (const auto& face : visualFaces) {
+        Require(face[0] > 0U && face[1] > 0U && face[2] > 0U &&
+                face[0] <= visualVertices.size() && face[1] <= visualVertices.size() &&
+                face[2] <= visualVertices.size(),
+                "Sakkola terrain faces must reference valid source vertices.");
+        const auto& a = visualVertices[face[0] - 1U];
+        const auto& b = visualVertices[face[1] - 1U];
+        const auto& c = visualVertices[face[2] - 1U];
+        const float dx1 = b[0] - a[0], dz1 = b[2] - a[2];
+        const float dx2 = c[0] - a[0], dz2 = c[2] - a[2];
+        const float normalY = dz1 * dx2 - dx1 * dz2;
+        Require(normalY > 0.0F,
+                "Sakkola terrain triangles must face upward for correct back-face culling and lighting.");
+    }
 }
 
 void TestLoadsComposedRegionAndIndependentSpatialData()
