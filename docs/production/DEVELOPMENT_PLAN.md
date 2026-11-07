@@ -144,6 +144,7 @@ Delivered so far:
 - Bounded PCM/IEEE-float WAV sample decoding; unsupported OGG/FLAC fail closed.
 - Deterministic staged content package creation with SHA-256 inventory, integrity verification, and protection against path traversal and unindexed files.
 - Package build/verify CLI, regression tests, and CI smoke coverage.
+- A multi-asset end-to-end regression fixture covering OBJ/MTL dependencies, external BMP and processed `.ttex` textures, PCM WAV decoding, packaging, and SHA-256 revalidation. This fixture verifies pipeline integration; it is not a substitute for a real authored environment asset.
 
 Remaining M3 work includes embedded glTF data-URI/GLB images, broader importer hardening and supported-format coverage, OGG/FLAC decoding if those formats remain required, schema migration tooling, a full shipped-content rights/provenance audit, and a representative environment asset passing the complete import → validation → processing → packaging → revalidation path. The package inventory detects corruption but is not a signature or proof of asset ownership. The current engine-backed media path is Windows/WIC dependent. It is CPU import validation, not real GPU upload or renderer integration. M3 is not complete.
 
