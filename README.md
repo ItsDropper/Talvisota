@@ -4,7 +4,7 @@
 
 The repository is being established with explicit boundaries between engine technology, game rules, historical content, and presentation. The goal is a maintainable codebase that can grow into a large project without turning the renderer, mission logic, or content data into one tightly coupled codebase.
 
-> **Project status:** M0 and M1 are complete. M2 now has a game-owned renderer contract, snapshot validation, an optional VantaEngine adapter pinned to an exact engine revision, and a standalone renderer sample. The adapter build is gated to Windows x64/MSVC; real-device rendering validation remains outstanding.
+> **Project status:** M0 and M1 are complete. M2's implementation is in place and its Windows Debug, Release, and MSVC adapter CI checks pass; M2 remains open pending real-device D3D11/D3D12 verification. M3 is underway with a tested, renderer-independent content manifest registry and stable-ID dependency validation.
 
 ## Development plan
 
