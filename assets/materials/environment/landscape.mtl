@@ -1,6 +1,6 @@
 # Original Sakkola winter landscape materials.
 newmtl snow
-Kd 0.84 0.89 0.96
+Kd 1.0 1.0 1.0
 Pr 0.94
 Pm 0.0
 map_Kd ../../textures/environment/snow-albedo.bmp
@@ -8,7 +8,7 @@ map_Bump ../../textures/environment/snow-normal.bmp
 map_Pr ../../textures/environment/snow-roughness.bmp
 map_AO ../../textures/environment/snow-ao.bmp
 newmtl frozen_field
-Kd 0.67 0.70 0.72
+Kd 1.0 1.0 1.0
 Pr 0.91
 Pm 0.0
 map_Kd ../../textures/environment/packed_snow-albedo.bmp
@@ -16,7 +16,7 @@ map_Bump ../../textures/environment/packed_snow-normal.bmp
 map_Pr ../../textures/environment/packed_snow-roughness.bmp
 map_AO ../../textures/environment/packed_snow-ao.bmp
 newmtl packed_track
-Kd 0.34 0.35 0.34
+Kd 1.0 1.0 1.0
 Pr 0.83
 Pm 0.0
 map_Kd ../../textures/environment/packed_snow-albedo.bmp
@@ -24,7 +24,7 @@ map_Bump ../../textures/environment/packed_snow-normal.bmp
 map_Pr ../../textures/environment/packed_snow-roughness.bmp
 map_AO ../../textures/environment/packed_snow-ao.bmp
 newmtl shore_snow
-Kd 0.77 0.82 0.87
+Kd 1.0 1.0 1.0
 Pr 0.96
 Pm 0.0
 map_Kd ../../textures/environment/snow-albedo.bmp
@@ -32,7 +32,7 @@ map_Bump ../../textures/environment/snow-normal.bmp
 map_Pr ../../textures/environment/snow-roughness.bmp
 map_AO ../../textures/environment/snow-ao.bmp
 newmtl lake_water
-Kd 0.045 0.085 0.12
+Kd 1.0 1.0 1.0
 Pr 0.16
 Pm 0.08
 map_Kd ../../textures/environment/water-albedo.bmp
