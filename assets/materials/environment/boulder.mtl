@@ -1,5 +1,5 @@
 newmtl rock
-Kd 0.22 0.25 0.28
+Kd 1.0 1.0 1.0
 Pr 0.88
 Pm 0.0
 map_Kd ../../textures/environment/granite-albedo.bmp
@@ -8,7 +8,7 @@ map_Pr ../../textures/environment/granite-roughness.bmp
 map_AO ../../textures/environment/granite-ao.bmp
 
 newmtl snow
-Kd 0.84 0.90 0.98
+Kd 1.0 1.0 1.0
 Pr 0.86
 Pm 0.0
 map_Kd ../../textures/environment/snow-albedo.bmp
