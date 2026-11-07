@@ -63,6 +63,22 @@ target_compile_features(talvisota_content_validate PRIVATE cxx_std_23)
 target_link_libraries(talvisota_content_validate PRIVATE Talvisota::Content Talvisota::World)
 talvisota_apply_compiler_options(talvisota_content_validate)
 
+# Procedural environment textures are generated deterministically from source code.
+# The generated BMPs are build products consumed by the manifest, MTL importer and packager.
+add_executable(talvisota_environment_texture_gen
+    tools/asset_pipeline/EnvironmentTextureGenerator.cpp
+)
+target_compile_features(talvisota_environment_texture_gen PRIVATE cxx_std_23)
+talvisota_apply_compiler_options(talvisota_environment_texture_gen)
+
+add_custom_target(talvisota_environment_textures ALL
+    COMMAND $<TARGET_FILE:talvisota_environment_texture_gen>
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets/textures/environment"
+    DEPENDS talvisota_environment_texture_gen
+    VERBATIM
+)
+add_dependencies(talvisota_content_validate talvisota_environment_textures)
+
 add_library(talvisota_renderer_contract STATIC
     src/talvisota/presentation/SceneRenderer.cpp
 )
@@ -150,6 +166,13 @@ if(TALVISOTA_ENABLE_VANTA_ENGINE)
     target_compile_definitions(talvisota_renderer_sample PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
     target_link_libraries(talvisota_renderer_sample PRIVATE Talvisota::RendererAdapter)
     talvisota_apply_compiler_options(talvisota_renderer_sample)
+endif()
+
+if(TARGET talvisota_asset_validate)
+    add_dependencies(talvisota_asset_validate talvisota_environment_textures)
+endif()
+if(TARGET talvisota_content_package)
+    add_dependencies(talvisota_content_package talvisota_environment_textures)
 endif()
 
 add_executable(talvisota src/talvisota/app/main.cpp)
