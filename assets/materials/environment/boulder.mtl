@@ -1,0 +1,9 @@
+newmtl rock
+Kd 0.22 0.25 0.28
+Pr 0.88
+Pm 0.0
+
+newmtl snow
+Kd 0.84 0.90 0.98
+Pr 0.86
+Pm 0.0
