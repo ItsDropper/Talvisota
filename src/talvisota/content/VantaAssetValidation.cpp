@@ -501,8 +501,17 @@ bool ValidateEngineAssets(const ContentRegistry& registry, EngineAssetSummary& o
             return true;
         };
         bool texturesValid = dependenciesValid;
-        for (const vanta::assets::CpuMaterial& material : model->materials)
+        std::vector<bool> usedMaterials(model->materials.size(), false);
+        for (const vanta::assets::CpuSubmesh& submesh : model->submeshes)
         {
+            if (submesh.materialIndex < usedMaterials.size())
+                usedMaterials[submesh.materialIndex] = true;
+        }
+        for (std::size_t materialIndex = 0; materialIndex < model->materials.size(); ++materialIndex)
+        {
+            if (!usedMaterials[materialIndex])
+                continue;
+            const vanta::assets::CpuMaterial& material = model->materials[materialIndex];
             texturesValid = validateMaterialTexture(material.diffuseTexture, "baseColorTexture") && texturesValid;
             texturesValid = validateMaterialTexture(material.normalTexture, "normalTexture") && texturesValid;
             texturesValid = validateMaterialTexture(material.roughnessTexture, "roughnessTexture") && texturesValid;
@@ -513,6 +522,37 @@ bool ValidateEngineAssets(const ContentRegistry& registry, EngineAssetSummary& o
             texturesValid = validateEmbeddedTexture(material.embeddedRoughnessTexture, "embeddedRoughnessTexture") && texturesValid;
             texturesValid = validateEmbeddedTexture(material.embeddedMetallicTexture, "embeddedMetallicTexture") && texturesValid;
             texturesValid = validateEmbeddedTexture(material.embeddedAmbientOcclusionTexture, "embeddedOcclusionTexture") && texturesValid;
+
+            if (!material.normalTexture.empty() || material.embeddedNormalTexture)
+            {
+                for (const vanta::assets::CpuSubmesh& submesh : model->submeshes)
+                {
+                    if (submesh.materialIndex != materialIndex)
+                        continue;
+                    const std::uint64_t end = static_cast<std::uint64_t>(submesh.firstIndex) +
+                        static_cast<std::uint64_t>(submesh.indexCount);
+                    for (std::uint64_t index = submesh.firstIndex; index < end; index += 3U)
+                    {
+                        const auto& a = model->vertices[model->indices[static_cast<std::size_t>(index)]];
+                        const auto& b = model->vertices[model->indices[static_cast<std::size_t>(index + 1U)]];
+                        const auto& c = model->vertices[model->indices[static_cast<std::size_t>(index + 2U)]];
+                        const float du1 = b.u - a.u;
+                        const float dv1 = b.v - a.v;
+                        const float du2 = c.u - a.u;
+                        const float dv2 = c.v - a.v;
+                        const float determinant = du1 * dv2 - du2 * dv1;
+                        if (!std::isfinite(determinant) || std::abs(determinant) < 1.0e-8F)
+                        {
+                            Add(diagnostics, sourcePath, "normalMapUv",
+                                "A normal-mapped triangle has a degenerate UV basis; tangent-space shading would be undefined.");
+                            texturesValid = false;
+                            break;
+                        }
+                    }
+                    if (!texturesValid)
+                        break;
+                }
+            }
         }
         (void)modelStore.Unload(handle);
         if (!texturesValid)
