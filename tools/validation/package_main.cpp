@@ -5,6 +5,8 @@
 #include "talvisota/content/VantaAssetPackage.hpp"
 #include "talvisota/content/VantaAssetValidation.hpp"
 
+#include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <iostream>
 #include <string>
@@ -13,6 +15,14 @@
 
 namespace
 {
+std::string LowerExtension(const std::filesystem::path& path)
+{
+    std::string extension = path.extension().string();
+    std::transform(extension.begin(), extension.end(), extension.begin(),
+                   [](unsigned char value) { return static_cast<char>(std::tolower(value)); });
+    return extension;
+}
+
 bool ValidateTypedContent(const talvisota::content::ContentRegistry& registry)
 {
     using namespace talvisota::content;
@@ -33,7 +43,7 @@ bool ValidateTypedContent(const talvisota::content::ContentRegistry& registry)
         }
         if (asset.kind == AssetKind::Definition)
         {
-            const std::string extension = asset.relativePath.extension().string();
+            const std::string extension = LowerExtension(asset.relativePath);
             if (extension == ".tworld")
             {
                 WorldDefinition definition;
@@ -66,7 +76,7 @@ bool ValidateTypedContent(const talvisota::content::ContentRegistry& registry)
                 return false;
             }
         }
-        else if (asset.kind == AssetKind::Material && asset.relativePath.extension() == ".tmat")
+        else if (asset.kind == AssetKind::Material && LowerExtension(asset.relativePath) == ".tmat")
         {
             MaterialDefinition definition;
             std::vector<MaterialDiagnostic> diagnostics;
