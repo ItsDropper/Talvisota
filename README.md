@@ -4,7 +4,7 @@
 
 The repository is being established with explicit boundaries between engine technology, game rules, historical content, and presentation. The goal is a maintainable codebase that can grow into a large project without turning the renderer, mission logic, or content data into one tightly coupled codebase.
 
-> **Project status:** M0 and M1 are complete. M2's implementation is in place and its Windows Debug, Release, and MSVC adapter CI checks pass; M2 remains open pending real-device D3D11/D3D12 verification. M3 is underway with a tested, renderer-independent content manifest registry, typed v1 PBR material definitions, and typed world-coordinate metadata validation.
+> **Project status:** M0 and M1 are complete. M2's implementation is in place and its Windows Debug, Release, and MSVC adapter CI checks pass; M2 remains open pending real-device D3D11/D3D12 verification. M3 is complete. M4 has started with a game-owned, validated world-region format and transactional region load/reload/unload; renderer-backed world presentation remains gated on M2 hardware verification.
 
 ## Development plan
 
