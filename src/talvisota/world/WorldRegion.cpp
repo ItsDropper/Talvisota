@@ -235,11 +235,7 @@ bool FindNavigationPath(const WorldRegion& region, std::string_view startNode,
             const double dy = static_cast<double>(to[1]) - from[1];
             const double dz = static_cast<double>(to[2]) - from[2];
             const double candidate = distance + std::sqrt(dx * dx + dy * dy + dz * dz);
-            const bool shorter = candidate < distances[next];
-            const bool stableTie = candidate == distances[next] &&
-                (parents[next] == count ||
-                 region.navigationNodes[current].id < region.navigationNodes[parents[next]].id);
-            if (shorter || stableTie)
+            if (candidate < distances[next])
             {
                 distances[next] = candidate;
                 parents[next] = current;
