@@ -575,7 +575,7 @@ int main(int argc, char** argv)
     const std::filesystem::path outputDirectory(argv[1]);
     constexpr std::array<std::string_view, 10> presets = {
         "bark", "pine_needles", "birch_bark", "aspen_bark", "alder_bark",
-        "granite", "snow", "packed_snow", "water", "reeds"
+        "granite", "snow", "packed_snow", "ice", "reeds"
     };
     std::string error;
     for (std::size_t index = 0; index < presets.size(); ++index)
