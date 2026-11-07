@@ -81,9 +81,9 @@ Exit criteria:
 - [x] Repeated independent startup/shutdown cycles are exercised by tests.
 - [x] Invalid configuration is rejected with a clear diagnostic; missing configuration receives explicit defaults.
 - [x] The application composition root is tested without a graphics device.
-- [ ] Windows Debug and Release CI pass with warnings-as-errors and the executable smoke test.
+- [x] Windows Debug and Release CI pass with warnings-as-errors and the executable smoke test.
 
-M1 implementation is awaiting its CI gate.
+M1 is closed after the successful CI rerun following the strict-warning fix in `Config.cpp`.
 
 ## M2 — VantaEngine game-integration contract
 
