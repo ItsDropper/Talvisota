@@ -149,10 +149,10 @@ void TestProvenanceRejectsControlCharacters()
 {
     TemporaryDirectory directory;
     std::string manifest =
-        "talvisota-content-manifest\\t1\\n"
-        "asset\\tasset.safe\\tdefinition\\tassets/safe.json\\trequired\\t-\\tproject";
-    manifest.push_back('\\0');
-    manifest += "source\\tproject\\n";
+        "talvisota-content-manifest\t1\n"
+        "asset\tasset.safe\tdefinition\tassets/safe.json\trequired\t-\tproject";
+    manifest.push_back('\0');
+    manifest += "source\tproject\n";
     directory.Write("assets/safe.json", "{}");
     directory.Manifest(manifest);
     ContentRegistry registry;
