@@ -269,6 +269,49 @@ bool CaptureClientPng(HWND window, const std::filesystem::path& path, std::strin
     DeleteObject(bitmap);
     if (FAILED(hr)) { error = "Could not convert screenshot bitmap to WIC."; return false; }
 
+    ComPtr<IWICFormatConverter> converter;
+    hr = factory->CreateFormatConverter(converter.GetAddressOf());
+    if (SUCCEEDED(hr))
+        hr = converter->Initialize(source.Get(), GUID_WICPixelFormat32bppBGRA,
+            WICBitmapDitherTypeNone, nullptr, 0.0, WICBitmapPaletteTypeCustom);
+    if (FAILED(hr)) { error = "Could not normalize the screenshot to 32-bit BGRA."; return false; }
+    const UINT stride = static_cast<UINT>(width) * 4U;
+    const std::size_t pixelBytes = static_cast<std::size_t>(stride) * static_cast<std::size_t>(height);
+    if (pixelBytes > std::numeric_limits<UINT>::max()) {
+        error = "Screenshot dimensions exceed WIC's supported pixel buffer range.";
+        return false;
+    }
+    std::vector<BYTE> pixels(pixelBytes);
+    hr = converter->CopyPixels(nullptr, stride, static_cast<UINT>(pixelBytes), pixels.data());
+    if (FAILED(hr)) { error = "Could not read back the captured framebuffer pixels."; return false; }
+    std::array<bool, 32768> colorBins{};
+    std::size_t distinctColorBins = 0U;
+    std::uint64_t luminanceSum = 0U;
+    std::uint64_t luminanceSquaredSum = 0U;
+    std::size_t visiblePixels = 0U;
+    for (std::size_t offset = 0U; offset < pixels.size(); offset += 4U) {
+        const std::uint32_t blue = pixels[offset];
+        const std::uint32_t green = pixels[offset + 1U];
+        const std::uint32_t red = pixels[offset + 2U];
+        const std::uint32_t luminance = (54U * red + 183U * green + 19U * blue) >> 8U;
+        luminanceSum += luminance;
+        luminanceSquaredSum += static_cast<std::uint64_t>(luminance) * luminance;
+        if (luminance > 18U) ++visiblePixels;
+        const std::size_t bin = ((red >> 3U) << 10U) | ((green >> 3U) << 5U) | (blue >> 3U);
+        if (!colorBins[bin]) { colorBins[bin] = true; ++distinctColorBins; }
+    }
+    const std::uint64_t pixelCount = pixels.size() / 4U;
+    const double meanLuminance = static_cast<double>(luminanceSum) / static_cast<double>(pixelCount);
+    const double meanSquared = static_cast<double>(luminanceSquaredSum) / static_cast<double>(pixelCount);
+    const double luminanceVariance = std::max(0.0, meanSquared - meanLuminance * meanLuminance);
+    if (distinctColorBins < 64U || visiblePixels < pixelCount / 100U || luminanceVariance < 36.0) {
+        error = "Captured framebuffer failed the non-blank image-content check (distinct colors=" +
+            std::to_string(distinctColorBins) + ", visible pixels=" +
+            std::to_string(visiblePixels) + ", luminance deviation=" +
+            std::to_string(std::sqrt(luminanceVariance)) + ").";
+        return false;
+    }
+
     std::error_code ec;
     std::filesystem::create_directories(path.parent_path(), ec);
     if (ec) { error = "Could not create screenshot directory: " + ec.message(); return false; }
@@ -284,7 +327,7 @@ bool CaptureClientPng(HWND window, const std::filesystem::path& path, std::strin
     if (SUCCEEDED(hr)) hr = frame->SetSize(static_cast<UINT>(width), static_cast<UINT>(height));
     WICPixelFormatGUID format = GUID_WICPixelFormat32bppBGRA;
     if (SUCCEEDED(hr)) hr = frame->SetPixelFormat(&format);
-    if (SUCCEEDED(hr)) hr = frame->WriteSource(source.Get(), nullptr);
+    if (SUCCEEDED(hr)) hr = frame->WriteSource(converter.Get(), nullptr);
     if (SUCCEEDED(hr)) hr = frame->Commit();
     if (SUCCEEDED(hr)) hr = encoder->Commit();
     if (FAILED(hr)) { error = "PNG encoding failed with HRESULT " +
@@ -311,7 +354,7 @@ constexpr std::array<CaptureView, 5> Views = {{
 }};
 }
 
-int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR commandLine, int showCommand) {
+int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     if (AttachConsole(ATTACH_PARENT_PROCESS)) {
         FILE* console = nullptr;
         (void)freopen_s(&console, "CONOUT$", "w", stdout);
