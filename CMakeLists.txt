@@ -85,6 +85,7 @@ if(TALVISOTA_ENABLE_VANTA_ENGINE)
 
 
     add_library(talvisota_engine_asset_validation STATIC
+        src/talvisota/content/AudioDecode.cpp
         src/talvisota/content/VantaAssetValidation.cpp
         src/talvisota/content/VantaAssetPackage.cpp
     )
