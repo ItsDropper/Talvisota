@@ -173,6 +173,7 @@ if(TALVISOTA_ENABLE_VANTA_ENGINE)
         ole32
         gdi32
         dwmapi
+        shell32
     )
     talvisota_apply_compiler_options(talvisota_renderer_sample)
 endif()

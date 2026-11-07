@@ -6,6 +6,7 @@
 #include "vanta/assets/ObjLoader.hpp"
 #include "vanta/math/Math.hpp"
 #include <Windows.h>
+#include <shellapi.h>
 #include <dwmapi.h>
 #include <wincodec.h>
 #include <wrl/client.h>
@@ -321,23 +322,45 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR commandLine, int showCo
     const bool ownsCom = SUCCEEDED(comResult);
     if (FAILED(comResult) && comResult != RPC_E_CHANGED_MODE) return 1;
 
-    std::wstring args = commandLine == nullptr ? L"" : commandLine;
     std::wstring captureDir;
     int framesPerView = 5;
-    bool d3d11 = false;
-    std::size_t cursor = 0;
-    while (cursor < args.size()) {
-        while (cursor < args.size() && args[cursor] == L' ') ++cursor;
-        const auto end = args.find(L' ', cursor);
-        const auto token = args.substr(cursor, end == std::wstring::npos ? std::wstring::npos : end - cursor);
-        if (token.rfind(L"--capture-dir=", 0) == 0) captureDir = token.substr(14);
-        else if (token.rfind(L"--frames-per-view=", 0) == 0) {
-            try { framesPerView = std::clamp(std::stoi(token.substr(18)), 1, 120); }
-            catch (...) { framesPerView = 5; }
-        } else if (token == L"--backend=d3d11") d3d11 = true;
-        if (end == std::wstring::npos) break;
-        cursor = end + 1U;
+    bool useD3D11 = false;
+    bool captureRequested = false;
+    int argumentCount = 0;
+    LPWSTR* parsedArguments = CommandLineToArgvW(GetCommandLineW(), &argumentCount);
+    if (parsedArguments == nullptr) {
+        if (ownsCom) CoUninitialize();
+        return 1;
     }
+    for (int index = 1; index < argumentCount; ++index) {
+        const std::wstring_view token(parsedArguments[index]);
+        if (token.rfind(L"--capture-dir=", 0) == 0) {
+            captureRequested = true;
+            captureDir = token.substr(14);
+        } else if (token.rfind(L"--frames-per-view=", 0) == 0) {
+            try { framesPerView = std::clamp(std::stoi(std::wstring(token.substr(18))), 1, 120); }
+            catch (...) {
+                LocalFree(parsedArguments);
+                if (ownsCom) CoUninitialize();
+                return 1;
+            }
+        } else if (token == L"--backend=d3d11") {
+            useD3D11 = true;
+        } else if (token == L"--backend=d3d12") {
+            useD3D11 = false;
+        } else {
+            LocalFree(parsedArguments);
+            if (ownsCom) CoUninitialize();
+            return 1;
+        }
+    }
+    LocalFree(parsedArguments);
+    if (captureRequested && captureDir.empty()) {
+        if (ownsCom) CoUninitialize();
+        return 1;
+    }
+    std::cout << "Sakkola renderer backend: " << (useD3D11 ? "D3D11" : "D3D12")
+        << "; capture mode: " << (captureRequested ? "enabled" : "disabled") << ".\\n";
 
     SceneSnapshot scene;
     std::size_t placements = 0, draws = 0;
