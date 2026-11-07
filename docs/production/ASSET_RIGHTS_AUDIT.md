@@ -16,7 +16,7 @@
 | `material.terrain.snow_mtl` | `assets/materials/terrain/snow.mtl` | Original Talvisota material sidecar | Project-owned |
 | `texture.environment.snow_albedo` | `assets/textures/snow-albedo.bmp` | Original small authored validation texture | Project-owned |
 | `world.sakkola` / `region.sakkola.church_village` | `content/worlds/sakkola.tworld`, `content/worlds/sakkola-church-village.tregion` | Original world metadata, heightfield, placements, collision and navigation data informed by historical map research | Project-owned |
-| `model.terrain.sakkola` / `model.environment.suvanto_water` | `assets/models/terrain/sakkola-church-village.obj`, `assets/models/environment/suvanto-ice.obj` | Original 512 m terrain and shoreline geometry | Project-owned |
+| `model.terrain.sakkola` / `model.environment.suvanto_ice` | `assets/models/terrain/sakkola-church-village.obj`, `assets/models/environment/suvanto-ice.obj` | Original 512 m terrain and shoreline geometry | Project-owned |
 | `model.environment.pine`, `birch`, `aspen`, `alder` | `assets/models/environment/{pine,birch,aspen,alder}.obj` | Original deterministic species-specific branch and crown geometry | Project-owned |
 | `model.environment.farmhouse`, `barn`, `sauna`, `church` | `assets/models/environment/{farmhouse,barn,sauna,church}.obj` | Original period-inspired rural building geometry; not claimed as exact reconstructions of named surviving buildings | Project-owned |
 | `model.environment.fallen_log`, `stump`, `woodpile`, `well`, `fence`, `reeds` | `assets/models/environment/{fallen-log,stump,woodpile,well,fence,reeds}.obj` | Original environmental set-dressing geometry | Project-owned |
