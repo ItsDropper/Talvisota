@@ -145,6 +145,24 @@ void TestOptionalMissingFileIsAllowed()
     Require(Load(directory, registry, diagnostics), "Missing optional assets should not fail the manifest.");
 }
 
+void TestProvenanceRejectsControlCharacters()
+{
+    TemporaryDirectory directory;
+    std::string manifest =
+        "talvisota-content-manifest\\t1\\n"
+        "asset\\tasset.safe\\tdefinition\\tassets/safe.json\\trequired\\t-\\tproject";
+    manifest.push_back('\\0');
+    manifest += "source\\tproject\\n";
+    directory.Write("assets/safe.json", "{}");
+    directory.Manifest(manifest);
+    ContentRegistry registry;
+    std::vector<ContentDiagnostic> diagnostics;
+    Require(!Load(directory, registry, diagnostics),
+            "Embedded NUL in provenance metadata must be rejected.");
+    Require(!diagnostics.empty() && diagnostics.front().field == "provenance",
+            "Invalid provenance must produce a provenance diagnostic.");
+}
+
 void TestDependencyCyclesAreRejected()
 {
     TemporaryDirectory directory;
@@ -398,6 +416,7 @@ int main()
         TestTraversalAndUnsupportedExtensionsAreRejected();
         TestMissingRequiredFileAndDependencyAreRejected();
         TestOptionalMissingFileIsAllowed();
+        TestProvenanceRejectsControlCharacters();
         TestDependencyCyclesAreRejected();
         TestTypedMaterialDefinitionAndTextureReferences();
         TestMaterialRejectsInvalidPbrValuesAndWrongTextureKinds();
