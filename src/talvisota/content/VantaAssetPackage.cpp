@@ -190,6 +190,15 @@ void Add(std::vector<EngineAssetDiagnostic>& diagnostics, const std::filesystem:
     });
 }
 
+[[nodiscard]] bool IsSafeInventoryField(std::string_view value)
+{
+    return !value.empty() && value != "-" &&
+        std::all_of(value.begin(), value.end(), [](unsigned char character)
+        {
+            return character >= 0x20U && character != 0x7fU;
+        });
+}
+
 [[nodiscard]] bool IsHexDigest(std::string_view value)
 {
     return value.size() == 64U && std::all_of(value.begin(), value.end(), [](char c)
@@ -236,7 +245,7 @@ bool ValidateAssetPackage(const std::filesystem::path& packageRoot, AssetPackage
             fields[3].empty() || fields[3] == InventoryName ||
             fields[3].find('\\') != std::string_view::npos ||
             fields[3].find('\0') != std::string_view::npos || !IsHexDigest(fields[5]) ||
-            fields[6].empty() || fields[7].empty() || fields[6] == "-" || fields[7] == "-" ||
+            !IsSafeInventoryField(fields[6]) || !IsSafeInventoryField(fields[7]) ||
             !ids.insert(std::string(fields[1])).second ||
             !paths.insert(std::string(fields[3])).second)
         {
