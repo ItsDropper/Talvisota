@@ -13,12 +13,9 @@ namespace
 {
 void PrintUsage(std::ostream& output)
 {
-    output << "Talvisota content validator
-"
-           << "Usage: talvisota_content_validate <manifest-path> <content-root>
-"
-           << "       talvisota_content_validate --help
-";
+    output << "Talvisota content validator\n"
+           << "Usage: talvisota_content_validate <manifest-path> <content-root>\n"
+           << "       talvisota_content_validate --help\n";
 }
 
 void PrintDiagnostic(const std::filesystem::path& file, std::size_t line,
@@ -29,8 +26,7 @@ void PrintDiagnostic(const std::filesystem::path& file, std::size_t line,
         std::cerr << ':' << line;
     if (!field.empty())
         std::cerr << " [" << field << ']';
-    std::cerr << ": " << message << '
-';
+    std::cerr << ": " << message << '\n';
 }
 }
 
@@ -61,6 +57,7 @@ int main(int argc, char** argv)
         }
 
         std::size_t materialCount = 0;
+        std::size_t worldCount = 0;
         for (const auto& asset : registry.Assets())
         {
             if (asset.kind == talvisota::content::AssetKind::Definition &&
@@ -75,6 +72,7 @@ int main(int argc, char** argv)
                         PrintDiagnostic(diagnostic.file, diagnostic.line, diagnostic.field, diagnostic.message);
                     return 1;
                 }
+                ++worldCount;
                 continue;
             }
             if (asset.kind != talvisota::content::AssetKind::Material)
@@ -92,18 +90,15 @@ int main(int argc, char** argv)
             ++materialCount;
         }
 
-        std::cout << "Validated " << registry.Assets().size() << " content assets and "
-                  << materialCount << " typed materials.
-";
+        std::cout << "Validated " << registry.Assets().size() << " content assets, "
+                  << materialCount << " typed materials, and " << worldCount << " typed worlds.\n";
         for (const std::size_t index : registry.LoadOrder())
-            std::cout << "  " << registry.Assets()[index].id << '
-';
+            std::cout << "  " << registry.Assets()[index].id << '\n';
         return 0;
     }
     catch (const std::exception& exception)
     {
-        std::cerr << "Content validation failed: " << exception.what() << '
-';
+        std::cerr << "Content validation failed: " << exception.what() << '\n';
         return 1;
     }
 }
