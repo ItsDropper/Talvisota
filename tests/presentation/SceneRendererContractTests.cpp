@@ -1,6 +1,6 @@
 #include "talvisota/presentation/SceneRenderer.hpp"
 
-#include <cassert>
+#include <cstdlib>
 #include <cstdint>
 #include <string>
 #include <limits>
@@ -9,6 +9,13 @@ using namespace talvisota::presentation;
 
 namespace
 {
+
+void Require(const bool condition)
+{
+    if (!condition)
+        std::abort();
+}
+
 class FakeSceneRenderer final : public ISceneRenderer
 {
 public:
@@ -70,7 +77,7 @@ int main()
     std::string error;
     SceneSnapshot scene = ValidScene();
     FakeSceneRenderer fakeRenderer;
-    assert(!fakeRenderer.Render(scene, error));
+    Require(!fakeRenderer.Render(scene, error));
     int nativeWindowToken = 1;
     assert(fakeRenderer.Initialize(&nativeWindowToken, 1280, 720, error));
     assert(fakeRenderer.Resize(800, 600, error));
