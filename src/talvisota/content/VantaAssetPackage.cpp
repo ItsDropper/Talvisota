@@ -11,7 +11,9 @@
 #include <iomanip>
 #include <set>
 #include <sstream>
+#include <string_view>
 #include <system_error>
+#include <vector>
 
 #pragma comment(lib, "bcrypt.lib")
 
