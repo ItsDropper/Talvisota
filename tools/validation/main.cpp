@@ -16,6 +16,17 @@ void PrintUsage(std::ostream& output)
            << "Usage: talvisota_content_validate <manifest-path> <content-root>\n"
            << "       talvisota_content_validate --help\n";
 }
+
+void PrintDiagnostic(const std::filesystem::path& file, std::size_t line,
+                     const std::string& field, const std::string& message)
+{
+    std::cerr << file.generic_string();
+    if (line != 0U)
+        std::cerr << ':' << line;
+    if (!field.empty())
+        std::cerr << " [" << field << ']';
+    std::cerr << ": " << message << '\n';
+}
 }
 
 int main(int argc, char** argv)
@@ -40,18 +51,30 @@ int main(int argc, char** argv)
         if (!talvisota::content::LoadContentManifest(manifestPath, contentRoot, registry, diagnostics))
         {
             for (const auto& diagnostic : diagnostics)
-            {
-                std::cerr << diagnostic.file.generic_string();
-                if (diagnostic.line != 0U)
-                    std::cerr << ':' << diagnostic.line;
-                if (!diagnostic.field.empty())
-                    std::cerr << " [" << diagnostic.field << ']';
-                std::cerr << ": " << diagnostic.message << '\n';
-            }
+                PrintDiagnostic(diagnostic.file, diagnostic.line, diagnostic.field, diagnostic.message);
             return 1;
         }
 
-        std::cout << "Validated " << registry.Assets().size() << " content assets.\n";
+        std::size_t materialCount = 0;
+        for (const auto& asset : registry.Assets())
+        {
+            if (asset.kind != talvisota::content::AssetKind::Material)
+                continue;
+
+            talvisota::content::MaterialDefinition material;
+            std::vector<talvisota::content::MaterialDiagnostic> materialDiagnostics;
+            if (!talvisota::content::LoadMaterialDefinition(contentRoot / asset.relativePath, registry,
+                                                            material, materialDiagnostics))
+            {
+                for (const auto& diagnostic : materialDiagnostics)
+                    PrintDiagnostic(diagnostic.file, diagnostic.line, diagnostic.field, diagnostic.message);
+                return 1;
+            }
+            ++materialCount;
+        }
+
+        std::cout << "Validated " << registry.Assets().size() << " content assets and "
+                  << materialCount << " typed materials.\n";
         for (const std::size_t index : registry.LoadOrder())
             std::cout << "  " << registry.Assets()[index].id << '\n';
         return 0;
