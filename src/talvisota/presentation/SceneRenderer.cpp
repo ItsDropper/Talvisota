@@ -88,7 +88,7 @@ bool ValidateSceneSnapshot(const SceneSnapshot& scene, std::string& error)
             &material.metallicTexture, &material.ambientOcclusionTexture
         };
         for (const std::string* texturePath : texturePaths) {
-            if (texturePath->find('\\0') != std::string::npos ||
+            if (texturePath->find('\0') != std::string::npos ||
                 (!texturePath->empty() && !std::filesystem::path(*texturePath).is_absolute())) {
                 error = "Material " + std::to_string(materialIndex) +
                     " contains a texture path that is not a resolved absolute file path.";
