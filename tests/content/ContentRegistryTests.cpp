@@ -241,7 +241,7 @@ int main()
         TestOptionalMissingFileIsAllowed();
         TestDependencyCyclesAreRejected();
         TestTypedMaterialDefinitionAndTextureReferences();
-        TestMaterialRejectsInvalidPbrValuesAndWrongTextureKinds();
+        TestMaterialRejectsInvalidPbrValuesAndWrongTextureKinds();\n        TestTypedWorldDefinitionAndCoordinateBounds();\n        TestWorldRejectsInvertedBoundsAndCoordinateMismatchAtomically();
     }
     catch (const std::exception& exception)
     {
