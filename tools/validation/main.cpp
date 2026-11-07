@@ -108,7 +108,7 @@ int main(int argc, char** argv)
 
         std::cout << "Validated " << registry.Assets().size() << " content assets, "
                   << materialCount << " typed materials, " << worldCount << " typed worlds, and "
-                  << decodedBmpCount << " decoded BMP textures.\n";
+                  << decodedTextureCount << " decoded BMP/TGA textures.\n";
         for (const std::size_t index : registry.LoadOrder())
             std::cout << "  " << registry.Assets()[index].id << '\n';
         return 0;
