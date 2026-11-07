@@ -30,6 +30,15 @@ add_test(NAME Talvisota.Content.Registry COMMAND talvisota_content_tests)
 
 
 if(TALVISOTA_ENABLE_VANTA_ENGINE)
+    add_executable(talvisota_engine_asset_pipeline_tests
+        content/EngineAssetPipelineTests.cpp
+    )
+    target_link_libraries(talvisota_engine_asset_pipeline_tests PRIVATE Talvisota::EngineAssetValidation)
+    target_compile_features(talvisota_engine_asset_pipeline_tests PRIVATE cxx_std_23)
+    target_compile_definitions(talvisota_engine_asset_pipeline_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
+    talvisota_apply_compiler_options(talvisota_engine_asset_pipeline_tests)
+    add_test(NAME Talvisota.Content.EngineAssetPipeline COMMAND talvisota_engine_asset_pipeline_tests)
+
     add_executable(talvisota_engine_asset_package_tests
         content/EngineAssetPackageTests.cpp
     )
