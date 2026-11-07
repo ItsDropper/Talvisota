@@ -23,6 +23,6 @@ talvisota_content_package --verify <package-dir>
 
 The validator imports OBJ/glTF/GLB models through VantaEngine, decodes registered texture sources through WIC, validates processed `.ttex` containers with the engine reader, and checks OBJ MTL sidecars and model texture references against manifest dependencies. It validates PCM/float WAV audio and rejects unsupported OGG/FLAC instead of silently accepting them. It is CPU-only; it does not initialize a D3D device.
 
-The package tool validates engine-backed assets, stages registered files, and writes a SHA-256 inventory. Verification checks the inventory, file sizes, hashes, path containment, and unindexed files. See [content-package-v1.md](../../data/schemas/content-package-v1.md) for the format contract.
+The package tool validates typed definitions and engine-backed assets, stages registered files, and writes a SHA-256 inventory including source/licence provenance. Verification checks the inventory, file sizes, hashes, path containment, and unindexed files. See [content-package-v1.md](../../data/schemas/content-package-v1.md) for the format contract.
 
 The texture processor uses VantaEngine WIC decoding and the engine's deterministic CPU mip processor. The `.ttex` output uses the versioned little-endian `TVTTEX01` format and omits timestamps, absolute paths, and host-specific metadata. Use sRGB for colour maps and linear for normal/ORM/data maps.
