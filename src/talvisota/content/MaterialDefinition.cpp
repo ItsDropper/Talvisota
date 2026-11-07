@@ -1,5 +1,6 @@
 #include "talvisota/content/MaterialDefinition.hpp"
 
+#include <algorithm>
 #include <charconv>
 #include <cmath>
 #include <fstream>
