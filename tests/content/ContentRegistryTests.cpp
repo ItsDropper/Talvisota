@@ -1,4 +1,5 @@
 #include "talvisota/content/ContentRegistry.hpp"
+#include "talvisota/content/MaterialDefinition.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -11,6 +12,8 @@
 
 namespace
 {
+using namespace talvisota::content;
+
 void Require(bool condition, const char* message)
 {
     if (!condition)
@@ -158,27 +161,27 @@ void TestTypedMaterialDefinitionAndTextureReferences()
 {
     TemporaryDirectory directory;
     directory.Write("materials/snow.tmat",
-        "talvisota-material\\t1\\n"
-        "id = material.surface.snow\\n"
-        "base_color = 0.82, 0.86, 0.9\\n"
-        "roughness = 0.91\\n"
-        "metallic = 0.0\\n"
-        "normal_scale = 0.7\\n"
-        "occlusion_strength = 0.8\\n"
-        "alpha_mode = opaque\\n"
-        "double_sided = false\\n"
-        "base_color_texture = texture.surface.snow_albedo\\n"
-        "normal_texture = texture.surface.snow_normal\\n"
-        "orm_texture = texture.surface.snow_orm\\n");
+        "talvisota-material\t1\n"
+        "id = material.surface.snow\n"
+        "base_color = 0.82, 0.86, 0.9\n"
+        "roughness = 0.91\n"
+        "metallic = 0.0\n"
+        "normal_scale = 0.7\n"
+        "occlusion_strength = 0.8\n"
+        "alpha_mode = opaque\n"
+        "double_sided = false\n"
+        "base_color_texture = texture.surface.snow_albedo\n"
+        "normal_texture = texture.surface.snow_normal\n"
+        "orm_texture = texture.surface.snow_orm\n");
     directory.Write("textures/snow-albedo.png", "albedo");
     directory.Write("textures/snow-normal.png", "normal");
     directory.Write("textures/snow-orm.png", "orm");
     directory.Manifest(
-        "talvisota-content-manifest\\t1\\n"
-        "asset\\tmaterial.surface.snow\\tmaterial\\tmaterials/snow.tmat\\trequired\\ttexture.surface.snow_albedo,texture.surface.snow_normal,texture.surface.snow_orm\\tproject\\tproject\\n"
-        "asset\\ttexture.surface.snow_albedo\\ttexture\\ttextures/snow-albedo.png\\trequired\\t-\\tproject\\tproject\\n"
-        "asset\\ttexture.surface.snow_normal\\ttexture\\ttextures/snow-normal.png\\trequired\\t-\\tproject\\tproject\\n"
-        "asset\\ttexture.surface.snow_orm\\ttexture\\ttextures/snow-orm.png\\trequired\\t-\\tproject\\tproject\\n");
+        "talvisota-content-manifest\t1\n"
+        "asset\tmaterial.surface.snow\tmaterial\tmaterials/snow.tmat\trequired\ttexture.surface.snow_albedo,texture.surface.snow_normal,texture.surface.snow_orm\tproject\tproject\n"
+        "asset\ttexture.surface.snow_albedo\ttexture\ttextures/snow-albedo.png\trequired\t-\tproject\tproject\n"
+        "asset\ttexture.surface.snow_normal\ttexture\ttextures/snow-normal.png\trequired\t-\tproject\tproject\n"
+        "asset\ttexture.surface.snow_orm\ttexture\ttextures/snow-orm.png\trequired\t-\tproject\tproject\n");
     ContentRegistry registry;
     std::vector<ContentDiagnostic> registryDiagnostics;
     Require(Load(directory, registry, registryDiagnostics), "Material and texture manifest should load.");
@@ -197,22 +200,22 @@ void TestMaterialRejectsInvalidPbrValuesAndWrongTextureKinds()
 {
     TemporaryDirectory directory;
     directory.Write("materials/bad.tmat",
-        "talvisota-material\\t1\\n"
-        "id = material.surface.bad\\n"
-        "base_color = 1.0, 1.0, 1.0\\n"
-        "roughness = 1.4\\n"
-        "metallic = 0.0\\n"
-        "normal_texture = material.other\\n");
+        "talvisota-material\t1\n"
+        "id = material.surface.bad\n"
+        "base_color = 1.0, 1.0, 1.0\n"
+        "roughness = 1.4\n"
+        "metallic = 0.0\n"
+        "normal_texture = material.other\n");
     directory.Write("materials/other.tmat",
-        "talvisota-material\\t1\\n"
-        "id = material.other\\n"
-        "base_color = 1, 1, 1\\n"
-        "roughness = 0.5\\n"
-        "metallic = 0\\n");
+        "talvisota-material\t1\n"
+        "id = material.other\n"
+        "base_color = 1, 1, 1\n"
+        "roughness = 0.5\n"
+        "metallic = 0\n");
     directory.Manifest(
-        "talvisota-content-manifest\\t1\\n"
-        "asset\\tmaterial.surface.bad\\tmaterial\\tmaterials/bad.tmat\\trequired\\tmaterial.other\\tproject\\tproject\\n"
-        "asset\\tmaterial.other\\tmaterial\\tmaterials/other.tmat\\trequired\\t-\\tproject\\tproject\\n");
+        "talvisota-content-manifest\t1\n"
+        "asset\tmaterial.surface.bad\tmaterial\tmaterials/bad.tmat\trequired\tmaterial.other\tproject\tproject\n"
+        "asset\tmaterial.other\tmaterial\tmaterials/other.tmat\trequired\t-\tproject\tproject\n");
     ContentRegistry registry;
     std::vector<ContentDiagnostic> registryDiagnostics;
     Require(Load(directory, registry, registryDiagnostics), "Manifest for invalid material test should load.");
