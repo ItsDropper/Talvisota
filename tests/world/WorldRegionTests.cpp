@@ -106,6 +106,25 @@ void TestShippedTerrainHeightfieldMatchesVisualMeshVertices()
     std::vector<talvisota::world::WorldRegionDiagnostic> regionDiagnostics;
     Require(talvisota::world::LoadWorldRegion(root / "content/worlds/central-finland.tregion",
             registry, world, region, regionDiagnostics), "Shipped Central Finland region should load.");
+    Require(region.placements.size() == 12U && region.collision.size() == 11U,
+            "Shipped environment should contain terrain, eight spruces, three boulders, and their collision volumes.");
+    const auto spruceCount = std::count_if(region.placements.begin(), region.placements.end(),
+        [](const auto& placement) { return placement.category == talvisota::world::PlacementCategory::Vegetation; });
+    const auto boulderCount = std::count_if(region.placements.begin(), region.placements.end(),
+        [](const auto& placement) { return placement.category == talvisota::world::PlacementCategory::Rock; });
+    Require(spruceCount == 8 && boulderCount == 3,
+            "Shipped region composition should retain all authored vegetation and rock placements.");
+    bool blocked = false;
+    std::string collisionError;
+    Require(talvisota::world::QueryCollision(region, {-27.1F, 5.9F, -22.1F},
+            {-26.9F, 6.1F, -21.9F}, blocked, collisionError) && blocked,
+            "Spruce trunk collision should occupy its authored world position.");
+    Require(talvisota::world::QueryCollision(region, {-11.1F, -0.1F, -8.1F},
+            {-10.9F, 0.1F, -7.9F}, blocked, collisionError) && blocked,
+            "Boulder collision should occupy its authored world position.");
+    Require(talvisota::world::QueryCollision(region, {-0.5F, 0.0F, -0.5F},
+            {0.5F, 1.8F, 0.5F}, blocked, collisionError) && !blocked,
+            "The central trail corridor should remain clear of authored obstacle volumes.");
     std::ifstream model(root / "assets/models/terrain/central-finland.obj");
     Require(static_cast<bool>(model), "Shipped terrain OBJ should be readable.");
     std::size_t vertexIndex = 0U;
