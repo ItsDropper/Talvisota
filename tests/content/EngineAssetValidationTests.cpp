@@ -107,8 +107,8 @@ void TestValidatesProcessedTextureContainer()
                                                   writeError),
             "Could not write valid processed texture fixture.");
     directory.Manifest(
-        "talvisota-content-manifest\\t1\\n"
-        "asset\\ttexture.ground\\ttexture\\ttextures/ground.ttex\\trequired\\t-\\tproject\\tproject\\n");
+        "talvisota-content-manifest\t1\n"
+        "asset\ttexture.ground\ttexture\ttextures/ground.ttex\trequired\t-\tproject\tproject\n");
     ContentRegistry registry;
     std::vector<ContentDiagnostic> manifestDiagnostics;
     Require(LoadContentManifest(directory.Path() / "catalog.tmanifest", directory.Path(),
@@ -126,13 +126,13 @@ void TestObjMaterialLibraryMustBeRegisteredAndDeclared()
 {
     TemporaryDirectory directory;
     directory.Write("models/tree.obj",
-        "mtllib tree.mtl\\n"
-        "v 0 0 0\\nv 1 0 0\\nv 0 1 0\\nf 1 2 3\\n");
-    directory.Write("models/tree.mtl", "newmtl bark\\nKd 0.5 0.4 0.3\\n");
+        "mtllib tree.mtl\n"
+        "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n");
+    directory.Write("models/tree.mtl", "newmtl bark\nKd 0.5 0.4 0.3\n");
     directory.Manifest(
-        "talvisota-content-manifest\\t1\\n"
-        "asset\\tmodel.tree\\tmodel\\tmodels/tree.obj\\trequired\\t-\\tproject\\tproject\\n"
-        "asset\\tmaterial.tree\\tmaterial\\tmodels/tree.mtl\\trequired\\t-\\tproject\\tproject\\n");
+        "talvisota-content-manifest\t1\n"
+        "asset\tmodel.tree\tmodel\tmodels/tree.obj\trequired\t-\tproject\tproject\n"
+        "asset\tmaterial.tree\tmaterial\tmodels/tree.mtl\trequired\t-\tproject\tproject\n");
     ContentRegistry registry;
     std::vector<ContentDiagnostic> manifestDiagnostics;
     Require(LoadContentManifest(directory.Path() / "catalog.tmanifest", directory.Path(),
