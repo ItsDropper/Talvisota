@@ -271,18 +271,18 @@ bool LoadContentManifest(const std::filesystem::path& manifestPath,
         const std::filesystem::path resolved = std::filesystem::weakly_canonical(root / asset.relativePath, filesystemError);
         if (filesystemError || !IsWithinRoot(root, resolved))
         {
-            AddDiagnostic(diagnostics, 0, "path", "Resolved asset path escapes the content root: " + asset.id);
+            AddDiagnostic(diagnostics, manifestPath, recordLines[index], "path", "Resolved asset path escapes the content root: " + asset.id);
             filesystemError.clear();
             continue;
         }
         const bool exists = std::filesystem::is_regular_file(resolved, filesystemError);
         if (filesystemError)
         {
-            AddDiagnostic(diagnostics, 0, "path", "Could not inspect asset file: " + asset.id);
+            AddDiagnostic(diagnostics, manifestPath, recordLines[index], "path", "Could not inspect asset file: " + asset.id);
             filesystemError.clear();
         }
         else if (asset.required && !exists)
-            AddDiagnostic(diagnostics, 0, "path", "Required asset file is missing: " + asset.id);
+            AddDiagnostic(diagnostics, manifestPath, recordLines[index], "path", "Required asset file is missing: " + asset.id);
     }
 
     for (std::size_t index = 0; index < candidate.assets_.size(); ++index)
@@ -291,7 +291,7 @@ bool LoadContentManifest(const std::filesystem::path& manifestPath,
         for (const std::string& dependency : asset.dependencies)
         {
             if (!candidate.indices_.contains(dependency))
-                AddDiagnostic(diagnostics, 0, "dependencies",
+                AddDiagnostic(diagnostics, manifestPath, recordLines[index], "dependencies",
                               "Asset '" + asset.id + "' references missing dependency '" + dependency + "'.");
         }
     }
