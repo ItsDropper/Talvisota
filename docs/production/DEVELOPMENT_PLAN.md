@@ -135,7 +135,7 @@ Delivered so far:
 - Fail-closed validation with no partial registry publication.
 - Explicit external source and licence/permission metadata.
 - CI-registered content registry tests.
-- A command-line manifest validator with actionable diagnostics, deterministic load-order output, and a CI help/smoke check.
+- A command-line content validator with actionable manifest/material diagnostics, deterministic load-order output, and a CI check against the shipped content catalog.
 
 Remaining M3 work includes world/mission/character/faction/equipment schemas, manifest-driven shipped content, migrations/compatibility policy, real model and texture import/processing tools, media decoding/validation, deterministic processed outputs, and clean content packaging. The material schema is authoring data only; it does not claim that the current renderer adapter supports texture-backed materials.
 
@@ -399,7 +399,7 @@ Deferred does not mean rejected. These features must earn their complexity throu
 2. **M1 is closed:** Debug/Release CI and headless application tests passed.
 3. **Finish the M2 gate:** pass the pinned MSVC adapter CI job and run the Talvisota-owned sample on both D3D11 and D3D12 hardware paths.
 4. **Continue M3 independently of the M2 hardware gate:** build typed content schemas, manifest-driven definitions, provenance, and deterministic offline asset processing. Do not integrate renderer-backed world loading until M2 real-device verification is recorded.
-6. **After M3 content validation and the M2 hardware gate:** build one small game-owned environment to prove the asset pipeline, scene submission, world ownership, and runtime lifecycle together.
+5. **After M3 content validation and the M2 hardware gate:** build one small game-owned environment to prove the asset pipeline, scene submission, world ownership, and runtime lifecycle together.
 7. **Implement the minimum player loop and one mission:** keep scope narrow and complete it end-to-end.
 8. **Capture and review the first vertical slice:** use runtime evidence to decide what visual, gameplay, and performance work comes next.
 
