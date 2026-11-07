@@ -1,11 +1,8 @@
 #include "talvisota/content/ContentRegistry.hpp"
 
 #include <algorithm>
-#include <array>
 #include <cctype>
 #include <fstream>
-#include <functional>
-#include <set>
 #include <string>
 #include <system_error>
 #include <unordered_set>
@@ -109,14 +106,14 @@ constexpr std::string_view Header = "talvisota-content-manifest\t1";
     return true;
 }
 
-void AddDiagnostic(std::vector<ContentDiagnostic>& diagnostics, std::size_t line,
-                   std::string field, std::string message)
+void AddDiagnostic(std::vector<ContentDiagnostic>& diagnostics, const std::filesystem::path& file,
+                   std::size_t line, std::string field, std::string message)
 {
-    diagnostics.push_back({line, std::move(field), std::move(message)});
+    diagnostics.push_back({file, line, std::move(field), std::move(message)});
 }
 } // namespace
 
-const AssetRecord* ContentRegistry::Find(std::string_view id) const noexcept
+const AssetRecord* ContentRegistry::Find(std::string_view id) const
 {
     const auto found = indices_.find(std::string(id));
     return found == indices_.end() ? nullptr : &assets_[found->second];
@@ -136,7 +133,7 @@ bool LoadContentManifest(const std::filesystem::path& manifestPath,
     const std::filesystem::path root = std::filesystem::weakly_canonical(contentRoot, filesystemError);
     if (filesystemError || !std::filesystem::is_directory(root, filesystemError) || filesystemError)
     {
-        AddDiagnostic(diagnostics, 0, "contentRoot", "Content root does not exist or is not a directory.");
+        AddDiagnostic(diagnostics, manifestPath, 0, "contentRoot", "Content root does not exist or is not a directory.");
         return false;
     }
 
@@ -150,6 +147,7 @@ bool LoadContentManifest(const std::filesystem::path& manifestPath,
     ContentRegistry candidate;
     candidate.root_ = root;
     std::unordered_set<std::string> seenPaths;
+    std::vector<std::size_t> recordLines;
     std::string line;
     std::size_t lineNumber = 0;
     bool headerSeen = false;
@@ -170,7 +168,7 @@ bool LoadContentManifest(const std::filesystem::path& manifestPath,
         if (!headerSeen)
         {
             if (trimmed != Header)
-                AddDiagnostic(diagnostics, lineNumber, "header",
+                AddDiagnostic(diagnostics, manifestPath, lineNumber, "header",
                               "Expected 'talvisota-content-manifest<TAB>1'.");
             headerSeen = true;
             if (!diagnostics.empty())
@@ -200,7 +198,7 @@ bool LoadContentManifest(const std::filesystem::path& manifestPath,
             AddDiagnostic(diagnostics, lineNumber, "kind",
                           "Kind must be model, texture, audio, definition, or material.");
 
-        const std::filesystem::path relativePath = std::filesystem::u8path(fields[3]);
+        const std::filesystem::path relativePath = std::filesystem::u8path(fields[3].begin(), fields[3].end());
         if (fields[3].empty() || relativePath.is_absolute() || relativePath.has_root_name())
             AddDiagnostic(diagnostics, lineNumber, "path", "Path must be non-empty and relative to the content root.");
         for (const auto& component : relativePath)
@@ -255,6 +253,7 @@ bool LoadContentManifest(const std::filesystem::path& manifestPath,
         {
             candidate.indices_.emplace(asset.id, candidate.assets_.size());
             candidate.assets_.push_back(std::move(asset));
+            recordLines.push_back(lineNumber);
         }
     }
 
@@ -298,42 +297,47 @@ bool LoadContentManifest(const std::filesystem::path& manifestPath,
     if (!diagnostics.empty())
         return false;
 
-    std::vector<unsigned char> visitState(candidate.assets_.size(), 0U);
+    std::vector<std::size_t> indegree(candidate.assets_.size(), 0U);
+    std::vector<std::vector<std::size_t>> dependents(candidate.assets_.size());
+    for (std::size_t index = 0; index < candidate.assets_.size(); ++index)
+    {
+        indegree[index] = candidate.assets_[index].dependencies.size();
+        for (const std::string& dependency : candidate.assets_[index].dependencies)
+            dependents[candidate.indices_.at(dependency)].push_back(index);
+    }
+
+    std::set<std::pair<std::string, std::size_t>> ready;
+    for (std::size_t index = 0; index < candidate.assets_.size(); ++index)
+    {
+        if (indegree[index] == 0U)
+            ready.emplace(candidate.assets_[index].id, index);
+    }
+
     std::vector<std::size_t> order;
     order.reserve(candidate.assets_.size());
-    std::function<bool(std::size_t)> visit = [&](std::size_t index)
+    while (!ready.empty())
     {
-        if (visitState[index] == 2U)
-            return true;
-        if (visitState[index] == 1U)
-            return false;
-        visitState[index] = 1U;
-        for (const std::string& dependency : candidate.assets_[index].dependencies)
-        {
-            const std::size_t dependencyIndex = candidate.indices_.at(dependency);
-            if (!visit(dependencyIndex))
-                return false;
-        }
-        visitState[index] = 2U;
+        const std::size_t index = ready.begin()->second;
+        ready.erase(ready.begin());
         order.push_back(index);
-        return true;
-    };
-
-    std::vector<std::size_t> stableIndices(candidate.assets_.size());
-    for (std::size_t index = 0; index < stableIndices.size(); ++index)
-        stableIndices[index] = index;
-    std::sort(stableIndices.begin(), stableIndices.end(), [&](std::size_t left, std::size_t right)
-    {
-        return candidate.assets_[left].id < candidate.assets_[right].id;
-    });
-    for (const std::size_t index : stableIndices)
-    {
-        if (!visit(index))
+        for (const std::size_t dependent : dependents[index])
         {
-            AddDiagnostic(diagnostics, 0, "dependencies",
-                          "Dependency cycle detected while resolving asset '" + candidate.assets_[index].id + "'.");
-            return false;
+            --indegree[dependent];
+            if (indegree[dependent] == 0U)
+                ready.emplace(candidate.assets_[dependent].id, dependent);
         }
+    }
+    if (order.size() != candidate.assets_.size())
+    {
+        for (std::size_t index = 0; index < indegree.size(); ++index)
+        {
+            if (indegree[index] != 0U)
+            {
+                AddDiagnostic(diagnostics, manifestPath, recordLines[index], "dependencies",
+                              "Dependency cycle detected for asset '" + candidate.assets_[index].id + "'.");
+            }
+        }
+        return false;
     }
 
     candidate.loadOrder_ = std::move(order);
