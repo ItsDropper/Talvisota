@@ -48,6 +48,11 @@ target_include_directories(talvisota_application PUBLIC "$<BUILD_INTERFACE:${CMA
 target_link_libraries(talvisota_application PUBLIC Talvisota::Core Talvisota::Platform)
 talvisota_apply_compiler_options(talvisota_application)
 
+add_executable(talvisota_content_validate tools/validation/main.cpp)
+target_compile_features(talvisota_content_validate PRIVATE cxx_std_23)
+target_link_libraries(talvisota_content_validate PRIVATE Talvisota::Content)
+talvisota_apply_compiler_options(talvisota_content_validate)
+
 add_library(talvisota_renderer_contract STATIC
     src/talvisota/presentation/SceneRenderer.cpp
 )
