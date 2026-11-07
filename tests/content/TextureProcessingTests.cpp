@@ -3,6 +3,8 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <iterator>
+#include <string>
 #include <stdexcept>
 #include <vector>
 

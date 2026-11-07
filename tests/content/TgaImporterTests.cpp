@@ -1,6 +1,7 @@
 #include "talvisota/content/TgaImporter.hpp"
 
 #include <iostream>
+#include <iterator>
 #include <stdexcept>
 #include <vector>
 

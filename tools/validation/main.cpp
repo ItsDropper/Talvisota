@@ -64,21 +64,16 @@ int main(int argc, char** argv)
         {
             if (asset.kind == talvisota::content::AssetKind::Texture)
             {
-                const std::string extension = asset.relativePath.extension().string();
-                if (extension == ".bmp" || extension == ".BMP" ||
-                    extension == ".tga" || extension == ".TGA")
+                talvisota::content::DecodedTexture texture;
+                std::vector<talvisota::content::TextureDiagnostic> textureDiagnostics;
+                if (!talvisota::content::LoadTextureSource(contentRoot / asset.relativePath,
+                                                           texture, textureDiagnostics))
                 {
-                    talvisota::content::DecodedTexture texture;
-                    std::vector<talvisota::content::TextureDiagnostic> textureDiagnostics;
-                    if (!talvisota::content::LoadTextureSource(contentRoot / asset.relativePath,
-                                                               texture, textureDiagnostics))
-                    {
-                        for (const auto& diagnostic : textureDiagnostics)
-                            PrintDiagnostic(diagnostic.file, 0U, diagnostic.field, diagnostic.message);
-                        return 1;
-                    }
-                    ++decodedTextureCount;
+                    for (const auto& diagnostic : textureDiagnostics)
+                        PrintDiagnostic(diagnostic.file, 0U, diagnostic.field, diagnostic.message);
+                    return 1;
                 }
+                ++decodedTextureCount;
                 continue;
             }
             if (asset.kind == talvisota::content::AssetKind::Definition &&
