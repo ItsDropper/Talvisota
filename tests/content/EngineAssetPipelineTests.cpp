@@ -168,14 +168,25 @@ public:
     void WriteProcessedTexture(const std::filesystem::path& relative)
     {
         std::filesystem::create_directories((root_ / relative).parent_path());
-        std::vector<vanta::assets::TextureMip> mips(1);
-        mips[0].width = 1U;
-        mips[0].height = 1U;
-        mips[0].rgba = {160U, 170U, 180U, 255U};
+        vanta::assets::CpuTexture source;
+        Require(vanta::assets::LoadWicTexture(root_ / "textures/albedo.bmp", source),
+                "Could not decode the source BMP for texture processing.");
+        std::vector<vanta::assets::TextureMip> mips;
         std::string error;
+        Require(vanta::assets::BuildTextureMipChain(source,
+                    vanta::assets::TextureColorSpace::Srgb, mips, error),
+                "Could not build a deterministic source texture mip chain.");
+        Require(mips.size() > 1U && mips.front().width == source.width &&
+                    mips.front().height == source.height &&
+                    mips.back().width == 1U && mips.back().height == 1U,
+                "Texture processing must generate a complete mip chain.");
         Require(vanta::assets::WriteProcessedTexture(root_ / relative, mips,
                     vanta::assets::TextureColorSpace::Srgb, error),
                 "Could not write processed terrain texture fixture.");
+        vanta::assets::ProcessedTexture verified;
+        Require(vanta::assets::LoadProcessedTexture(root_ / relative, verified, error) &&
+                    verified.mipChain.size() == mips.size(),
+                "Processed texture must be readable immediately after writing.");
     }
     const std::filesystem::path& Root() const { return root_; }
     const std::filesystem::path& Package() const { return package_; }
