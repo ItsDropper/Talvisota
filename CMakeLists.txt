@@ -86,6 +86,7 @@ if(TALVISOTA_ENABLE_VANTA_ENGINE)
 
     add_library(talvisota_engine_asset_validation STATIC
         src/talvisota/content/VantaAssetValidation.cpp
+        src/talvisota/content/VantaAssetPackage.cpp
     )
     add_library(Talvisota::EngineAssetValidation ALIAS talvisota_engine_asset_validation)
     target_compile_features(talvisota_engine_asset_validation PUBLIC cxx_std_23)
@@ -96,6 +97,7 @@ if(TALVISOTA_ENABLE_VANTA_ENGINE)
     target_link_libraries(talvisota_engine_asset_validation PUBLIC
         Talvisota::Content
         VantaEngine::Runtime
+        bcrypt
     )
     talvisota_apply_compiler_options(talvisota_engine_asset_validation)
 
@@ -104,6 +106,12 @@ if(TALVISOTA_ENABLE_VANTA_ENGINE)
     target_compile_definitions(talvisota_asset_validate PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
     target_link_libraries(talvisota_asset_validate PRIVATE Talvisota::EngineAssetValidation)
     talvisota_apply_compiler_options(talvisota_asset_validate)
+
+    add_executable(talvisota_content_package tools/validation/package_main.cpp)
+    target_compile_features(talvisota_content_package PRIVATE cxx_std_23)
+    target_compile_definitions(talvisota_content_package PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
+    target_link_libraries(talvisota_content_package PRIVATE Talvisota::EngineAssetValidation)
+    talvisota_apply_compiler_options(talvisota_content_package)
 
     add_executable(talvisota_texture_process tools/asset_pipeline/TextureProcess.cpp)
     target_compile_features(talvisota_texture_process PRIVATE cxx_std_23)
