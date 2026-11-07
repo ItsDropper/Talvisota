@@ -38,47 +38,52 @@ Multiplayer, user-generated content, modding, console support, advanced destruct
 
 ## M0 — Repository and engineering foundation
 
+**Status: Complete — verified**
+
 **Goal:** Make the repository predictable to build, test, review, and extend.
 
-Work:
-- Keep CMake configuration, compiler policies, formatting, and CI consistent.
-- Establish stable naming, include, error-handling, logging, and ownership conventions.
-- Establish a documented dependency policy and third-party notice process.
-- Keep the core library independent of window creation and GPU initialization.
-- Add automated checks for formatting, build, unit tests, and later content validation.
-- Keep generated build output and local captures out of version control.
+Delivered:
+- CMake configuration and Debug/Release presets.
+- Compiler policy with strict warnings and warnings-as-errors.
+- Windows x64 CI using Ninja, with configure, build, and CTest stages.
+- Headless core library and lifecycle tests.
+- README build instructions, dependency/licensing policy, and repository hygiene rules.
 
-Exit criteria:
-- Clean checkout configures and builds in Debug and Release.
-- CI runs the same meaningful configure/build/test commands.
-- Warnings are treated as errors for supported compilers.
-- Core tests run without a graphics device.
-- A new developer can reproduce the build from the README.
-- No undocumented runtime dependency or untracked third-party material exists.
+Exit evidence:
+- CI run [42381337923](https://github.com/ItsDropper/Talvisota/actions/runs/42381337923) completed both Debug and Release jobs successfully, including configure, build, and test.
+- The workflow uses the same CMake/Ninja build and CTest path documented for developers.
+- Core lifecycle tests do not initialize a window or graphics device.
 
-Current state: initial CMake, compiler policy, CI workflow, core lifecycle class, and lifecycle tests are present. Verify the latest CI result before treating M0 as closed.
+M0 is closed. Future additions to the engineering foundation remain subject to the same CI gate.
 
 ## M1 — Game application lifecycle and diagnostics
 
 **Goal:** Create a real executable shell with reliable startup, runtime ownership, failure reporting, and shutdown.
 
-Work:
-- Add the application entry point and a single composition root.
-- Define explicit ownership and initialization order for platform, engine, content, game session, and presentation.
-- Add structured logging with severity, subsystem, and useful error context.
-- Add crash diagnostics and clear locations for logs and configuration.
-- Define configuration loading, validation, defaults, and versioning.
-- Implement orderly shutdown and cleanup after partial initialization failure.
-- Keep application state separate from gameplay and mission state.
+Delivered:
+- A single executable entry point and `Application` composition root.
+- Explicit ownership of the application session, configuration, logger, and platform path/crash services.
+- Severity-filtered, timestamped console/file logging.
+- Versioned, strict key/value configuration with defaults created on first launch; unknown keys, duplicate keys, malformed values, and unsupported versions fail with line diagnostics.
+- Per-user configuration/data paths for Windows, Linux, and macOS.
+- A terminate handler that writes an exception-aware crash report.
+- Ordered startup and shutdown, including cleanup after partial initialization failure.
+- Headless tests for configuration validation, application startup, repeated lifecycle cycles, diagnostics creation, and initialization failure.
+- A CLI `--help` path.
+
+Scope boundary:
+- This is an application shell, not a playable game loop. It deliberately exits after core services initialize because game-owned renderer integration is blocked on M2.
+- Crash reporting currently covers C++ termination; it does not claim to produce OS minidumps or recover from arbitrary process termination.
 
 Exit criteria:
-- The application starts and exits cleanly on the supported development platform.
-- Each initialization failure reports the failing subsystem and cleans up resources already created.
-- Repeated startup/shutdown cycles do not leak owned resources.
-- Invalid configuration is rejected or safely defaulted with a clear diagnostic.
-- A headless application test can exercise lifecycle transitions.
+- [x] Application startup and shutdown are exercised on the supported platform by headless tests.
+- [x] Initialization failures return subsystem-specific diagnostics and enter the shutdown path.
+- [x] Repeated independent startup/shutdown cycles are exercised by tests.
+- [x] Invalid configuration is rejected with a clear diagnostic; missing configuration receives explicit defaults.
+- [x] The application composition root is tested without a graphics device.
+- [ ] Windows Debug and Release CI pass with warnings-as-errors and the executable smoke test.
 
-Do not add menus or gameplay as a substitute for a reliable application lifecycle.
+M1 implementation is awaiting its CI gate.
 
 ## M2 — VantaEngine game-integration contract
 
@@ -371,18 +376,16 @@ Deferred does not mean rejected. These features must earn their complexity throu
 
 ## 7. Immediate execution order
 
-1. **Verify the repository foundation:** run the latest Debug/Release CI and fix real failures. Do not mark M0 complete on a queued or failed workflow.
-2. **Turn the engine integration contract into actionable issues:** identify missing public interfaces and implement them in VantaEngine, not Talvisota.
-3. **Create the application composition root and diagnostics:** establish real startup, dependency ownership, failure cleanup, and shutdown.
-4. **Pin and integrate VantaEngine only after its public API is ready:** test the game adapter against that exact revision.
+1. **M0 is closed:** the latest complete Debug/Release CI run passed.
+2. **M1 is implemented:** verify its new Debug/Release CI and headless application tests before closing the gate.
+3. **Turn the engine integration contract into actionable work:** identify missing public interfaces and implement them in VantaEngine, not Talvisota.
+4. **Integrate VantaEngine only after its public API is ready:** test the game adapter against that exact revision.
 5. **Build the content schema and validation path:** stable IDs, manifests, references, provenance, and clean failure behavior.
 6. **Build one small game-owned environment:** prove the asset pipeline, scene submission, world ownership, and runtime lifecycle together.
 7. **Implement the minimum player loop and one mission:** keep scope narrow and complete it end-to-end.
 8. **Capture and review the first vertical slice:** use runtime evidence to decide what visual, gameplay, and performance work comes next.
 
-Do not jump from step 1 to a large map, detailed equipment simulation, campaign content, or photorealistic asset production. Those efforts would be built on unproven integration and content pipelines.
-
----
+Do not jump ahead to a large map, detailed equipment simulation, campaign content, or photorealistic asset production. Those efforts would be built on unproven integration and content pipelines.
 
 ## 8. Decision gate: when to change this plan
 
