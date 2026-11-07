@@ -45,3 +45,9 @@ Colour-space conventions are explicit: base-colour and emissive texture RGB are 
 World metadata uses the strict, versioned `.tworld` format documented in [world-definition-v1.md](../../data/schemas/world-definition-v1.md). Version 1 fixes the world coordinate convention to metres, right-handed, +X east, +Y up, and +Z north. Bounds must be finite and strictly ordered on every axis. Optional sea level must fall within the vertical bounds.
 
 The validator parses every manifest definition whose extension is `.tworld`. This is metadata validation only; terrain authoring, collision, vegetation placement, and runtime world loading remain later work.
+
+## Texture source decoding (first supported format)
+
+The content library exposes DecodeBmp and LoadBmp in TextureImporter.hpp. The implemented subset is Windows BMP with a BITMAPINFOHEADER-compatible DIB header, one plane, 24-bit BGR or 32-bit BGRX pixels, and BI_RGB (uncompressed) storage. Both positive-height bottom-up and negative-height top-down images are normalized to top-left-origin, tightly packed RGBA8. BI_RGB's fourth byte is reserved rather than a reliable alpha channel, so decoded pixels are opaque. Pixel RGB bytes remain sRGB-encoded; decoding does not perform a transfer-function conversion.
+
+The decoder validates the signature, header and pixel offsets, dimensions, row padding, declared file/image sizes, source bounds, and decoded allocation size before publishing output. It preserves the caller's previous image on failure. Source reads are capped at 1 GiB and decoded RGBA8 output at 512 MiB. This is intentionally a narrow, tested decoder; manifest-recognized PNG/JPEG/TGA/DDS/KTX2 files are not yet decoded. Processed texture serialization, mip generation, and renderer upload remain future M3/M2 work.

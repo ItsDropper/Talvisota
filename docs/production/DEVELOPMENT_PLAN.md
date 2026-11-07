@@ -137,7 +137,9 @@ Delivered so far:
 - CI-registered content registry tests.
 - A command-line content validator with actionable manifest/material/world diagnostics, deterministic load-order output, and a CI check against the shipped content catalog.
 
-Remaining M3 work includes mission/character/faction/equipment schemas, manifest-driven world definitions, migrations/compatibility policy, real model and texture import/processing tools, media decoding/validation, deterministic processed outputs, and clean content packaging. The material schema is authoring data only; it does not claim that the current renderer adapter supports texture-backed materials.
+A first real texture-decoding increment is now present: a bounded, portable BMP decoder converts uncompressed 24-bit BGR and 32-bit BGRX BI_RGB files into top-left-origin RGBA8, with explicit opaque-alpha and sRGB-byte semantics plus malformed-input regression tests. This is not yet a complete texture processing pipeline: PNG/JPEG/TGA/DDS/KTX2 decoders, deterministic processed-file serialization, mip generation, and model import remain outstanding.
+
+Remaining M3 work includes mission/character/faction/equipment schemas, manifest-driven world definitions, migrations/compatibility policy, broader model and texture import/processing tools, media decoding/validation for the other declared formats, deterministic processed outputs, and clean content packaging. The material schema is authoring data only; it does not claim that the current renderer adapter supports texture-backed materials.
 
 Work:
 - Define stable IDs for assets and authored content; do not use file paths as persistent identity.

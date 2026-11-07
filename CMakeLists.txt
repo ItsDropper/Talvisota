@@ -28,6 +28,7 @@ add_library(talvisota_content STATIC
     src/talvisota/content/ContentRegistry.cpp
     src/talvisota/content/MaterialDefinition.cpp
     src/talvisota/content/WorldDefinition.cpp
+    src/talvisota/content/TextureImporter.cpp
 )
 add_library(Talvisota::Content ALIAS talvisota_content)
 target_compile_features(talvisota_content PUBLIC cxx_std_23)
