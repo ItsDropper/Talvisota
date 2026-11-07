@@ -127,7 +127,7 @@ Known M2 scope boundary: persistent per-mesh GPU caches and texture-backed game 
 
 **Goal:** Make authored content loadable, traceable, validated, and safe to fail.
 
-**Implementation status (2026-11-07): In progress.** The first production foundation is implemented: a versioned UTF-8 content manifest, stable-ID registry, kind/extension checks, root-contained path validation (including canonicalized symlink targets), required/optional file policy, mandatory source/licence metadata, dependency validation, deterministic dependency-first ordering, cycle detection, exact manifest/line/field diagnostics, and atomic registry publication. Headless tests cover valid dependency order, stable lookup, duplicate IDs, failed-reload atomicity, traversal, unsupported extensions, missing required files/references, optional missing files, and dependency cycles. The manifest format is documented in [content-manifest-v1.md](../../data/schemas/content-manifest-v1.md). This is the first M3 slice, not completion of the content or media pipeline.
+**Implementation status (2026-11-07): In progress.** The production foundation includes a versioned UTF-8 content manifest, stable-ID registry, kind/extension checks, root-contained path validation (including canonicalized symlink targets), required/optional file policy, mandatory source/licence metadata, dependency validation, deterministic dependency-first ordering, cycle detection, exact manifest/line/field diagnostics, and atomic registry publication. A typed v1 PBR material definition parser now validates stable material identity, manifest-path ownership, linear base/emissive values, roughness/metallic ranges, normal and occlusion factors, alpha mode, sidedness, and texture-slot references restricted to texture assets. Texture slots define sRGB versus linear interpretation and ORM channel packing in [material-definition-v1.md](../../data/schemas/material-definition-v1.md). Headless tests cover manifest and typed material success/failure paths. This is still an early M3 slice, not completion of the content or media pipeline.
 
 Delivered so far:
 - `Talvisota::Content` runtime library with no renderer or VantaEngine dependency.
@@ -137,7 +137,7 @@ Delivered so far:
 - CI-registered content registry tests.
 - A command-line manifest validator with actionable diagnostics, deterministic load-order output, and a CI help/smoke check.
 
-Remaining M3 work includes domain-specific versioned schemas and parsing, manifest-driven shipped content, migrations/compatibility policy, import/processing tools, media decoding/validation, deterministic processed outputs, and clean content packaging.
+Remaining M3 work includes world/mission/character/faction/equipment schemas, manifest-driven shipped content, migrations/compatibility policy, real model and texture import/processing tools, media decoding/validation, deterministic processed outputs, and clean content packaging. The material schema is authoring data only; it does not claim that the current renderer adapter supports texture-backed materials.
 
 Work:
 - Define stable IDs for assets and authored content; do not use file paths as persistent identity.
@@ -398,8 +398,8 @@ Deferred does not mean rejected. These features must earn their complexity throu
 1. **M0 is closed:** the latest complete Debug/Release CI run passed.
 2. **M1 is closed:** Debug/Release CI and headless application tests passed.
 3. **Finish the M2 gate:** pass the pinned MSVC adapter CI job and run the Talvisota-owned sample on both D3D11 and D3D12 hardware paths.
-4. **Begin M3 only after M2 closes:** build the content schema and validation path with stable IDs, manifests, references, provenance, and clean failure behavior.
-6. **Build one small game-owned environment:** prove the asset pipeline, scene submission, world ownership, and runtime lifecycle together.
+4. **Continue M3 independently of the M2 hardware gate:** build typed content schemas, manifest-driven definitions, provenance, and deterministic offline asset processing. Do not integrate renderer-backed world loading until M2 real-device verification is recorded.
+6. **After M3 content validation and the M2 hardware gate:** build one small game-owned environment to prove the asset pipeline, scene submission, world ownership, and runtime lifecycle together.
 7. **Implement the minimum player loop and one mission:** keep scope narrow and complete it end-to-end.
 8. **Capture and review the first vertical slice:** use runtime evidence to decide what visual, gameplay, and performance work comes next.
 
