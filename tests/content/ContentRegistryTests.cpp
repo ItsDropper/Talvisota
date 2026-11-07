@@ -153,6 +153,78 @@ void TestDependencyCyclesAreRejected()
     Require(!Load(directory, registry, diagnostics), "Dependency cycles must fail.");
     Require(!diagnostics.empty(), "Cycle rejection must explain the error.");
 }
+
+void TestTypedMaterialDefinitionAndTextureReferences()
+{
+    TemporaryDirectory directory;
+    directory.Write("materials/snow.tmat",
+        "talvisota-material\\t1\\n"
+        "id = material.surface.snow\\n"
+        "base_color = 0.82, 0.86, 0.9\\n"
+        "roughness = 0.91\\n"
+        "metallic = 0.0\\n"
+        "normal_scale = 0.7\\n"
+        "occlusion_strength = 0.8\\n"
+        "alpha_mode = opaque\\n"
+        "double_sided = false\\n"
+        "base_color_texture = texture.surface.snow_albedo\\n"
+        "normal_texture = texture.surface.snow_normal\\n"
+        "orm_texture = texture.surface.snow_orm\\n");
+    directory.Write("textures/snow-albedo.png", "albedo");
+    directory.Write("textures/snow-normal.png", "normal");
+    directory.Write("textures/snow-orm.png", "orm");
+    directory.Manifest(
+        "talvisota-content-manifest\\t1\\n"
+        "asset\\tmaterial.surface.snow\\tmaterial\\tmaterials/snow.tmat\\trequired\\ttexture.surface.snow_albedo,texture.surface.snow_normal,texture.surface.snow_orm\\tproject\\tproject\\n"
+        "asset\\ttexture.surface.snow_albedo\\ttexture\\ttextures/snow-albedo.png\\trequired\\t-\\tproject\\tproject\\n"
+        "asset\\ttexture.surface.snow_normal\\ttexture\\ttextures/snow-normal.png\\trequired\\t-\\tproject\\tproject\\n"
+        "asset\\ttexture.surface.snow_orm\\ttexture\\ttextures/snow-orm.png\\trequired\\t-\\tproject\\tproject\\n");
+    ContentRegistry registry;
+    std::vector<ContentDiagnostic> registryDiagnostics;
+    Require(Load(directory, registry, registryDiagnostics), "Material and texture manifest should load.");
+    MaterialDefinition material;
+    std::vector<MaterialDiagnostic> diagnostics;
+    Require(LoadMaterialDefinition(directory.Path() / "materials/snow.tmat", registry, material, diagnostics),
+            "Valid typed material definition should load.");
+    Require(material.id == "material.surface.snow", "Material stable ID should be retained.");
+    Require(material.roughness == 0.91F && material.metallic == 0.0F, "PBR scalar values should be parsed exactly.");
+    Require(material.normalTexture == "texture.surface.snow_normal", "Texture references should be retained.");
+    Require(material.alphaMode == MaterialAlphaMode::Opaque && !material.doubleSided,
+            "Surface presentation flags should be parsed.");
+}
+
+void TestMaterialRejectsInvalidPbrValuesAndWrongTextureKinds()
+{
+    TemporaryDirectory directory;
+    directory.Write("materials/bad.tmat",
+        "talvisota-material\\t1\\n"
+        "id = material.surface.bad\\n"
+        "base_color = 1.0, 1.0, 1.0\\n"
+        "roughness = 1.4\\n"
+        "metallic = 0.0\\n"
+        "normal_texture = material.other\\n");
+    directory.Write("materials/other.tmat",
+        "talvisota-material\\t1\\n"
+        "id = material.other\\n"
+        "base_color = 1, 1, 1\\n"
+        "roughness = 0.5\\n"
+        "metallic = 0\\n");
+    directory.Manifest(
+        "talvisota-content-manifest\\t1\\n"
+        "asset\\tmaterial.surface.bad\\tmaterial\\tmaterials/bad.tmat\\trequired\\tmaterial.other\\tproject\\tproject\\n"
+        "asset\\tmaterial.other\\tmaterial\\tmaterials/other.tmat\\trequired\\t-\\tproject\\tproject\\n");
+    ContentRegistry registry;
+    std::vector<ContentDiagnostic> registryDiagnostics;
+    Require(Load(directory, registry, registryDiagnostics), "Manifest for invalid material test should load.");
+    MaterialDefinition material;
+    material.id = "unchanged";
+    std::vector<MaterialDiagnostic> diagnostics;
+    Require(!LoadMaterialDefinition(directory.Path() / "materials/bad.tmat", registry, material, diagnostics),
+            "Out-of-range PBR and wrong texture-kind references must fail.");
+    Require(material.id == "unchanged", "Failed material loads must not publish partial definitions.");
+    Require(diagnostics.size() >= 2U, "Independent material errors should both be reported.");
+}
+
 } // namespace
 
 int main()
@@ -165,6 +237,8 @@ int main()
         TestMissingRequiredFileAndDependencyAreRejected();
         TestOptionalMissingFileIsAllowed();
         TestDependencyCyclesAreRejected();
+        TestTypedMaterialDefinitionAndTextureReferences();
+        TestMaterialRejectsInvalidPbrValuesAndWrongTextureKinds();
     }
     catch (const std::exception& exception)
     {
