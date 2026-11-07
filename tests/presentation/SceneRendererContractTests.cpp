@@ -67,7 +67,11 @@ SceneSnapshot ValidScene()
     };
     mesh.indices = {0U, 1U, 2U};
     scene.meshes.push_back(mesh);
-    scene.materials.push_back({{0.2F, 0.5F, 0.8F}, 0.7F, 0.1F});
+    RenderMaterial material;
+    material.baseColor = {0.2F, 0.5F, 0.8F};
+    material.roughness = 0.7F;
+    material.metallic = 0.1F;
+    scene.materials.push_back(std::move(material));
     scene.instances.push_back({0U, 0U});
     return scene;
 }
