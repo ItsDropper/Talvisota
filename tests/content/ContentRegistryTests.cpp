@@ -59,11 +59,11 @@ void TestDependencyOrderAndStableLookup()
 {
     TemporaryDirectory directory;
     directory.Write("models/tree.obj", "mesh");
-    directory.Write("materials/tree.json", "{}");
+    directory.Write("materials/tree.tmat", "{}");
     directory.Manifest(
         "talvisota-content-manifest\t1\n"
         "asset\tworld.tree\tmodel\tmodels/tree.obj\trequired\tmaterial.tree\tproject\tproject\n"
-        "asset\tmaterial.tree\tmaterial\tmaterials/tree.json\trequired\t-\tproject\tproject\n");
+        "asset\tmaterial.tree\tmaterial\tmaterials/tree.tmat\trequired\t-\tproject\tproject\n");
     talvisota::content::ContentRegistry registry;
     std::vector<talvisota::content::ContentDiagnostic> diagnostics;
     Require(Load(directory, registry, diagnostics), "Valid manifest should load.");
