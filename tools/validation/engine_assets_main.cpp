@@ -34,7 +34,8 @@ int main(int argc, char** argv)
                       << "]: " << diagnostic.message << '\n';
         return 1;
     }
-    std::cout << "Imported " << summary.importedModels << " models and decoded "
-              << summary.decodedTextures << " unique textures using VantaEngine CPU asset services.\n";
+    std::cout << "Imported " << summary.importedModels << " models, decoded "
+              << summary.decodedTextures << " unique textures and validated "
+              << summary.decodedAudio << " audio assets using CPU asset services.\n";
     return 0;
 }
