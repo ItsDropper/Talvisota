@@ -1,4 +1,5 @@
 #include "talvisota/content/ContentRegistry.hpp"
+#include "talvisota/content/MaterialDefinition.hpp"
 
 #include <exception>
 #include <filesystem>
