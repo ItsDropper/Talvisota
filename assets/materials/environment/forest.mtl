@@ -1,7 +1,7 @@
 # Original physically-based winter forest material set. Values are linear reflectance factors.
 newmtl pine_bark
 Kd 1.0 1.0 1.0
-Pr 0.88
+Pr 1.0
 Pm 0.0
 map_Kd ../../textures/environment/bark-albedo.bmp
 map_Bump ../../textures/environment/bark-normal.bmp
@@ -9,7 +9,7 @@ map_Pr ../../textures/environment/bark-roughness.bmp
 map_AO ../../textures/environment/bark-ao.bmp
 newmtl pine_needles
 Kd 1.0 1.0 1.0
-Pr 0.91
+Pr 1.0
 Pm 0.0
 map_Kd ../../textures/environment/pine_needles-albedo.bmp
 map_Bump ../../textures/environment/pine_needles-normal.bmp
@@ -17,7 +17,7 @@ map_Pr ../../textures/environment/pine_needles-roughness.bmp
 map_AO ../../textures/environment/pine_needles-ao.bmp
 newmtl birch_bark
 Kd 1.0 1.0 1.0
-Pr 0.84
+Pr 1.0
 Pm 0.0
 map_Kd ../../textures/environment/birch_bark-albedo.bmp
 map_Bump ../../textures/environment/birch_bark-normal.bmp
@@ -25,7 +25,7 @@ map_Pr ../../textures/environment/birch_bark-roughness.bmp
 map_AO ../../textures/environment/birch_bark-ao.bmp
 newmtl birch_dark
 Kd 1.0 1.0 1.0
-Pr 0.93
+Pr 1.0
 Pm 0.0
 map_Kd ../../textures/environment/bark-albedo.bmp
 map_Bump ../../textures/environment/bark-normal.bmp
@@ -33,7 +33,7 @@ map_Pr ../../textures/environment/bark-roughness.bmp
 map_AO ../../textures/environment/bark-ao.bmp
 newmtl aspen_bark
 Kd 1.0 1.0 1.0
-Pr 0.87
+Pr 1.0
 Pm 0.0
 map_Kd ../../textures/environment/bark-albedo.bmp
 map_Bump ../../textures/environment/bark-normal.bmp
@@ -41,7 +41,7 @@ map_Pr ../../textures/environment/bark-roughness.bmp
 map_AO ../../textures/environment/bark-ao.bmp
 newmtl alder_bark
 Kd 1.0 1.0 1.0
-Pr 0.91
+Pr 1.0
 Pm 0.0
 map_Kd ../../textures/environment/bark-albedo.bmp
 map_Bump ../../textures/environment/bark-normal.bmp
@@ -49,7 +49,7 @@ map_Pr ../../textures/environment/bark-roughness.bmp
 map_AO ../../textures/environment/bark-ao.bmp
 newmtl twig
 Kd 1.0 1.0 1.0
-Pr 0.94
+Pr 1.0
 Pm 0.0
 map_Kd ../../textures/environment/bark-albedo.bmp
 map_Bump ../../textures/environment/bark-normal.bmp
