@@ -166,6 +166,32 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
                   0.72F + medium * 0.09F - shade * 0.84F,
                   height, 0.88F + fine * 0.09F, 0.98F - shade * 0.52F};
     }
+    else if (preset == "aspen_bark")
+    {
+        const scars = std::sin((v * 19.0F + (broad - 0.5F) * 0.18F) * 2.0F * Pi);
+        const scarMask = Smooth((std::abs(scars) - 0.955F) * 24.0F) *
+            Smooth((fine - 0.34F) * 2.6F);
+        const smoothGrain = (medium - 0.5F) * 0.045F + (fine - 0.5F) * 0.018F;
+        const float height = 0.50F + scars * 0.018F + smoothGrain - scarMask * 0.065F;
+        sample = {0.48F + broad * 0.075F + smoothGrain - scarMask * 0.18F,
+                  0.50F + broad * 0.075F + smoothGrain - scarMask * 0.16F,
+                  0.43F + medium * 0.07F + smoothGrain - scarMask * 0.13F,
+                  height, 0.88F + fine * 0.08F, 0.98F - scarMask * 0.52F};
+    }
+    else if (preset == "alder_bark")
+    {
+        const float ridges = std::sin((u * 49.0F + (broad - 0.5F) * 1.1F) * 2.0F * Pi);
+        const float deepFissure = Smooth((std::abs(ridges) - 0.62F) * 6.0F);
+        const float roughnessNoise = Fbm(u, v, 144, seed ^ 0x9b05688cU, 3);
+        const float height = 0.50F + ridges * 0.15F + (medium - 0.5F) * 0.12F +
+            (fine - 0.5F) * 0.07F - deepFissure * 0.11F - knot * 0.07F;
+        const float darkening = deepFissure * 0.12F + knot * 0.045F;
+        sample = {0.19F + broad * 0.09F - darkening,
+                  0.16F + medium * 0.075F - darkening * 0.9F,
+                  0.115F + fine * 0.05F - darkening * 0.7F,
+                  height, 0.86F + roughnessNoise * 0.12F,
+                  0.97F - deepFissure * 0.52F - knot * 0.22F};
+    }
     else if (preset == "granite")
     {
         const float cells = std::abs(medium - 0.5F);
@@ -413,9 +439,9 @@ bool VerifyBmp(const std::filesystem::path& path, std::string& error)
 
 bool VerifyAll(const std::filesystem::path& directory, std::string& error)
 {
-    constexpr std::array<std::string_view, 8> presets = {
-        "bark", "pine_needles", "birch_bark", "granite",
-        "snow", "packed_snow", "water", "reeds"
+    constexpr std::array<std::string_view, 10> presets = {
+        "bark", "pine_needles", "birch_bark", "aspen_bark", "alder_bark",
+        "granite", "snow", "packed_snow", "water", "reeds"
     };
     constexpr std::array<std::string_view, 4> channels = {
         "albedo", "normal", "roughness", "ao"
@@ -522,7 +548,7 @@ int main(int argc, char** argv)
                   << "Usage: talvisota_environment_texture_gen <output-directory>\n"
                   << "       talvisota_environment_texture_gen --verify <output-directory>\n"
                   << "Generates 1024x1024 seamless albedo, tangent-normal, roughness and AO BMP maps, plus a packed ORM map for typed snow\n"
-                  << "for bark, pine_needles, birch_bark, granite, snow, packed_snow, water and reeds.\n";
+                  << "for bark, pine_needles, birch_bark, aspen_bark, alder_bark, granite, snow, packed_snow, water and reeds.\n";
         return 0;
     }
     if (argc == 3 && std::string_view(argv[1]) == "--verify")
@@ -533,7 +559,7 @@ int main(int argc, char** argv)
             std::cerr << error << '\n';
             return 1;
         }
-        std::cout << "Verified all 33 environment PBR maps.\n";
+        std::cout << "Verified all 41 environment PBR maps.\n";
         return 0;
     }
     if (argc != 2)
