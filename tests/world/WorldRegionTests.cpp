@@ -209,10 +209,10 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
             "Sakkola forest should mix spruce, pine, birch, aspen, and alder rather than repeat one tree model.");
 
     const auto water = std::find_if(region.placements.begin(), region.placements.end(),
-        [](const auto& item) { return item.id == "water.suvanto"; });
+        [](const auto& item) { return item.id == "ice.suvanto"; });
     Require(water != region.placements.end() &&
-            water->modelAssetId == "model.environment.suvanto_water",
-            "Sakkola region should include the Suvanto shoreline surface.");
+            water->modelAssetId == "model.environment.suvanto_ice",
+            "Sakkola region should include the frozen Suvanto surface.");
 
     std::vector<std::string> path;
     std::string navigationError;
