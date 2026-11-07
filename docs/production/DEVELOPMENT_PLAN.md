@@ -89,6 +89,9 @@ M1 is closed after the successful CI rerun following the strict-warning fix in `
 
 **Goal:** Make the engine capable of rendering a scene owned by Talvisota through public APIs.
 
+**Implementation status (2026-11-07):** VantaEngine now exposes a renderer-independent scene contract consumed by both D3D11 and D3D12. Submitted geometry is validated, transformed into world space with inverse-transpose normal handling, uploaded through backend-owned frame resources, rendered in the visible pass, and included in cascaded shadow passes. D3D12 frame-slot upload buffers remain alive until the matching fence completes; D3D11 uses dynamic write-discard buffers. Both backends expose frame success and device-removal state. VantaEngine includes a separate game-owned scene sample. Talvisota now has a backend-independent `ISceneRenderer` contract, snapshot validation, an optional adapter pinned to `3b5d390788677c963740a54e31f2006acbe4f891`, and a standalone Win32 sample. The adapter build is opt-in and requires Windows x64/MSVC. M2 remains open until the pinned adapter build passes CI and both backends are exercised on a real device.
+
+
 This is a cross-repository milestone. Engine-side implementation belongs in VantaEngine; game-side integration belongs here.
 
 Required engine work:
@@ -108,11 +111,14 @@ Talvisota-side work:
 - Ensure game code never reaches through the adapter into backend internals.
 
 Exit criteria:
-- Talvisota can submit and render its own scene without using VantaEngine's built-in procedural sample world.
-- Models, transforms, materials, visibility, and shadows behave correctly.
-- Resource creation, replacement, and destruction are safe and tested.
-- Both supported renderer backends pass the same public-contract tests.
-- Engine upgrade is an explicit reviewed change, not a floating-branch update.
+- [x] Talvisota defines and validates a game-owned scene snapshot without VantaEngine or Direct3D types.
+- [x] An optional adapter translates game-owned snapshots into the public VantaEngine scene API without private backend includes.
+- [x] The adapter pins an exact VantaEngine commit rather than following a branch.
+- [x] Both backends expose the same submitted-frame API, including visible and cascaded-shadow submission.
+- [x] CPU resource handles, stale-handle rejection, resource replacement, visibility, and snapshot lifetime have unit coverage.
+- [ ] The pinned MSVC adapter configuration and game-owned contract tests pass CI.
+- [ ] Real-device D3D11 and D3D12 smoke tests confirm transforms, materials, visibility, shadows, resize, and device-loss reporting.
+- [ ] Persistent per-mesh GPU caches and texture-backed game materials are deferred; the current upload path is per-frame and scalar-PBR only.
 
 **Blocking rule:** Do not build the real game world, content placement pipeline, or presentation features around renderer internals before M2 is complete.
 
