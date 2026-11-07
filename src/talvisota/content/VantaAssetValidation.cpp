@@ -243,7 +243,6 @@ bool ValidateEngineAssets(const ContentRegistry& registry, EngineAssetSummary& o
         return false;
 
     std::unordered_set<std::string> decodedTexturePaths;
-    std::unordered_set<const vanta::assets::CpuEmbeddedImage*> decodedEmbeddedImages;
     const auto decodeTexture = [&](const std::filesystem::path& sourcePath,
                                    const AssetRecord* owner,
                                    const std::filesystem::path& diagnosticPath,
@@ -446,6 +445,7 @@ bool ValidateEngineAssets(const ContentRegistry& registry, EngineAssetSummary& o
             Add(diagnostics, sourcePath, "model", "Model store published no readable CPU model.");
             return false;
         }
+        std::unordered_set<const vanta::assets::CpuEmbeddedImage*> decodedEmbeddedImages;
         bool dependenciesValid = true;
         for (const auto& materialLibrary : model->materialLibraries)
         {
