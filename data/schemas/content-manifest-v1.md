@@ -38,7 +38,7 @@ Supported extensions:
 | texture | .png, .jpg, .jpeg, .tga, .dds, .ktx2 |
 | audio | .wav, .ogg, .flac |
 | definition | .json, .toml, .yaml, .yml |
-| material | .tmat, .json, .toml, .yaml, .yml |
+| material | .tmat |
 
 ## Failure and publication semantics
 
