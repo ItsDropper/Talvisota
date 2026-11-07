@@ -4,7 +4,7 @@
 
 The repository is being established with explicit boundaries between engine technology, game rules, historical content, and presentation. The goal is a maintainable codebase that can grow into a large project without turning the renderer, mission logic, or content data into one tightly coupled codebase.
 
-> **Project status:** M0 engineering foundation is complete. M1 provides a native application shell, configuration, logging, user paths, and terminate diagnostics. The project is not yet playable and does not yet submit a game-owned scene to VantaEngine. The interactive runtime is intentionally deferred until the M2 engine integration contract exists.
+ > **Project status:** M0 and M1 are complete. M2 now has a game-owned renderer contract, snapshot validation, an optional VantaEngine adapter pinned to an exact engine revision, and a standalone renderer sample. The adapter build is gated to Windows x64/MSVC; real-device rendering validation remains outstanding.
 
 ## Development plan
 
@@ -113,7 +113,7 @@ Run the application shell after building:
 
 The application creates a versioned `config.ini`, a timestamped log, and a terminate-report location under the current user's application-data directories. A custom configuration file can be selected with `--config <file>`. Unknown options and invalid configuration are reported as errors.
 
-The initial CI matrix builds and tests Debug and Release on Windows x64 with warnings treated as errors.
+The initial CI matrix builds and tests Debug and Release on Windows x64 with warnings treated as errors. A separate MSVC job builds the pinned VantaEngine adapter and the game-owned scene sample.
 
 ## Application lifecycle boundary
 
@@ -121,13 +121,13 @@ The application composition root owns startup ordering and shutdown. Core config
 
 The current crash diagnostic is a C++ terminate report. It is not an OS minidump, and it cannot recover from power loss or arbitrary forced process termination.
 
-The executable currently initializes core services and exits. It does not pretend to run a game loop. Interactive runtime work starts after the public game-owned scene API is ready in M2.
+The default executable still initializes core services and exits. The optional renderer adapter sample is a separate executable built only when `TALVISOTA_ENABLE_VANTA_ENGINE=ON`.
 
 ## Engine boundary
 
 VantaEngine is maintained in a separate repository. Talvisota must consume public engine interfaces only. It must not include private D3D11/D3D12 implementation headers, reach into backend resource ownership, or copy engine implementation files into this repository.
 
-The current engine runtime is not yet sufficient to render a game-owned scene: its renderers still build their procedural sample scene internally. The engine integration milestone is therefore a public scene submission and resource-lifetime API for both renderer backends. Until that exists, this repository keeps its game-domain foundation independent of renderer implementation details.
+The game-facing contract lives in `talvisota/presentation/SceneRenderer.hpp` and contains only game-owned snapshot types. The optional adapter in `VantaSceneRenderer.cpp` translates those snapshots to VantaEngine's public `SceneSubmission` API; no Talvisota game or domain header includes a Direct3D or VantaEngine backend implementation header. The adapter fetches VantaEngine at the exact revision recorded in `CMakeLists.txt`, never from a floating branch. Submitted game materials currently support scalar base colour, roughness, and metallic values; texture-backed material loading and persistent per-mesh GPU caches remain future work.
 
 ## Licensing
 
