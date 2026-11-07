@@ -66,6 +66,7 @@ Talvisota/
 │       └── platform/
 ├── tests/
 │   ├── core/
+│   ├── app/
 │   ├── gameplay/
 │   ├── content/
 │   └── integration/
