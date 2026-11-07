@@ -72,6 +72,38 @@ void TestBuildsAndVerifiesDeterministicInventory()
             "Published package should pass full inventory and SHA-256 verification.");
     Require(verified.assetCount == built.assetCount && verified.totalBytes == built.totalBytes,
             "Build and verification summaries should match.");
+    std::ifstream firstInventory(fixture.Package() / "package.tmanifest", std::ios::binary);
+    const std::string firstText((std::istreambuf_iterator<char>(firstInventory)),
+                                std::istreambuf_iterator<char>());
+    AssetPackageSummary rebuilt;
+    Require(BuildAssetPackage(registry, fixture.Package(), rebuilt, diagnostics),
+            "Rebuilding an existing package should replace it after validation.");
+    std::ifstream secondInventory(fixture.Package() / "package.tmanifest", std::ios::binary);
+    const std::string secondText((std::istreambuf_iterator<char>(secondInventory)),
+                                 std::istreambuf_iterator<char>());
+    Require(firstText == secondText, "Identical inputs must produce byte-identical package inventories.");
+}
+
+void TestRejectsUnindexedPackageFile()
+{
+    Fixture fixture;
+    ContentRegistry registry;
+    std::vector<ContentDiagnostic> manifestDiagnostics;
+    Require(LoadContentManifest(fixture.Root() / "catalog.tmanifest", fixture.Root(),
+                                registry, manifestDiagnostics),
+            "Unindexed-file fixture manifest should load.");
+    AssetPackageSummary built;
+    std::vector<EngineAssetDiagnostic> diagnostics;
+    Require(BuildAssetPackage(registry, fixture.Package(), built, diagnostics),
+            "Package builder should create unindexed-file fixture.");
+    std::ofstream extra(fixture.Package() / "extra.bin", std::ios::binary);
+    extra << "unindexed";
+    extra.close();
+    AssetPackageSummary verified;
+    Require(!ValidateAssetPackage(fixture.Package(), verified, diagnostics),
+            "Package verification must reject unindexed files.");
+    Require(!diagnostics.empty() && diagnostics.front().field == "inventory",
+            "Unindexed files should report an inventory diagnostic.");
 }
 
 void TestRejectsModifiedPackageAsset()
@@ -104,6 +136,7 @@ int main()
     try
     {
         TestBuildsAndVerifiesDeterministicInventory();
+        TestRejectsUnindexedPackageFile();
         TestRejectsModifiedPackageAsset();
     }
     catch (const std::exception& exception)
