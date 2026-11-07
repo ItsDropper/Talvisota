@@ -98,6 +98,8 @@ jobs:
           $captureDir = Join-Path $env:RUNNER_TEMP 'sakkola-captures'
           New-Item -ItemType Directory -Force -Path $captureDir | Out-Null
           $process = Start-Process -FilePath .\build-msvc\talvisota_renderer_sample.exe -ArgumentList @('--backend=d3d12', "--capture-dir=$captureDir", '--frames-per-view=5') -Wait -PassThru
+          $rendererLog = Join-Path $captureDir 'renderer.log'
+          if (Test-Path -LiteralPath $rendererLog) { Get-Content -LiteralPath $rendererLog }
           if ($process.ExitCode -ne 0) { throw "Sakkola renderer exited with code $($process.ExitCode)" }
           $captures = @(Get-ChildItem -LiteralPath $captureDir -Filter '*.png' -File)
           if ($captures.Count -ne 5) { throw "Expected five rendered PNGs, found $($captures.Count)" }
@@ -107,6 +109,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: talvisota-sakkola-terrain-screenshots
-          path: ${{ runner.temp }}/sakkola-captures/*.png
+          path: |
+            ${{ runner.temp }}/sakkola-captures/*.png
+            ${{ runner.temp }}/sakkola-captures/renderer.log
           if-no-files-found: error
           retention-days: 30

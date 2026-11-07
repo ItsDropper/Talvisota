@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <map>
@@ -458,6 +459,22 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         if (ownsCom) CoUninitialize();
         return 1;
     }
+    std::ofstream captureLog;
+    if (captureRequested) {
+        std::error_code logDirectoryError;
+        std::filesystem::create_directories(std::filesystem::path(captureDir), logDirectoryError);
+        if (logDirectoryError) {
+            if (ownsCom) CoUninitialize();
+            return 1;
+        }
+        captureLog.open(std::filesystem::path(captureDir) / "renderer.log", std::ios::out | std::ios::trunc);
+        if (!captureLog) {
+            if (ownsCom) CoUninitialize();
+            return 1;
+        }
+        captureLog << "Sakkola renderer backend: " << (useD3D11 ? "D3D11" : "D3D12")
+            << "; capture mode enabled; output=" << std::filesystem::path(captureDir).string() << "\n";
+    }
     std::cout << "Sakkola renderer backend: " << (useD3D11 ? "D3D11" : "D3D12")
         << "; capture mode: " << (captureRequested ? "enabled" : "disabled") << ".\n";
 
@@ -466,6 +483,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     std::string error;
     if (!BuildSakkolaScene(std::filesystem::current_path(), scene, placements, draws, error)) {
         std::cerr << error << "\n";
+        if (captureLog) captureLog << "Scene build failed:\n" << error << "\n";
         if (ownsCom) CoUninitialize();
         return 2;
     }
@@ -509,6 +527,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     GetClientRect(window, &client);
     if (!renderer->Initialize(window, client.right - client.left, client.bottom - client.top, error)) {
         std::cerr << "Renderer initialization failed: " << error << "\n";
+        if (captureLog) captureLog << "Renderer initialization failed: " << error << "\n";
         renderer.reset(); DestroyWindow(window);
         if (ownsCom) CoUninitialize();
         return 6;
@@ -544,8 +563,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         if (ownsCom) CoUninitialize();
         if (!error.empty()) {
             std::cerr << "Sakkola capture failed: " << error << "\n";
+            if (captureLog) captureLog << "Capture failed: " << error << "\n";
             return 7;
         }
+        if (captureLog) captureLog << "Capture completed: five PNG viewpoints rendered and validated.\n";
         return 0;
     }
 
