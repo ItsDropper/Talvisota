@@ -417,8 +417,8 @@ bool VerifyAll(const std::filesystem::path& directory, std::string& error)
         "bark", "pine_needles", "birch_bark", "granite",
         "snow", "packed_snow", "water", "reeds"
     };
-    constexpr std::array<std::string_view, 4> channels = {
-        "albedo", "normal", "roughness", "ao"
+    constexpr std::array<std::string_view, 5> channels = {
+        "albedo", "normal", "roughness", "ao", "orm"
     };
     for (const auto preset : presets)
     {
@@ -447,6 +447,7 @@ bool GeneratePreset(const std::filesystem::path& outputDirectory,
     std::vector<Rgb8> normal(pixelCount);
     std::vector<Rgb8> roughness(pixelCount);
     std::vector<Rgb8> occlusion(pixelCount);
+    std::vector<Rgb8> orm(pixelCount);
 
     for (int y = 0; y < height; ++y)
     {
@@ -467,6 +468,8 @@ bool GeneratePreset(const std::filesystem::path& outputDirectory,
             const std::uint8_t ao = ToByte(samples[index].occlusion);
             roughness[index] = {rough, rough, rough};
             occlusion[index] = {ao, ao, ao};
+            // ORM channel packing follows the typed material schema: R=AO, G=roughness, B=metallic.
+            orm[index] = {ao, rough, 0U};
         }
     }
 
@@ -503,7 +506,8 @@ bool GeneratePreset(const std::filesystem::path& outputDirectory,
     return WriteBmp(outputDirectory / (base + "-albedo.bmp"), albedo, width, height, error) &&
         WriteBmp(outputDirectory / (base + "-normal.bmp"), normal, width, height, error) &&
         WriteBmp(outputDirectory / (base + "-roughness.bmp"), roughness, width, height, error) &&
-        WriteBmp(outputDirectory / (base + "-ao.bmp"), occlusion, width, height, error);
+        WriteBmp(outputDirectory / (base + "-ao.bmp"), occlusion, width, height, error) &&
+        WriteBmp(outputDirectory / (base + "-orm.bmp"), orm, width, height, error);
 }
 
 } // namespace
@@ -515,7 +519,7 @@ int main(int argc, char** argv)
         std::cout << "Talvisota deterministic environment PBR texture generator\n"
                   << "Usage: talvisota_environment_texture_gen <output-directory>\n"
                   << "       talvisota_environment_texture_gen --verify <output-directory>\n"
-                  << "Generates 1024x1024 seamless albedo, tangent-normal, roughness and AO BMP maps\n"
+                  << "Generates 1024x1024 seamless albedo, tangent-normal, roughness, AO and ORM BMP maps\n"
                   << "for bark, pine_needles, birch_bark, granite, snow, packed_snow, water and reeds.\n";
         return 0;
     }
@@ -527,7 +531,7 @@ int main(int argc, char** argv)
             std::cerr << error << '\n';
             return 1;
         }
-        std::cout << "Verified all 32 environment PBR maps.\n";
+        std::cout << "Verified all 40 environment PBR maps.\n";
         return 0;
     }
     if (argc != 2)
