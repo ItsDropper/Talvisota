@@ -29,3 +29,12 @@ Validation must fail with actionable file paths and field names. Do not silently
 ## Runtime loading
 
 Runtime content loading must distinguish required and optional assets, report failures with context, and avoid publishing partially initialized resources. GPU resource lifetime remains owned by the engine adapter/renderer, not by mission definitions.
+
+
+## Typed PBR material definitions
+
+Material assets use the strict, versioned `.tmat` format documented in [material-definition-v1.md](../../data/schemas/material-definition-v1.md). The runtime parser validates finite numeric values, physically based parameter ranges, stable material identity, manifest ownership, and texture-slot references. A referenced texture must be a texture-kind asset, be present as a regular file, and be listed as a dependency of the material so deterministic load order remains meaningful.
+
+The content validator parses every material record after validating the manifest. The shipped `content/catalog.tmanifest` is a real, minimal content catalog containing the initial snow surface material. It is a schema and validation fixture, not a claim of final visual quality or renderer texture support.
+
+Colour-space conventions are explicit: base-colour and emissive texture RGB are sRGB; normal and ORM textures are linear. ORM channels are R=occlusion, G=roughness, B=metallic. These are authoring/import contracts; the current renderer adapter does not yet consume these texture slots.
