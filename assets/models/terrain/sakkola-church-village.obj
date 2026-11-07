@@ -1,5 +1,5 @@
-# Original Sakkola Kirkonkylä terrain mesh reconstructed directly from the region collision heightfield.
-# 512 x 512 m, 4 m grid, 16 m repeating PBR texture tile; positions and elevations match .tregion.
+# Sakkola Kirkonkylä terrain regenerated from the authoritative .tregion heightfield.
+# 512 x 512 m; 4 m grid; 16 m tiled PBR UVs.
 mtllib ../../materials/environment/landscape.mtl
 o SakkolaChurchVillageTerrain
 v -256.000 1.780 -256.000
