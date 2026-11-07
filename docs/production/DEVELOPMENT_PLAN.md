@@ -129,7 +129,7 @@ Known M2 scope boundary: persistent per-mesh GPU caches and texture-backed game 
 
 **Implementation status (2026-11-07): In progress.** The backend-independent content foundation includes a versioned manifest, stable-ID registry, root-contained paths, required/optional assets, provenance metadata, dependency validation, deterministic load ordering, cycle detection, actionable diagnostics, and atomic registry publication. Typed v1 material and world parsers validate manifest identity and source-path ownership. Strict v1 mission, faction, character, and equipment parsers now validate required/known/unique fields, manifest identity, expected reference types, referenced file presence, and explicit dependency edges. Unknown schema versions fail closed.
 
-Generic media import belongs to VantaEngine, not the Talvisota content library. The pinned engine provides CPU OBJ/glTF/GLB model import, material extraction, WIC image decoding, and a deterministic CPU mip-chain processor. Talvisota now has an optional Windows/MSVC adapter that connects manifest assets to those services: it imports models, decodes registered textures, and verifies that model-referenced textures remain inside the content root, resolve to registered texture assets, and are declared as model dependencies. It does not create a graphics device.
+Generic media import belongs to VantaEngine, not the Talvisota content library. The pinned engine provides CPU OBJ/glTF/GLB model import, material extraction, WIC image decoding, deterministic CPU mip-chain processing, and strict reading of the processed `.ttex` format. Talvisota's optional Windows/MSVC adapter imports models, decodes registered textures, validates processed textures, verifies registered/dependent OBJ MTL sidecars and model texture references, and decodes bounded PCM/IEEE-float WAV streams. It does not create a graphics device. VantaEngine is pinned to `d65795be54f0be024c6dd8f3ec152e9b03a253d5`.
 
 Delivered so far:
 - `Talvisota::Content` remains backend-independent and has no VantaEngine or Direct3D dependency.
@@ -139,9 +139,13 @@ Delivered so far:
 - Explicit external source and licence/permission metadata.
 - Headless content validator and Debug/Release regression coverage.
 - Optional engine-backed media validation using VantaEngine's model and WIC texture importers.
-- Deterministic `.ttex` texture processing with full mip chains, sRGB-correct RGB filtering, linear alpha/data filtering, and a versioned little-endian output format.
+- Deterministic `.ttex` texture processing and strict read-back validation.
+- Registered OBJ MTL sidecars and declared dependency validation.
+- Bounded PCM/IEEE-float WAV sample decoding; unsupported OGG/FLAC fail closed.
+- Deterministic staged content package creation with SHA-256 inventory, integrity verification, and protection against path traversal and unindexed files.
+- Package build/verify CLI, regression tests, and CI smoke coverage.
 
-Remaining M3 work includes a deterministic content package/index, audio validation, broader importer hardening and supported-format coverage, embedded glTF images, schema migration tooling, and final clean-package validation. The current engine-backed media path is Windows/WIC dependent. It is CPU import validation, not real GPU upload or renderer integration. M3 is not complete.
+Remaining M3 work includes embedded glTF data-URI/GLB images, broader importer hardening and supported-format coverage, OGG/FLAC decoding if those formats remain required, schema migration tooling, a full shipped-content rights/provenance audit, and a representative environment asset passing the complete import → validation → processing → packaging → revalidation path. The package inventory detects corruption but is not a signature or proof of asset ownership. The current engine-backed media path is Windows/WIC dependent. It is CPU import validation, not real GPU upload or renderer integration. M3 is not complete.
 
 Work:
 - Define stable IDs for assets and authored content; do not use file paths as persistent identity.
@@ -153,6 +157,9 @@ Work:
 - Build deterministic import/processing tools with actionable diagnostics.
 - Add provenance and licence metadata for every external asset.
 - Define loading policy for required versus optional assets and clean failure behavior.
+- Add embedded glTF image support without extracting mutable sidecar files into source content.
+- Add schema migration tooling with explicit source/target versions and deterministic diagnostics.
+- Run the complete package build and verify against representative environment assets and audit every external asset's permission/licence evidence.
 
 Exit criteria:
 - A clean content build validates all shipped definitions and references.
@@ -182,6 +189,7 @@ Exit criteria:
 - The environment can be loaded, unloaded, and reloaded without stale resources.
 - Performance and memory are measured on a documented test configuration.
 - The environment is visually reviewed in a repeatable capture setup.
+- Once terrain rendering genuinely reaches the photorealistic quality target, add a CI screenshot job that launches the real renderer, captures a representative terrain scene, and uploads the actual framebuffer image as a build artifact. Do not add placeholder, composited, or generated substitute screenshots; use a runner with a suitable graphics device when the hosted runner cannot produce representative output.
 
 Do not attempt a huge open world at this stage. Prove a small region first.
 
