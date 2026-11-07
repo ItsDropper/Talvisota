@@ -5,6 +5,8 @@
 #include <cmath>
 #include <fstream>
 #include <limits>
+#include <queue>
+#include <unordered_map>
 #include <string_view>
 #include <system_error>
 #include <unordered_set>
@@ -127,6 +129,147 @@ bool ResolveAsset(const content::ContentRegistry& registry, const content::Asset
     return true;
 }
 } // namespace
+
+std::array<float, 16> BuildPlacementTransform(const WorldPlacement& placement) noexcept
+{
+    constexpr float DegreesToRadians = 0.01745329251994329577F;
+    const float angle = placement.yawDegrees * DegreesToRadians;
+    const float cosine = std::cos(angle) * placement.uniformScale;
+    const float sine = std::sin(angle) * placement.uniformScale;
+    return {
+        cosine, 0.0F, -sine, 0.0F,
+        0.0F, placement.uniformScale, 0.0F, 0.0F,
+        sine, 0.0F, cosine, 0.0F,
+        placement.position[0], placement.position[1], placement.position[2], 1.0F
+    };
+}
+
+bool QueryCollision(const WorldRegion& region, const std::array<float, 3>& queryMin,
+                    const std::array<float, 3>& queryMax, bool& intersects,
+                    std::string& error) noexcept
+{
+    for (std::size_t axis = 0; axis < 3U; ++axis)
+    {
+        if (!std::isfinite(queryMin[axis]) || !std::isfinite(queryMax[axis]) ||
+            queryMin[axis] > queryMax[axis])
+        {
+            error = "Collision query bounds must be finite and ordered.";
+            return false;
+        }
+    }
+    bool candidate = false;
+    for (const auto& box : region.collision)
+    {
+        bool overlap = true;
+        for (std::size_t axis = 0; axis < 3U; ++axis)
+        {
+            const float boxMin = box.center[axis] - box.halfExtents[axis];
+            const float boxMax = box.center[axis] + box.halfExtents[axis];
+            overlap = overlap && queryMin[axis] <= boxMax && queryMax[axis] >= boxMin;
+        }
+        if (overlap)
+        {
+            candidate = true;
+            break;
+        }
+    }
+    intersects = candidate;
+    error.clear();
+    return true;
+}
+
+bool FindNavigationPath(const WorldRegion& region, std::string_view startNode,
+                        std::string_view goalNode, std::vector<std::string>& output,
+                        std::string& error)
+{
+    std::unordered_map<std::string, std::size_t> indices;
+    indices.reserve(region.navigationNodes.size());
+    for (std::size_t i = 0; i < region.navigationNodes.size(); ++i)
+        indices.emplace(region.navigationNodes[i].id, i);
+    const auto start = indices.find(std::string(startNode));
+    const auto goal = indices.find(std::string(goalNode));
+    if (start == indices.end() || goal == indices.end())
+    {
+        error = "Navigation path endpoint does not exist.";
+        return false;
+    }
+    const std::size_t count = region.navigationNodes.size();
+    std::vector<std::vector<std::size_t>> adjacency(count);
+    for (const auto& edge : region.navigationEdges)
+    {
+        const auto from = indices.find(edge.from);
+        const auto to = indices.find(edge.to);
+        if (from == indices.end() || to == indices.end())
+        {
+            error = "Navigation graph contains an unresolved edge.";
+            return false;
+        }
+        adjacency[from->second].push_back(to->second);
+    }
+
+    const double infinity = std::numeric_limits<double>::infinity();
+    std::vector<double> distances(count, infinity);
+    std::vector<std::size_t> parents(count, count);
+    using QueueEntry = std::pair<double, std::size_t>;
+    const auto later = [](const QueueEntry& left, const QueueEntry& right)
+    {
+        if (left.first != right.first) return left.first > right.first;
+        return left.second > right.second;
+    };
+    std::priority_queue<QueueEntry, std::vector<QueueEntry>, decltype(later)> queue(later);
+    distances[start->second] = 0.0;
+    queue.emplace(0.0, start->second);
+    while (!queue.empty())
+    {
+        const auto [distance, current] = queue.top();
+        queue.pop();
+        if (distance > distances[current])
+            continue;
+        if (current == goal->second)
+            break;
+        const auto& from = region.navigationNodes[current].position;
+        for (const std::size_t next : adjacency[current])
+        {
+            const auto& to = region.navigationNodes[next].position;
+            const double dx = static_cast<double>(to[0]) - from[0];
+            const double dy = static_cast<double>(to[1]) - from[1];
+            const double dz = static_cast<double>(to[2]) - from[2];
+            const double candidate = distance + std::sqrt(dx * dx + dy * dy + dz * dz);
+            const bool shorter = candidate < distances[next];
+            const bool stableTie = candidate == distances[next] &&
+                (parents[next] == count ||
+                 region.navigationNodes[current].id < region.navigationNodes[parents[next]].id);
+            if (shorter || stableTie)
+            {
+                distances[next] = candidate;
+                parents[next] = current;
+                queue.emplace(candidate, next);
+            }
+        }
+    }
+    if (!std::isfinite(distances[goal->second]))
+    {
+        error = "No directed navigation path connects the requested nodes.";
+        return false;
+    }
+
+    std::vector<std::string> candidate;
+    for (std::size_t current = goal->second; current != count; current = parents[current])
+    {
+        candidate.push_back(region.navigationNodes[current].id);
+        if (current == start->second)
+            break;
+    }
+    if (candidate.empty() || candidate.back() != region.navigationNodes[start->second].id)
+    {
+        error = "Navigation path reconstruction failed because the graph is inconsistent.";
+        return false;
+    }
+    std::reverse(candidate.begin(), candidate.end());
+    output = std::move(candidate);
+    error.clear();
+    return true;
+}
 
 bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRegistry& registry,
                      const content::WorldDefinition& world, WorldRegion& output,
