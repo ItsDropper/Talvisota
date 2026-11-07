@@ -179,6 +179,12 @@ bool SampleTerrainHeight(const WorldRegion& region, float x, float z,
     const double h10 = at(z0, x0 + 1U);
     const double h01 = at(z0 + 1U, x0);
     const double h11 = at(z0 + 1U, x0 + 1U);
+    if (!std::isfinite(h00) || !std::isfinite(h10) ||
+        !std::isfinite(h01) || !std::isfinite(h11))
+    {
+        error = "Terrain cell contains non-finite elevation samples.";
+        return false;
+    }
     const double sampled = (h00 * (1.0 - tx) + h10 * tx) * (1.0 - tz) +
                            (h01 * (1.0 - tx) + h11 * tx) * tz;
     const double derivativeX = ((h10 - h00) * (1.0 - tz) + (h11 - h01) * tz) /
