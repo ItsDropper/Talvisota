@@ -208,6 +208,32 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
     Require(species.size() == 5U,
             "Sakkola forest should mix spruce, pine, birch, aspen, and alder rather than repeat one tree model.");
 
+    for (const auto& placement : region.placements) {
+        const bool tree = placement.category == talvisota::world::PlacementCategory::Vegetation;
+        const bool boulder = placement.category == talvisota::world::PlacementCategory::Rock;
+        const bool shorelineReed = placement.id.rfind("prop.reeds.", 0) == 0;
+        if (!tree && !boulder && !shorelineReed)
+            continue;
+
+        float surfaceHeight = 0.0F;
+        std::array<float, 3> surfaceNormal{};
+        std::string terrainError;
+        Require(talvisota::world::SampleTerrainHeight(region, placement.position[0],
+                placement.position[2], surfaceHeight, surfaceNormal, terrainError),
+                "Grounded Sakkola environment placements must lie within the terrain heightfield.");
+        Require(std::abs(placement.position[1] - surfaceHeight) <= 0.002F,
+                "Trees, boulders, and shoreline reeds must rest on the sampled terrain surface.");
+
+        if (tree) {
+            const auto trunk = std::find_if(region.collision.begin(), region.collision.end(),
+                [&placement](const auto& box) { return box.id == placement.id + ".trunk"; });
+            Require(trunk != region.collision.end(),
+                    "Every Sakkola tree placement must have its matching trunk collision volume.");
+            Require(std::abs((trunk->center[1] - trunk->halfExtents[1]) - surfaceHeight) <= 0.002F,
+                    "Tree trunk collision bottoms must agree with the visual tree base and terrain surface.");
+        }
+    }
+
     const auto water = std::find_if(region.placements.begin(), region.placements.end(),
         [](const auto& item) { return item.id == "ice.suvanto"; });
     Require(water != region.placements.end() &&
