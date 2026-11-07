@@ -230,12 +230,13 @@ bool ValidateAssetPackage(const std::filesystem::path& packageRoot, AssetPackage
         if (line.empty())
             continue;
         const auto fields = SplitTabs(line);
-        if (fields.size() != 6U || fields[0] != "asset" || !IsStableId(fields[1]) ||
+        if (fields.size() != 8U || fields[0] != "asset" || !IsStableId(fields[1]) ||
             (fields[2] != "model" && fields[2] != "texture" && fields[2] != "audio" &&
              fields[2] != "definition" && fields[2] != "material") ||
             fields[3].empty() || fields[3] == InventoryName ||
             fields[3].find('\\') != std::string_view::npos ||
             fields[3].find('\0') != std::string_view::npos || !IsHexDigest(fields[5]) ||
+            fields[6].empty() || fields[7].empty() || fields[6] == "-" || fields[7] == "-" ||
             !ids.insert(std::string(fields[1])).second ||
             !paths.insert(std::string(fields[3])).second)
         {
