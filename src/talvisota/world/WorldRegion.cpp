@@ -228,8 +228,6 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
                 !ParseFloat(fields[7], item.position[2]) || !ParseFloat(fields[8], item.yawDegrees) ||
                 !ParseFloat(fields[9], item.uniformScale) || item.uniformScale <= 0.0F)
                 Add(diagnostics, path, lineNumber, "placement.transform", "Position and yaw must be finite; uniform scale must be finite and greater than zero.");
-            if (!Inside(item.position, candidate.boundsMin, candidate.boundsMax))
-                Add(diagnostics, path, lineNumber, "placement.position", "Placement origin must lie inside the region bounds.");
             candidate.placements.push_back(std::move(item));
         }
         else if (fields[0] == "collision")
@@ -243,10 +241,6 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
             for (std::size_t i = 0; i < 3U; ++i) valid = ParseFloat(fields[5U + i], box.halfExtents[i]) && valid;
             if (!valid || std::any_of(box.halfExtents.begin(), box.halfExtents.end(), [](float v) { return v <= 0.0F; }))
                 Add(diagnostics, path, lineNumber, "collision.extents", "Collision center must be finite and each half-extent must be finite and positive.");
-            for (std::size_t i = 0; i < 3U; ++i)
-                if (box.center[i] - box.halfExtents[i] < candidate.boundsMin[i] ||
-                    box.center[i] + box.halfExtents[i] > candidate.boundsMax[i])
-                    Add(diagnostics, path, lineNumber, "collision.bounds", "Collision box must fit entirely inside region bounds.");
             candidate.collision.push_back(std::move(box));
         }
         else if (fields[0] == "nav_node")
@@ -279,6 +273,14 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
     for (std::size_t axis = 0; axis < 3U; ++axis)
         if (candidate.boundsMin[axis] >= candidate.boundsMax[axis])
             Add(diagnostics, path, 0, "bounds", "Each region minimum must be less than its maximum.");
+    for (const auto& placement : candidate.placements)
+        if (!Inside(placement.position, candidate.boundsMin, candidate.boundsMax))
+            Add(diagnostics, path, 0, "placement.position", "Placement origin must lie inside the region bounds.");
+    for (const auto& box : candidate.collision)
+        for (std::size_t axis = 0; axis < 3U; ++axis)
+            if (box.center[axis] - box.halfExtents[axis] < candidate.boundsMin[axis] ||
+                box.center[axis] + box.halfExtents[axis] > candidate.boundsMax[axis])
+                Add(diagnostics, path, 0, "collision.bounds", "Collision box must fit entirely inside region bounds.");
     if (candidate.worldId != world.id)
         Add(diagnostics, path, 0, "world", "Region references a different world definition.");
     for (std::size_t axis = 0; axis < 3U; ++axis)
