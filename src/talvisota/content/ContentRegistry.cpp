@@ -87,7 +87,7 @@ constexpr std::string_view Header = "talvisota-content-manifest\t1";
         return extension == ".wav" || extension == ".ogg" || extension == ".flac";
     case AssetKind::Definition:
     case AssetKind::Material:
-        return extension == ".json" || extension == ".toml" || extension == ".yaml" ||
+        return extension == ".tmat" || extension == ".json" || extension == ".toml" || extension == ".yaml" ||
                extension == ".yml";
     }
     return false;
