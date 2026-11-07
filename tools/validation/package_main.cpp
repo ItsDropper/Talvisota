@@ -1,9 +1,87 @@
 #include "talvisota/content/ContentRegistry.hpp"
+#include "talvisota/content/MaterialDefinition.hpp"
+#include "talvisota/content/WorldDefinition.hpp"
+#include "talvisota/content/AuthoredDefinition.hpp"
 #include "talvisota/content/VantaAssetPackage.hpp"
 #include "talvisota/content/VantaAssetValidation.hpp"
 
+#include <filesystem>
 #include <iostream>
+#include <string>
 #include <string_view>
+#include <vector>
+
+namespace
+{
+bool ValidateTypedContent(const talvisota::content::ContentRegistry& registry)
+{
+    using namespace talvisota::content;
+    for (const AssetRecord& asset : registry.Assets())
+    {
+        const auto path = registry.Root() / asset.relativePath;
+        if (!asset.required)
+        {
+            std::error_code error;
+            const bool exists = std::filesystem::exists(path, error);
+            if (error)
+            {
+                std::cerr << path.generic_string() << " [path]: Could not inspect optional asset.\\n";
+                return false;
+            }
+            if (!exists)
+                continue;
+        }
+        if (asset.kind == AssetKind::Definition)
+        {
+            const std::string extension = asset.relativePath.extension().string();
+            if (extension == ".tworld")
+            {
+                WorldDefinition definition;
+                std::vector<WorldDiagnostic> diagnostics;
+                if (!LoadWorldDefinition(path, registry, definition, diagnostics))
+                {
+                    for (const auto& item : diagnostics)
+                        std::cerr << item.file.generic_string() << ':' << item.line
+                                  << " [" << item.field << "]: " << item.message << '\\n';
+                    return false;
+                }
+            }
+            else if (extension == ".tmission" || extension == ".tfaction" ||
+                     extension == ".tcharacter" || extension == ".tequipment")
+            {
+                AuthoredDefinition definition;
+                std::vector<AuthoredDefinitionDiagnostic> diagnostics;
+                if (!LoadAuthoredDefinition(path, registry, definition, diagnostics))
+                {
+                    for (const auto& item : diagnostics)
+                        std::cerr << item.file.generic_string() << ':' << item.line
+                                  << " [" << item.field << "]: " << item.message << '\\n';
+                    return false;
+                }
+            }
+            else
+            {
+                std::cerr << path.generic_string()
+                          << " [format]: Definition extension has no implemented typed parser.\\n";
+                return false;
+            }
+        }
+        else if (asset.kind == AssetKind::Material && asset.relativePath.extension() == ".tmat")
+        {
+            MaterialDefinition definition;
+            std::vector<MaterialDiagnostic> diagnostics;
+            if (!LoadMaterialDefinition(path, registry, definition, diagnostics))
+            {
+                for (const auto& item : diagnostics)
+                    std::cerr << item.file.generic_string() << ':' << item.line
+                              << " [" << item.field << "]: " << item.message << '\\n';
+                return false;
+            }
+        }
+    }
+    return true;
+}
+}
 
 int main(int argc, char** argv)
 {
@@ -40,6 +118,8 @@ int main(int argc, char** argv)
             std::cerr << item.file.generic_string() << ':' << item.line << " [" << item.field << "]: " << item.message << '\n';
         return 1;
     }
+    if (!ValidateTypedContent(registry))
+        return 1;
     talvisota::content::EngineAssetSummary assetSummary;
     if (!talvisota::content::ValidateEngineAssets(registry, assetSummary, diagnostics))
     {
