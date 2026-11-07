@@ -43,3 +43,6 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build --output-on-failure
+
+      - name: Application smoke test
+        run: .\build\talvisota.exe --help
