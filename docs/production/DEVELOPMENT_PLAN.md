@@ -125,7 +125,7 @@ Known M2 scope boundary: persistent per-mesh GPU caches and texture-backed game 
 
 ## M3 — Content and asset pipeline
 
-**Implementation status (2026-11-07): implementation complete; final CI verification pending.**
+**Implementation status (2026-11-07): complete.**
 
 M3 delivers the v1 content pipeline from authored source through typed validation, engine-backed import/decode, deterministic texture processing, catalog-bearing packaging, and semantic/integrity revalidation. Talvisota pins VantaEngine to `deac34682fdcb22c9eda104a1de6e0f8d43e1c01`.
 
@@ -146,7 +146,7 @@ The terrain region is a pipeline validation asset, not the final photorealistic 
 
 There is no historical content schema version to migrate. The current authored formats are v1-only; an empty migration framework would be scaffolding. A deterministic migration tool is required when a real v2 schema and supported v1-to-v2 transformation are defined.
 
-**M3 closure gate:** the final Talvisota Windows x64/MSVC CI run must pass all three configurations, including engine-backed media tests and the real repository content package build/verify. M2 remains independently open for actual D3D11/D3D12 hardware verification.
+**M3 closure gate:** passed in [Talvisota CI run 42406306492](https://github.com/ItsDropper/Talvisota/actions/runs/42406306492): Windows x64 Debug, Release, and MSVC renderer-adapter jobs all succeeded. The adapter job built the engine-backed tools, passed the renderer/content contract tests, validated the shipped assets, built the deterministic package, and fully verified the packaged catalog and media. M2 remains independently open for actual D3D11/D3D12 hardware verification.
 
 ## M4 — World foundation and first representative environment
 
