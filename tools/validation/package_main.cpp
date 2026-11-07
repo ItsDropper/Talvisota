@@ -35,7 +35,7 @@ bool ValidateTypedContent(const talvisota::content::ContentRegistry& registry)
             const bool exists = std::filesystem::exists(path, error);
             if (error)
             {
-                std::cerr << path.generic_string() << " [path]: Could not inspect optional asset.\\n";
+                std::cerr << path.generic_string() << " [path]: Could not inspect optional asset.\n";
                 return false;
             }
             if (!exists)
@@ -72,7 +72,7 @@ bool ValidateTypedContent(const talvisota::content::ContentRegistry& registry)
             else
             {
                 std::cerr << path.generic_string()
-                          << " [format]: Definition extension has no implemented typed parser.\\n";
+                          << " [format]: Definition extension has no implemented typed parser.\n";
                 return false;
             }
         }
