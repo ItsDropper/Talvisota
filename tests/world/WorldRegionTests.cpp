@@ -179,6 +179,24 @@ void TestRejectsMissingDependenciesAndInvalidSpatialRecords()
     Require(!talvisota::world::LoadWorldRegion(directory.Path() / "regions/test.tregion",
             registry, world, region, diagnostics), "Unknown placement assets must be rejected.");
     Require(!diagnostics.empty(), "Unknown placement assets must produce diagnostics.");
+    bad = std::string(RegionText);
+    const auto heightRow = bad.find("height_row\t1\t1,1,1\n");
+    bad.erase(heightRow, std::string("height_row\t1\t1,1,1\n").size());
+    directory.Write("regions/test.tregion", bad);
+    diagnostics.clear();
+    Require(!talvisota::world::LoadWorldRegion(directory.Path() / "regions/test.tregion",
+            registry, world, region, diagnostics),
+            "A heightfield with a missing sample row must be rejected.");
+    Require(!diagnostics.empty(), "Missing height rows must produce diagnostics.");
+
+    bad = std::string(RegionText);
+    const auto firstHeightRow = bad.find("height_row\t0\t1,1,1\n");
+    bad.insert(firstHeightRow, "height_row\t0\t1,1,1\n");
+    directory.Write("regions/test.tregion", bad);
+    diagnostics.clear();
+    Require(!talvisota::world::LoadWorldRegion(directory.Path() / "regions/test.tregion",
+            registry, world, region, diagnostics),
+            "Duplicate height rows must be rejected.");
 
     bad = std::string(RegionText);
     const auto edge = bad.find("nav_edge\tpath.middle\tpath.end");
