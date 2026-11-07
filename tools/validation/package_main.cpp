@@ -52,7 +52,7 @@ bool ValidateTypedContent(const talvisota::content::ContentRegistry& registry)
                 {
                     for (const auto& item : diagnostics)
                         std::cerr << item.file.generic_string() << ':' << item.line
-                                  << " [" << item.field << "]: " << item.message << '\\n';
+                                  << " [" << item.field << "]: " << item.message << '\n';
                     return false;
                 }
             }
@@ -84,7 +84,7 @@ bool ValidateTypedContent(const talvisota::content::ContentRegistry& registry)
             {
                 for (const auto& item : diagnostics)
                     std::cerr << item.file.generic_string() << ':' << item.line
-                              << " [" << item.field << "]: " << item.message << '\\n';
+                              << " [" << item.field << "]: " << item.message << '\n';
                 return false;
             }
         }
