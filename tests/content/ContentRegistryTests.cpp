@@ -319,6 +319,19 @@ void TestWorldTerrainModelReferenceRequiresManifestDependency()
             "World terrain references omitted from manifest dependencies must fail.");
     Require(!diagnostics.empty() && diagnostics.front().field == "terrain_model_id",
             "Missing terrain dependency must produce a field-specific diagnostic.");
+
+    std::filesystem::remove(directory.Path() / "models/terrain.obj");
+    directory.Manifest(
+        "talvisota-content-manifest\\t1\\n"
+        "asset\\tworld.terrain\\tdefinition\\tworlds/terrain.tworld\\trequired\\tmodel.terrain\\tproject\\tproject\\n"
+        "asset\\tmodel.terrain\\tmodel\\tmodels/terrain.obj\\toptional\\t-\\tproject\\tproject\\n");
+    Require(Load(directory, registry, manifestDiagnostics),
+            "An absent optional model may remain in the registry when not referenced.");
+    diagnostics.clear();
+    Require(!LoadWorldDefinition(directory.Path() / "worlds/terrain.tworld", registry, world, diagnostics),
+            "A world must reject an absent optional model that it explicitly references.");
+    Require(!diagnostics.empty() && diagnostics.front().field == "terrain_model_id",
+            "An absent referenced terrain model must identify the terrain_model_id field.");
 }
 
 void TestWorldRejectsInvertedBoundsAndCoordinateMismatchAtomically()
