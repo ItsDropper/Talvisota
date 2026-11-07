@@ -4,6 +4,7 @@
 #include "talvisota/content/AuthoredDefinition.hpp"
 #include "talvisota/content/VantaAssetPackage.hpp"
 #include "talvisota/content/VantaAssetValidation.hpp"
+#include "talvisota/world/WorldRegion.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -11,6 +12,8 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace
@@ -26,6 +29,36 @@ std::string LowerExtension(const std::filesystem::path& path)
 bool ValidateTypedContent(const talvisota::content::ContentRegistry& registry)
 {
     using namespace talvisota::content;
+    std::unordered_map<std::string, WorldDefinition> worlds;
+    for (const AssetRecord& asset : registry.Assets())
+    {
+        if (asset.kind != AssetKind::Definition || LowerExtension(asset.relativePath) != ".tworld")
+            continue;
+        const auto path = registry.Root() / asset.relativePath;
+        if (!asset.required)
+        {
+            std::error_code error;
+            const bool exists = std::filesystem::exists(path, error);
+            if (error)
+            {
+                std::cerr << path.generic_string() << " [path]: Could not inspect optional world definition.\n";
+                return false;
+            }
+            if (!exists)
+                continue;
+        }
+        WorldDefinition definition;
+        std::vector<WorldDiagnostic> diagnostics;
+        if (!LoadWorldDefinition(path, registry, definition, diagnostics))
+        {
+            for (const auto& item : diagnostics)
+                std::cerr << item.file.generic_string() << ':' << item.line
+                          << " [" << item.field << "]: " << item.message << '\n';
+            return false;
+        }
+        worlds.emplace(definition.id, std::move(definition));
+    }
+
     for (const AssetRecord& asset : registry.Assets())
     {
         const auto path = registry.Root() / asset.relativePath;
@@ -46,9 +79,37 @@ bool ValidateTypedContent(const talvisota::content::ContentRegistry& registry)
             const std::string extension = LowerExtension(asset.relativePath);
             if (extension == ".tworld")
             {
-                WorldDefinition definition;
-                std::vector<WorldDiagnostic> diagnostics;
-                if (!LoadWorldDefinition(path, registry, definition, diagnostics))
+                continue;
+            }
+            else if (extension == ".tregion")
+            {
+                const WorldDefinition* parentWorld = nullptr;
+                for (const auto& dependency : asset.dependencies)
+                {
+                    const auto* dependencyAsset = registry.Find(dependency);
+                    if (dependencyAsset != nullptr && dependencyAsset->kind == AssetKind::Definition &&
+                        LowerExtension(dependencyAsset->relativePath) == ".tworld")
+                    {
+                        if (parentWorld != nullptr)
+                        {
+                            std::cerr << path.generic_string()
+                                      << " [world]: Region must declare exactly one parent world dependency.\n";
+                            return false;
+                        }
+                        const auto found = worlds.find(dependency);
+                        if (found != worlds.end())
+                            parentWorld = &found->second;
+                    }
+                }
+                if (parentWorld == nullptr)
+                {
+                    std::cerr << path.generic_string()
+                              << " [world]: Region parent world dependency is missing or invalid.\n";
+                    return false;
+                }
+                talvisota::world::WorldRegion region;
+                std::vector<talvisota::world::WorldRegionDiagnostic> diagnostics;
+                if (!talvisota::world::LoadWorldRegion(path, registry, *parentWorld, region, diagnostics))
                 {
                     for (const auto& item : diagnostics)
                         std::cerr << item.file.generic_string() << ':' << item.line
