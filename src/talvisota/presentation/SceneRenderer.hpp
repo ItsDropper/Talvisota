@@ -86,6 +86,7 @@ struct RenderEnvironment final
 struct SceneSnapshot final
 {
     CameraFrame camera;
+    RenderEnvironment environment;
     std::vector<RenderMesh> meshes;
     std::vector<RenderMaterial> materials;
     std::vector<RenderInstance> instances;
