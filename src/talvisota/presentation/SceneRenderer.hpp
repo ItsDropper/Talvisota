@@ -26,6 +26,12 @@ struct RenderMaterial final
     std::array<float, 3> baseColor{1.0F, 1.0F, 1.0F};
     float roughness = 0.8F;
     float metallic = 0.0F;
+    // Optional absolute paths resolved by the content layer before scene submission.
+    std::string baseColorTexture;
+    std::string normalTexture;
+    std::string roughnessTexture;
+    std::string metallicTexture;
+    std::string ambientOcclusionTexture;
 };
 
 struct RenderInstance final
