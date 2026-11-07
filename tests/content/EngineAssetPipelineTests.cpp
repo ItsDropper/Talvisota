@@ -198,6 +198,32 @@ public:
         Require(vanta::assets::LoadProcessedTexture(root_ / relative, verified, error) &&
                     verified.mipChain.size() == mips.size(),
                 "Processed texture must be readable immediately after writing.");
+
+        std::vector<vanta::assets::TextureMip> repeatedMips;
+        Require(vanta::assets::BuildTextureMipChain(source,
+                    vanta::assets::TextureColorSpace::Srgb, repeatedMips, error),
+                "Repeated texture processing should succeed.");
+        Require(repeatedMips.size() == mips.size(),
+                "Repeated texture processing should produce the same mip count.");
+        for (std::size_t index = 0; index < mips.size(); ++index)
+            Require(repeatedMips[index].width == mips[index].width &&
+                        repeatedMips[index].height == mips[index].height &&
+                        repeatedMips[index].rgba == mips[index].rgba,
+                    "Repeated texture processing should produce byte-identical mip pixels.");
+
+        const auto repeatedPath = root_ / "textures/ground-repeat.ttex";
+        Require(vanta::assets::WriteProcessedTexture(repeatedPath, repeatedMips,
+                    vanta::assets::TextureColorSpace::Srgb, error),
+                "Repeated processed texture should be writable.");
+        const auto readBytes = [](const std::filesystem::path& path)
+        {
+            std::ifstream input(path, std::ios::binary);
+            return std::string(std::istreambuf_iterator<char>(input),
+                               std::istreambuf_iterator<char>());
+        };
+        Require(readBytes(root_ / relative) == readBytes(repeatedPath),
+                "Repeated source processing should produce byte-identical .ttex containers.");
+        std::filesystem::remove(repeatedPath);
     }
     const std::filesystem::path& Root() const { return root_; }
     const std::filesystem::path& Package() const { return package_; }
