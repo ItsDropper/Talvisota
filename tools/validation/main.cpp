@@ -1,7 +1,7 @@
 #include "talvisota/content/ContentRegistry.hpp"
 #include "talvisota/content/MaterialDefinition.hpp"
 #include "talvisota/content/WorldDefinition.hpp"
-#include "talvisota/content/TextureImporter.hpp"
+#include "talvisota/content/TextureSource.hpp"
 
 #include <exception>
 #include <filesystem>
@@ -59,21 +59,26 @@ int main(int argc, char** argv)
 
         std::size_t materialCount = 0;
         std::size_t worldCount = 0;
-        std::size_t decodedBmpCount = 0;
+        std::size_t decodedTextureCount = 0;
         for (const auto& asset : registry.Assets())
         {
-            if (asset.kind == talvisota::content::AssetKind::Texture &&
-                asset.relativePath.extension() == ".bmp")
+            if (asset.kind == talvisota::content::AssetKind::Texture)
             {
-                talvisota::content::DecodedTexture texture;
-                std::vector<talvisota::content::TextureDiagnostic> textureDiagnostics;
-                if (!talvisota::content::LoadBmp(contentRoot / asset.relativePath, texture, textureDiagnostics))
+                const std::string extension = asset.relativePath.extension().string();
+                if (extension == ".bmp" || extension == ".BMP" ||
+                    extension == ".tga" || extension == ".TGA")
                 {
-                    for (const auto& diagnostic : textureDiagnostics)
-                        PrintDiagnostic(diagnostic.file, 0U, diagnostic.field, diagnostic.message);
-                    return 1;
+                    talvisota::content::DecodedTexture texture;
+                    std::vector<talvisota::content::TextureDiagnostic> textureDiagnostics;
+                    if (!talvisota::content::LoadTextureSource(contentRoot / asset.relativePath,
+                                                               texture, textureDiagnostics))
+                    {
+                        for (const auto& diagnostic : textureDiagnostics)
+                            PrintDiagnostic(diagnostic.file, 0U, diagnostic.field, diagnostic.message);
+                        return 1;
+                    }
+                    ++decodedTextureCount;
                 }
-                ++decodedBmpCount;
                 continue;
             }
             if (asset.kind == talvisota::content::AssetKind::Definition &&

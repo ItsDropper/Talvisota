@@ -29,6 +29,9 @@ add_library(talvisota_content STATIC
     src/talvisota/content/MaterialDefinition.cpp
     src/talvisota/content/WorldDefinition.cpp
     src/talvisota/content/TextureImporter.cpp
+    src/talvisota/content/TgaImporter.cpp
+    src/talvisota/content/TextureSource.cpp
+    src/talvisota/content/TextureProcessing.cpp
 )
 add_library(Talvisota::Content ALIAS talvisota_content)
 target_compile_features(talvisota_content PUBLIC cxx_std_23)
@@ -50,6 +53,11 @@ target_compile_features(talvisota_application PUBLIC cxx_std_23)
 target_include_directories(talvisota_application PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>")
 target_link_libraries(talvisota_application PUBLIC Talvisota::Core Talvisota::Platform)
 talvisota_apply_compiler_options(talvisota_application)
+
+add_executable(talvisota_texture_process tools/asset_pipeline/TextureProcess.cpp)
+target_compile_features(talvisota_texture_process PRIVATE cxx_std_23)
+target_link_libraries(talvisota_texture_process PRIVATE Talvisota::Content)
+talvisota_apply_compiler_options(talvisota_texture_process)
 
 add_executable(talvisota_content_validate tools/validation/main.cpp)
 target_compile_features(talvisota_content_validate PRIVATE cxx_std_23)

@@ -1,11 +1,15 @@
 # Asset pipeline tools
 
-Import, validate, convert, and package source media. Preserve provenance and never overwrite source assets during processing.
+## Texture processing
 
-## Current importer support
+Build the tool with the normal CMake build. Run:
 
-The content library includes a portable Windows BMP decoder for uncompressed 24-bit BGR and 32-bit BGRX (BI_RGB) images with BITMAPINFOHEADER-compatible DIB headers. It normalizes both bottom-up and top-down images into tightly packed, top-left-origin RGBA8 pixels. The source RGB bytes are preserved as sRGB-encoded values; no implicit colour conversion or alpha interpretation is performed. The reserved fourth byte of 32-bit BI_RGB pixels is ignored and output alpha is opaque.
+```text
+talvisota_texture_process <source.bmp|source.tga> <output.ttex> <srgb|linear>
+```
 
-The decoder rejects unsupported compression/bit depths, inconsistent offsets and declared sizes, truncated rows, invalid dimensions, and images exceeding its 512 MiB decoded-pixel safety limit. File loading is bounded to 1 GiB. It is exposed through TextureImporter.hpp and covered by headless regression tests.
+The source decoder supports uncompressed 24-bit BGR and 32-bit BGRX BI_RGB BMP, plus true-colour TGA type 2 (raw) and type 10 (RLE), 24-bit BGR and 32-bit BGRA. TGA orientation flags are normalized. The decoder emits top-left-origin RGBA8; BMP's fourth BI_RGB byte is ignored while TGA alpha is preserved when declared.
 
-The content validator now decodes every manifest-registered .bmp texture during its normal validation pass and reports the number decoded. This is a first real media-decoding capability, not a complete texture pipeline. PNG, JPEG, TGA, DDS, and KTX2 are still manifest-recognized source extensions but do not yet have decoders here. Deterministic processed-file serialization, mip generation, GPU upload, and model import remain unimplemented. Do not treat manifest validation as successful media import.
+Choose `srgb` for base-colour/emissive RGB and `linear` for normal/ORM/data maps. The processor creates a full mip chain. sRGB RGB is filtered in linear light; alpha is always linear. Output is a deterministic little-endian `.ttex` container with magic `TVTTEX01`, versioned header, explicit colour-space metadata, and tightly packed RGBA8 mip levels. No timestamps, absolute paths, or host-endian data are written. The writer stages output and replaces the destination only after a complete successful write.
+
+The content validator decodes manifest-registered BMP and TGA files. Manifest-recognized PNG/JPEG/DDS/KTX2 remain unsupported until their decoders are implemented. Model import and runtime GPU upload are separate pipeline stages and are not implied by texture processing.
