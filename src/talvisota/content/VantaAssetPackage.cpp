@@ -445,7 +445,14 @@ bool BuildAssetPackage(const ContentRegistry& registry, const std::filesystem::p
             return false;
         }
         inventory << "asset\t" << asset.id << '\t' << KindName(asset.kind) << '\t'
-                  << PathUtf8(relative) << '\t' << size << '\t' << digest << '\n';
+                  << PathUtf8(relative) << '\t' << size << '\t' << digest
+                  << '\t' << asset.source << '\t' << asset.license << '\n';
+        if (candidate.totalBytes > std::numeric_limits<std::uint64_t>::max() - size)
+        {
+            Add(diagnostics, target, "size", "Package total byte count overflows the supported range.");
+            cleanup();
+            return false;
+        }
         ++candidate.assetCount;
         candidate.totalBytes += size;
     }
