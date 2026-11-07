@@ -1,0 +1,10 @@
+talvisota-material\t1
+id = material.environment.snow
+base_color = 0.78, 0.82, 0.86
+roughness = 0.93
+metallic = 0.0
+emissive = 0.0, 0.0, 0.0
+normal_scale = 1.0
+occlusion_strength = 1.0
+alpha_mode = opaque
+double_sided = false
