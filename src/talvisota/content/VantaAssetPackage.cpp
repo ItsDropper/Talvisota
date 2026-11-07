@@ -134,6 +134,12 @@ void Add(std::vector<EngineAssetDiagnostic>& diagnostics, const std::filesystem:
                 close();
                 return false;
             }
+            if (size > std::numeric_limits<std::uint64_t>::max() - static_cast<std::uint64_t>(count))
+            {
+                error = "File size exceeds the supported 64-bit range.";
+                close();
+                return false;
+            }
             size += static_cast<std::uint64_t>(count);
         }
     }
@@ -620,9 +626,27 @@ bool BuildAssetPackage(const ContentRegistry& registry, const std::filesystem::p
     }
     const auto cleanup = [&]() { std::error_code ignored; std::filesystem::remove_all(staging, ignored); };
 
+    std::string catalogError;
+    if (!WriteCatalogManifest(registry, staging / CatalogName, catalogError))
+    {
+        Add(diagnostics, staging / CatalogName, "catalog", catalogError);
+        cleanup();
+        return false;
+    }
+    std::string catalogDigest;
+    std::uint64_t catalogSize = 0U;
+    std::string catalogHashError;
+    if (!HashFile(staging / CatalogName, catalogDigest, catalogSize, catalogHashError))
+    {
+        Add(diagnostics, staging / CatalogName, "catalogIntegrity", catalogHashError);
+        cleanup();
+        return false;
+    }
+
     std::ostringstream inventory;
     inventory.imbue(std::locale::classic());
-    inventory << PackageHeader << '\n';
+    inventory << PackageHeader << '\n'
+              << "catalog\t" << catalogSize << '\t' << catalogDigest << '\n';
     AssetPackageSummary candidate;
     for (const std::size_t index : registry.LoadOrder())
     {
@@ -649,7 +673,7 @@ bool BuildAssetPackage(const ContentRegistry& registry, const std::filesystem::p
             return false;
         }
         const auto relative = asset.relativePath.lexically_normal();
-        if (PathUtf8(relative) == InventoryName)
+        if (PathUtf8(relative) == InventoryName || PathUtf8(relative) == CatalogName)
         {
             Add(diagnostics, source, "path", "The reserved package inventory path cannot be used by a content asset.");
             cleanup();
