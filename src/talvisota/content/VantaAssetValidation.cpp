@@ -364,7 +364,6 @@ bool ValidateEngineAssets(const ContentRegistry& registry, EngineAssetSummary& o
                 Add(diagnostics, canonicalSource, "model", "Could not open OBJ for material dependency preflight.");
                 return false;
             }
-            bool sawMaterialLibrary = false;
             std::string line;
             std::size_t lineNumber = 0U;
             while (std::getline(obj, line))
@@ -376,51 +375,53 @@ bool ValidateEngineAssets(const ContentRegistry& registry, EngineAssetSummary& o
                 if (tag != "mtllib")
                     continue;
                 std::string libraryName;
-                std::string extra;
-                if (!(row >> libraryName) || sawMaterialLibrary ||
-                    ((row >> extra) && !extra.starts_with('#')))
+                if (!(row >> libraryName))
                 {
                     Add(diagnostics, canonicalSource, "materialLibrary",
-                        "OBJ must contain at most one mtllib declaration with one relative filename (line " +
+                        "OBJ material library declaration must name at least one relative file (line " +
                         std::to_string(lineNumber) + ").");
                     return false;
                 }
-                sawMaterialLibrary = true;
-                const std::filesystem::path relativeLibrary = PathFromUtf8(libraryName);
-                if (relativeLibrary.is_absolute() || relativeLibrary.has_root_name())
+                do
                 {
-                    Add(diagnostics, canonicalSource, "materialLibrary",
-                        "OBJ material library path must be relative to the model.");
-                    return false;
-                }
-                for (const auto& component : relativeLibrary)
-                {
-                    if (component == "..")
+                    if (!libraryName.empty() && libraryName.front() == '#')
+                        break;
+                    const std::filesystem::path relativeLibrary = PathFromUtf8(libraryName);
+                    if (relativeLibrary.is_absolute() || relativeLibrary.has_root_name())
                     {
                         Add(diagnostics, canonicalSource, "materialLibrary",
-                            "OBJ material library path may not traverse parent directories.");
+                            "OBJ material library path must be relative to the model.");
                         return false;
                     }
-                }
-                std::error_code libraryError;
-                const auto libraryPath = std::filesystem::weakly_canonical(
-                    canonicalSource.parent_path() / relativeLibrary, libraryError);
-                if (libraryError || !IsWithinRoot(root, libraryPath))
-                {
-                    Add(diagnostics, canonicalSource, "materialLibrary",
-                        "OBJ material library resolves outside the content root or cannot be resolved.");
-                    return false;
-                }
-                const auto registered = assetsByCanonicalPath.find(libraryPath.generic_string());
-                if (registered == assetsByCanonicalPath.end() ||
-                    registered->second->kind != AssetKind::Material ||
-                    std::find(asset.dependencies.begin(), asset.dependencies.end(),
-                              registered->second->id) == asset.dependencies.end())
-                {
-                    Add(diagnostics, canonicalSource, "materialLibrary",
-                        "OBJ material library must be registered as a material asset and declared as a model dependency.");
-                    return false;
-                }
+                    for (const auto& component : relativeLibrary)
+                    {
+                        if (component == "..")
+                        {
+                            Add(diagnostics, canonicalSource, "materialLibrary",
+                                "OBJ material library path may not traverse parent directories.");
+                            return false;
+                        }
+                    }
+                    std::error_code libraryError;
+                    const auto libraryPath = std::filesystem::weakly_canonical(
+                        canonicalSource.parent_path() / relativeLibrary, libraryError);
+                    if (libraryError || !IsWithinRoot(root, libraryPath))
+                    {
+                        Add(diagnostics, canonicalSource, "materialLibrary",
+                            "OBJ material library resolves outside the content root or cannot be resolved.");
+                        return false;
+                    }
+                    const auto registered = assetsByCanonicalPath.find(libraryPath.generic_string());
+                    if (registered == assetsByCanonicalPath.end() ||
+                        registered->second->kind != AssetKind::Material ||
+                        std::find(asset.dependencies.begin(), asset.dependencies.end(),
+                                  registered->second->id) == asset.dependencies.end())
+                    {
+                        Add(diagnostics, canonicalSource, "materialLibrary",
+                            "Every OBJ material library must be registered as a material asset and declared as a model dependency.");
+                        return false;
+                    }
+                } while (row >> libraryName);
             }
             if (!obj.eof())
             {
