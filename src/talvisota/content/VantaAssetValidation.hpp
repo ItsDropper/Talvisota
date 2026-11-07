@@ -23,9 +23,10 @@ struct EngineAssetSummary final
 };
 
 // Uses VantaEngine CPU services to import registered OBJ/glTF/GLB models,
-// decode WIC and processed textures, validate registered OBJ MTL dependencies,
-// and decode bounded PCM/IEEE-float WAV audio. Model references must resolve
-// inside the content root and be declared as manifest dependencies. No GPU is initialized.
+// including embedded data-URI/GLB images, decode WIC and processed textures,
+// validate root-contained OBJ MTL dependencies, and fully decode bounded
+// WAV/OGG Vorbis/FLAC audio. Model references must be declared manifest dependencies.
+// No graphics device is initialized.
 [[nodiscard]] bool ValidateEngineAssets(const ContentRegistry& registry,
                                         EngineAssetSummary& output,
                                         std::vector<EngineAssetDiagnostic>& diagnostics);
