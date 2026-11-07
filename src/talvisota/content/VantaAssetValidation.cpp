@@ -187,7 +187,7 @@ void Add(std::vector<EngineAssetDiagnostic>& diagnostics, const std::filesystem:
                 (static_cast<std::int32_t>(bytes[offset + 1U]) << 8U) |
                 (static_cast<std::int32_t>(bytes[offset + 2U]) << 16U);
             if ((sample & 0x00800000) != 0)
-                sample |= static_cast<std::int32_t>(0xff000000U);
+                sample |= ~0x00ffffff;
             decoded = static_cast<float>(sample) / 8388608.0F;
         }
         else
