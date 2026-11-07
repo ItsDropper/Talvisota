@@ -123,6 +123,29 @@ The current crash diagnostic is a C++ terminate report. It is not an OS minidump
 
 The default executable still initializes core services and exits. The optional renderer adapter sample is a separate executable built only when `TALVISOTA_ENABLE_VANTA_ENGINE=ON`.
 
+## Optional VantaEngine renderer adapter
+
+The game-facing contract is deliberately independent of the engine:
+
+- `talvisota::presentation::SceneSnapshot` owns game-side mesh, material, instance, and camera data.
+- `ISceneRenderer` exposes initialization, resize, render, and device-loss state without exposing Direct3D or VantaEngine types.
+- `ValidateSceneSnapshot` rejects invalid indices, non-finite vertex/camera data, invalid PBR factors, missing references, and singular instance transforms.
+- `VantaSceneRenderer` is the optional adapter. It translates the snapshot into VantaEngine's public scene-submission API and is pinned to one exact engine commit.
+
+Build the standalone sample on Windows x64 with MSVC:
+
+```powershell
+cmake -S . -B build-msvc -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON -DTALVISOTA_ENABLE_VANTA_ENGINE=ON
+cmake --build build-msvc --target talvisota_renderer_sample talvisota_renderer_contract_tests --parallel
+ctest --test-dir build-msvc --output-on-failure -R Talvisota.Presentation.SceneRendererContract
+.\build-msvc\talvisota_renderer_sample.exe
+.\build-msvc\talvisota_renderer_sample.exe --backend=d3d11
+```
+
+The adapter is opt-in because VantaEngine currently uses the Windows SDK and MSVC's WRL headers. The normal MinGW core build remains independent of that dependency. The sample renders a game-owned cube through either backend; it does not use the engine's procedural valley as its scene.
+
+Current adapter limitations are explicit: game materials support scalar base colour, roughness, and metallic values only; texture-backed materials and persistent per-mesh GPU caches are not implemented yet. The first backend path uploads submitted geometry per frame. D3D12 retains each frame's upload buffers until its fence completes; D3D11 uses dynamic write-discard buffers. Real-device smoke testing is still required before M2 can be closed.
+
 ## Engine boundary
 
 VantaEngine is maintained in a separate repository. Talvisota must consume public engine interfaces only. It must not include private D3D11/D3D12 implementation headers, reach into backend resource ownership, or copy engine implementation files into this repository.
