@@ -62,6 +62,19 @@ int main(int argc, char** argv)
         std::size_t authoredDefinitionCount = 0;
         for (const auto& asset : registry.Assets())
         {
+            if (!asset.required)
+            {
+                std::error_code optionalError;
+                const bool present = std::filesystem::exists(contentRoot / asset.relativePath, optionalError);
+                if (optionalError)
+                {
+                    PrintDiagnostic(contentRoot / asset.relativePath, 0U, "path",
+                                    "Could not inspect optional asset.");
+                    return 1;
+                }
+                if (!present)
+                    continue;
+            }
             if (asset.kind == talvisota::content::AssetKind::Definition &&
                 asset.relativePath.extension() == ".tworld")
             {
