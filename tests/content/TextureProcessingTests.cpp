@@ -42,10 +42,12 @@ void TestSrgbMipFilteringAndDeterministicContainer()
             "Valid mip chain should serialize.");
     std::ifstream firstStream(destination, std::ios::binary);
     const std::vector<char> first((std::istreambuf_iterator<char>(firstStream)), {});
+    firstStream.close();
     Require(WriteProcessedTexture(destination, mips, TextureColorSpace::Srgb, diagnostics),
             "Repeated serialization should replace the output.");
     std::ifstream secondStream(destination, std::ios::binary);
     const std::vector<char> second((std::istreambuf_iterator<char>(secondStream)), {});
+    secondStream.close();
     std::error_code ignored;
     std::filesystem::remove_all(directory, ignored);
     Require(first == second, "Repeated serialization must produce byte-identical output.");

@@ -32,6 +32,7 @@ add_library(talvisota_content STATIC
     src/talvisota/content/TgaImporter.cpp
     src/talvisota/content/TextureSource.cpp
     src/talvisota/content/TextureProcessing.cpp
+    src/talvisota/content/ObjImporter.cpp
 )
 add_library(Talvisota::Content ALIAS talvisota_content)
 target_compile_features(talvisota_content PUBLIC cxx_std_23)

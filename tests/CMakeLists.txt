@@ -45,3 +45,9 @@ target_link_libraries(talvisota_texture_processing_tests PRIVATE Talvisota::Cont
 target_compile_features(talvisota_texture_processing_tests PRIVATE cxx_std_23)
 talvisota_apply_compiler_options(talvisota_texture_processing_tests)
 add_test(NAME Talvisota.Content.TextureProcessing COMMAND talvisota_texture_processing_tests)
+
+add_executable(talvisota_obj_importer_tests content/ObjImporterTests.cpp)
+target_link_libraries(talvisota_obj_importer_tests PRIVATE Talvisota::Content)
+target_compile_features(talvisota_obj_importer_tests PRIVATE cxx_std_23)
+talvisota_apply_compiler_options(talvisota_obj_importer_tests)
+add_test(NAME Talvisota.Content.ObjImporter COMMAND talvisota_obj_importer_tests)

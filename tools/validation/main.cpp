@@ -2,6 +2,7 @@
 #include "talvisota/content/MaterialDefinition.hpp"
 #include "talvisota/content/WorldDefinition.hpp"
 #include "talvisota/content/TextureSource.hpp"
+#include "talvisota/content/ObjImporter.hpp"
 
 #include <exception>
 #include <filesystem>
@@ -59,9 +60,28 @@ int main(int argc, char** argv)
 
         std::size_t materialCount = 0;
         std::size_t worldCount = 0;
-        std::size_t decodedTextureCount = 0;
+        std::size_t decodedTextureCount = 0;\n        std::size_t importedModelCount = 0;
         for (const auto& asset : registry.Assets())
         {
+            if (asset.kind == talvisota::content::AssetKind::Model)
+            {
+                if (asset.relativePath.extension() != ".obj")
+                {
+                    PrintDiagnostic(contentRoot / asset.relativePath, 0U, "format",
+                                    "Only Wavefront OBJ model decoding is currently implemented; glTF/GLB are not yet supported.");
+                    return 1;
+                }
+                talvisota::content::ObjMesh model;
+                std::vector<talvisota::content::ModelDiagnostic> modelDiagnostics;
+                if (!talvisota::content::LoadObj(contentRoot / asset.relativePath, {}, model, modelDiagnostics))
+                {
+                    for (const auto& diagnostic : modelDiagnostics)
+                        PrintDiagnostic(diagnostic.file, diagnostic.line, diagnostic.field, diagnostic.message);
+                    return 1;
+                }
+                ++importedModelCount;
+                continue;
+            }
             if (asset.kind == talvisota::content::AssetKind::Texture)
             {
                 talvisota::content::DecodedTexture texture;
