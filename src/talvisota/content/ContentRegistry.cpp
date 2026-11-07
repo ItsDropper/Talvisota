@@ -199,7 +199,11 @@ bool LoadContentManifest(const std::filesystem::path& manifestPath,
             AddDiagnostic(diagnostics, manifestPath, lineNumber, "kind",
                           "Kind must be model, texture, audio, definition, or material.");
 
-        const std::filesystem::path relativePath = std::filesystem::u8path(fields[3].begin(), fields[3].end());
+        std::u8string utf8Path;
+        utf8Path.reserve(fields[3].size());
+        for (const char value : fields[3])
+            utf8Path.push_back(static_cast<char8_t>(static_cast<unsigned char>(value)));
+        const std::filesystem::path relativePath(utf8Path);
         if (fields[3].empty() || relativePath.is_absolute() || relativePath.has_root_name())
             AddDiagnostic(diagnostics, manifestPath, lineNumber, "path", "Path must be non-empty and relative to the content root.");
         for (const auto& component : relativePath)
