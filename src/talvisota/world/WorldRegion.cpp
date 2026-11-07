@@ -144,6 +144,53 @@ std::array<float, 16> BuildPlacementTransform(const WorldPlacement& placement) n
     };
 }
 
+bool SampleTerrainHeight(const WorldRegion& region, float x, float z,
+                          float& height, std::array<float, 3>& normal, std::string& error)
+{
+    const auto& terrain = region.terrain;
+    if (terrain.rows < 2U || terrain.columns < 2U ||
+        terrain.elevations.size() != terrain.rows * terrain.columns ||
+        !std::isfinite(x) || !std::isfinite(z))
+    {
+        error = "Terrain heightfield is absent, malformed, or queried with non-finite coordinates.";
+        return false;
+    }
+    const double gridX = (static_cast<double>(x) - terrain.originX) / terrain.spacingX;
+    const double gridZ = (static_cast<double>(z) - terrain.originZ) / terrain.spacingZ;
+    if (gridX < 0.0 || gridZ < 0.0 ||
+        gridX > static_cast<double>(terrain.columns - 1U) ||
+        gridZ > static_cast<double>(terrain.rows - 1U))
+    {
+        error = "Terrain sample position lies outside the heightfield.";
+        return false;
+    }
+    const std::size_t x0 = std::min(static_cast<std::size_t>(gridX), terrain.columns - 2U);
+    const std::size_t z0 = std::min(static_cast<std::size_t>(gridZ), terrain.rows - 2U);
+    const double tx = gridX - static_cast<double>(x0);
+    const double tz = gridZ - static_cast<double>(z0);
+    const auto at = [&](std::size_t row, std::size_t column)
+    {
+        return static_cast<double>(terrain.elevations[row * terrain.columns + column]);
+    };
+    const double h00 = at(z0, x0);
+    const double h10 = at(z0, x0 + 1U);
+    const double h01 = at(z0 + 1U, x0);
+    const double h11 = at(z0 + 1U, x0 + 1U);
+    const double sampled = (h00 * (1.0 - tx) + h10 * tx) * (1.0 - tz) +
+                           (h01 * (1.0 - tx) + h11 * tx) * tz;
+    const double derivativeX = ((h10 - h00) * (1.0 - tz) + (h11 - h01) * tz) /
+                               terrain.spacingX;
+    const double derivativeZ = ((h01 - h00) * (1.0 - tx) + (h11 - h10) * tx) /
+                               terrain.spacingZ;
+    const double length = std::sqrt(derivativeX * derivativeX + 1.0 + derivativeZ * derivativeZ);
+    height = static_cast<float>(sampled);
+    normal = {static_cast<float>(-derivativeX / length),
+              static_cast<float>(1.0 / length),
+              static_cast<float>(-derivativeZ / length)};
+    error.clear();
+    return true;
+}
+
 bool QueryCollision(const WorldRegion& region, const std::array<float, 3>& queryMin,
                     const std::array<float, 3>& queryMax, bool& intersects,
                     std::string& error)
@@ -306,7 +353,8 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
     std::size_t lineNumber = 0;
     std::size_t records = 0;
     bool headerSeen = false;
-    bool haveId = false, haveWorld = false, haveMin = false, haveMax = false;
+    bool haveId = false, haveWorld = false, haveMin = false, haveMax = false, haveHeightfield = false;
+    std::vector<bool> heightRowsSeen;
     std::string line;
     while (std::getline(input, line))
     {
@@ -362,6 +410,88 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
             if (seen) Add(diagnostics, path, lineNumber, std::string(fields[0]), "Duplicate bounds record.");
             if (!ParseVector(fields[1], target)) Add(diagnostics, path, lineNumber, std::string(fields[0]), "Expected three finite comma-separated metre values.");
             seen = true;
+        }
+        else if (fields[0] == "heightfield")
+        {
+            if (badCount(7U)) continue;
+            if (haveHeightfield)
+            {
+                Add(diagnostics, path, lineNumber, "heightfield", "Duplicate terrain heightfield declaration.");
+                continue;
+            }
+            std::size_t columns = 0U;
+            std::size_t rows = 0U;
+            const auto parsedColumns = std::from_chars(fields[1].data(), fields[1].data() + fields[1].size(), columns);
+            const auto parsedRows = std::from_chars(fields[2].data(), fields[2].data() + fields[2].size(), rows);
+            TerrainHeightfield terrain;
+            const bool validDimensions = parsedColumns.ec == std::errc{} &&
+                parsedColumns.ptr == fields[1].data() + fields[1].size() &&
+                parsedRows.ec == std::errc{} && parsedRows.ptr == fields[2].data() + fields[2].size() &&
+                columns >= 2U && rows >= 2U && columns <= 257U && rows <= 257U;
+            if (!validDimensions || !ParseFloat(fields[3], terrain.originX) ||
+                !ParseFloat(fields[4], terrain.originZ) || !ParseFloat(fields[5], terrain.spacingX) ||
+                !ParseFloat(fields[6], terrain.spacingZ) || terrain.spacingX <= 0.0F ||
+                terrain.spacingZ <= 0.0F)
+            {
+                Add(diagnostics, path, lineNumber, "heightfield", "Heightfield requires 2..257 rows and columns, finite origins, and positive finite sample spacing.");
+                continue;
+            }
+            terrain.rows = rows;
+            terrain.columns = columns;
+            terrain.elevations.assign(rows * columns, 0.0F);
+            candidate.terrain = std::move(terrain);
+            heightRowsSeen.assign(rows, false);
+            haveHeightfield = true;
+        }
+        else if (fields[0] == "height_row")
+        {
+            if (badCount(3U)) continue;
+            if (!haveHeightfield)
+            {
+                Add(diagnostics, path, lineNumber, "height_row", "Heightfield declaration must precede its sample rows.");
+                continue;
+            }
+            std::size_t row = 0U;
+            const auto parsedRow = std::from_chars(fields[1].data(), fields[1].data() + fields[1].size(), row);
+            if (parsedRow.ec != std::errc{} || parsedRow.ptr != fields[1].data() + fields[1].size() ||
+                row >= candidate.terrain.rows)
+            {
+                Add(diagnostics, path, lineNumber, "height_row.index", "Height row index is outside the declared grid.");
+                continue;
+            }
+            if (heightRowsSeen[row])
+            {
+                Add(diagnostics, path, lineNumber, "height_row", "Duplicate height row.");
+                continue;
+            }
+            std::string_view values = fields[2];
+            bool valid = true;
+            for (std::size_t column = 0; column < candidate.terrain.columns; ++column)
+            {
+                const auto comma = values.find(',');
+                const auto component = comma == std::string_view::npos ? values : values.substr(0, comma);
+                float elevation = 0.0F;
+                if (!ParseFloat(component, elevation))
+                {
+                    valid = false;
+                    break;
+                }
+                candidate.terrain.elevations[row * candidate.terrain.columns + column] = elevation;
+                if (column + 1U == candidate.terrain.columns)
+                {
+                    if (comma != std::string_view::npos) valid = false;
+                }
+                else if (comma == std::string_view::npos)
+                {
+                    valid = false;
+                    break;
+                }
+                if (comma != std::string_view::npos) values.remove_prefix(comma + 1U);
+            }
+            if (!valid)
+                Add(diagnostics, path, lineNumber, "height_row.values", "Height row must contain exactly the declared number of finite comma-separated elevations.");
+            else
+                heightRowsSeen[row] = true;
         }
         else if (fields[0] == "placement")
         {
@@ -426,6 +556,24 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
     for (std::size_t axis = 0; axis < 3U; ++axis)
         if (candidate.boundsMin[axis] >= candidate.boundsMax[axis])
             Add(diagnostics, path, 0, "bounds", "Each region minimum must be less than its maximum.");
+    if (haveHeightfield)
+    {
+        if (std::find(heightRowsSeen.begin(), heightRowsSeen.end(), false) != heightRowsSeen.end())
+            Add(diagnostics, path, 0, "height_row", "Every declared terrain height row must be present exactly once.");
+        const double endX = static_cast<double>(candidate.terrain.originX) +
+            static_cast<double>(candidate.terrain.columns - 1U) * candidate.terrain.spacingX;
+        const double endZ = static_cast<double>(candidate.terrain.originZ) +
+            static_cast<double>(candidate.terrain.rows - 1U) * candidate.terrain.spacingZ;
+        if (candidate.terrain.originX < candidate.boundsMin[0] || endX > candidate.boundsMax[0] ||
+            candidate.terrain.originZ < candidate.boundsMin[2] || endZ > candidate.boundsMax[2])
+            Add(diagnostics, path, 0, "heightfield.bounds", "Terrain sample grid must fit inside region X/Z bounds.");
+        for (const float elevation : candidate.terrain.elevations)
+            if (!std::isfinite(elevation) || elevation < candidate.boundsMin[1] || elevation > candidate.boundsMax[1])
+            {
+                Add(diagnostics, path, 0, "heightfield.elevation", "Terrain elevations must fit inside region Y bounds.");
+                break;
+            }
+    }
     for (const auto& placement : candidate.placements)
         if (!Inside(placement.position, candidate.boundsMin, candidate.boundsMax))
             Add(diagnostics, path, 0, "placement.position", "Placement origin must lie inside the region bounds.");
