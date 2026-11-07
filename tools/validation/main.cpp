@@ -3,6 +3,8 @@
 #include "talvisota/content/WorldDefinition.hpp"
 #include "talvisota/content/AuthoredDefinition.hpp"
 
+#include <algorithm>
+#include <cctype>
 #include <exception>
 #include <filesystem>
 #include <iostream>
@@ -12,6 +14,14 @@
 
 namespace
 {
+std::string LowerExtension(const std::filesystem::path& path)
+{
+    std::string extension = path.extension().string();
+    std::transform(extension.begin(), extension.end(), extension.begin(),
+                   [](unsigned char value) { return static_cast<char>(std::tolower(value)); });
+    return extension;
+}
+
 void PrintUsage(std::ostream& output)
 {
     output << "Talvisota content validator\n"
@@ -76,7 +86,7 @@ int main(int argc, char** argv)
                     continue;
             }
             if (asset.kind == talvisota::content::AssetKind::Definition &&
-                asset.relativePath.extension() == ".tworld")
+                LowerExtension(asset.relativePath) == ".tworld")
             {
                 talvisota::content::WorldDefinition world;
                 std::vector<talvisota::content::WorldDiagnostic> worldDiagnostics;
@@ -93,7 +103,7 @@ int main(int argc, char** argv)
 
             if (asset.kind == talvisota::content::AssetKind::Definition)
             {
-                const std::string extension = asset.relativePath.extension().string();
+                const std::string extension = LowerExtension(asset.relativePath);
                 if (extension != ".tmission" && extension != ".tfaction" &&
                     extension != ".tcharacter" && extension != ".tequipment")
                 {
@@ -114,7 +124,7 @@ int main(int argc, char** argv)
                 continue;
             }
             if (asset.kind != talvisota::content::AssetKind::Material ||
-                asset.relativePath.extension() == ".mtl")
+                LowerExtension(asset.relativePath) == ".mtl")
                 continue;
 
             talvisota::content::MaterialDefinition material;
