@@ -40,8 +40,9 @@ The current region is a **512 x 512 metre playable slice**, not a full 10 km map
 - 170 vegetation placements using five distinct models: Norway spruce, Scots pine, silver birch, aspen, and alder.
 - Eight granite boulder placements.
 - Five period-inspired structures: a church, two farmhouses, a barn, and a sauna.
-- 49 forest-floor and farmstead props: fallen logs, stumps, woodpiles, a well, fence sections, and shoreline reeds.
+- 50 forest-floor and farmstead props: fallen logs, stumps, woodpiles, a well, fence sections, and shoreline reeds.
 - Independent collision volumes and a directed village footpath graph.
+- Tree, boulder, fallen-log, stump, and shoreline-reed bases aligned to the sampled terrain; tree, log, and stump collision bottoms are regression-tested against the same surface.
 
 The landscape composition reflects the documented relationship between the church village, cultivated ground, mixed forest, and Suvanto. The current elevations, exact shoreline curve, track alignment, and building coordinates are **authored approximations**, not values digitized from the official map. They must not be described as georeferenced or historically exact.
 
