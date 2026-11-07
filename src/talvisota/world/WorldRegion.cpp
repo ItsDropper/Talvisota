@@ -84,6 +84,17 @@ bool Inside(const std::array<float, 3>& point, const std::array<float, 3>& minim
     return true;
 }
 
+bool IsRecordId(std::string_view id) noexcept
+{
+    if (id.empty())
+        return false;
+    return std::all_of(id.begin(), id.end(), [](unsigned char value)
+    {
+        return (value >= 'a' && value <= 'z') || (value >= '0' && value <= '9') ||
+               value == '.' || value == '_' || value == '-' || value == ':';
+    });
+}
+
 bool HasDependency(const content::AssetRecord* owner, std::string_view dependency)
 {
     return owner != nullptr &&
@@ -105,7 +116,10 @@ bool ResolveAsset(const content::ContentRegistry& registry, const content::Asset
         Add(diagnostics, path, line, std::string(field), "Referenced asset must be an explicit region manifest dependency: " + std::string(id));
     std::error_code error;
     const auto resolved = std::filesystem::weakly_canonical(registry.Root() / asset->relativePath, error);
-    if (error || !std::filesystem::is_regular_file(resolved, error) || error)
+    const auto relative = resolved.lexically_relative(registry.Root());
+    if (error || relative.empty() || relative.is_absolute() ||
+        std::any_of(relative.begin(), relative.end(), [](const auto& part) { return part == ".."; }) ||
+        !std::filesystem::is_regular_file(resolved, error) || error)
     {
         Add(diagnostics, path, line, std::string(field), "Referenced asset is absent or is not a regular file: " + std::string(id));
         return false;
@@ -215,7 +229,7 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
             if (badCount(10U)) continue;
             WorldPlacement item;
             item.id = fields[1];
-            if (item.id.empty() || !ids.insert(item.id).second) Add(diagnostics, path, lineNumber, "placement", "Placement ID is empty or duplicated.");
+            if (!IsRecordId(item.id) || !ids.insert(item.id).second) Add(diagnostics, path, lineNumber, "placement", "Placement ID is empty or duplicated.");
             if (fields[2] == "terrain") item.category = PlacementCategory::Terrain;
             else if (fields[2] == "vegetation") item.category = PlacementCategory::Vegetation;
             else if (fields[2] == "rock") item.category = PlacementCategory::Rock;
@@ -235,7 +249,7 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
             if (badCount(8U)) continue;
             CollisionBox box;
             box.id = fields[1];
-            if (box.id.empty() || !ids.insert(box.id).second) Add(diagnostics, path, lineNumber, "collision.id", "Collision ID is empty or duplicated.");
+            if (!IsRecordId(box.id) || !ids.insert(box.id).second) Add(diagnostics, path, lineNumber, "collision.id", "Collision ID is empty or duplicated.");
             bool valid = true;
             for (std::size_t i = 0; i < 3U; ++i) valid = ParseFloat(fields[2U + i], box.center[i]) && valid;
             for (std::size_t i = 0; i < 3U; ++i) valid = ParseFloat(fields[5U + i], box.halfExtents[i]) && valid;
@@ -248,7 +262,7 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
             if (badCount(5U)) continue;
             NavigationNode node;
             node.id = fields[1];
-            if (node.id.empty() || !navNodes.insert(node.id).second || !ids.insert(node.id).second)
+            if (!IsRecordId(node.id) || !navNodes.insert(node.id).second || !ids.insert(node.id).second)
                 Add(diagnostics, path, lineNumber, "nav_node.id", "Navigation node ID is empty or duplicated.");
             bool valid = true;
             for (std::size_t i = 0; i < 3U; ++i) valid = ParseFloat(fields[2U + i], node.position[i]) && valid;
