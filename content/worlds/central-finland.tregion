@@ -2,7 +2,7 @@ talvisota-region	1
 id	region.central_finland
 world	world.central_finland
 bounds_min	-32,-5,-32
-bounds_max	32,5,32
+bounds_max	32,20,32
 heightfield	17	17	-32	-32	4	4
 height_row	0	0.0299,-0.0621,-0.1027,-0.0734,0.0184,0.1407,0.2484,0.2973,0.2598,0.1341,-0.0532,-0.2549,-0.4167,-0.4937,-0.4640,-0.3352,-0.1428
 height_row	1	-0.0894,-0.1452,-0.1169,-0.0121,0.1364,0.2808,0.3735,0.3827,0.3024,0.1547,-0.0167,-0.1605,-0.2333,-0.2138,-0.1086,0.0491,0.2108
@@ -21,3 +21,25 @@ height_row	13	-0.4001,-0.4292,-0.3577,-0.2156,-0.0500,0.0896,0.1670,0.1699,0.112
 height_row	14	-0.2043,-0.1221,0.0162,0.1638,0.2729,0.3103,0.2672,0.1626,0.0360,-0.0655,-0.1026,-0.0571,0.0614,0.2188,0.3663,0.4562,0.4570
 height_row	15	-0.0298,0.1318,0.2896,0.3947,0.4143,0.3414,0.1976,0.0262,-0.1214,-0.2018,-0.1926,-0.0999,0.0445,0.1930,0.2979,0.3261,0.2703
 height_row	16	0.1078,0.3003,0.4290,0.4588,0.3818,0.2200,0.0183,-0.1690,-0.2947,-0.3323,-0.2833,-0.1756,-0.0533,0.0384,0.0678,0.0272,-0.0649
+placement	spruce.northwest	vegetation	model.environment.spruce	-	-27	0	-22	18	1.0
+placement	spruce.west	vegetation	model.environment.spruce	-	-17	0	-18	72	0.92
+placement	spruce.southwest	vegetation	model.environment.spruce	-	-28	0	-8	135	1.08
+placement	spruce.south	vegetation	model.environment.spruce	-	-22	0	11	210	0.96
+placement	spruce.southcenter	vegetation	model.environment.spruce	-	-10	0	17	42	1.04
+placement	spruce.southeast	vegetation	model.environment.spruce	-	8	0	18	165	0.9
+placement	spruce.east	vegetation	model.environment.spruce	-	27	0	14	285	1.06
+placement	spruce.northeast	vegetation	model.environment.spruce	-	25	0	-18	315	0.98
+placement	boulder.west	rock	model.environment.boulder	-	-11	0	-8	12	1.0
+placement	boulder.east	rock	model.environment.boulder	-	13	0	9	35	0.85
+placement	boulder.northeast	rock	model.environment.boulder	-	24	0	-4	75	1.15
+collision	spruce.northwest.trunk	-27	6	-22	0.38	6	0.38
+collision	spruce.west.trunk	-17	5.5	-18	0.35	5.5	0.35
+collision	spruce.southwest.trunk	-28	6.5	-8	0.4	6.5	0.4
+collision	spruce.south.trunk	-22	5.8	11	0.36	5.8	0.36
+collision	spruce.southcenter.trunk	-10	6.2	17	0.38	6.2	0.38
+collision	spruce.southeast.trunk	8	5.4	18	0.34	5.4	0.34
+collision	spruce.east.trunk	27	6.3	14	0.4	6.3	0.4
+collision	spruce.northeast.trunk	25	5.8	-18	0.37	5.8	0.37
+collision	boulder.west.body	-11	0	-8	1.25	0.85	1.05
+collision	boulder.east.body	13	0	9	1.1	0.7	0.95
+collision	boulder.northeast.body	24	0	-4	1.4	0.9	1.2
