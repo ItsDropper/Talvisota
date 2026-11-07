@@ -3,6 +3,7 @@
 #include <charconv>
 #include <cmath>
 #include <fstream>
+#include <algorithm>
 #include <string_view>
 #include <system_error>
 #include <unordered_map>
@@ -140,7 +141,7 @@ bool LoadWorldDefinition(const std::filesystem::path& path, const ContentRegistr
 
     static constexpr std::string_view allowed[] = {
         "id", "name", "unit", "up_axis", "north_axis", "handedness",
-        "bounds_min", "bounds_max", "sea_level"
+        "bounds_min", "bounds_max", "sea_level", "terrain_model_id"
     };
     for (const auto& [key, value] : values)
     {
@@ -201,6 +202,9 @@ bool LoadWorldDefinition(const std::filesystem::path& path, const ContentRegistr
         if (candidate.boundsMin[axis] >= candidate.boundsMax[axis])
             Add(diagnostics, path, 0, "bounds", "Each minimum bound must be strictly less than its maximum bound.");
     }
+    if (const auto* value = get("terrain_model_id"))
+        candidate.terrainModelId = value->first;
+
     if (const auto* value = get("sea_level"))
     {
         if (!ParseFloat(value->first, candidate.seaLevel))
@@ -223,6 +227,17 @@ bool LoadWorldDefinition(const std::filesystem::path& path, const ContentRegistr
         const auto registeredPath = std::filesystem::weakly_canonical(registry.Root() / worldAsset->relativePath, error);
         if (error || registeredPath != canonicalPath)
             Add(diagnostics, path, get("id") ? get("id")->second : 0U, "id", "World ID is registered to a different source path.");
+        if (!candidate.terrainModelId.empty())
+        {
+            const AssetRecord* terrain = registry.Find(candidate.terrainModelId);
+            if (terrain == nullptr || terrain->kind != AssetKind::Model)
+                Add(diagnostics, path, get("terrain_model_id")->second, "terrain_model_id",
+                    "Terrain model ID must resolve to a registered model asset.");
+            else if (std::find(worldAsset->dependencies.begin(), worldAsset->dependencies.end(),
+                               candidate.terrainModelId) == worldAsset->dependencies.end())
+                Add(diagnostics, path, get("terrain_model_id")->second, "terrain_model_id",
+                    "Terrain model must be declared as a world manifest dependency.");
+        }
     }
 
     if (!diagnostics.empty())
