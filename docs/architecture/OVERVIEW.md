@@ -4,21 +4,40 @@
 
 The intended dependency direction is inward-to-outward:
 
-1. **Core** owns lifecycle, time, identifiers, deterministic utilities, and application-level contracts.
+1. **Core** owns lifecycle, time, identifiers, deterministic utilities, configuration contracts, and logging.
 2. **Domain** owns game rules: actors, equipment, combat, missions, factions, and progression.
 3. **World** owns spatial composition, world state, traversal, and streaming policy.
 4. **Content** owns schemas, manifests, validation, and loading of authored data.
 5. **Presentation** translates domain state into camera, animation, UI, audio, and render-facing data.
 6. **Platform** owns OS-facing services and process integration.
 7. **Engine adapters** translate game-owned render/audio/input requests to VantaEngine public APIs.
+8. **Application** is the composition root. It creates services in dependency order and tears them down in reverse order.
 
 Core and domain logic must not depend on Direct3D, Win32 window handles, renderer classes, or engine-private headers.
 
 ## Runtime composition
 
-The application composition root creates services in dependency order, injects them into systems, and tears them down in reverse order. A subsystem must not secretly create another global subsystem.
+The executable entry point constructs one `app::Application`. The application owns the top-level `core::GameSession`, configuration, and logger. Platform services resolve per-user paths and install terminate diagnostics before configuration and runtime services initialize.
+
+Initialization order:
+1. Enter `Initializing`.
+2. Resolve platform paths in the entry flow.
+3. Install terminate-report handling.
+4. Load or create versioned configuration.
+5. Open the log sink using the configured severity threshold.
+6. Enter `Frontend` only after all required services initialize.
+
+Shutdown transitions through `ShuttingDown` to `Stopped`. A failed initialization transitions to `Failed`; the same shutdown path completes cleanup. The current executable shell intentionally exits after core initialization. It does not create a window or graphics device.
 
 The top-level session phase is represented by `core::GameSession`. It governs lifecycle transitions only; it is not a gameplay state machine and does not own world or renderer resources.
+
+## Diagnostics and configuration
+
+- Log records include UTC timestamps, severity, subsystem, and message.
+- The logger writes to a per-user file and optionally to the console.
+- Configuration is versioned and strict. Unsupported versions, duplicate keys, unknown keys, and invalid values are rejected with line-specific errors.
+- A missing configuration file is initialized with explicit defaults.
+- The terminate handler records an active C++ exception's message when one exists. This is not an OS minidump or a general crash-recovery mechanism.
 
 ## Game-owned modules
 
