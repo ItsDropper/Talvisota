@@ -6,6 +6,8 @@
 #include <chrono>
 #include <cstdint>
 #include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 namespace
@@ -68,6 +70,7 @@ talvisota::presentation::SceneSnapshot BuildSampleScene()
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR commandLine, int showCommand)
 {
+    using namespace talvisota::presentation;
     const wchar_t* className = L"TalvisotaRendererAdapterSample";
     WNDCLASSEXW windowClass{};
     windowClass.cbSize = sizeof(windowClass);
