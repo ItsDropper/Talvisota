@@ -107,6 +107,25 @@ void TestImportsRegisteredObjAndDecodesRegisteredTexture()
             "Engine asset summary should count the imported model and unique decoded texture.");
 }
 
+void TestMissingOptionalAssetIsSkipped()
+{
+    TemporaryDirectory directory;
+    directory.Manifest(
+        "talvisota-content-manifest\\t1\\n"
+        "asset\\ttexture.optional\\ttexture\\ttextures/optional.bmp\\toptional\\t-\\tproject\\tproject\\n");
+    ContentRegistry registry;
+    std::vector<ContentDiagnostic> manifestDiagnostics;
+    Require(LoadContentManifest(directory.Path() / "catalog.tmanifest", directory.Path(),
+                                registry, manifestDiagnostics),
+            "Missing optional asset manifest should load.");
+    EngineAssetSummary summary;
+    std::vector<EngineAssetDiagnostic> diagnostics;
+    Require(ValidateEngineAssets(registry, summary, diagnostics),
+            "Missing optional asset should not fail validation.");
+    Require(summary.decodedTextures == 0U && summary.importedModels == 0U,
+            "Missing optional asset should not be counted as decoded.");
+}
+
 void TestValidatesProcessedTextureContainer()
 {
     TemporaryDirectory directory;
@@ -231,6 +250,7 @@ int main()
     try
     {
         TestImportsRegisteredObjAndDecodesRegisteredTexture();
+        TestMissingOptionalAssetIsSkipped();
         TestValidatesProcessedTextureContainer();
         TestObjMaterialLibraryMustBeRegisteredAndDeclared();
         TestMalformedTextureFailsWithoutPublishingSummary();
