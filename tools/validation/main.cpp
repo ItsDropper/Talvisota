@@ -100,7 +100,8 @@ int main(int argc, char** argv)
                 ++authoredDefinitionCount;
                 continue;
             }
-            if (asset.kind != talvisota::content::AssetKind::Material)
+            if (asset.kind != talvisota::content::AssetKind::Material ||
+                asset.relativePath.extension() == ".mtl")
                 continue;
 
             talvisota::content::MaterialDefinition material;
