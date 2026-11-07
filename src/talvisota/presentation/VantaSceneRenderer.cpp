@@ -164,8 +164,8 @@ public:
             snapshot.environment.fogColor[1], snapshot.environment.fogColor[2]};
         view.environment.fogDensity = snapshot.environment.fogDensity;
         view.environment.fogStart = snapshot.environment.fogStart;
-        view.environment.windDirection = {snapshot.environment.windDirection[0],
-            snapshot.environment.windDirection[1]};
+        view.environment.windDirectionX = snapshot.environment.windDirection[0];
+        view.environment.windDirectionZ = snapshot.environment.windDirection[1];
         view.environment.windStrength = snapshot.environment.windStrength;
         const vanta::renderer::SceneFrame frame = m_scene.BuildFrame(view);
 
