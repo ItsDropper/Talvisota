@@ -1,6 +1,0 @@
-# Original Talvisota terrain material
-newmtl snow
-Kd 0.92 0.95 1.0
-Pr 0.95
-Pm 0.0
-map_Kd ../../textures/snow-albedo.bmp
