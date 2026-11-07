@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -72,15 +73,21 @@ void TestBuildsAndVerifiesDeterministicInventory()
             "Published package should pass full inventory and SHA-256 verification.");
     Require(verified.assetCount == built.assetCount && verified.totalBytes == built.totalBytes,
             "Build and verification summaries should match.");
-    std::ifstream firstInventory(fixture.Package() / "package.tmanifest", std::ios::binary);
-    const std::string firstText((std::istreambuf_iterator<char>(firstInventory)),
-                                std::istreambuf_iterator<char>());
+    std::string firstText;
+    {
+        std::ifstream firstInventory(fixture.Package() / "package.tmanifest", std::ios::binary);
+        firstText.assign(std::istreambuf_iterator<char>(firstInventory),
+                         std::istreambuf_iterator<char>());
+    }
     AssetPackageSummary rebuilt;
     Require(BuildAssetPackage(registry, fixture.Package(), rebuilt, diagnostics),
             "Rebuilding an existing package should replace it after validation.");
-    std::ifstream secondInventory(fixture.Package() / "package.tmanifest", std::ios::binary);
-    const std::string secondText((std::istreambuf_iterator<char>(secondInventory)),
-                                 std::istreambuf_iterator<char>());
+    std::string secondText;
+    {
+        std::ifstream secondInventory(fixture.Package() / "package.tmanifest", std::ios::binary);
+        secondText.assign(std::istreambuf_iterator<char>(secondInventory),
+                          std::istreambuf_iterator<char>());
+    }
     Require(firstText == secondText, "Identical inputs must produce byte-identical package inventories.");
 }
 
