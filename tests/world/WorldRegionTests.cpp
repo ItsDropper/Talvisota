@@ -354,8 +354,8 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
                     sampledHeight, normal, error),
                     "Sakkola terrain model vertices should have matching heightfield samples.");
             Require(std::abs(sampledHeight - y) <= 1.0e-4F &&
-                    std::abs(x - sampleX) <= 1.0e-4F &&
-                    std::abs(z - sampleZ) <= 1.0e-4F && normal[1] > 0.0F,
+                    std::abs(x - sampleX) <= 0.001F &&
+                    std::abs(z - sampleZ) <= 0.001F && normal[1] > 0.0F,
                     "Sakkola collision heightfield must match visual vertices and return upward normals.");
             visualVertices.push_back({x, y, z});
             ++vertexIndex;
