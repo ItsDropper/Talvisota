@@ -191,7 +191,7 @@ std::vector<float> BuildMeshCullRadii(const SceneSnapshot& scene)
     return radii;
 }
 
-void CullCaptureInstances(SceneSnapshot& scene, const std::vector<float>& meshRadii,
+std::size_t CullCaptureInstances(SceneSnapshot& scene, const std::vector<float>& meshRadii,
     const std::vector<float>& maxDrawDistances, const vanta::math::Vec3& eye,
     const vanta::math::Vec3& target, const float aspect) {
     const auto normalize=[](std::array<float,3> v) {
@@ -235,6 +235,7 @@ void CullCaptureInstances(SceneSnapshot& scene, const std::vector<float>& meshRa
     }
     std::cout<<"Visibility culling: "<<visibleCount<<" / "<<scene.instances.size()
         <<" instances visible (vegetation/understory 280 m, props 600 m).\n";
+    return visibleCount;
 }
 
 bool WriteBgraPng(const std::vector<std::uint8_t>& pixels, const UINT width,
@@ -331,7 +332,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             captureRequested = true;
             captureDir = token.substr(14);
         } else if (token.rfind(L"--frames-per-view=", 0) == 0) {
-            try { framesPerView = std::clamp(std::stoi(std::wstring(token.substr(18))), 1, 120); }
+            try { framesPerView = std::clamp(std::stoi(std::wstring(token.substr(18))), 2, 120); }
             catch (...) {
                 LocalFree(parsedArguments);
                 if (ownsCom) CoUninitialize();
@@ -474,13 +475,15 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 error = "Could not construct a valid Sakkola capture camera.";
                 break;
             }
-            CullCaptureInstances(scene, meshCullRadii, instanceMaxDrawDistances,
-                view.eye, view.target,
+            const std::size_t visibleInstanceCount = CullCaptureInstances(scene,
+                meshCullRadii, instanceMaxDrawDistances, view.eye, view.target,
                 static_cast<float>(client.right-client.left)/static_cast<float>(client.bottom-client.top));
-            std::vector<double> frameTimesMs;
-            std::vector<double> renderTimesMs;
-            frameTimesMs.reserve(static_cast<std::size_t>(framesPerView));
-            renderTimesMs.reserve(static_cast<std::size_t>(framesPerView));
+            std::vector<double> warmFrameTimesMs;
+            std::vector<double> warmRenderTimesMs;
+            warmFrameTimesMs.reserve(static_cast<std::size_t>(framesPerView - 1));
+            warmRenderTimesMs.reserve(static_cast<std::size_t>(framesPerView - 1));
+            double firstFrameMs = 0.0;
+            double firstRenderMs = 0.0;
             for (int frame = 0; frame < framesPerView; ++frame) {
                 const auto frameStart = std::chrono::steady_clock::now();
                 scene.camera.elapsedSeconds = static_cast<float>(frameNumber) / 60.0F;
@@ -488,16 +491,24 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 const auto renderStart = std::chrono::steady_clock::now();
                 if (!renderer->Render(scene, error)) break;
                 const auto renderEnd = std::chrono::steady_clock::now();
-                renderTimesMs.push_back(std::chrono::duration<double, std::milli>(
-                    renderEnd - renderStart).count());
+                const double renderMs = std::chrono::duration<double, std::milli>(
+                    renderEnd - renderStart).count();
                 if (!captureRequested) Sleep(16);
-                frameTimesMs.push_back(std::chrono::duration<double, std::milli>(
-                    std::chrono::steady_clock::now() - frameStart).count());
+                const double frameMs = std::chrono::duration<double, std::milli>(
+                    std::chrono::steady_clock::now() - frameStart).count();
+                if (frame == 0) {
+                    firstFrameMs = frameMs;
+                    firstRenderMs = renderMs;
+                } else {
+                    warmFrameTimesMs.push_back(frameMs);
+                    warmRenderTimesMs.push_back(renderMs);
+                }
             }
             if (!error.empty()) break;
-            if (frameTimesMs.size() != static_cast<std::size_t>(framesPerView) ||
-                renderTimesMs.size() != static_cast<std::size_t>(framesPerView)) {
-                error = "Capture timing sample count does not match the requested frame count.";
+            const std::size_t expectedWarmFrames = static_cast<std::size_t>(framesPerView - 1);
+            if (warmFrameTimesMs.size() != expectedWarmFrames ||
+                warmRenderTimesMs.size() != expectedWarmFrames) {
+                error = "Capture warm timing sample count does not match the requested frame count.";
                 break;
             }
             const auto percentile95 = [](std::vector<double> samples) {
@@ -506,21 +517,25 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                     std::ceil(static_cast<double>(samples.size()) * 0.95)) - 1U;
                 return samples[index];
             };
-            double totalFrameMs = 0.0;
-            double totalRenderMs = 0.0;
-            for (const double sample : frameTimesMs) totalFrameMs += sample;
-            for (const double sample : renderTimesMs) totalRenderMs += sample;
-            const double averageFrameMs = totalFrameMs / static_cast<double>(frameTimesMs.size());
-            const double averageRenderMs = totalRenderMs / static_cast<double>(renderTimesMs.size());
-            const double p95FrameMs = percentile95(frameTimesMs);
-            const double p95RenderMs = percentile95(renderTimesMs);
+            double totalWarmFrameMs = 0.0;
+            double totalWarmRenderMs = 0.0;
+            for (const double sample : warmFrameTimesMs) totalWarmFrameMs += sample;
+            for (const double sample : warmRenderTimesMs) totalWarmRenderMs += sample;
+            const double warmAverageFrameMs = totalWarmFrameMs / static_cast<double>(warmFrameTimesMs.size());
+            const double warmAverageRenderMs = totalWarmRenderMs / static_cast<double>(warmRenderTimesMs.size());
+            const double warmP95FrameMs = percentile95(warmFrameTimesMs);
+            const double warmP95RenderMs = percentile95(warmRenderTimesMs);
             const std::string timingSummary = "Performance sample " +
                 std::filesystem::path(view.file).string() + ": frames=" +
-                std::to_string(frameTimesMs.size()) + ", avgFrameMs=" +
-                std::to_string(averageFrameMs) + ", p95FrameMs=" +
-                std::to_string(p95FrameMs) + ", avgRenderCpuMs=" +
-                std::to_string(averageRenderMs) + ", p95RenderCpuMs=" +
-                std::to_string(p95RenderMs);
+                std::to_string(framesPerView) + ", visibleInstances=" +
+                std::to_string(visibleInstanceCount) + "/" + std::to_string(scene.instances.size()) +
+                ", firstFrameMs=" + std::to_string(firstFrameMs) +
+                ", firstRenderMs=" + std::to_string(firstRenderMs) +
+                ", warmFrames=" + std::to_string(warmFrameTimesMs.size()) +
+                ", warmAvgFrameMs=" + std::to_string(warmAverageFrameMs) +
+                ", warmP95FrameMs=" + std::to_string(warmP95FrameMs) +
+                ", warmAvgRenderMs=" + std::to_string(warmAverageRenderMs) +
+                ", warmP95RenderMs=" + std::to_string(warmP95RenderMs);
             std::cout << timingSummary << "\n";
             if (captureLog) captureLog << timingSummary << "\n";
             std::vector<std::uint8_t> framebuffer;
