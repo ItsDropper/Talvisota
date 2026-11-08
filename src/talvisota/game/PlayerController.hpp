@@ -13,6 +13,13 @@ struct PlayerConfig final
     float sprintSpeed = 6.5F;
     float gravity = 24.0F;
     float jumpSpeed = 7.0F;
+    float groundAcceleration = 22.0F;
+    float airAcceleration = 6.0F;
+    float groundFriction = 16.0F;
+    float terminalVelocity = 55.0F;
+    float crouchSpeed = 1.8F;
+    float crouchedHeight = 1.15F;
+    float crouchedEyeHeight = 1.0F;
     float capsuleRadius = 0.34F;
     float standingHeight = 1.8F;
     float eyeHeight = 1.62F;
@@ -30,6 +37,7 @@ struct PlayerInput final
     float lookPitchRadians = 0.0F;
     bool sprint = false;
     bool jumpPressed = false;
+    bool crouch = false;
 };
 
 struct PlayerState final
@@ -38,7 +46,9 @@ struct PlayerState final
     std::array<float, 3> position{};
     float yawRadians = 0.0F;
     float pitchRadians = 0.0F;
+    std::array<float, 2> horizontalVelocity{};
     float verticalVelocity = 0.0F;
+    bool crouched = false;
     bool grounded = true;
 };
 
