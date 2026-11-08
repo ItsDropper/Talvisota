@@ -206,14 +206,22 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
     }
     else if (preset == "snow")
     {
-        const float wind = std::sin((u * 7.0F + v * 2.1F +
-            (broad - 0.5F) * 0.36F) * 2.0F * Pi);
+        // Wind-shaped snow is broad, low-amplitude and stochastic. A periodic sine
+        // created visible diagonal bands across the entire terrain when tiled.
+        const float drift = Fbm(u, v, 9, seed ^ 0x243f6a88U, 4);
+        const float driftDetail = Fbm(u, v, 38, seed ^ 0xb7e15162U, 3);
         const float micro = (fine - 0.5F) * 0.035F + (grain - 0.5F) * 0.018F;
-        const float height = 0.50F + wind * 0.025F + (broad - 0.5F) * 0.055F + micro;
-        sample = {0.82F + micro * 0.62F - wind * 0.008F,
-                  0.87F + micro * 0.55F - wind * 0.004F,
-                  0.94F + micro * 0.38F,
-                  height, 0.94F + medium * 0.045F, 0.98F - Smooth((fine - 0.82F) * 4.0F) * 0.10F};
+        const float windAccumulation = (drift - 0.5F) * 0.055F +
+            (driftDetail - 0.5F) * 0.018F;
+        const float height = 0.50F + windAccumulation +
+            (broad - 0.5F) * 0.035F + micro;
+        const float albedoVariation = (drift - 0.5F) * 0.018F +
+            (driftDetail - 0.5F) * 0.010F + micro * 0.62F;
+        sample = {0.82F + albedoVariation,
+                  0.87F + albedoVariation * 0.88F,
+                  0.94F + albedoVariation * 0.62F,
+                  height, 0.94F + medium * 0.045F,
+                  0.98F - Smooth((fine - 0.82F) * 4.0F) * 0.10F};
     }
     else if (preset == "packed_snow")
     {
