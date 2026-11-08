@@ -670,6 +670,13 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         return 2;
     }
 
+    std::cout << "Sakkola scene composition: placements=" << placements
+        << ", draw submissions=" << draws << ", unique meshes=" << scene.meshes.size()
+        << ", materials=" << scene.materials.size() << ".\\n";
+    if (captureLog) captureLog << "Sakkola scene composition: placements=" << placements
+        << ", draw submissions=" << draws << ", unique meshes=" << scene.meshes.size()
+        << ", materials=" << scene.materials.size() << ".\\n";
+
     const std::vector<float> meshCullRadii = BuildMeshCullRadii(scene);
 
     const wchar_t* className = L"TalvisotaSakkolaRenderer";
@@ -734,13 +741,52 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             CullCaptureInstances(scene, meshCullRadii, instanceMaxDrawDistances,
                 view.eye, view.target,
                 static_cast<float>(client.right-client.left)/static_cast<float>(client.bottom-client.top));
+            std::vector<double> frameTimesMs;
+            std::vector<double> renderTimesMs;
+            frameTimesMs.reserve(static_cast<std::size_t>(framesPerView));
+            renderTimesMs.reserve(static_cast<std::size_t>(framesPerView));
             for (int frame = 0; frame < framesPerView; ++frame) {
+                const auto frameStart = std::chrono::steady_clock::now();
                 scene.camera.elapsedSeconds = static_cast<float>(frameNumber) / 60.0F;
                 scene.camera.frameNumber = frameNumber++;
+                const auto renderStart = std::chrono::steady_clock::now();
                 if (!renderer->Render(scene, error)) break;
+                const auto renderEnd = std::chrono::steady_clock::now();
+                renderTimesMs.push_back(std::chrono::duration<double, std::milli>(
+                    renderEnd - renderStart).count());
                 Sleep(16);
+                frameTimesMs.push_back(std::chrono::duration<double, std::milli>(
+                    std::chrono::steady_clock::now() - frameStart).count());
             }
             if (!error.empty()) break;
+            if (frameTimesMs.size() != static_cast<std::size_t>(framesPerView) ||
+                renderTimesMs.size() != static_cast<std::size_t>(framesPerView)) {
+                error = "Capture timing sample count does not match the requested frame count.";
+                break;
+            }
+            const auto percentile95 = [](std::vector<double> samples) {
+                std::sort(samples.begin(), samples.end());
+                const auto index = static_cast<std::size_t>(
+                    std::ceil(static_cast<double>(samples.size()) * 0.95)) - 1U;
+                return samples[index];
+            };
+            double totalFrameMs = 0.0;
+            double totalRenderMs = 0.0;
+            for (const double sample : frameTimesMs) totalFrameMs += sample;
+            for (const double sample : renderTimesMs) totalRenderMs += sample;
+            const double averageFrameMs = totalFrameMs / static_cast<double>(frameTimesMs.size());
+            const double averageRenderMs = totalRenderMs / static_cast<double>(renderTimesMs.size());
+            const double p95FrameMs = percentile95(frameTimesMs);
+            const double p95RenderMs = percentile95(renderTimesMs);
+            const std::string timingSummary = "Performance sample " +
+                std::filesystem::path(view.file).string() + ": frames=" +
+                std::to_string(frameTimesMs.size()) + ", avgFrameMs=" +
+                std::to_string(averageFrameMs) + ", p95FrameMs=" +
+                std::to_string(p95FrameMs) + ", avgRenderCpuMs=" +
+                std::to_string(averageRenderMs) + ", p95RenderCpuMs=" +
+                std::to_string(p95RenderMs);
+            std::cout << timingSummary << "\\n";
+            if (captureLog) captureLog << timingSummary << "\\n";
             std::vector<std::uint8_t> framebuffer;
             std::uint32_t framebufferWidth = 0U, framebufferHeight = 0U;
             if (!renderer->ReadbackPresentedFrame(framebuffer, framebufferWidth, framebufferHeight, error))
