@@ -139,8 +139,12 @@ bool RefineSnowTerrain(RenderMesh& mesh, std::string& error) {
         error="Snow terrain refinement requires indexed triangle geometry."; return false;
     }
     constexpr std::size_t MaximumVertices=1000000U;
-    constexpr float MaximumEdgeLength=2.2F;
     const std::size_t originalVertexCount=mesh.vertices.size();
+    // Keep the same one-million-vertex budget for both the original close-range
+    // village mesh and the expanded regional mesh. Larger source grids use a
+    // coarser final edge target so refinement stays bounded instead of failing
+    // solely because the playable area is larger.
+    const float maximumEdgeLength=originalVertexCount>20000U?8.5F:2.2F;
     const auto distanceSquared=[](const auto& a,const auto& b) {
         const float x=a.position[0]-b.position[0], y=a.position[1]-b.position[1], z=a.position[2]-b.position[2];
         return x*x+y*y+z*z;
@@ -159,7 +163,7 @@ bool RefineSnowTerrain(RenderMesh& mesh, std::string& error) {
             longest=std::max({longest,distanceSquared(mesh.vertices[a],mesh.vertices[b]),
                 distanceSquared(mesh.vertices[b],mesh.vertices[d]),distanceSquared(mesh.vertices[d],mesh.vertices[a])});
         }
-        if(longest<=MaximumEdgeLength*MaximumEdgeLength) break;
+        if(longest<=maximumEdgeLength*maximumEdgeLength) break;
         if(mesh.vertices.size()+mesh.indices.size()>MaximumVertices) {
             error="Snow terrain refinement exceeds the 1-million-vertex safety limit."; return false;
         }
