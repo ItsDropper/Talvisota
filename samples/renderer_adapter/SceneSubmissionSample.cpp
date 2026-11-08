@@ -630,8 +630,15 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             }
             const std::size_t skyPixel = (static_cast<std::size_t>(framebufferHeight / 8U) *
                 framebufferWidth + framebufferWidth / 4U) * 4U;
+            if (!WriteBgraPng(framebuffer, framebufferWidth, framebufferHeight,
+                    output / view.file, error))
+                break;
             if (framebuffer[skyPixel] <= framebuffer[skyPixel + 2U] + 16U) {
-                error = "Presented BGRA sky sample is not blue-dominant; framebuffer channel order or sky environment is incorrect.";
+                error = "Presented BGRA sky sample is not blue-dominant (B=" +
+                    std::to_string(framebuffer[skyPixel]) + ", G=" +
+                    std::to_string(framebuffer[skyPixel + 1U]) + ", R=" +
+                    std::to_string(framebuffer[skyPixel + 2U]) +
+                    "); framebuffer channel order or sky environment is incorrect.";
                 break;
             }
             std::uint64_t frameHash = 1469598103934665603ULL;
@@ -651,8 +658,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 << view.target.y << "," << view.target.z << "), frame=" << frameNumber
                 << ", framebuffer=" << framebufferWidth << "x" << framebufferHeight
                 << ", FNV1a=0x" << std::hex << frameHash << std::dec << "\\n";
-            if (!WriteBgraPng(framebuffer, framebufferWidth, framebufferHeight,
-                    output / view.file, error)) break;
+
         }
         renderer.reset();
         if (IsWindow(window)) DestroyWindow(window);
