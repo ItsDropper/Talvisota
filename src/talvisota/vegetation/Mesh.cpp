@@ -94,7 +94,7 @@ TreeMesh BuildTreeMesh(const TreeSkeleton& skeleton, const std::uint64_t seed,
                 const std::uint32_t b = a + 1u;
                 const std::uint32_t c = a + ringStride;
                 const std::uint32_t d = c + 1u;
-                mesh.indices.insert(mesh.indices.end(), {a, c, b, b, c, d});
+                mesh.indices.insert(mesh.indices.end(), {a, b, c, b, d, c});
                 section.indexCount += 6u;
             }
         }
