@@ -1,8 +1,12 @@
 #include "talvisota/content/AuthoredDefinition.hpp"
+#include "talvisota/content/ContentRegistry.hpp"
 #include "talvisota/game/MissionContentAdapter.hpp"
 #include "talvisota/game/MissionRuntime.hpp"
 
+#include <chrono>
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -29,6 +33,130 @@ talvisota::game::MissionDefinition MakeMission()
             {"objective.return-to-command", "target.command-post"}
         }
     };
+}
+
+class TemporaryContent final
+{
+public:
+    TemporaryContent()
+    {
+        const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+        root_ = std::filesystem::temp_directory_path() /
+                ("talvisota-mission-adapter-" + std::to_string(stamp));
+        std::filesystem::create_directories(root_);
+    }
+
+    ~TemporaryContent()
+    {
+        std::error_code ignored;
+        std::filesystem::remove_all(root_, ignored);
+    }
+
+    void Write(const std::filesystem::path& relativePath, const std::string& contents)
+    {
+        const auto path = root_ / relativePath;
+        std::filesystem::create_directories(path.parent_path());
+        std::ofstream output(path, std::ios::binary);
+        output << contents;
+        if (!output)
+            throw std::runtime_error("Could not write temporary mission content fixture.");
+    }
+
+    [[nodiscard]] const std::filesystem::path& Root() const noexcept { return root_; }
+    [[nodiscard]] std::filesystem::path ManifestPath() const { return root_ / "catalog.tmanifest"; }
+
+private:
+    std::filesystem::path root_;
+};
+
+void TestManifestParserToMissionAdapter()
+{
+    using namespace talvisota::content;
+    using namespace talvisota::game;
+
+    TemporaryContent content;
+    content.Write("content/worlds/sakkola.tworld", "talvisota-world\\t1\\nid = world.sakkola\\n");
+    content.Write("content/worlds/sakkola-church-village.tregion", "fixture region\\n");
+    content.Write("content/characters/sakkola-infantryman.tcharacter", "fixture character\\n");
+    content.Write("content/factions/finnish.tfaction", "fixture faction\\n");
+    content.Write("content/missions/first-patrol.tmission",
+        "talvisota-mission\\t1\\n"
+        "id = mission.sakkola.first-patrol\\n"
+        "name = First Patrol\\n"
+        "world_id = world.sakkola\\n"
+        "region_id = region.sakkola.church_village\\n"
+        "player_character_id = character.sakkola_infantryman\\n"
+        "faction_id = faction.finnish\\n"
+        "objective = objective.inspect-well -> prop.well.farmstead\\n"
+        "objective = objective.inspect-woodpile -> prop.woodpile.west\\n"
+        "objective = objective.report-church -> church.sakkola\\n");
+    content.Write("catalog.tmanifest",
+        "talvisota-content-manifest\\t1\\n"
+        "asset\\tmission.sakkola.first-patrol\\tdefinition\\tcontent/missions/first-patrol.tmission\\trequired\\tworld.sakkola,region.sakkola.church_village,character.sakkola_infantryman,faction.finnish\\tproject\\tproject\\n"
+        "asset\\tworld.sakkola\\tdefinition\\tcontent/worlds/sakkola.tworld\\trequired\\t-\\tproject\\tproject\\n"
+        "asset\\tregion.sakkola.church_village\\tdefinition\\tcontent/worlds/sakkola-church-village.tregion\\trequired\\tworld.sakkola\\tproject\\tproject\\n"
+        "asset\\tcharacter.sakkola_infantryman\\tdefinition\\tcontent/characters/sakkola-infantryman.tcharacter\\trequired\\tfaction.finnish\\tproject\\tproject\\n"
+        "asset\\tfaction.finnish\\tdefinition\\tcontent/factions/finnish.tfaction\\trequired\\t-\\tproject\\tproject\\n");
+
+    ContentRegistry registry;
+    std::vector<ContentDiagnostic> manifestDiagnostics;
+    Check(LoadContentManifest(content.ManifestPath(), content.Root(), registry, manifestDiagnostics),
+        "Sakkola mission manifest and dependency graph load");
+
+    AuthoredDefinition authored;
+    std::vector<AuthoredDefinitionDiagnostic> definitionDiagnostics;
+    const auto missionPath = content.Root() / "content/missions/first-patrol.tmission";
+    Check(LoadAuthoredDefinition(missionPath, registry, authored, definitionDiagnostics),
+        "First Patrol parses through the real authored-definition loader");
+    Check(authored.id == "mission.sakkola.first-patrol" &&
+        authored.worldId == "world.sakkola" &&
+        authored.regionId == "region.sakkola.church_village" &&
+        authored.characterId == "character.sakkola_infantryman" &&
+        authored.factionId == "faction.finnish",
+        "parsed First Patrol retains its authored world, region, character, and faction references");
+    Check(authored.objectives.size() == 3U &&
+        authored.objectives[0].id == "objective.inspect-well" &&
+        authored.objectives[0].interactionTargetId == "prop.well.farmstead" &&
+        authored.objectives[1].id == "objective.inspect-woodpile" &&
+        authored.objectives[1].interactionTargetId == "prop.woodpile.west" &&
+        authored.objectives[2].id == "objective.report-church" &&
+        authored.objectives[2].interactionTargetId == "church.sakkola",
+        "parsed authored objective sequence retains all three stable placement IDs");
+
+    MissionDefinition gameplayDefinition;
+    Check(BuildMissionDefinition(authored, gameplayDefinition, error),
+        "parsed Sakkola mission converts through the gameplay adapter");
+    Check(gameplayDefinition.id == "mission.sakkola.first-patrol" &&
+        gameplayDefinition.objectives.size() == 3U &&
+        gameplayDefinition.objectives[0].interactionTargetId == "prop.well.farmstead" &&
+        gameplayDefinition.objectives[1].interactionTargetId == "prop.woodpile.west" &&
+        gameplayDefinition.objectives[2].interactionTargetId == "church.sakkola",
+        "manifest-to-runtime conversion preserves the exact ordered interaction contract");
+
+    MissionState activeMission;
+    Check(InitializeMissionFromAuthoredDefinition(authored, activeMission, error),
+        "parsed manifest-backed First Patrol initializes as an active gameplay mission");
+    Check(activeMission.missionId == "mission.sakkola.first-patrol" &&
+        activeMission.status == MissionStatus::Active &&
+        activeMission.objectives.size() == 3U &&
+        activeMission.objectives.front().status == ObjectiveStatus::Active,
+        "manifest-backed mission starts with its first authored objective active");
+
+    const AuthoredDefinition preserved = authored;
+    content.Write("content/missions/first-patrol.tmission",
+        "talvisota-mission\\t1\\n"
+        "id = mission.sakkola.first-patrol\\n"
+        "name = Invalid First Patrol\\n"
+        "world_id = world.sakkola\\n"
+        "region_id = region.sakkola.church_village\\n"
+        "player_character_id = character.sakkola_infantryman\\n"
+        "faction_id = faction.finnish\\n"
+        "objective = objective.duplicate -> prop.well.farmstead\\n"
+        "objective = objective.duplicate -> prop.woodpile.west\\n");
+    Check(!LoadAuthoredDefinition(missionPath, registry, authored, definitionDiagnostics),
+        "duplicate authored objective IDs are rejected before adapter conversion");
+    Check(authored.id == preserved.id && authored.objectives.size() == preserved.objectives.size(),
+        "failed authored-definition reload preserves the previously published parsed mission");
 }
 }
 
