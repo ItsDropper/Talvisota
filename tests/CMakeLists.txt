@@ -72,6 +72,16 @@ target_compile_features(talvisota_player_controller_tests PRIVATE cxx_std_23)
 talvisota_apply_compiler_options(talvisota_player_controller_tests)
 add_test(NAME Talvisota.Gameplay.PlayerController COMMAND talvisota_player_controller_tests)
 
+add_executable(talvisota_gameplay_simulation_tests
+    game/GameplaySimulationTests.cpp
+    ../src/talvisota/entities/EntityRegistry.cpp
+    ../src/talvisota/gameplay/GameplaySimulation.cpp
+)
+target_link_libraries(talvisota_gameplay_simulation_tests PRIVATE Talvisota::Gameplay)
+target_compile_features(talvisota_gameplay_simulation_tests PRIVATE cxx_std_23)
+talvisota_apply_compiler_options(talvisota_gameplay_simulation_tests)
+add_test(NAME Talvisota.Gameplay.Simulation COMMAND talvisota_gameplay_simulation_tests)
+
 add_executable(talvisota_mission_runtime_tests game/MissionRuntimeTests.cpp)
 target_link_libraries(talvisota_mission_runtime_tests PRIVATE Talvisota::Gameplay)
 target_compile_features(talvisota_mission_runtime_tests PRIVATE cxx_std_23)
