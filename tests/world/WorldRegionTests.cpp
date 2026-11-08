@@ -174,8 +174,8 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
             registry, world, worldDiagnostics), "Sakkola world definition should load.");
     Require(world.id == "world.sakkola" && world.terrainModelId == "model.terrain.sakkola",
             "Sakkola world should own its registered terrain model.");
-    Require(world.hasEnvironment && std::abs(world.environment.sunIntensity - 2.4F) < 0.001F &&
-            std::abs(world.environment.fogDensity - 0.0014F) < 0.00001F &&
+    Require(world.hasEnvironment && std::abs(world.environment.sunIntensity - 1.85F) < 0.001F &&
+            std::abs(world.environment.fogDensity - 0.00065F) < 0.00001F &&
             std::abs(world.environment.windStrength - 0.06F) < 0.001F,
             "Sakkola world should expose validated winter sun, fog, ambient, and wind settings.");
 
