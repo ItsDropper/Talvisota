@@ -347,7 +347,7 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
         auto transform = talvisota::world::BuildPlacementTransform(placement);
         if (placement.modelAssetId != "model.terrain.sakkola" &&
             placement.modelAssetId != "model.environment.suvanto_ice") {
-            transform.elements[13] += SnowDriftDisplacement(placement.x, placement.z);
+            transform.elements[13] += SnowDriftDisplacement(placement.position[0], placement.position[2]);
         }
         for (const auto& binding : model->second) {
             RenderInstance instance;
