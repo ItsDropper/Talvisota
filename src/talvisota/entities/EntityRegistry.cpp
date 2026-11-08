@@ -31,8 +31,9 @@ bool IsValidEntityKind(const EntityKind kind) noexcept
 bool IsValidStableId(const std::string_view value) noexcept
 {
     if (value.empty() || value.size() > 128U) return false;
-    for (const unsigned char character : value)
+    for (const char rawCharacter : value)
     {
+        const auto character = static_cast<unsigned char>(rawCharacter);
         const bool alphaNumeric = (character >= 'a' && character <= 'z') ||
             (character >= 'A' && character <= 'Z') ||
             (character >= '0' && character <= '9');
