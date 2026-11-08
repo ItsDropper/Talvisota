@@ -707,5 +707,11 @@ int main(int argc, char** argv)
         }
         std::cout << "Generated " << preset << " 1024x1024 PBR maps.\n";
     }
+    if (!VerifyAll(outputDirectory, error))
+    {
+        std::cerr << error << '\n';
+        return 1;
+    }
+    std::cout << "Verified all 41 generated environment PBR maps and snow/ice continuity.\n";
     return 0;
 }
