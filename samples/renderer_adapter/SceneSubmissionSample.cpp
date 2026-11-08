@@ -280,6 +280,8 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
     std::map<std::string, std::vector<SubmeshBinding>> importedModels;
     std::map<std::string, talvisota::content::MaterialDefinition> typedMaterials;
     std::size_t importedModelCount = 0;
+    std::size_t importedSubmeshRunCount = 0;
+    std::size_t mergedModelMaterialCount = 0;
     for (const auto& placement : region.placements) {
         auto model = importedModels.find(placement.modelAssetId);
         if (model == importedModels.end()) {
@@ -295,6 +297,7 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
                 error = "Could not import " + placement.modelAssetId + ": " + importError;
                 return false;
             }
+            importedSubmeshRunCount += imported.submeshes.size();
             if (imported.submeshes.empty() || imported.materials.empty()) {
                 error = "Model has no materialized submeshes: " + placement.modelAssetId;
                 return false;
@@ -409,6 +412,7 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
                 error = "Model import produced no material-bound geometry: " + placement.modelAssetId;
                 return false;
             }
+            mergedModelMaterialCount += bindings.size();
             model = importedModels.emplace(placement.modelAssetId, std::move(bindings)).first;
             ++importedModelCount;
         }
@@ -497,8 +501,9 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
         expandedVertices * sizeof(talvisota::presentation::RenderVertex) +
         expandedIndices * sizeof(std::uint32_t);
     std::cout << "Loaded " << region.id << ": " << placementCount << " placements, "
-        << importedModelCount << " distinct OBJ models, " << scene.meshes.size()
-        << " submeshes, " << drawCount << " material-bound draw instances; "
+        << importedModelCount << " distinct OBJ models, " << importedSubmeshRunCount
+        << " contiguous OBJ material runs merged into " << mergedModelMaterialCount
+        << " model-material meshes, " << drawCount << " material-bound instances; "
         << uniqueVertices << " unique mesh vertices, " << expandedVertices
         << " expanded instance vertices, " << uniqueGeometryBytes
         << " bytes unique mesh data, estimated " << expandedGeometryBytes
@@ -735,10 +740,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     }
 
     std::cout << "Sakkola scene composition: placements=" << placements
-        << ", draw submissions=" << draws << ", unique meshes=" << scene.meshes.size()
+        << ", material-bound instances=" << draws << ", unique meshes=" << scene.meshes.size()
         << ", materials=" << scene.materials.size() << ".\n";
     if (captureLog) captureLog << "Sakkola scene composition: placements=" << placements
-        << ", draw submissions=" << draws << ", unique meshes=" << scene.meshes.size()
+        << ", material-bound instances=" << draws << ", unique meshes=" << scene.meshes.size()
         << ", materials=" << scene.materials.size() << ".\n";
 
     const std::vector<float> meshCullRadii = BuildMeshCullRadii(scene);
