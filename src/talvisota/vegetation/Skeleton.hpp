@@ -153,6 +153,7 @@ struct TrunkBuild final
     float noiseScale = 0.02F;              // lateral bend amplitude, fraction of height
     float bendRecovery = 0.28F;            // height fraction where lean relaxes
     float straightness = 0.5F;             // 0 = strongly curved, 1 = straight leader
+    float windLean = 0.0F;                  // normalized exposure-driven lean strength
     std::uint64_t seed = 0;
 };
 
