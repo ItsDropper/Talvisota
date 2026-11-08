@@ -206,10 +206,10 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
         [](const auto& item) { return item.category == talvisota::world::PlacementCategory::Prop; });
     const auto winterBrush = std::count_if(region.placements.begin(), region.placements.end(),
         [](const auto& item) { return item.modelAssetId == "model.environment.winter_brush"; });
-    Require(vegetation == 290U && structures == 5U && rocks == 32U && props == 382U,
-            "Sakkola should retain its mixed forest and village props while adding distributed ground clutter.");
-    Require(winterBrush == 300U && region.placements.size() == 710U,
-            "Sakkola should contain 300 deterministic winter brush clumps distributed across the full land area.");
+    Require(vegetation == 418U && structures == 5U && rocks == 32U && props == 382U,
+            "Sakkola should retain its dense mixed forest and village props while adding distributed ground clutter.");
+    Require(winterBrush == 300U && region.placements.size() == 838U,
+            "Sakkola should contain 300 deterministic winter brush clumps and 418 trees across four ecological stands.");
     const auto brushInQuadrant = [&region](const bool east, const bool south) {
         return std::count_if(region.placements.begin(), region.placements.end(),
             [=](const auto& item) {
@@ -231,6 +231,18 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
     species.erase(std::unique(species.begin(), species.end()), species.end());
     Require(species.size() == 5U,
             "Sakkola forest should mix spruce, pine, birch, aspen, and alder rather than repeat one tree model.");
+    const auto speciesCount = [&region](const std::string& model) {
+        return std::count_if(region.placements.begin(), region.placements.end(),
+            [&model](const auto& item) {
+                return item.category == talvisota::world::PlacementCategory::Vegetation && item.modelAssetId == model;
+            });
+    };
+    Require(speciesCount("model.environment.spruce") >= 140U &&
+            speciesCount("model.environment.pine") >= 100U &&
+            speciesCount("model.environment.birch") >= 70U &&
+            speciesCount("model.environment.aspen") >= 30U &&
+            speciesCount("model.environment.alder") >= 40U,
+            "The enlarged forest must retain all five species with a deliberate conifer, broadleaf, and shoreline mix.");
 
     const auto countStand = [&region](const float minX, const float maxX,
         const float minZ, const float maxZ) {
@@ -267,6 +279,18 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
         Require(std::abs(placement.position[1] - surfaceHeight) <= 0.002F,
                 "Trees, boulders, and shoreline reeds must rest on the sampled terrain surface.");
 
+        if (tree) {
+            const float maximumScale = placement.modelAssetId == "model.environment.spruce" ? 1.95F :
+                placement.modelAssetId == "model.environment.pine" ? 1.55F :
+                placement.modelAssetId == "model.environment.birch" ? 1.55F :
+                placement.modelAssetId == "model.environment.aspen" ? 1.35F : 1.35F;
+            const float minimumScale = placement.modelAssetId == "model.environment.spruce" ? 0.72F :
+                placement.modelAssetId == "model.environment.pine" ? 0.70F :
+                placement.modelAssetId == "model.environment.birch" ? 0.70F :
+                placement.modelAssetId == "model.environment.aspen" ? 0.65F : 0.65F;
+            Require(placement.uniformScale >= minimumScale && placement.uniformScale <= maximumScale,
+                    "Tree instance scale must stay within species-specific juvenile and mature height limits.");
+        }
         if (tree || fallenLog || stump) {
             const std::string collisionId = placement.id + (tree ? ".trunk" : ".collision");
             const auto collision = std::find_if(region.collision.begin(), region.collision.end(),
