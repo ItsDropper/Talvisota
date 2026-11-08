@@ -53,6 +53,11 @@ void Validate(const Species species, const std::uint64_t seed)
         const float normalLength = Length(vertex.normal);
         assert(normalLength > 0.99F && normalLength < 1.01F);
     }
+    const auto snow = BuildSnowMesh(a);
+    if (species == Species::Birch)
+        assert(snow.indices.empty());
+    else
+        assert(!snow.indices.empty() && snow.sections.front().materialGroup == kSnowMeshMaterialGroup);
     const auto measurements = MeasureTrunk(a);
     assert(measurements.height == a.height);
     assert(measurements.buttRadius > measurements.tipRadius);
