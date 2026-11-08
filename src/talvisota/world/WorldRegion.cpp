@@ -17,9 +17,9 @@ namespace talvisota::world
 namespace
 {
 constexpr std::string_view Header = "talvisota-region\t1";
-constexpr std::uintmax_t MaximumFileBytes = 16U * 1024U * 1024U;
-constexpr std::size_t MaximumRecords = 200000U;
-constexpr std::size_t MaximumLineBytes = 4096U;
+constexpr std::uintmax_t MaximumFileBytes = 64U * 1024U * 1024U;
+constexpr std::size_t MaximumRecords = 1000000U;
+constexpr std::size_t MaximumLineBytes = 65536U;
 
 void Add(std::vector<WorldRegionDiagnostic>& diagnostics, const std::filesystem::path& path,
          std::size_t line, std::string field, std::string message)
@@ -345,7 +345,7 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
     const auto bytes = std::filesystem::file_size(canonical, error);
     if (error || bytes > MaximumFileBytes)
     {
-        Add(diagnostics, path, 0, "file", "Region file exceeds the 16 MiB limit or cannot be inspected.");
+        Add(diagnostics, path, 0, "file", "Region file exceeds the 64 MiB limit or cannot be inspected.");
         return false;
     }
     std::ifstream input(canonical, std::ios::binary);
@@ -436,13 +436,13 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
             const bool validDimensions = parsedColumns.ec == std::errc{} &&
                 parsedColumns.ptr == fields[1].data() + fields[1].size() &&
                 parsedRows.ec == std::errc{} && parsedRows.ptr == fields[2].data() + fields[2].size() &&
-                columns >= 2U && rows >= 2U && columns <= 257U && rows <= 257U;
+                columns >= 2U && rows >= 2U && columns <= 2049U && rows <= 2049U;
             if (!validDimensions || !ParseFloat(fields[3], terrain.originX) ||
                 !ParseFloat(fields[4], terrain.originZ) || !ParseFloat(fields[5], terrain.spacingX) ||
                 !ParseFloat(fields[6], terrain.spacingZ) || terrain.spacingX <= 0.0F ||
                 terrain.spacingZ <= 0.0F)
             {
-                Add(diagnostics, path, lineNumber, "heightfield", "Heightfield requires 2..257 rows and columns, finite origins, and positive finite sample spacing.");
+                Add(diagnostics, path, lineNumber, "heightfield", "Heightfield requires 2..2049 rows and columns, finite origins, and positive finite sample spacing.");
                 continue;
             }
             terrain.rows = rows;

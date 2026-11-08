@@ -540,6 +540,60 @@ void TestRejectsMissingDependenciesAndInvalidSpatialRecords()
             registry, world, region, diagnostics), "Navigation edges to undeclared nodes must be rejected.");
 }
 
+void TestLargeTerrainHeightfieldLoadsAndSamplesAcrossFullExtent()
+{
+    TemporaryDirectory directory;
+    Prepare(directory);
+    auto worldText = std::string(WorldText);
+    const auto worldMin = worldText.find("-32, -5, -32");
+    worldText.replace(worldMin, std::string("-32, -5, -32").size(), "-200, -5, -200");
+    const auto worldMax = worldText.find("32, 20, 32");
+    worldText.replace(worldMax, std::string("32, 20, 32").size(), "200, 20, 200");
+    directory.Write("worlds/test.tworld", worldText);
+
+    std::ostringstream regionText;
+    regionText << "talvisota-region\t1\n"
+        << "id\tregion.test\nworld\tworld.test\n"
+        << "bounds_min\t-150,-5,-150\nbounds_max\t149,10,149\n"
+        << "heightfield\t300\t300\t-150\t-150\t1\t1\n";
+    for (std::size_t row = 0; row < 300U; ++row)
+    {
+        regionText << "height_row\t" << row << '\t';
+        for (std::size_t column = 0; column < 300U; ++column)
+        {
+            if (column != 0U) regionText << ',';
+            regionText << ((row == 299U && column == 299U) ? "3.0" : "2.0");
+        }
+        regionText << '\n';
+    }
+    regionText << "placement\tterrain.main\tterrain\tmodel.terrain\tmaterial.snow\t0\t0\t0\t0\t1\n";
+    directory.Write("regions/test.tregion", regionText.str());
+
+    talvisota::content::ContentRegistry registry;
+    std::vector<talvisota::content::ContentDiagnostic> manifestDiagnostics;
+    Require(talvisota::content::LoadContentManifest(directory.Path() / "catalog.tmanifest",
+            directory.Path(), registry, manifestDiagnostics), "Large-terrain manifest should load.");
+    talvisota::content::WorldDefinition world;
+    std::vector<talvisota::content::WorldDiagnostic> worldDiagnostics;
+    Require(talvisota::content::LoadWorldDefinition(directory.Path() / "worlds/test.tworld",
+            registry, world, worldDiagnostics), "Large-terrain world should load.");
+    talvisota::world::WorldRegion region;
+    std::vector<talvisota::world::WorldRegionDiagnostic> diagnostics;
+    Require(talvisota::world::LoadWorldRegion(directory.Path() / "regions/test.tregion",
+            registry, world, region, diagnostics),
+            "A 300-by-300 terrain grid must load instead of being rejected by the former 257-sample cap.");
+    Require(region.terrain.rows == 300U && region.terrain.columns == 300U &&
+            region.terrain.elevations.size() == 90000U,
+            "Large terrain dimensions and all elevation samples must be retained.");
+    float height = 0.0F;
+    std::array<float, 3> normal{};
+    std::string error;
+    Require(talvisota::world::SampleTerrainHeight(region, 149.0F, 149.0F, height, normal, error),
+            "Terrain sampling must work at the far corner of an expanded heightfield.");
+    Require(std::abs(height - 3.0F) < 1.0e-5F && normal[1] > 0.0F,
+            "The far-corner elevation and finite upward surface normal must be preserved.");
+}
+
 void TestSessionLoadReloadFailureAndUnloadAreAtomic()
 {
     TemporaryDirectory directory;
@@ -577,6 +631,7 @@ int main()
         TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition();
         TestLoadsComposedRegionAndIndependentSpatialData();
         TestRejectsMissingDependenciesAndInvalidSpatialRecords();
+        TestLargeTerrainHeightfieldLoadsAndSamplesAcrossFullExtent();
         TestSessionLoadReloadFailureAndUnloadAreAtomic();
     }
     catch (const std::exception& exception)
