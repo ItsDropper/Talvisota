@@ -295,7 +295,7 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
                       << " positionY=" << placement.position[1]
                       << " displacement=" << surfaceDisplacement
                       << " sampledHeight=" << surfaceHeight
-                      << " error=" << groundingError << '\\n';
+                      << " error=" << groundingError << '\n';
         }
         Require(std::abs(groundingError) <= 0.002F,
                 "Rendered trees, boulders, and shoreline reeds must rest on the displaced terrain surface.");
