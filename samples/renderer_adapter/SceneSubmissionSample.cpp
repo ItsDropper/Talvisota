@@ -925,9 +925,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         playerInput.lookPitchRadians =
             ((GetAsyncKeyState(VK_UP) & 0x8000) != 0 ? lookStep : 0.0F) -
             ((GetAsyncKeyState(VK_DOWN) & 0x8000) != 0 ? lookStep : 0.0F);
-        bool cameraChanged = playerInput.forward != 0.0F || playerInput.right != 0.0F ||
-            playerInput.lookYawRadians != 0.0F || playerInput.lookPitchRadians != 0.0F ||
-            playerInput.jumpPressed;
+        bool cameraChanged = !playerState.grounded || playerInput.forward != 0.0F ||
+            playerInput.right != 0.0F || playerInput.lookYawRadians != 0.0F ||
+            playerInput.lookPitchRadians != 0.0F || playerInput.jumpPressed;
         if (!talvisota::game::UpdatePlayer(gameRegion, playerConfig, playerInput,
                 std::max(deltaSeconds, 1.0F / 1000.0F), playerState, error)) {
             std::cerr << "Player simulation failed: " << error << "\n";
