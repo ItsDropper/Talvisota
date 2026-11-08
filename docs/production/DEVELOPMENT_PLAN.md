@@ -191,7 +191,10 @@ Do not attempt a huge open world at this stage. Prove a small region first.
 Work:
 - [x] Define player state and renderer-independent movement/camera simulation.
 - [x] Exercise the player simulation in the Sakkola renderer sample with keyboard movement, sprint, jump, and look.
-- [x] Add raw mouse look with keyboard fallback to the renderer sample.\n- [ ] Add configurable input bindings.
+- [x] Add raw mouse look with keyboard fallback to the renderer sample.
+- [x] Add main menu and pause/resume flow to the Sakkola renderer sample.
+- [x] Add acceleration, friction, air control, terminal velocity, crouch, and overhead clearance checks.
+- [ ] Add configurable input bindings.
 - [ ] Integrate player/world ownership into an application runtime and connect it to the renderer contract.
 - [ ] Add robust terrain following, step/slope policy, and collision coverage for vertical obstacles and ceilings.
 - [ ] Implement interaction, mission objectives, and player-state transitions.
