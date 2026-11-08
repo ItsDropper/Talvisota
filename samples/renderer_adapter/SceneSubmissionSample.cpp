@@ -337,11 +337,11 @@ bool WriteBgraPng(const std::vector<std::uint8_t>& pixels, const UINT width,
 
 struct CaptureView { const wchar_t* file; vanta::math::Vec3 eye; vanta::math::Vec3 target; };
 constexpr std::array<CaptureView, 5> Views = {{
-    {L"01-sakkola-overview.png", {8.0F, 66.0F, -188.0F}, {0.0F, 8.0F, 142.0F}},
-    {L"02-church-village.png", {-48.0F, 22.0F, 118.0F}, {0.0F, 11.0F, 178.0F}},
-    {L"03-suvanto-shoreline.png", {-126.0F, 15.0F, -92.0F}, {-76.0F, 2.0F, -150.0F}},
-    {L"04-karelian-forest.png", {132.0F, 23.0F, -112.0F}, {106.0F, 10.0F, 30.0F}},
-    {L"05-farmstead.png", {72.0F, 19.0F, 96.0F}, {18.0F, 10.0F, 136.0F}}
+    {L"01-sakkola-overview.png", {8.0F, 78.0F, -188.0F}, {0.0F, 8.0F, 130.0F}},
+    {L"02-church-village.png", {-28.0F, 16.0F, 135.0F}, {0.0F, 16.0F, 178.0F}},
+    {L"03-suvanto-shoreline.png", {-145.0F, 14.0F, -100.0F}, {-85.0F, 8.0F, -143.0F}},
+    {L"04-karelian-forest.png", {160.0F, 20.0F, -170.0F}, {160.0F, 10.0F, -25.0F}},
+    {L"05-farmstead.png", {0.0F, 17.0F, 90.0F}, {0.0F, 11.0F, 132.0F}}
 }};
 }
 
