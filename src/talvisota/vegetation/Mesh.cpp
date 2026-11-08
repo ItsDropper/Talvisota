@@ -38,58 +38,68 @@ TreeMesh BuildTreeMesh(const TreeSkeleton& skeleton, const std::uint64_t seed,
     mesh.indices.reserve(skeleton.segments.size() *
         static_cast<std::size_t>(radialSegments) * 6u);
 
-    std::int32_t activeMaterial = std::numeric_limits<std::int32_t>::min();
-    for (std::size_t segmentIndex = 0; segmentIndex < skeleton.segments.size(); ++segmentIndex)
+    // Emit complete material ranges in batches. Skeleton generation interleaves
+    // primary limbs and their shoots; emitting in source order would fragment
+    // material ranges into hundreds of tiny draw sections.
+    std::vector<std::int32_t> materialGroups;
+    materialGroups.reserve(skeleton.segments.size());
+    for (const auto& segment : skeleton.segments)
+        if (segment.startRadius > 0.0F && segment.endRadius > 0.0F &&
+            segment.endRadius <= segment.startRadius)
+            materialGroups.push_back(segment.materialGroup);
+    std::sort(materialGroups.begin(), materialGroups.end());
+    materialGroups.erase(std::unique(materialGroups.begin(), materialGroups.end()),
+        materialGroups.end());
+
+    for (const std::int32_t materialGroup : materialGroups)
     {
-        const SkeletonSegment& segment = skeleton.segments[segmentIndex];
-        const Float3 axis = segment.end - segment.start;
-        const float length = Length(axis);
-        if (length <= 1.0e-5F || segment.startRadius <= 0.0F ||
-            segment.endRadius <= 0.0F || segment.endRadius > segment.startRadius)
-            continue;
-
-        if (activeMaterial != segment.materialGroup)
+        MeshSection section{materialGroup, static_cast<std::uint32_t>(mesh.indices.size()), 0u};
+        for (std::size_t segmentIndex = 0; segmentIndex < skeleton.segments.size(); ++segmentIndex)
         {
-            activeMaterial = segment.materialGroup;
-            mesh.sections.push_back({activeMaterial,
-                static_cast<std::uint32_t>(mesh.indices.size()), 0u});
-        }
-        MeshSection& section = mesh.sections.back();
-        const Float3 tangent = axis * (1.0F / length);
-        const Float3 frameA = SafePerpendicular(tangent);
-        const Float3 frameB = Normalized(Cross(tangent, frameA));
-        const std::uint32_t base = static_cast<std::uint32_t>(mesh.vertices.size());
+            const SkeletonSegment& segment = skeleton.segments[segmentIndex];
+            if (segment.materialGroup != materialGroup) continue;
+            const Float3 axis = segment.end - segment.start;
+            const float length = Length(axis);
+            if (length <= 1.0e-5F) continue;
 
-        for (int ring = 0; ring < 2; ++ring)
-        {
-            const float along = static_cast<float>(ring);
-            const Float3 center = ring == 0 ? segment.start : segment.end;
-            const float radius = ring == 0 ? segment.startRadius : segment.endRadius;
-            for (int side = 0; side <= radialSegments; ++side)
+            const Float3 tangent = axis * (1.0F / length);
+            const Float3 frameA = SafePerpendicular(tangent);
+            const Float3 frameB = Normalized(Cross(tangent, frameA));
+            const std::uint32_t base = static_cast<std::uint32_t>(mesh.vertices.size());
+
+            for (int ring = 0; ring < 2; ++ring)
             {
-                const float angle = kTau * static_cast<float>(side) /
-                    static_cast<float>(radialSegments);
-                const float relief = BarkRelief(seed, static_cast<int>(segmentIndex), side);
-                const float displacedRadius = radius * (1.0F + relief);
-                const Float3 radial = Normalized(frameA * std::cos(angle) +
-                    frameB * std::sin(angle));
-                const Float3 position = center + radial * displacedRadius;
-                mesh.vertices.push_back({position, radial,
-                    static_cast<float>(side) / static_cast<float>(radialSegments),
-                    (segment.generation + along) * length * 1.8F});
+                const float along = static_cast<float>(ring);
+                const Float3 center = ring == 0 ? segment.start : segment.end;
+                const float radius = ring == 0 ? segment.startRadius : segment.endRadius;
+                for (int side = 0; side <= radialSegments; ++side)
+                {
+                    const float angle = kTau * static_cast<float>(side) /
+                        static_cast<float>(radialSegments);
+                    const float relief = BarkRelief(seed, static_cast<int>(segmentIndex), side);
+                    const float displacedRadius = radius * (1.0F + relief);
+                    const Float3 radial = Normalized(frameA * std::cos(angle) +
+                        frameB * std::sin(angle));
+                    const Float3 position = center + radial * displacedRadius;
+                    mesh.vertices.push_back({position, radial,
+                        static_cast<float>(side) / static_cast<float>(radialSegments),
+                        (static_cast<float>(segment.generation) + along) * length * 1.8F});
+                }
+            }
+
+            const std::uint32_t ringStride = static_cast<std::uint32_t>(radialSegments + 1);
+            for (int side = 0; side < radialSegments; ++side)
+            {
+                const std::uint32_t a = base + static_cast<std::uint32_t>(side);
+                const std::uint32_t b = a + 1u;
+                const std::uint32_t c = a + ringStride;
+                const std::uint32_t d = c + 1u;
+                mesh.indices.insert(mesh.indices.end(), {a, c, b, b, c, d});
+                section.indexCount += 6u;
             }
         }
-
-        const std::uint32_t ringStride = static_cast<std::uint32_t>(radialSegments + 1);
-        for (int side = 0; side < radialSegments; ++side)
-        {
-            const std::uint32_t a = base + static_cast<std::uint32_t>(side);
-            const std::uint32_t b = a + 1u;
-            const std::uint32_t c = a + ringStride;
-            const std::uint32_t d = c + 1u;
-            mesh.indices.insert(mesh.indices.end(), {a, c, b, b, c, d});
-            section.indexCount += 6u;
-        }
+        if (section.indexCount > 0u)
+            mesh.sections.push_back(section);
     }
     return mesh;
 }
