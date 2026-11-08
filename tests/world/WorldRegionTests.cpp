@@ -215,10 +215,10 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
         [](const auto& item) { return item.category == talvisota::world::PlacementCategory::Prop; });
     const auto winterBrush = std::count_if(region.placements.begin(), region.placements.end(),
         [](const auto& item) { return item.modelAssetId == "model.environment.winter_brush"; });
-    Require(vegetation == 1294U && structures == 35U && rocks == 32U && props == 803U,
+    Require(vegetation == 3094U && structures == 35U && rocks == 32U && props == 803U,
             "Sakkola should retain its dense mixed forest and village props while adding distributed ground clutter.");
-    Require(winterBrush == 300U && region.placements.size() == 2165U,
-            "Sakkola should contain 300 deterministic winter brush clumps and 1,294 mixed trees distributed across ecological stands.");
+    Require(winterBrush == 300U && region.placements.size() == 3965U,
+            "Sakkola should contain 300 deterministic winter brush clumps and 3,094 mixed vegetation placements distributed across ecological stands.");
     const auto brushInQuadrant = [&region](const bool east, const bool south) {
         return std::count_if(region.placements.begin(), region.placements.end(),
             [=](const auto& item) {
