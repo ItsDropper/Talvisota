@@ -72,7 +72,7 @@ Delivered:
 - A CLI `--help` path.
 
 Scope boundary:
-- This is an application shell, not a playable game loop. It deliberately exits after core services initialize because game-owned renderer integration is blocked on M2.
+- The non-engine build retains a headless CLI shell for lifecycle and CI checks. With `TALVISOTA_ENABLE_VANTA_ENGINE=ON`, the primary `talvisota.exe` is the Win32 game runtime: it initializes application services, loads the authored Sakkola level, owns the player loop, submits frames through the game renderer adapter, and exposes the main menu/pause frontend. The renderer sample remains a separate diagnostics target.
 - Crash reporting currently covers C++ termination; it does not claim to produce OS minidumps or recover from arbitrary process termination.
 
 Exit criteria:
@@ -184,7 +184,7 @@ Do not attempt a huge open world at this stage. Prove a small region first.
 
 ## M5 — Core player experience
 
-**Status (2026-11-08): in progress.** The renderer-independent player simulation now includes horizontal acceleration, ground friction, reduced air control, terminal fall speed, jump/gravity, crouch posture and eye height, stand-up clearance checks, terrain grounding, and collision queries for horizontal and vertical movement. Gameplay input includes WASD, raw mouse look with arrow-key fallback, Space jump, Shift sprint, and Ctrl crouch. This remains a renderer sample rather than the application-owned game loop; configurable bindings, runtime composition in the main application, interaction, mission progression, and save/load remain open.
+**Status (2026-11-08): in progress.** The renderer-independent player simulation includes acceleration, ground friction, reduced air control, terminal fall speed, jump/gravity, crouch posture and eye height, stand-up clearance checks, terrain grounding, and collision queries. The engine-enabled primary `talvisota.exe` now owns the Sakkola game loop, initializes application services, loads the authored level, drives first-person movement/look, and hosts the main menu and pause/resume frontend. The renderer sample remains separate for diagnostics and is not the home of game UI or progression. CI packaging and five-view capture execute the primary game binary. Remaining work: extract a maintainable `GameRuntime` composition from the Win32 entry point, remove duplicated scene-building logic shared with diagnostics, add configurable bindings, improve terrain/slope collision, and implement interactions and a complete mission.
 
 **Goal:** Implement the minimum complete first-person player loop.
 
@@ -194,8 +194,8 @@ Work:
 - [x] Add raw mouse look with keyboard fallback to the renderer sample.
 - [x] Add acceleration, friction, air control, terminal velocity, crouch, and overhead clearance checks to the player simulation.
 - [ ] Add configurable input bindings.
-- [ ] Integrate player/world ownership into the actual application runtime and connect it to the renderer contract.
-- [ ] Build the main menu and pause/resume UI inside the application-owned game frontend, not the renderer sample.
+- [x] Integrate player/world ownership into the engine-enabled application game loop and connect it to the renderer contract.
+- [x] Build the main menu and pause/resume UI inside the application-owned game executable.
 - [ ] Add robust terrain following, step/slope policy, and collision coverage for vertical obstacles and ceilings.
 - [ ] Implement interaction, mission objectives, and player-state transitions.
 - [ ] Establish save-safe state boundaries and deterministic tests for core rules.
