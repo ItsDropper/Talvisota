@@ -51,6 +51,12 @@ TreeMesh BuildTreeMesh(const TreeSkeleton& skeleton, const std::uint64_t seed,
     materialGroups.erase(std::unique(materialGroups.begin(), materialGroups.end()),
         materialGroups.end());
 
+    std::vector<std::int32_t> chainLengths(skeleton.segments.size(), 0);
+    for (const SkeletonChain& chain : skeleton.chains)
+        if (chain.firstSegment >= 0 &&
+            static_cast<std::size_t>(chain.firstSegment) < chainLengths.size())
+            chainLengths[static_cast<std::size_t>(chain.firstSegment)] = chain.segmentCount;
+
     for (const std::int32_t materialGroup : materialGroups)
     {
         MeshSection section{materialGroup, static_cast<std::uint32_t>(mesh.indices.size()), 0u};
@@ -63,8 +69,29 @@ TreeMesh BuildTreeMesh(const TreeSkeleton& skeleton, const std::uint64_t seed,
             if (length <= 1.0e-5F) continue;
 
             const Float3 tangent = axis * (1.0F / length);
-            const Float3 frameA = SafePerpendicular(tangent);
-            const Float3 frameB = Normalized(Cross(tangent, frameA));
+            const std::size_t chainStart = segment.chainStart >= 0
+                ? static_cast<std::size_t>(segment.chainStart) : skeleton.segments.size();
+            const int chainLength = chainStart < chainLengths.size() ? chainLengths[chainStart] : 0;
+            const bool hasPrevious = segment.generation > 0 &&
+                segmentIndex > chainStart;
+            const bool hasNext = segment.generation + 1 < chainLength &&
+                segmentIndex + 1u < skeleton.segments.size();
+            Float3 startTangent = tangent;
+            Float3 endTangent = tangent;
+            if (hasPrevious)
+            {
+                const auto& previous = skeleton.segments[segmentIndex - 1u];
+                startTangent = Normalized(Normalized(previous.end - previous.start) + tangent);
+            }
+            if (hasNext)
+            {
+                const auto& next = skeleton.segments[segmentIndex + 1u];
+                endTangent = Normalized(tangent + Normalized(next.end - next.start));
+            }
+            const Float3 startFrameA = SafePerpendicular(startTangent);
+            const Float3 startFrameB = Normalized(Cross(startTangent, startFrameA));
+            const Float3 endFrameA = SafePerpendicular(endTangent);
+            const Float3 endFrameB = Normalized(Cross(endTangent, endFrameA));
             const std::uint32_t base = static_cast<std::uint32_t>(mesh.vertices.size());
 
             for (int ring = 0; ring < 2; ++ring)
@@ -72,6 +99,8 @@ TreeMesh BuildTreeMesh(const TreeSkeleton& skeleton, const std::uint64_t seed,
                 const float along = static_cast<float>(ring);
                 const Float3 center = ring == 0 ? segment.start : segment.end;
                 const float radius = ring == 0 ? segment.startRadius : segment.endRadius;
+                const Float3& frameA = ring == 0 ? startFrameA : endFrameA;
+                const Float3& frameB = ring == 0 ? startFrameB : endFrameB;
                 for (int side = 0; side <= radialSegments; ++side)
                 {
                     const float angle = kTau * static_cast<float>(side) /
