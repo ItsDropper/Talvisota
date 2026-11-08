@@ -1,6 +1,7 @@
 #include "talvisota/content/ContentRegistry.hpp"
 #include "talvisota/content/MaterialDefinition.hpp"
 #include "talvisota/content/WorldDefinition.hpp"
+#include "talvisota/game/PlayerController.hpp"
 #include "talvisota/presentation/VantaSceneRenderer.hpp"
 #include "talvisota/world/WorldRegion.hpp"
 #include "vanta/assets/ObjLoader.hpp"
@@ -232,7 +233,8 @@ struct SubmeshBinding { std::uint32_t meshIndex; std::uint32_t materialIndex; };
 
 bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
     std::vector<float>& instanceMaxDrawDistances,
-    std::size_t& placementCount, std::size_t& drawCount, std::string& error) {
+    std::size_t& placementCount, std::size_t& drawCount,
+    talvisota::world::WorldRegion& outputRegion, std::string& error) {
     talvisota::content::ContentRegistry registry;
     std::vector<talvisota::content::ContentDiagnostic> contentDiagnostics;
     if (!talvisota::content::LoadContentManifest(root / "content/catalog.tmanifest",
@@ -461,6 +463,7 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
         << " expanded instance vertices, " << uniqueGeometryBytes
         << " bytes unique mesh data, estimated " << expandedGeometryBytes
         << " bytes expanded draw data.\n";
+    outputRegion = std::move(region);
     return true;
 }
 
@@ -475,6 +478,26 @@ bool SetCamera(SceneSnapshot& scene, const vanta::math::Vec3& eye,
     std::copy(std::begin(projection.elements), std::end(projection.elements), scene.camera.projection.begin());
     scene.camera.position = {eye.x, eye.y, eye.z};
     return true;
+}
+
+bool FindPlayerSpawn(const talvisota::world::WorldRegion& region,
+    const talvisota::game::PlayerConfig& config,
+    talvisota::game::PlayerState& player, std::string& error) {
+    constexpr float originX = 0.0F, originZ = -90.0F, step = 8.0F;
+    constexpr int directions = 16;
+    for (int ring = 0; ring <= 12; ++ring) {
+        const float radius = static_cast<float>(ring) * step;
+        for (int direction = 0; direction < directions; ++direction) {
+            const float angle = static_cast<float>(direction) *
+                (2.0F * 3.14159265358979323846F / static_cast<float>(directions));
+            const std::array<float, 3> spawn{originX + std::sin(angle) * radius,
+                0.0F, originZ + std::cos(angle) * radius};
+            if (talvisota::game::InitializePlayer(region, config, spawn, player, error))
+                return true;
+        }
+    }
+    error = "Could not find a collision-free first-person spawn near the Sakkola starting area: " + error;
+    return false;
 }
 
 std::vector<float> BuildMeshCullRadii(const SceneSnapshot& scene)
@@ -659,11 +682,12 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         << "; capture mode: " << (captureRequested ? "enabled" : "disabled") << ".\n";
 
     SceneSnapshot scene;
+    talvisota::world::WorldRegion gameRegion;
     std::size_t placements = 0, draws = 0;
     std::vector<float> instanceMaxDrawDistances;
     std::string error;
     if (!BuildSakkolaScene(std::filesystem::current_path(), scene,
-            instanceMaxDrawDistances, placements, draws, error)) {
+            instanceMaxDrawDistances, placements, draws, gameRegion, error)) {
         std::cerr << error << "\n";
         if (captureLog) captureLog << "Scene build failed:\n" << error << "\n";
         if (ownsCom) CoUninitialize();
@@ -841,17 +865,26 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         return 0;
     }
 
-    vanta::math::Vec3 cameraPosition{0.0F, 24.0F, -90.0F};
-    float cameraYaw = 0.0F;
-    float cameraPitch = -0.0889F;
-    const auto initialTarget = vanta::math::Vec3{0.0F, 8.0F, 90.0F};
-    if (!SetCamera(scene, cameraPosition, initialTarget, width, height)) {
+    talvisota::game::PlayerConfig playerConfig;
+    talvisota::game::PlayerState playerState;
+    if (!FindPlayerSpawn(gameRegion, playerConfig, playerState, error)) {
+        std::cerr << error << "\n";
+        renderer.reset(); DestroyWindow(window);
+        if (ownsCom) CoUninitialize();
+        return 8;
+    }
+    auto playerCamera = talvisota::game::BuildPlayerCamera(playerState, playerConfig);
+    vanta::math::Vec3 cameraPosition{playerCamera.position[0], playerCamera.position[1], playerCamera.position[2]};
+    vanta::math::Vec3 cameraTarget{cameraPosition.x + playerCamera.forward[0] * 180.0F,
+        cameraPosition.y + playerCamera.forward[1] * 180.0F,
+        cameraPosition.z + playerCamera.forward[2] * 180.0F};
+    if (!SetCamera(scene, cameraPosition, cameraTarget, width, height)) {
         renderer.reset(); DestroyWindow(window);
         if (ownsCom) CoUninitialize();
         return 8;
     }
     CullCaptureInstances(scene, meshCullRadii, instanceMaxDrawDistances,
-        cameraPosition, initialTarget, static_cast<float>(width) / static_cast<float>(height));
+        cameraPosition, cameraTarget, static_cast<float>(width) / static_cast<float>(height));
     using Clock = std::chrono::steady_clock;
     auto previousFrame = Clock::now();
     const auto start = previousFrame;
@@ -861,7 +894,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     int oldWidth = client.right - client.left, oldHeight = client.bottom - client.top;
     MSG message{};
     bool running = true;
-    std::cout << "Free camera: WASD move, Q/E descend/ascend, arrow keys look, Shift accelerates, Escape exits.\n";
+    bool jumpWasDown = false;
+    std::cout << "First-person preview: WASD move, Space jump, Shift sprint, arrow keys look, Escape exits.\n";
     while (running) {
         while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE) != FALSE) {
             if (message.message == WM_QUIT) { running = false; break; }
@@ -875,42 +909,37 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         const float deltaSeconds = std::clamp(
             static_cast<float>(frameDeltaMs * 0.001), 0.0F, 0.1F);
         previousFrame = now;
+        talvisota::game::PlayerInput playerInput;
+        playerInput.forward = ((GetAsyncKeyState('W') & 0x8000) != 0 ? 1.0F : 0.0F) -
+            ((GetAsyncKeyState('S') & 0x8000) != 0 ? 1.0F : 0.0F);
+        playerInput.right = ((GetAsyncKeyState('D') & 0x8000) != 0 ? 1.0F : 0.0F) -
+            ((GetAsyncKeyState('A') & 0x8000) != 0 ? 1.0F : 0.0F);
+        playerInput.sprint = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+        const bool jumpDown = (GetAsyncKeyState(VK_SPACE) & 0x8000) != 0;
+        playerInput.jumpPressed = jumpDown && !jumpWasDown;
+        jumpWasDown = jumpDown;
         const float lookStep = 1.45F * deltaSeconds;
-        const float moveSpeed = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0 ? 48.0F : 14.0F;
-        bool cameraChanged = false;
-        if ((GetAsyncKeyState(VK_LEFT) & 0x8000) != 0) { cameraYaw -= lookStep; cameraChanged = true; }
-        if ((GetAsyncKeyState(VK_RIGHT) & 0x8000) != 0) { cameraYaw += lookStep; cameraChanged = true; }
-        if ((GetAsyncKeyState(VK_UP) & 0x8000) != 0) { cameraPitch = std::min(1.45F, cameraPitch + lookStep); cameraChanged = true; }
-        if ((GetAsyncKeyState(VK_DOWN) & 0x8000) != 0) { cameraPitch = std::max(-1.45F, cameraPitch - lookStep); cameraChanged = true; }
-        const float cosPitch = std::cos(cameraPitch);
-        const float forwardX = std::sin(cameraYaw) * cosPitch;
-        const float forwardY = std::sin(cameraPitch);
-        const float forwardZ = std::cos(cameraYaw) * cosPitch;
-        const float rightX = std::cos(cameraYaw);
-        const float rightZ = -std::sin(cameraYaw);
-        const float distance = moveSpeed * deltaSeconds;
-        if ((GetAsyncKeyState('W') & 0x8000) != 0) {
-            cameraPosition.x += forwardX * distance; cameraPosition.y += forwardY * distance;
-            cameraPosition.z += forwardZ * distance; cameraChanged = true;
+        playerInput.lookYawRadians =
+            ((GetAsyncKeyState(VK_RIGHT) & 0x8000) != 0 ? lookStep : 0.0F) -
+            ((GetAsyncKeyState(VK_LEFT) & 0x8000) != 0 ? lookStep : 0.0F);
+        playerInput.lookPitchRadians =
+            ((GetAsyncKeyState(VK_UP) & 0x8000) != 0 ? lookStep : 0.0F) -
+            ((GetAsyncKeyState(VK_DOWN) & 0x8000) != 0 ? lookStep : 0.0F);
+        bool cameraChanged = playerInput.forward != 0.0F || playerInput.right != 0.0F ||
+            playerInput.lookYawRadians != 0.0F || playerInput.lookPitchRadians != 0.0F ||
+            playerInput.jumpPressed;
+        if (!talvisota::game::UpdatePlayer(gameRegion, playerConfig, playerInput,
+                std::max(deltaSeconds, 1.0F / 1000.0F), playerState, error)) {
+            std::cerr << "Player simulation failed: " << error << "\n";
+            break;
         }
-        if ((GetAsyncKeyState('S') & 0x8000) != 0) {
-            cameraPosition.x -= forwardX * distance; cameraPosition.y -= forwardY * distance;
-            cameraPosition.z -= forwardZ * distance; cameraChanged = true;
+        if (cameraChanged) {
+            playerCamera = talvisota::game::BuildPlayerCamera(playerState, playerConfig);
+            cameraPosition = {playerCamera.position[0], playerCamera.position[1], playerCamera.position[2]};
+            cameraTarget = {cameraPosition.x + playerCamera.forward[0] * 180.0F,
+                cameraPosition.y + playerCamera.forward[1] * 180.0F,
+                cameraPosition.z + playerCamera.forward[2] * 180.0F};
         }
-        if ((GetAsyncKeyState('D') & 0x8000) != 0) {
-            cameraPosition.x += rightX * distance; cameraPosition.z += rightZ * distance;
-            cameraChanged = true;
-        }
-        if ((GetAsyncKeyState('A') & 0x8000) != 0) {
-            cameraPosition.x -= rightX * distance; cameraPosition.z -= rightZ * distance;
-            cameraChanged = true;
-        }
-        if ((GetAsyncKeyState('E') & 0x8000) != 0) { cameraPosition.y += distance; cameraChanged = true; }
-        if ((GetAsyncKeyState('Q') & 0x8000) != 0) { cameraPosition.y -= distance; cameraChanged = true; }
-        const vanta::math::Vec3 cameraTarget{
-            cameraPosition.x + forwardX * 180.0F,
-            cameraPosition.y + forwardY * 180.0F,
-            cameraPosition.z + forwardZ * 180.0F};
         GetClientRect(window, &client);
         const int w = client.right - client.left, h = client.bottom - client.top;
         if (w <= 0 || h <= 0) { Sleep(16); continue; }
@@ -923,7 +952,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         }
         if (cameraChanged) {
             if (!SetCamera(scene, cameraPosition, cameraTarget, w, h)) {
-                error = "Free camera view/projection update failed.";
+                error = "First-person camera view/projection update failed.";
                 break;
             }
             CullCaptureInstances(scene, meshCullRadii, instanceMaxDrawDistances,
