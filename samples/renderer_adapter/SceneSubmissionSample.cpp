@@ -100,6 +100,121 @@ bool ApplyTypedMaterial(const talvisota::content::MaterialDefinition& definition
     return true;
 }
 
+
+float TerrainHash(const int x, const int z) noexcept {
+    std::uint32_t value = 0x9e3779b9U ^
+        (static_cast<std::uint32_t>(x) * 0x85ebca6bU) ^
+        (static_cast<std::uint32_t>(z) * 0xc2b2ae35U);
+    value ^= value >> 16U; value *= 0x7feb352dU;
+    value ^= value >> 15U; value *= 0x846ca68bU;
+    value ^= value >> 16U;
+    return static_cast<float>(value & 0x00ffffffU) / 16777215.0F;
+}
+float TerrainValueNoise(const float x, const float z) noexcept {
+    const int x0 = static_cast<int>(std::floor(x)), z0 = static_cast<int>(std::floor(z));
+    const float fx = x - static_cast<float>(x0), fz = z - static_cast<float>(z0);
+    const float tx = fx * fx * (3.0F - 2.0F * fx), tz = fz * fz * (3.0F - 2.0F * fz);
+    const float a = TerrainHash(x0, z0), b = TerrainHash(x0 + 1, z0);
+    const float d = TerrainHash(x0, z0 + 1), e = TerrainHash(x0 + 1, z0 + 1);
+    return (a + (b-a)*tx) + ((d + (e-d)*tx) - (a + (b-a)*tx))*tz;
+}
+float TerrainFbm(const float x, const float z) noexcept {
+    float amplitude = 0.5F, total = 0.0F, normalization = 0.0F, frequency = 1.0F;
+    for (int octave = 0; octave < 4; ++octave) {
+        total += TerrainValueNoise(x * frequency, z * frequency) * amplitude;
+        normalization += amplitude; amplitude *= 0.5F; frequency *= 2.03F;
+    }
+    return total / normalization;
+}
+float SnowDriftDisplacement(const float x, const float z) noexcept {
+    const float warpX = TerrainValueNoise(x*0.018F+17.3F,z*0.018F-8.1F)-0.5F;
+    const float warpZ = TerrainValueNoise(x*0.018F-31.7F,z*0.018F+22.9F)-0.5F;
+    const float broad = TerrainFbm((x+warpX*8.0F)*0.038F,(z+warpZ*8.0F)*0.038F);
+    const float drift = TerrainFbm((x+warpX*2.2F)*0.145F+9.1F,(z+warpZ*2.2F)*0.145F-13.7F);
+    const float granular = TerrainFbm(x*0.58F+4.7F,z*0.58F+18.2F);
+    return (broad-0.5F)*0.22F+(drift-0.5F)*0.075F+(granular-0.5F)*0.018F;
+}
+bool RefineSnowTerrain(RenderMesh& mesh, std::string& error) {
+    if (mesh.vertices.empty() || mesh.indices.empty() || mesh.indices.size()%3U!=0U) {
+        error="Snow terrain refinement requires indexed triangle geometry."; return false;
+    }
+    constexpr std::size_t MaximumVertices=1800000U;
+    constexpr float MaximumEdgeLength=1.35F;
+    const std::size_t originalVertexCount=mesh.vertices.size();
+    const auto distanceSquared=[](const auto& a,const auto& b) {
+        const float x=a.position[0]-b.position[0], y=a.position[1]-b.position[1], z=a.position[2]-b.position[2];
+        return x*x+y*y+z*z;
+    };
+    const auto edgeKey=[](std::uint32_t a,std::uint32_t b) {
+        if(a>b) std::swap(a,b);
+        return (static_cast<std::uint64_t>(a)<<32U)|b;
+    };
+    for(int pass=0;pass<4;++pass) {
+        float longest=0.0F;
+        for(std::size_t i=0;i<mesh.indices.size();i+=3U) {
+            const auto a=mesh.indices[i],b=mesh.indices[i+1U],d=mesh.indices[i+2U];
+            if(a>=mesh.vertices.size()||b>=mesh.vertices.size()||d>=mesh.vertices.size()) {
+                error="Snow terrain contains an out-of-range index before refinement."; return false;
+            }
+            longest=std::max({longest,distanceSquared(mesh.vertices[a],mesh.vertices[b]),
+                distanceSquared(mesh.vertices[b],mesh.vertices[d]),distanceSquared(mesh.vertices[d],mesh.vertices[a])});
+        }
+        if(longest<=MaximumEdgeLength*MaximumEdgeLength) break;
+        if(mesh.vertices.size()+mesh.indices.size()>MaximumVertices) {
+            error="Snow terrain refinement exceeds the 1.8-million-vertex safety limit."; return false;
+        }
+        auto vertices=mesh.vertices;
+        std::vector<std::uint32_t> indices;
+        indices.reserve(mesh.indices.size()*4U);
+        std::unordered_map<std::uint64_t,std::uint32_t> cache;
+        cache.reserve(mesh.indices.size());
+        const auto midpoint=[&](std::uint32_t a,std::uint32_t b) {
+            const auto key=edgeKey(a,b);
+            const auto found=cache.find(key);
+            if(found!=cache.end()) return found->second;
+            const auto& va=vertices[a]; const auto& vb=vertices[b];
+            talvisota::presentation::RenderVertex v;
+            for(std::size_t axis=0;axis<3U;++axis) {
+                v.position[axis]=(va.position[axis]+vb.position[axis])*0.5F;
+                v.normal[axis]=(va.normal[axis]+vb.normal[axis])*0.5F;
+            }
+            const float n=std::sqrt(v.normal[0]*v.normal[0]+v.normal[1]*v.normal[1]+v.normal[2]*v.normal[2]);
+            if(n>1.0e-8F) for(float& component:v.normal) component/=n;
+            else v.normal={0.0F,1.0F,0.0F};
+            v.u=(va.u+vb.u)*0.5F; v.v=(va.v+vb.v)*0.5F;
+            const auto index=static_cast<std::uint32_t>(vertices.size());
+            vertices.push_back(v); cache.emplace(key,index); return index;
+        };
+        for(std::size_t i=0;i<mesh.indices.size();i+=3U) {
+            const auto a=mesh.indices[i],b=mesh.indices[i+1U],d=mesh.indices[i+2U];
+            const auto ab=midpoint(a,b),bd=midpoint(b,d),da=midpoint(d,a);
+            indices.insert(indices.end(),{a,ab,da,ab,b,bd,da,bd,d,ab,bd,da});
+        }
+        mesh.vertices.swap(vertices); mesh.indices.swap(indices);
+    }
+    for(auto& vertex:mesh.vertices)
+        vertex.position[1]+=SnowDriftDisplacement(vertex.position[0],vertex.position[2]);
+    std::vector<std::array<float,3>> normals(mesh.vertices.size(),{0.0F,0.0F,0.0F});
+    for(std::size_t i=0;i<mesh.indices.size();i+=3U) {
+        const auto ia=mesh.indices[i],ib=mesh.indices[i+1U],ic=mesh.indices[i+2U];
+        const auto& a=mesh.vertices[ia].position; const auto& b=mesh.vertices[ib].position; const auto& d=mesh.vertices[ic].position;
+        const std::array<float,3> ab{b[0]-a[0],b[1]-a[1],b[2]-a[2]},ad{d[0]-a[0],d[1]-a[1],d[2]-a[2]};
+        std::array<float,3> face{ab[1]*ad[2]-ab[2]*ad[1],ab[2]*ad[0]-ab[0]*ad[2],ab[0]*ad[1]-ab[1]*ad[0]};
+        const auto& reference=mesh.vertices[ia].normal;
+        if(face[0]*reference[0]+face[1]*reference[1]+face[2]*reference[2]<0.0F)
+            for(float& component:face) component=-component;
+        for(const auto index:{ia,ib,ic}) for(std::size_t axis=0;axis<3U;++axis) normals[index][axis]+=face[axis];
+    }
+    for(std::size_t i=0;i<mesh.vertices.size();++i) {
+        const float n=std::sqrt(normals[i][0]*normals[i][0]+normals[i][1]*normals[i][1]+normals[i][2]*normals[i][2]);
+        if(!std::isfinite(n)||n<=1.0e-8F) { error="Snow terrain refinement produced a degenerate normal."; return false; }
+        mesh.vertices[i].normal={normals[i][0]/n,normals[i][1]/n,normals[i][2]/n};
+    }
+    std::cout<<"Snow terrain geometry: "<<originalVertexCount<<" -> "<<mesh.vertices.size()
+        <<" vertices, "<<mesh.indices.size()/3U<<" triangles after adaptive subdivision and drift displacement.\n";
+    error.clear(); return true;
+}
+
 struct SubmeshBinding { std::uint32_t meshIndex; std::uint32_t materialIndex; };
 
 bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
@@ -211,6 +326,13 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
                         typed = typedMaterials.emplace(placement.materialAssetId, std::move(definition)).first;
                     }
                     if (!ApplyTypedMaterial(typed->second, registry, material, error)) return false;
+                }
+
+                if (placement.modelAssetId == "model.terrain.sakkola" && sourceMaterial.name == "snow") {
+                    if (!RefineSnowTerrain(mesh, error)) {
+                        error = "Could not refine Sakkola snow terrain: " + error;
+                        return false;
+                    }
                 }
 
                 const auto meshIndex = static_cast<std::uint32_t>(scene.meshes.size());
