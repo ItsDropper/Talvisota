@@ -181,8 +181,11 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
 
     talvisota::world::WorldRegion region;
     std::vector<talvisota::world::WorldRegionDiagnostic> regionDiagnostics;
-    Require(talvisota::world::LoadWorldRegion(root / "content/worlds/sakkola-church-village.tregion",
-            registry, world, region, regionDiagnostics), "Sakkola church-village region should load.");
+    if (!talvisota::world::LoadWorldRegion(root / "content/worlds/sakkola-church-village.tregion", registry, world, region, regionDiagnostics)) {
+        for (const auto& diagnostic : regionDiagnostics)
+            std::cerr << diagnostic.line << " " << diagnostic.field << ": " << diagnostic.message << "\\n";
+        throw std::runtime_error("Sakkola church-village region should load.");
+    }
     Require(region.id == "region.sakkola.church_village",
             "The first Karelian region should retain its stable Sakkola identity.");
     Require(region.terrain.rows == 193U && region.terrain.columns == 193U &&
