@@ -204,10 +204,12 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
         [](const auto& item) { return item.category == talvisota::world::PlacementCategory::Rock; });
     const auto props = std::count_if(region.placements.begin(), region.placements.end(),
         [](const auto& item) { return item.category == talvisota::world::PlacementCategory::Prop; });
-    Require(vegetation == 290U && structures == 5U && rocks == 8U && props == 50U,
-            "Sakkola should retain its mixed forest, village buildings, lake, deadwood, stumps, fences, well, woodpiles and shoreline reeds.");
-    Require(region.placements.size() == 354U,
-            "Sakkola region composition should remain complete and deterministic.");
+    const auto winterBrush = std::count_if(region.placements.begin(), region.placements.end(),
+        [](const auto& item) { return item.modelAssetId == "model.environment.winter_brush"; });
+    Require(vegetation == 290U && structures == 5U && rocks == 32U && props == 382U,
+            "Sakkola should retain its mixed forest and village props while adding distributed ground clutter.");
+    Require(winterBrush == 300U && region.placements.size() == 710U,
+            "Sakkola should contain 300 deterministic winter brush clumps distributed across the full land area.");
 
     std::vector<std::string> species;
     for (const auto& item : region.placements) {
@@ -238,10 +240,11 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
     for (const auto& placement : region.placements) {
         const bool tree = placement.category == talvisota::world::PlacementCategory::Vegetation;
         const bool boulder = placement.category == talvisota::world::PlacementCategory::Rock;
-        const bool fallenLog = placement.id.rfind("prop.fallen_log.", 0) == 0;
-        const bool stump = placement.id.rfind("prop.stump.", 0) == 0;
+        const bool fallenLog = placement.modelAssetId == "model.environment.fallen_log";
+        const bool stump = placement.modelAssetId == "model.environment.stump";
+        const bool winterBrushClump = placement.modelAssetId == "model.environment.winter_brush";
         const bool shorelineReed = placement.id.rfind("prop.reeds.", 0) == 0;
-        if (!tree && !boulder && !fallenLog && !stump && !shorelineReed)
+        if (!tree && !boulder && !fallenLog && !stump && !winterBrushClump && !shorelineReed)
             continue;
 
         float surfaceHeight = 0.0F;
