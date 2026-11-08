@@ -135,7 +135,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         return DefWindowProcW(hwnd,msg,wp,lp);
     }
-    if(msg==WM_KEYDOWN && wp==VK_ESCAPE) {
+    if(msg==WM_KEYDOWN && wp==VK_ESCAPE && (lp&(1LL<<30))==0) {
         if(frontendEnabled && frontendState==FrontendState::Playing) SetFrontendState(FrontendState::Paused);
         else if(frontendEnabled && frontendState==FrontendState::Paused) SetFrontendState(FrontendState::Playing);
         else if(!frontendEnabled) DestroyWindow(hwnd);
@@ -1053,6 +1053,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         }
         if (!running) break;
         const auto now=Clock::now();
+        bool cameraChanged=false;
         if(frontendState!=previousFrontendState) {
             if(frontendState==FrontendState::MainMenu) {
                 playerState=initialPlayerState;
@@ -1060,6 +1061,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 cameraPosition={playerCamera.position[0],playerCamera.position[1],playerCamera.position[2]};
                 cameraTarget={cameraPosition.x+playerCamera.forward[0]*180.0F,
                     cameraPosition.y+playerCamera.forward[1]*180.0F,cameraPosition.z+playerCamera.forward[2]*180.0F};
+                cameraChanged=true;
             }
             rawMouseDeltaX=0; rawMouseDeltaY=0; jumpWasDown=false;
             previousFrame=now; previousFrontendState=frontendState;
@@ -1070,7 +1072,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         const float deltaSeconds = std::clamp(
             static_cast<float>(frameDeltaMs * 0.001), 0.0F, 0.1F);
         previousFrame = now;
-        bool cameraChanged=false;
         if(frontendState==FrontendState::Playing) {
             talvisota::game::PlayerInput playerInput;
             playerInput.forward=((GetAsyncKeyState('W')&0x8000)!=0?1.0F:0.0F)-
@@ -1090,13 +1091,14 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             playerInput.lookPitchRadians=-static_cast<float>(mouseY)*mouseRadiansPerCount+
                 ((GetAsyncKeyState(VK_UP)&0x8000)!=0?lookStep:0.0F)-
                 ((GetAsyncKeyState(VK_DOWN)&0x8000)!=0?lookStep:0.0F);
-            cameraChanged=!playerState.grounded||playerInput.forward!=0.0F||playerInput.right!=0.0F||
-                playerInput.lookYawRadians!=0.0F||playerInput.lookPitchRadians!=0.0F||
-                playerInput.jumpPressed||playerInput.crouch!=playerState.crouched;
+            const auto previousPosition=playerState.position;
             if(!talvisota::game::UpdatePlayer(gameRegion,playerConfig,playerInput,
                     std::max(deltaSeconds,1.0F/1000.0F),playerState,error)) {
-                std::cerr<<"Player simulation failed: "<<error<<"\n"; break;
+                std::cerr<<"Player simulation failed: "<<error<<"\\n"; break;
             }
+            cameraChanged=playerState.position!=previousPosition ||
+                playerInput.lookYawRadians!=0.0F || playerInput.lookPitchRadians!=0.0F ||
+                playerInput.crouch!=playerState.crouched;
         } else { rawMouseDeltaX=0; rawMouseDeltaY=0; jumpWasDown=false; }
         if (cameraChanged) {
             playerCamera = talvisota::game::BuildPlayerCamera(playerState, playerConfig);
