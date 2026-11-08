@@ -25,7 +25,6 @@ bool IsFinite(const PlayerState& state) noexcept
 bool IntersectsPlayer(const world::WorldRegion& region, const PlayerConfig& config,
     const std::array<float, 3>& feet, bool& intersects, std::string& error)
 {
-    const float halfHeight = config.standingHeight * 0.5F;
     const std::array<float, 3> minimum{
         feet[0] - config.capsuleRadius,
         feet[1] + GroundEpsilon,
@@ -36,7 +35,6 @@ bool IntersectsPlayer(const world::WorldRegion& region, const PlayerConfig& conf
         feet[1] + config.standingHeight,
         feet[2] + config.capsuleRadius
     };
-    static_cast<void>(halfHeight);
     return world::QueryCollision(region, minimum, maximum, intersects, error);
 }
 
@@ -93,7 +91,7 @@ bool InitializePlayer(const world::WorldRegion& region, const PlayerConfig& conf
 
     PlayerState candidate;
     candidate.position = {spawn[0], terrainHeight, spawn[2]};
-    candidate.yawRadians = spawn[1];
+    candidate.yawRadians = 0.0F;
     candidate.pitchRadians = 0.0F;
     candidate.verticalVelocity = 0.0F;
     candidate.grounded = true;
