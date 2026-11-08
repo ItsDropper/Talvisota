@@ -413,8 +413,9 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
                     "Sakkola terrain model vertices should have matching heightfield samples.");
             const float displacement = talvisota::world::SampleTerrainDisplacement(
                 region, sampleX, sampleZ);
-            const float terrainMeshHeight =
-                region.terrain.elevations[row * region.terrain.columns + column] + displacement;
+            const float terrainBaseHeight =
+                region.terrain.elevations[row * region.terrain.columns + column];
+            const float terrainMeshHeight = terrainBaseHeight + displacement;
             const auto waterSurfaceAtSample = std::find_if(region.waterSurfaces.begin(),
                 region.waterSurfaces.end(), [sampleX, sampleZ](const auto& surface)
                 {
@@ -423,11 +424,11 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
                 });
             const float expectedSampledHeight = waterSurfaceAtSample == region.waterSurfaces.end()
                 ? terrainMeshHeight : waterSurfaceAtSample->elevation;
-            Require(std::abs(terrainMeshHeight - y) <= 1.0e-4F &&
+            Require(std::abs(terrainBaseHeight - y) <= 1.0e-4F &&
                     std::abs(sampledHeight - expectedSampledHeight) <= 1.0e-4F &&
                     std::abs(x - sampleX) <= 0.001F &&
                     std::abs(z - sampleZ) <= 0.001F && normal[1] > 0.0F,
-                    "Sakkola terrain OBJ must match its displaced heightfield while terrain sampling returns the correct land or ice collision surface.");
+                    "Sakkola terrain OBJ must match raw heightfield elevations while terrain sampling returns displaced land or level ice collision height.");
             visualVertices.push_back({x, y, z});
             ++vertexIndex;
         }
