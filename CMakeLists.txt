@@ -195,8 +195,28 @@ if(TARGET talvisota_content_package)
     add_dependencies(talvisota_content_package talvisota_environment_textures)
 endif()
 
-add_executable(talvisota src/talvisota/app/main.cpp)
-target_link_libraries(talvisota PRIVATE Talvisota::Application)
+if(TARGET talvisota_renderer_adapter)
+    # The primary executable owns the actual game runtime. The renderer sample remains
+    # a separate diagnostic target and is never used as the player's game entry point.
+    add_executable(talvisota WIN32 src/talvisota/app/GameRuntime.cpp)
+    target_compile_definitions(talvisota PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
+    target_link_libraries(talvisota PRIVATE
+        Talvisota::Application
+        Talvisota::RendererAdapter
+        Talvisota::Content
+        Talvisota::World
+        Talvisota::Gameplay
+        VantaEngine::Runtime
+        windowscodecs
+        ole32
+        gdi32
+        dwmapi
+        shell32
+    )
+else()
+    add_executable(talvisota src/talvisota/app/main.cpp)
+    target_link_libraries(talvisota PRIVATE Talvisota::Application)
+endif()
 target_compile_features(talvisota PRIVATE cxx_std_23)
 talvisota_apply_compiler_options(talvisota)
 add_dependencies(talvisota talvisota_environment_textures)
