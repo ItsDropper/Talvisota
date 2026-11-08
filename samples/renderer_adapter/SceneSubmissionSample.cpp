@@ -352,6 +352,8 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
                 }
 
                 if (placement.modelAssetId == "model.terrain.sakkola" && sourceMaterial.name == "snow") {
+                    material.terrain = true;
+                    material.snowSurface = true;
                     if (!RefineSnowTerrain(mesh, error)) {
                         error = "Could not refine Sakkola snow terrain: " + error;
                         return false;
