@@ -182,16 +182,16 @@ bool LoadAuthoredDefinition(const std::filesystem::path& path, const ContentRegi
         }
         if (key == "objective" && kindInfo->kind == AuthoredDefinitionKind::Mission)
         {
-            const std::size_t separator = value.find("->");
-            if (separator == std::string_view::npos ||
-                value.find("->", separator + 2U) != std::string_view::npos)
+            const std::size_t objectiveSeparator = value.find("->");
+            if (objectiveSeparator == std::string_view::npos ||
+                value.find("->", objectiveSeparator + 2U) != std::string_view::npos)
             {
                 Add(diagnostics, path, lineNumber, "objective",
                     "Expected objective = objective-id -> interaction-target-id.");
                 continue;
             }
-            const std::string_view objectiveId = Trim(value.substr(0U, separator));
-            const std::string_view targetId = Trim(value.substr(separator + 2U));
+            const std::string_view objectiveId = Trim(value.substr(0U, objectiveSeparator));
+            const std::string_view targetId = Trim(value.substr(objectiveSeparator + 2U));
             if (objectiveId.empty() || targetId.empty())
             {
                 Add(diagnostics, path, lineNumber, "objective",
@@ -262,12 +262,12 @@ bool LoadAuthoredDefinition(const std::filesystem::path& path, const ContentRegi
         {
             std::unordered_set<std::string> objectiveIds;
             std::unordered_set<std::string> targetIds;
-            for (const auto& [objective, line] : missionObjectives)
+            for (const auto& [objective, objectiveLine] : missionObjectives)
             {
                 if (!objectiveIds.insert(objective.id).second)
-                    Add(diagnostics, path, line, "objective", "Objective IDs must be unique: " + objective.id);
+                    Add(diagnostics, path, objectiveLine, "objective", "Objective IDs must be unique: " + objective.id);
                 if (!targetIds.insert(objective.interactionTargetId).second)
-                    Add(diagnostics, path, line, "objective",
+                    Add(diagnostics, path, objectiveLine, "objective",
                         "Interaction target IDs must be unique: " + objective.interactionTargetId);
                 candidate.objectives.push_back(objective);
             }
