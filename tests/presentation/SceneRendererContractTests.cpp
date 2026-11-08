@@ -59,6 +59,16 @@ public:
         return false;
     }
 
+    bool ReadbackPresentedFrame(std::vector<std::uint8_t>& bgra,
+        std::uint32_t& width, std::uint32_t& height, std::string& error) override
+    {
+        bgra.clear();
+        width = 0U;
+        height = 0U;
+        error = "Fake renderer does not expose a GPU framebuffer.";
+        return false;
+    }
+
     bool IsDeviceLost() const noexcept override { return deviceLost; }
 
     bool initialized = false;
