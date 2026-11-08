@@ -127,12 +127,17 @@ float TerrainFbm(const float x, const float z) noexcept {
     return total / normalization;
 }
 float SnowDriftDisplacement(const float x, const float z) noexcept {
-    const float warpX = TerrainValueNoise(x*0.018F+17.3F,z*0.018F-8.1F)-0.5F;
-    const float warpZ = TerrainValueNoise(x*0.018F-31.7F,z*0.018F+22.9F)-0.5F;
-    const float broad = TerrainFbm((x+warpX*8.0F)*0.038F,(z+warpZ*8.0F)*0.038F);
-    const float drift = TerrainFbm((x+warpX*2.2F)*0.145F+9.1F,(z+warpZ*2.2F)*0.145F-13.7F);
-    const float granular = TerrainFbm(x*0.58F+4.7F,z*0.58F+18.2F);
-    return (broad-0.5F)*0.55F+(drift-0.5F)*0.16F+(granular-0.5F)*0.035F;
+    // Multi-scale glacial moraine relief, wind-sculpted snow banks, and fine
+    // granular drift. Domain warping avoids the smooth, repeated noise look.
+    const float warpX = TerrainValueNoise(x*0.009F+17.3F,z*0.009F-8.1F)-0.5F;
+    const float warpZ = TerrainValueNoise(x*0.009F-31.7F,z*0.009F+22.9F)-0.5F;
+    const float broad = TerrainFbm((x+warpX*24.0F)*0.021F,(z+warpZ*24.0F)*0.021F);
+    const float ridgeField = TerrainFbm((x+warpZ*11.0F)*0.034F-41.0F,(z+warpX*11.0F)*0.034F+23.0F);
+    const float ridges = 1.0F-std::abs(2.0F*ridgeField-1.0F);
+    const float drift = TerrainFbm((x+warpX*3.8F)*0.112F+9.1F,(z+warpZ*3.8F)*0.112F-13.7F);
+    const float granular = TerrainFbm(x*0.46F+4.7F,z*0.46F+18.2F);
+    return (broad-0.5F)*2.35F+(ridges-0.5F)*0.72F+
+        (drift-0.5F)*0.58F+(granular-0.5F)*0.14F;
 }
 bool RefineSnowTerrain(RenderMesh& mesh, std::string& error) {
     if (mesh.vertices.empty() || mesh.indices.empty() || mesh.indices.size()%3U!=0U) {
