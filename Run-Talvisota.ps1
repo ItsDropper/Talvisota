@@ -21,9 +21,10 @@ function Resolve-CMake {
         $candidates.Add($command.Source)
     }
 
+    $programFilesX86 = [Environment]::GetFolderPath("ProgramFilesX86")
     $programFiles = @(
         $env:ProgramFiles,
-        $env:ProgramFiles(x86),
+        $programFilesX86,
         (Join-Path $env:LOCALAPPDATA "Programs")
     ) | Where-Object { $_ }
 
@@ -31,7 +32,7 @@ function Resolve-CMake {
         $candidates.Add((Join-Path $base "CMake\bin\cmake.exe"))
     }
 
-    $vswhere = Join-Path $env:ProgramFiles(x86) "Microsoft Visual Studio\Installer\vswhere.exe"
+    $vswhere = Join-Path $programFilesX86 "Microsoft Visual Studio\Installer\vswhere.exe"
     if (Test-Path -LiteralPath $vswhere) {
         $vsCMake = & $vswhere -latest -products "*" -find "Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" 2>$null
         if ($LASTEXITCODE -eq 0) {
