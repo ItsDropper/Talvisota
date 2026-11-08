@@ -155,7 +155,7 @@ TreeMesh BuildSnowMesh(const TreeSkeleton& skeleton)
         const float fitness = Clamp01(chain.snowCapture.fitness);
         const float width = chain.snowCapture.carryingRadius * (0.72F + 0.52F * fitness);
         const float thickness = chain.snowCapture.carryingRadius *
-            (0.18F + 0.30F * fitness) + 0.0025F;
+            (0.16F + 0.25F * fitness + 0.10F * Clamp01(chain.snowCapture.directionality)) + 0.0025F;
         for (int offset = 0; offset < chain.segmentCount; ++offset)
         {
             const std::size_t segmentIndex =
@@ -165,6 +165,7 @@ TreeMesh BuildSnowMesh(const TreeSkeleton& skeleton)
             const float length = Length(axis);
             if (length <= 1.0e-5F) continue;
             const Float3 tangent = axis * (1.0F / length);
+            if (std::abs(tangent[1]) > 0.82F) continue;
             Float3 startTangent = tangent;
             Float3 endTangent = tangent;
             if (offset > 0)
