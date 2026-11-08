@@ -40,6 +40,12 @@ void Validate(const Species species, const std::uint64_t seed)
     const auto mesh = BuildTreeMesh(a, seed, 9);
     const auto meshAgain = BuildTreeMesh(b, seed, 9);
     assert(!mesh.vertices.empty() && !mesh.indices.empty() && !mesh.sections.empty());
+    // All conifer wood uses one bark material; birch has only its pale stem
+    // and distinct dark basal bark sections.
+    if (species == Species::Birch)
+        assert(mesh.sections.size() <= 2U);
+    else
+        assert(mesh.sections.size() == 1U);
     assert(mesh.vertices.size() == meshAgain.vertices.size());
     assert(mesh.indices == meshAgain.indices);
     for (std::size_t i = 0; i < mesh.vertices.size(); ++i)
