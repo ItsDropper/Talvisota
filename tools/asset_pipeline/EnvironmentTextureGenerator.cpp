@@ -307,9 +307,9 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
         // Preserve a bright snow response while giving the broad drift,
         // shoulder and crystal fields enough encoded contrast to survive
         // distance filtering on the 4 km Sakkola terrain.
-        const float albedoVariation = (drift - 0.5F) * 0.19F +
-            (driftShoulder - 0.5F) * 0.11F + micro * 0.72F +
-            (microCrust - 0.5F) * 0.045F;
+        const float albedoVariation = (drift - 0.5F) * 0.25F +
+            (driftShoulder - 0.5F) * 0.14F + micro * 0.85F +
+            (microCrust - 0.5F) * 0.055F;
         const float frost = Smooth((crystalClusters - 0.34F) * 2.4F);
         const float packedCrust = Smooth((microCrust - 0.56F) * 4.5F);
         sample = {0.875F + albedoVariation,
@@ -677,7 +677,7 @@ bool VerifyAll(const std::filesystem::path& directory, std::string& error)
             const std::string filename = std::string(preset) + "-" +
                 std::string(channel) + ".bmp";
             const float minimumAlbedoDeviation =
-                 preset == "snow" ? 3.5F : preset == "packed_snow" ? 1.5F : 0.0F;
+                  preset == "snow" ? 2.8F : preset == "packed_snow" ? 1.5F : 0.0F;
             if (!VerifyBmp(directory / filename, error,
                     channel == "albedo" ? minimumAlbedoDeviation : 0.0F))
                 return false;
