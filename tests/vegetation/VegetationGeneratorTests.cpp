@@ -37,6 +37,22 @@ void Validate(const Species species, const std::uint64_t seed)
         if (x.parentIndex >= 0)
             assert(static_cast<std::size_t>(x.parentIndex) < a.segments.size());
     }
+    const auto mesh = BuildTreeMesh(a, seed, 9);
+    assert(!mesh.vertices.empty() && !mesh.indices.empty() && !mesh.sections.empty());
+    for (const auto& section : mesh.sections)
+    {
+        assert(section.indexCount > 0U && section.indexCount % 3U == 0U);
+        assert(static_cast<std::size_t>(section.firstIndex) + section.indexCount <= mesh.indices.size());
+    }
+    for (const auto index : mesh.indices)
+        assert(index < mesh.vertices.size());
+    for (const auto& vertex : mesh.vertices)
+    {
+        assert(std::isfinite(vertex.position[0]) && std::isfinite(vertex.position[1]) &&
+            std::isfinite(vertex.position[2]));
+        const float normalLength = Length(vertex.normal);
+        assert(normalLength > 0.99F && normalLength < 1.01F);
+    }
     const auto measurements = MeasureTrunk(a);
     assert(measurements.height == a.height);
     assert(measurements.buttRadius > measurements.tipRadius);
@@ -51,15 +67,5 @@ int main()
     const auto pine = GenerateTree(Species::Pine, SpeciesBuild{ .seed = 1 });
     const auto birch = GenerateTree(Species::Birch, SpeciesBuild{ .seed = 1 });
     assert(pine.segments.size() != birch.segments.size());
-    const auto spruce = GenerateTree(Species::Spruce, SpeciesBuild{ .seed = 77 });
-    const auto mesh = BuildTreeMesh(spruce, 77, 9);
-    assert(!mesh.vertices.empty() && !mesh.indices.empty() && !mesh.sections.empty());
-    for (const auto& vertex : mesh.vertices)
-    {
-        assert(std::isfinite(vertex.position[0]) && std::isfinite(vertex.position[1]) &&
-            std::isfinite(vertex.position[2]));
-        const float normalLength = Length(vertex.normal);
-        assert(normalLength > 0.99F && normalLength < 1.01F);
-    }
     return 0;
 }
