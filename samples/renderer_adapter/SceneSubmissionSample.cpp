@@ -351,7 +351,8 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
                             normalId = "texture.environment.pine_needles_normal";
                             roughnessId = "texture.environment.pine_needles_roughness";
                             aoId = "texture.environment.pine_needles_ao";
-                        } else if (treeSpecies == talvisota::vegetation::Species::Birch) {
+                        } else if (treeSpecies == talvisota::vegetation::Species::Birch &&
+                            section.materialGroup != 3) {
                             albedoId = "texture.environment.birch_bark_albedo";
                             normalId = "texture.environment.birch_bark_normal";
                             roughnessId = "texture.environment.birch_bark_roughness";
