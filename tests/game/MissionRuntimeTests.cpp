@@ -77,28 +77,28 @@ void TestManifestParserToMissionAdapter()
     using namespace talvisota::game;
 
     TemporaryContent content;
-    content.Write("content/worlds/sakkola.tworld", "talvisota-world\\t1\\nid = world.sakkola\\n");
-    content.Write("content/worlds/sakkola-church-village.tregion", "fixture region\\n");
-    content.Write("content/characters/sakkola-infantryman.tcharacter", "fixture character\\n");
-    content.Write("content/factions/finnish.tfaction", "fixture faction\\n");
+    content.Write("content/worlds/sakkola.tworld", "talvisota-world\t1\nid = world.sakkola\n");
+    content.Write("content/worlds/sakkola-church-village.tregion", "fixture region\n");
+    content.Write("content/characters/sakkola-infantryman.tcharacter", "fixture character\n");
+    content.Write("content/factions/finnish.tfaction", "fixture faction\n");
     content.Write("content/missions/first-patrol.tmission",
-        "talvisota-mission\\t1\\n"
-        "id = mission.sakkola.first-patrol\\n"
-        "name = First Patrol\\n"
-        "world_id = world.sakkola\\n"
-        "region_id = region.sakkola.church_village\\n"
-        "player_character_id = character.sakkola_infantryman\\n"
-        "faction_id = faction.finnish\\n"
-        "objective = objective.inspect-well -> prop.well.farmstead\\n"
-        "objective = objective.inspect-woodpile -> prop.woodpile.west\\n"
-        "objective = objective.report-church -> church.sakkola\\n");
+        "talvisota-mission\t1\n"
+        "id = mission.sakkola.first-patrol\n"
+        "name = First Patrol\n"
+        "world_id = world.sakkola\n"
+        "region_id = region.sakkola.church_village\n"
+        "player_character_id = character.sakkola_infantryman\n"
+        "faction_id = faction.finnish\n"
+        "objective = objective.inspect-well -> prop.well.farmstead\n"
+        "objective = objective.inspect-woodpile -> prop.woodpile.west\n"
+        "objective = objective.report-church -> church.sakkola\n");
     content.Write("catalog.tmanifest",
-        "talvisota-content-manifest\\t1\\n"
-        "asset\\tmission.sakkola.first-patrol\\tdefinition\\tcontent/missions/first-patrol.tmission\\trequired\\tworld.sakkola,region.sakkola.church_village,character.sakkola_infantryman,faction.finnish\\tproject\\tproject\\n"
-        "asset\\tworld.sakkola\\tdefinition\\tcontent/worlds/sakkola.tworld\\trequired\\t-\\tproject\\tproject\\n"
-        "asset\\tregion.sakkola.church_village\\tdefinition\\tcontent/worlds/sakkola-church-village.tregion\\trequired\\tworld.sakkola\\tproject\\tproject\\n"
-        "asset\\tcharacter.sakkola_infantryman\\tdefinition\\tcontent/characters/sakkola-infantryman.tcharacter\\trequired\\tfaction.finnish\\tproject\\tproject\\n"
-        "asset\\tfaction.finnish\\tdefinition\\tcontent/factions/finnish.tfaction\\trequired\\t-\\tproject\\tproject\\n");
+        "talvisota-content-manifest\t1\n"
+        "asset\tmission.sakkola.first-patrol\tdefinition\tcontent/missions/first-patrol.tmission\trequired\tworld.sakkola,region.sakkola.church_village,character.sakkola_infantryman,faction.finnish\tproject\tproject\n"
+        "asset\tworld.sakkola\tdefinition\tcontent/worlds/sakkola.tworld\trequired\t-\tproject\tproject\n"
+        "asset\tregion.sakkola.church_village\tdefinition\tcontent/worlds/sakkola-church-village.tregion\trequired\tworld.sakkola\tproject\tproject\n"
+        "asset\tcharacter.sakkola_infantryman\tdefinition\tcontent/characters/sakkola-infantryman.tcharacter\trequired\tfaction.finnish\tproject\tproject\n"
+        "asset\tfaction.finnish\tdefinition\tcontent/factions/finnish.tfaction\trequired\t-\tproject\tproject\n");
 
     ContentRegistry registry;
     std::vector<ContentDiagnostic> manifestDiagnostics;
@@ -146,15 +146,15 @@ void TestManifestParserToMissionAdapter()
 
     const AuthoredDefinition preserved = authored;
     content.Write("content/missions/first-patrol.tmission",
-        "talvisota-mission\\t1\\n"
-        "id = mission.sakkola.first-patrol\\n"
-        "name = Invalid First Patrol\\n"
-        "world_id = world.sakkola\\n"
-        "region_id = region.sakkola.church_village\\n"
-        "player_character_id = character.sakkola_infantryman\\n"
-        "faction_id = faction.finnish\\n"
-        "objective = objective.duplicate -> prop.well.farmstead\\n"
-        "objective = objective.duplicate -> prop.woodpile.west\\n");
+        "talvisota-mission\t1\n"
+        "id = mission.sakkola.first-patrol\n"
+        "name = Invalid First Patrol\n"
+        "world_id = world.sakkola\n"
+        "region_id = region.sakkola.church_village\n"
+        "player_character_id = character.sakkola_infantryman\n"
+        "faction_id = faction.finnish\n"
+        "objective = objective.duplicate -> prop.well.farmstead\n"
+        "objective = objective.duplicate -> prop.woodpile.west\n");
     Check(!LoadAuthoredDefinition(missionPath, registry, authored, definitionDiagnostics),
         "duplicate authored objective IDs are rejected before adapter conversion");
     Check(authored.id == preserved.id && authored.objectives.size() == preserved.objectives.size(),
