@@ -184,7 +184,7 @@ Do not attempt a huge open world at this stage. Prove a small region first.
 
 ## M5 — Core player experience
 
-**Status (2026-11-08): in progress.** The renderer-independent player simulation now includes horizontal acceleration, ground friction, reduced air control, terminal fall speed, jump/gravity, crouch posture and eye height, stand-up clearance checks, terrain grounding, and collision queries for horizontal and vertical movement. The Sakkola renderer sample has a functional main menu and pause overlay: Start Game, Resume, Main Menu, and Quit; Escape pauses/resumes; simulation and mouse look stop while paused; returning to the main menu resets the local preview spawn. Gameplay input includes WASD, raw mouse look with arrow-key fallback, Space jump, Shift sprint, and Ctrl crouch. This remains a renderer sample rather than the application-owned game loop; configurable bindings, runtime composition in the main application, interaction, mission progression, and save/load remain open.
+**Status (2026-11-08): in progress.** The renderer-independent player simulation now includes horizontal acceleration, ground friction, reduced air control, terminal fall speed, jump/gravity, crouch posture and eye height, stand-up clearance checks, terrain grounding, and collision queries for horizontal and vertical movement. Gameplay input includes WASD, raw mouse look with arrow-key fallback, Space jump, Shift sprint, and Ctrl crouch. This remains a renderer sample rather than the application-owned game loop; configurable bindings, runtime composition in the main application, interaction, mission progression, and save/load remain open.
 
 **Goal:** Implement the minimum complete first-person player loop.
 
@@ -192,10 +192,10 @@ Work:
 - [x] Define player state and renderer-independent movement/camera simulation.
 - [x] Exercise the player simulation in the Sakkola renderer sample with keyboard movement, sprint, jump, and look.
 - [x] Add raw mouse look with keyboard fallback to the renderer sample.
-- [x] Add main menu and pause/resume flow to the Sakkola renderer sample.
-- [x] Add acceleration, friction, air control, terminal velocity, crouch, and overhead clearance checks.
+- [x] Add acceleration, friction, air control, terminal velocity, crouch, and overhead clearance checks to the player simulation.
 - [ ] Add configurable input bindings.
-- [ ] Integrate player/world ownership into an application runtime and connect it to the renderer contract.
+- [ ] Integrate player/world ownership into the actual application runtime and connect it to the renderer contract.
+- [ ] Build the main menu and pause/resume UI inside the application-owned game frontend, not the renderer sample.
 - [ ] Add robust terrain following, step/slope policy, and collision coverage for vertical obstacles and ceilings.
 - [ ] Implement interaction, mission objectives, and player-state transitions.
 - [ ] Establish save-safe state boundaries and deterministic tests for core rules.
