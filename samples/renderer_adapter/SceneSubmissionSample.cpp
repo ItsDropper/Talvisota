@@ -583,14 +583,11 @@ bool WriteBgraPng(const std::vector<std::uint8_t>& pixels, const UINT width,
 
 struct CaptureView { const wchar_t* file; vanta::math::Vec3 eye; vanta::math::Vec3 target; };
 constexpr std::array<CaptureView, 5> Views = {{
-    // The previous cameras were nearly level with the horizon. These closer,
-    // downward-looking compositions expose terrain relief and keep landmarks
-    // large enough to inspect in CI screenshots.
-    {L"01-sakkola-overview.png", {-105.0F, 82.0F, -45.0F}, {0.0F, 8.0F, 145.0F}},
-    {L"02-church-village.png", {-42.0F, 28.0F, 142.0F}, {0.0F, 12.0F, 178.0F}},
-    {L"03-suvanto-shoreline.png", {-100.0F, 27.0F, -205.0F}, {-85.0F, 2.0F, -145.0F}},
-    {L"04-karelian-forest.png", {160.0F, 27.0F, -105.0F}, {160.0F, 9.0F, -25.0F}},
-    {L"05-farmstead.png", {-100.0F, 23.0F, 80.0F}, {-43.0F, 11.0F, 123.0F}}
+    {L"01-sakkola-overview.png", {8.0F, 58.0F, -80.0F}, {0.0F, 9.0F, 140.0F}},
+    {L"02-church-village.png", {-28.0F, 16.0F, 135.0F}, {0.0F, 16.0F, 178.0F}},
+    {L"03-suvanto-shoreline.png", {-85.0F, 10.0F, -240.0F}, {-85.0F, 5.0F, -150.0F}},
+    {L"04-karelian-forest.png", {160.0F, 20.0F, -170.0F}, {160.0F, 10.0F, -25.0F}},
+    {L"05-farmstead.png", {0.0F, 24.0F, 35.0F}, {0.0F, 12.0F, 130.0F}}
 }};
 }
 
