@@ -299,20 +299,23 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
                 error = "Model has no materialized submeshes: " + placement.modelAssetId;
                 return false;
             }
-            std::vector<SubmeshBinding> bindings;
-            bindings.reserve(imported.submeshes.size());
+            // OBJ importers may emit one submesh for every contiguous material run.
+            // Detailed authored trees/buildings contain hundreds of repeated runs per
+            // material; turning each run into an instance multiplies CPU and GPU work.
+            // Merge every run that uses the same material into one indexed mesh before
+            // creating the model's reusable material-bound bindings.
+            std::vector<RenderMesh> meshesByMaterial(imported.materials.size());
+            std::vector<std::unordered_map<std::uint32_t, std::uint32_t>> vertexRemaps(
+                imported.materials.size());
             for (const auto& submesh : imported.submeshes) {
                 if (submesh.materialIndex >= imported.materials.size() || submesh.indexCount == 0U ||
+                    submesh.indexCount % 3U != 0U ||
                     static_cast<std::size_t>(submesh.firstIndex) + submesh.indexCount > imported.indices.size()) {
                     error = "Model has an invalid submesh/material range: " + placement.modelAssetId;
                     return false;
                 }
-                const auto& sourceMaterial = imported.materials[submesh.materialIndex];
-                RenderMesh mesh;
-                mesh.vertices.reserve(submesh.indexCount);
-                mesh.indices.reserve(submesh.indexCount);
-                std::unordered_map<std::uint32_t, std::uint32_t> vertexRemap;
-                vertexRemap.reserve(submesh.indexCount);
+                auto& mesh = meshesByMaterial[submesh.materialIndex];
+                auto& vertexRemap = vertexRemaps[submesh.materialIndex];
                 const auto first = imported.indices.begin() + submesh.firstIndex;
                 for (std::uint32_t indexOffset = 0U; indexOffset < submesh.indexCount; ++indexOffset) {
                     const std::uint32_t sourceIndex = *(first + indexOffset);
@@ -323,16 +326,18 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
                     }
                     auto remapped = vertexRemap.find(sourceIndex);
                     if (remapped == vertexRemap.end()) {
+                        if (mesh.vertices.size() >= std::numeric_limits<std::uint32_t>::max()) {
+                            error = "Merged model material mesh exceeds the 32-bit vertex index limit: " +
+                                placement.modelAssetId;
+                            return false;
+                        }
                         const auto& vertex = imported.vertices[sourceIndex];
                         const auto destinationIndex = static_cast<std::uint32_t>(mesh.vertices.size());
+                        const auto& sourceMaterial = imported.materials[submesh.materialIndex];
                         const bool tiledSakkolaSnow =
                             placement.modelAssetId == "model.terrain.sakkola" &&
                             sourceMaterial.name == "snow";
-                        // The authored OBJ maps one 1024² texture across the entire
-                        // 4 km region (UV 0..1). That makes every snow PBR map effectively
-                        // kilometre-scale and visually erases its detail. Tile in world
-                        // space at a 40 m repeat so albedo, normal and roughness resolve
-                        // as actual snow-grain/micro-drift detail at ground scale.
+                        // Tile the regional snow PBR maps in world space at a 40 m repeat.
                         const float u = tiledSakkolaSnow ? vertex.position.x * 0.025F : vertex.u;
                         const float v = tiledSakkolaSnow ? vertex.position.z * 0.025F : vertex.v;
                         mesh.vertices.push_back({{vertex.position.x, vertex.position.y, vertex.position.z},
@@ -341,7 +346,15 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
                     }
                     mesh.indices.push_back(remapped->second);
                 }
+            }
 
+            std::vector<SubmeshBinding> bindings;
+            bindings.reserve(imported.materials.size());
+            for (std::size_t materialSlot = 0; materialSlot < imported.materials.size(); ++materialSlot) {
+                RenderMesh& mesh = meshesByMaterial[materialSlot];
+                if (mesh.indices.empty())
+                    continue;
+                const auto& sourceMaterial = imported.materials[materialSlot];
                 RenderMaterial material;
                 material.baseColor = {sourceMaterial.baseColor.x, sourceMaterial.baseColor.y,
                     sourceMaterial.baseColor.z};
@@ -354,12 +367,14 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
                     !ResolveImportedTexture(sourceMaterial.ambientOcclusionTexture, material.ambientOcclusionTexture, error))
                     return false;
 
-                if (!placement.materialAssetId.empty() && placement.materialAssetId != "-" && sourceMaterial.name == "snow") {
+                if (!placement.materialAssetId.empty() && placement.materialAssetId != "-" &&
+                    sourceMaterial.name == "snow") {
                     auto typed = typedMaterials.find(placement.materialAssetId);
                     if (typed == typedMaterials.end()) {
                         const auto* typedAsset = registry.Find(placement.materialAssetId);
                         if (typedAsset == nullptr || typedAsset->kind != talvisota::content::AssetKind::Material) {
-                            error = "Placement " + placement.id + " references a missing typed material: " + placement.materialAssetId;
+                            error = "Placement " + placement.id + " references a missing typed material: " +
+                                placement.materialAssetId;
                             return false;
                         }
                         talvisota::content::MaterialDefinition definition;
@@ -371,7 +386,8 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
                         }
                         typed = typedMaterials.emplace(placement.materialAssetId, std::move(definition)).first;
                     }
-                    if (!ApplyTypedMaterial(typed->second, registry, material, error)) return false;
+                    if (!ApplyTypedMaterial(typed->second, registry, material, error))
+                        return false;
                 }
 
                 if (placement.modelAssetId == "model.terrain.sakkola" && sourceMaterial.name == "snow") {
@@ -388,6 +404,10 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
                 scene.meshes.push_back(std::move(mesh));
                 scene.materials.push_back(std::move(material));
                 bindings.push_back({meshIndex, materialIndex});
+            }
+            if (bindings.empty()) {
+                error = "Model import produced no material-bound geometry: " + placement.modelAssetId;
+                return false;
             }
             model = importedModels.emplace(placement.modelAssetId, std::move(bindings)).first;
             ++importedModelCount;
