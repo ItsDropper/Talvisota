@@ -428,6 +428,47 @@ bool SetCamera(SceneSnapshot& scene, const vanta::math::Vec3& eye,
     return true;
 }
 
+void CullCaptureInstances(SceneSnapshot& scene, const vanta::math::Vec3& eye,
+    const vanta::math::Vec3& target, const float aspect) {
+    const auto normalize=[](std::array<float,3> v) {
+        const float length=std::sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
+        if(length>1.0e-6F) for(float& value:v) value/=length;
+        return v;
+    };
+    const std::array<float,3> forward=normalize({target.x-eye.x,target.y-eye.y,target.z-eye.z});
+    const std::array<float,3> right=normalize({forward[2],0.0F,-forward[0]});
+    const std::array<float,3> up=normalize({
+        right[1]*forward[2]-right[2]*forward[1],
+        right[2]*forward[0]-right[0]*forward[2],
+        right[0]*forward[1]-right[1]*forward[0]});
+    constexpr float tangentHalfFov=0.57735026919F;
+    std::vector<float> meshRadii(scene.meshes.size(),0.0F);
+    for(std::size_t meshIndex=0;meshIndex<scene.meshes.size();++meshIndex)
+        for(const auto& vertex:scene.meshes[meshIndex].vertices)
+            meshRadii[meshIndex]=std::max(meshRadii[meshIndex],
+                std::sqrt(vertex.position[0]*vertex.position[0]+
+                    vertex.position[1]*vertex.position[1]+vertex.position[2]*vertex.position[2]));
+    std::size_t visibleCount=0;
+    for(auto& instance:scene.instances) {
+        if(instance.meshIndex>=meshRadii.size()) { instance.visible=false; continue; }
+        const auto& m=instance.world;
+        const std::array<float,3> delta{m[12]-eye.x,m[13]-eye.y,m[14]-eye.z};
+        const float depth=delta[0]*forward[0]+delta[1]*forward[1]+delta[2]*forward[2];
+        const float horizontal=std::abs(delta[0]*right[0]+delta[1]*right[1]+delta[2]*right[2]);
+        const float vertical=std::abs(delta[0]*up[0]+delta[1]*up[1]+delta[2]*up[2]);
+        const float scale=std::max({std::sqrt(m[0]*m[0]+m[1]*m[1]+m[2]*m[2]),
+            std::sqrt(m[4]*m[4]+m[5]*m[5]+m[6]*m[6]),
+            std::sqrt(m[8]*m[8]+m[9]*m[9]+m[10]*m[10])});
+        const float radius=meshRadii[instance.meshIndex]*scale;
+        instance.visible=depth+radius>=0.1F && depth-radius<=1200.0F &&
+            horizontal<=std::max(0.0F,depth)*tangentHalfFov*aspect+radius &&
+            vertical<=std::max(0.0F,depth)*tangentHalfFov+radius;
+        if(instance.visible) ++visibleCount;
+    }
+    std::cout<<"Capture frustum culling: "<<visibleCount<<" / "<<scene.instances.size()
+        <<" material instances visible.\n";
+}
+
 bool WriteBgraPng(const std::vector<std::uint8_t>& pixels, const UINT width,
     const UINT height, const std::filesystem::path& path, std::string& error) {
     if (width == 0U || height == 0U ||
@@ -616,6 +657,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 error = "Could not construct a valid Sakkola capture camera.";
                 break;
             }
+            CullCaptureInstances(scene, view.eye, view.target,
+                static_cast<float>(client.right-client.left)/static_cast<float>(client.bottom-client.top));
             for (int frame = 0; frame < framesPerView; ++frame) {
                 scene.camera.elapsedSeconds = static_cast<float>(frameNumber) / 60.0F;
                 scene.camera.frameNumber = frameNumber++;
