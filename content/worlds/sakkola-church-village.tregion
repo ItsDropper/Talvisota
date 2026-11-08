@@ -604,6 +604,7 @@ placement	juniper.understory.0419	prop	model.environment.juniper	-	33.260	15.585
 placement	juniper.understory.0420	prop	model.environment.juniper	-	228.712	8.661	-67.311	341.5	1.003
 placement	terrain.main	terrain	model.terrain.sakkola	material.environment.snow	0.00	0.000	0.00	0.0	1.000
 placement	ice.suvanto	prop	model.environment.suvanto_ice	-	0	0	0	0	1
+water_surface	water.suvanto	ice.suvanto	-2048	2048	-2048	-256	1.82
 placement	church.sakkola	structure	model.environment.church	-	0.00	9.044	178.00	0.0	1.000
 placement	tree.alder.147	vegetation	model.environment.alder	-	152.45	8.105	-77.95	354.69	1.350
 placement	tree.pine.168	vegetation	model.environment.pine	-	145.19	7.961	-64.22	131.46	1.550
@@ -3354,8 +3355,8 @@ placement	tree.expanded.0561	vegetation	model.environment.aspen	-	-866.962	6.785
 collision	tree.expanded.0561.trunk	-866.962	10.5352	498.500	0.24	3.750	0.24
 placement	tree.expanded.0562	vegetation	model.environment.pine	-	-743.146	8.525	704.083	206.001	1.224
 collision	tree.expanded.0562.trunk	-743.146	12.9305	704.083	0.24	4.405	0.24
-placement	tree.expanded.0563	vegetation	model.environment.birch	-	-789.705	4.350	-278.351	105.795	1.489
-collision	tree.expanded.0563.trunk	-789.705	9.7109	-278.351	0.24	5.360	0.24
+placement	tree.expanded.0563	vegetation	model.environment.birch	-	-789.705	5.449	-240.000	105.795	1.489
+collision	tree.expanded.0563.trunk	-789.705	10.809	-240.000	0.24	5.360	0.24
 placement	tree.expanded.0564	vegetation	model.environment.pine	-	-1096.338	11.533	1011.761	289.232	1.382
 collision	tree.expanded.0564.trunk	-1096.338	16.5089	1011.761	0.24	4.976	0.24
 placement	tree.expanded.0565	vegetation	model.environment.spruce	-	-105.847	4.366	-95.085	102.190	1.089
@@ -5219,7 +5220,7 @@ placement	tree.regional.1420	vegetation	model.environment.pine	-	-1370.062	6.588
 placement	tree.regional.1421	vegetation	model.environment.aspen	-	-1443.472	9.178	75.125	215.65	1.350
 placement	tree.regional.1422	vegetation	model.environment.pine	-	-1633.324	11.916	502.153	44.25	1.132
 placement	tree.regional.1423	vegetation	model.environment.spruce	-	-1189.927	9.087	592.780	100.61	1.139
-placement	tree.regional.1424	vegetation	model.environment.spruce	-	-1128.041	5.881	-261.970	27.99	0.884
+placement	tree.regional.1424	vegetation	model.environment.spruce	-	-1128.041	7.149	-240.000	27.99	0.884
 placement	tree.regional.1425	vegetation	model.environment.pine	-	-1229.883	5.628	-238.678	194.82	0.995
 placement	tree.regional.1426	vegetation	model.environment.pine	-	-1414.051	9.495	168.398	179.81	1.393
 placement	tree.regional.1427	vegetation	model.environment.spruce	-	-1565.773	9.948	236.838	234.53	0.986
@@ -7019,7 +7020,7 @@ collision	tree.regional.1420.trunk	-1370.062	15.795	-193.658	0.230	9.207	0.230
 collision	tree.regional.1421.trunk	-1443.472	18.291	75.125	0.230	9.113	0.230
 collision	tree.regional.1422.trunk	-1633.324	20.689	502.153	0.230	8.773	0.230
 collision	tree.regional.1423.trunk	-1189.927	19.053	592.780	0.290	9.966	0.290
-collision	tree.regional.1424.trunk	-1128.041	13.616	-261.970	0.290	7.735	0.290
+collision	tree.regional.1424.trunk	-1128.041	14.884	-240.000	0.290	7.735	0.290
 collision	tree.regional.1425.trunk	-1229.883	13.339	-238.678	0.230	7.711	0.230
 collision	tree.regional.1426.trunk	-1414.051	20.291	168.398	0.230	10.796	0.230
 collision	tree.regional.1427.trunk	-1565.773	18.575	236.838	0.290	8.627	0.290

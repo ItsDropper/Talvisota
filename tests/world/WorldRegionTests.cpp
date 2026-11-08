@@ -339,6 +339,39 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
     Require(water != region.placements.end() &&
             water->modelAssetId == "model.environment.suvanto_ice",
             "Sakkola region should include the frozen Suvanto surface.");
+    Require(region.waterSurfaces.size() == 1U,
+            "Sakkola should define one explicit frozen Suvanto water surface.");
+    const auto& suvantoSurface = region.waterSurfaces.front();
+    Require(suvantoSurface.id == "water.suvanto" &&
+            suvantoSurface.placementId == "ice.suvanto" &&
+            std::abs(suvantoSurface.minX + 2048.0F) < 0.001F &&
+            std::abs(suvantoSurface.maxX - 2048.0F) < 0.001F &&
+            std::abs(suvantoSurface.minZ + 2048.0F) < 0.001F &&
+            std::abs(suvantoSurface.maxZ + 256.0F) < 0.001F &&
+            std::abs(suvantoSurface.elevation - 1.82F) < 0.001F,
+            "Frozen Suvanto must cover the authored sea-level lake footprint.");
+    Require(talvisota::world::SampleTerrainDisplacement(region, 0.0F, -1024.0F) == 0.0F,
+            "Snow-drift displacement must not deform the frozen lake.");
+    Require(talvisota::world::SampleTerrainDisplacement(region, 0.0F, -200.0F) > 0.01F,
+            "Snow-drift displacement must remain active on the north shore.");
+    float lakeHeight = 0.0F;
+    std::array<float, 3> lakeNormal{};
+    std::string lakeError;
+    Require(talvisota::world::SampleTerrainHeight(region, 0.0F, -1024.0F,
+            lakeHeight, lakeNormal, lakeError) &&
+            std::abs(lakeHeight - 1.82F) < 0.001F &&
+            lakeNormal == std::array<float, 3>{0.0F, 1.0F, 0.0F},
+            "Terrain sampling and player grounding must use the frozen lake surface.");
+    for (const auto& placement : region.placements)
+    {
+        if (placement.id == suvantoSurface.placementId)
+            continue;
+        Require(placement.position[0] < suvantoSurface.minX ||
+                placement.position[0] > suvantoSurface.maxX ||
+                placement.position[2] < suvantoSurface.minZ ||
+                placement.position[2] > suvantoSurface.maxZ,
+                "Land placements must not be authored inside the frozen lake.");
+    }
 
     std::vector<std::string> path;
     std::string navigationError;

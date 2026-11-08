@@ -57,6 +57,17 @@ struct TerrainHeightfield final
     std::vector<float> elevations;
 };
 
+struct WaterSurface final
+{
+    std::string id;
+    std::string placementId;
+    float minX = 0.0F;
+    float maxX = 0.0F;
+    float minZ = 0.0F;
+    float maxZ = 0.0F;
+    float elevation = 0.0F;
+};
+
 struct WorldRegion final
 {
     std::string id;
@@ -65,6 +76,7 @@ struct WorldRegion final
     std::array<float, 3> boundsMax{};
     std::vector<WorldPlacement> placements;
     TerrainHeightfield terrain;
+    std::vector<WaterSurface> waterSurfaces;
     std::vector<CollisionBox> collision;
     std::vector<NavigationNode> navigationNodes;
     std::vector<NavigationEdge> navigationEdges;

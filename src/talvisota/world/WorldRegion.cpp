@@ -171,6 +171,17 @@ bool ResolveAsset(const content::ContentRegistry& registry, const content::Asset
     }
     return true;
 }
+
+const WaterSurface* FindWaterSurfaceAt(const WorldRegion& region, const float x, const float z) noexcept
+{
+    const auto surface = std::find_if(region.waterSurfaces.begin(), region.waterSurfaces.end(),
+        [=](const WaterSurface& candidate)
+        {
+            return x >= candidate.minX && x <= candidate.maxX &&
+                   z >= candidate.minZ && z <= candidate.maxZ;
+        });
+    return surface == region.waterSurfaces.end() ? nullptr : &*surface;
+}
 } // namespace
 
 std::array<float, 16> BuildPlacementTransform(const WorldPlacement& placement) noexcept
@@ -189,12 +200,26 @@ std::array<float, 16> BuildPlacementTransform(const WorldPlacement& placement) n
 
 float SampleTerrainDisplacement(const WorldRegion& region, const float x, const float z) noexcept
 {
+    if (FindWaterSurfaceAt(region, x, z) != nullptr)
+        return 0.0F;
     return region.terrain.surfaceProfile == TerrainSurfaceProfile::SnowDriftV1 ? SnowDriftDisplacement(x, z) : 0.0F;
 }
 
 bool SampleTerrainHeight(const WorldRegion& region, float x, float z,
                           float& height, std::array<float, 3>& normal, std::string& error)
 {
+    if (!std::isfinite(x) || !std::isfinite(z))
+    {
+        error = "Terrain sample position must contain finite X/Z coordinates.";
+        return false;
+    }
+    if (const auto* water = FindWaterSurfaceAt(region, x, z))
+    {
+        height = water->elevation;
+        normal = {0.0F, 1.0F, 0.0F};
+        error.clear();
+        return true;
+    }
     const auto& terrain = region.terrain;
     if (terrain.rows < 2U || terrain.columns < 2U ||
         terrain.elevations.size() != terrain.rows * terrain.columns ||
@@ -482,6 +507,33 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
             else Add(diagnostics, path, lineNumber, "terrain_surface", "Expected none or snow_drift_v1.");
             haveTerrainSurface = true;
         }
+        else if (fields[0] == "water_surface")
+        {
+            if (badCount(8U)) continue;
+            WaterSurface surface;
+            surface.id = fields[1];
+            surface.placementId = fields[2];
+            bool valid = IsRecordId(surface.id) && ids.insert(surface.id).second &&
+                         IsRecordId(surface.placementId);
+            if (!valid)
+                Add(diagnostics, path, lineNumber, "water_surface.id",
+                    "Water surface and placement IDs must be valid; water surface IDs must be unique.");
+            valid = ParseFloat(fields[3], surface.minX) &&
+                    ParseFloat(fields[4], surface.maxX) &&
+                    ParseFloat(fields[5], surface.minZ) &&
+                    ParseFloat(fields[6], surface.maxZ) &&
+                    ParseFloat(fields[7], surface.elevation) && valid;
+            if (!haveMin || !haveMax ||
+                surface.minX >= surface.maxX || surface.minZ >= surface.maxZ ||
+                surface.minX < candidate.boundsMin[0] || surface.maxX > candidate.boundsMax[0] ||
+                surface.minZ < candidate.boundsMin[2] || surface.maxZ > candidate.boundsMax[2])
+                valid = false;
+            if (!valid)
+                Add(diagnostics, path, lineNumber, "water_surface.bounds",
+                    "Water surface requires finite, ordered X/Z bounds contained by the region and a finite elevation.");
+            else
+                candidate.waterSurfaces.push_back(std::move(surface));
+        }
         else if (fields[0] == "heightfield")
         {
             if (badCount(7U)) continue;
@@ -627,6 +679,8 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
             Add(diagnostics, path, 0, "bounds", "Each region minimum must be less than its maximum.");
     if (haveTerrainSurface && !haveHeightfield)
         Add(diagnostics, path, 0, "terrain_surface", "Terrain surface profile requires a heightfield.");
+    if (!candidate.waterSurfaces.empty() && !haveHeightfield)
+        Add(diagnostics, path, 0, "water_surface", "Water surfaces require a terrain heightfield.");
     if (haveHeightfield)
     {
         if (std::find(heightRowsSeen.begin(), heightRowsSeen.end(), false) != heightRowsSeen.end())
@@ -651,6 +705,15 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
     for (const auto& placement : candidate.placements)
         if (!Inside(placement.position, candidate.boundsMin, candidate.boundsMax))
             Add(diagnostics, path, 0, "placement.position", "Placement origin must lie inside the region bounds.");
+    for (const auto& surface : candidate.waterSurfaces)
+    {
+        const auto placement = std::find_if(candidate.placements.begin(), candidate.placements.end(),
+            [&surface](const WorldPlacement& item) { return item.id == surface.placementId; });
+        if (placement == candidate.placements.end() ||
+            placement->modelAssetId != "model.environment.suvanto_ice")
+            Add(diagnostics, path, 0, "water_surface.placement",
+                "Water surface must reference a declared Suvanto ice model placement.");
+    }
 
     // The renderer raises grounded vegetation and deadwood by the authored snow
     // surface displacement. Apply the identical offset to their collision volumes
