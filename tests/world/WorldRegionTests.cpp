@@ -188,8 +188,8 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
     }
     Require(region.id == "region.sakkola.church_village",
             "The first Karelian region should retain its stable Sakkola identity.");
-    Require(region.terrain.rows == 193U && region.terrain.columns == 193U &&
-            std::abs(region.terrain.spacingX - 21.333333333333332F) < 0.001F && std::abs(region.terrain.spacingZ - 21.333333333333332F) < 0.001F,
+    Require(region.terrain.rows == 177U && region.terrain.columns == 177U &&
+            std::abs(region.terrain.spacingX - 23.272727272727273F) < 0.001F && std::abs(region.terrain.spacingZ - 23.272727272727273F) < 0.001F,
             "Sakkola should provide a 512 metre terrain block with a 4 metre collision heightfield.");
 
     const auto terrainPlacement = std::find_if(region.placements.begin(), region.placements.end(),
