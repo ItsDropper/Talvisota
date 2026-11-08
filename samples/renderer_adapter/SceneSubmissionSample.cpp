@@ -138,8 +138,8 @@ bool RefineSnowTerrain(RenderMesh& mesh, std::string& error) {
     if (mesh.vertices.empty() || mesh.indices.empty() || mesh.indices.size()%3U!=0U) {
         error="Snow terrain refinement requires indexed triangle geometry."; return false;
     }
-    constexpr std::size_t MaximumVertices=1800000U;
-    constexpr float MaximumEdgeLength=1.35F;
+    constexpr std::size_t MaximumVertices=1000000U;
+    constexpr float MaximumEdgeLength=2.2F;
     const std::size_t originalVertexCount=mesh.vertices.size();
     const auto distanceSquared=[](const auto& a,const auto& b) {
         const float x=a.position[0]-b.position[0], y=a.position[1]-b.position[1], z=a.position[2]-b.position[2];
@@ -149,7 +149,7 @@ bool RefineSnowTerrain(RenderMesh& mesh, std::string& error) {
         if(a>b) std::swap(a,b);
         return (static_cast<std::uint64_t>(a)<<32U)|b;
     };
-    for(int pass=0;pass<4;++pass) {
+    for(int pass=0;pass<3;++pass) {
         float longest=0.0F;
         for(std::size_t i=0;i<mesh.indices.size();i+=3U) {
             const auto a=mesh.indices[i],b=mesh.indices[i+1U],d=mesh.indices[i+2U];
@@ -161,7 +161,7 @@ bool RefineSnowTerrain(RenderMesh& mesh, std::string& error) {
         }
         if(longest<=MaximumEdgeLength*MaximumEdgeLength) break;
         if(mesh.vertices.size()+mesh.indices.size()>MaximumVertices) {
-            error="Snow terrain refinement exceeds the 1.8-million-vertex safety limit."; return false;
+            error="Snow terrain refinement exceeds the 1-million-vertex safety limit."; return false;
         }
         auto vertices=mesh.vertices;
         std::vector<std::uint32_t> indices;
