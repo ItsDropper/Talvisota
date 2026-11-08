@@ -40,4 +40,7 @@ struct TreeMesh final
 // Builds geometry-aware snow caps only for conifer bearing chains. Snow width
 // and thickness follow each chain's capture fitness and carrying radius.
 [[nodiscard]] TreeMesh BuildSnowMesh(const TreeSkeleton& skeleton);
+
+// Emits individual needle fascicles for spruce and pine bearing chains.
+[[nodiscard]] TreeMesh BuildNeedleMesh(const TreeSkeleton& skeleton, std::uint64_t seed);
 } // namespace talvisota::vegetation
