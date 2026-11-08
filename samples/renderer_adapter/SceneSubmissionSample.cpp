@@ -132,7 +132,7 @@ float SnowDriftDisplacement(const float x, const float z) noexcept {
     const float broad = TerrainFbm((x+warpX*8.0F)*0.038F,(z+warpZ*8.0F)*0.038F);
     const float drift = TerrainFbm((x+warpX*2.2F)*0.145F+9.1F,(z+warpZ*2.2F)*0.145F-13.7F);
     const float granular = TerrainFbm(x*0.58F+4.7F,z*0.58F+18.2F);
-    return (broad-0.5F)*0.22F+(drift-0.5F)*0.075F+(granular-0.5F)*0.018F;
+    return (broad-0.5F)*0.55F+(drift-0.5F)*0.16F+(granular-0.5F)*0.035F;
 }
 bool RefineSnowTerrain(RenderMesh& mesh, std::string& error) {
     if (mesh.vertices.empty() || mesh.indices.empty() || mesh.indices.size()%3U!=0U) {
