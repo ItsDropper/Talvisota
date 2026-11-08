@@ -58,7 +58,7 @@ RECT MenuPanel(int w,int h) {
     return {(w-pw)/2,(h-ph)/2,(w+pw)/2,(h+ph)/2};
 }
 RECT MenuButton(int w,int h,int i) {
-    const RECT p=MenuPanel(w,h); const int bw=std::min(340,p.right-p.left-56);
+    const RECT p=MenuPanel(w,h); const int bw=static_cast<int>(std::min<LONG>(340L,p.right-p.left-56L));
     const int top=p.top+(frontendState==FrontendState::MainMenu?184:198)+i*62;
     return {(w-bw)/2,top,(w+bw)/2,top+48};
 }
