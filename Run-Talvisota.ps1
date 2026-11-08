@@ -9,7 +9,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-if (-not $IsWindows) {
+if ($env:OS -ne "Windows_NT") {
     throw "The local Sakkola renderer currently requires Windows x64."
 }
 
