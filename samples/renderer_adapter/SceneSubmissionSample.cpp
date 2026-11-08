@@ -888,6 +888,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     using Clock = std::chrono::steady_clock;
     auto previousFrame = Clock::now();
     const auto start = previousFrame;
+    double profileFrameMs = 0.0;
+    double profileRenderMs = 0.0;
+    std::uint32_t profileFrameCount = 0U;
     int oldWidth = client.right - client.left, oldHeight = client.bottom - client.top;
     MSG message{};
     bool running = true;
@@ -959,8 +962,25 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         }
         scene.camera.elapsedSeconds = std::chrono::duration<float>(now - start).count();
         scene.camera.frameNumber = frameNumber++;
-        if (!renderer->Render(scene, error)) {
-            std::cerr << "Renderer failed: " << error << "\\n";
+        const auto renderStart = Clock::now();
+        const bool renderSucceeded = renderer->Render(scene, error);
+        const auto renderEnd = Clock::now();
+        profileFrameMs += static_cast<double>(deltaSeconds) * 1000.0;
+        profileRenderMs += std::chrono::duration<double, std::milli>(
+            renderEnd - renderStart).count();
+        ++profileFrameCount;
+        if (profileFrameCount == 120U) {
+            const double averageFrameMs = profileFrameMs / 120.0;
+            const double averageRenderMs = profileRenderMs / 120.0;
+            std::cout << "Performance (last 120 frames): "
+                << averageFrameMs << " ms/frame (" << (1000.0 / averageFrameMs)
+                << " FPS), CPU Render() " << averageRenderMs << " ms/frame.\\n";
+            profileFrameMs = 0.0;
+            profileRenderMs = 0.0;
+            profileFrameCount = 0U;
+        }
+        if (!renderSucceeded) {
+            std::cerr << "Renderer failed: " << error << "\\\\n";
             break;
         }
         Sleep(1);
