@@ -651,6 +651,28 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
     for (const auto& placement : candidate.placements)
         if (!Inside(placement.position, candidate.boundsMin, candidate.boundsMax))
             Add(diagnostics, path, 0, "placement.position", "Placement origin must lie inside the region bounds.");
+
+    // The renderer raises grounded vegetation and deadwood by the authored snow
+    // surface displacement. Apply the identical offset to their collision volumes
+    // before bounds validation so visual geometry and player collision stay aligned.
+    if (candidate.terrain.surfaceProfile == TerrainSurfaceProfile::SnowDriftV1)
+    {
+        for (const auto& placement : candidate.placements)
+        {
+            const bool tree = placement.category == PlacementCategory::Vegetation;
+            const bool deadwood = placement.modelAssetId == "model.environment.fallen_log" ||
+                                  placement.modelAssetId == "model.environment.stump";
+            if (!tree && !deadwood)
+                continue;
+            const std::string collisionId = placement.id + (tree ? ".trunk" : ".collision");
+            const auto collision = std::find_if(candidate.collision.begin(), candidate.collision.end(),
+                [&collisionId](const CollisionBox& box) { return box.id == collisionId; });
+            if (collision != candidate.collision.end())
+                collision->center[1] += SampleTerrainDisplacement(candidate,
+                    placement.position[0], placement.position[2]);
+        }
+    }
+
     for (const auto& box : candidate.collision)
         for (std::size_t axis = 0; axis < 3U; ++axis)
             if (box.center[axis] - box.halfExtents[axis] < candidate.boundsMin[axis] ||
