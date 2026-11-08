@@ -210,6 +210,17 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
             "Sakkola should retain its mixed forest and village props while adding distributed ground clutter.");
     Require(winterBrush == 300U && region.placements.size() == 710U,
             "Sakkola should contain 300 deterministic winter brush clumps distributed across the full land area.");
+    const auto brushInQuadrant = [&region](const bool east, const bool south) {
+        return std::count_if(region.placements.begin(), region.placements.end(),
+            [=](const auto& item) {
+                return item.modelAssetId == "model.environment.winter_brush" &&
+                    (item.position[0] >= 0.0F) == east &&
+                    (item.position[2] >= 60.0F) == south;
+            });
+    };
+    Require(brushInQuadrant(false, false) >= 50U && brushInQuadrant(true, false) >= 50U &&
+            brushInQuadrant(false, true) >= 50U && brushInQuadrant(true, true) >= 50U,
+            "Winter brush must populate all four land quadrants instead of accumulating in one strip.");
 
     std::vector<std::string> species;
     for (const auto& item : region.placements) {
