@@ -179,4 +179,104 @@ TreeMesh BuildSnowMesh(const TreeSkeleton& skeleton)
     return mesh;
 }
 
+TreeMesh BuildNeedleMesh(const TreeSkeleton& skeleton, const std::uint64_t seed)
+{
+    TreeMesh mesh;
+    MeshSection section{4, 0u, 0u};
+    const auto appendBlade = [&](const Float3& origin, const Float3& direction,
+        const Float3& planeNormal, const float length, const float width) {
+        const Float3 side = Normalized(Cross(direction, planeNormal));
+        const Float3 tip = origin + direction * length;
+        const Float3 left = origin - side * (width * 0.5F);
+        const Float3 right = origin + side * (width * 0.5F);
+        const Float3 normal = Normalized(Cross(right - left, tip - origin));
+        const std::uint32_t base = static_cast<std::uint32_t>(mesh.vertices.size());
+        mesh.vertices.push_back({left, normal, 0.0F, 0.0F});
+        mesh.vertices.push_back({right, normal, 1.0F, 0.0F});
+        mesh.vertices.push_back({tip, normal, 0.5F, 1.0F});
+        mesh.vertices.push_back({left, normal * -1.0F, 0.0F, 0.0F});
+        mesh.vertices.push_back({right, normal * -1.0F, 1.0F, 0.0F});
+        mesh.vertices.push_back({tip, normal * -1.0F, 0.5F, 1.0F});
+        mesh.indices.insert(mesh.indices.end(),
+            {base, base + 1u, base + 2u, base + 5u, base + 4u, base + 3u});
+        section.indexCount += 6u;
+    };
+
+    for (std::size_t chainIndex = 0; chainIndex < skeleton.chains.size(); ++chainIndex)
+    {
+        const SkeletonChain& chain = skeleton.chains[chainIndex];
+        if ((chain.bearingKind != 1 && chain.bearingKind != 2) ||
+            chain.firstSegment < 0 || chain.segmentCount <= 0 ||
+            static_cast<std::size_t>(chain.firstSegment + chain.segmentCount) >
+                skeleton.segments.size())
+            continue;
+
+        for (int offset = 0; offset < chain.segmentCount; ++offset)
+        {
+            const std::size_t segmentIndex =
+                static_cast<std::size_t>(chain.firstSegment + offset);
+            const SkeletonSegment& segment = skeleton.segments[segmentIndex];
+            const Float3 axis = segment.end - segment.start;
+            const float segmentLength = Length(axis);
+            if (segmentLength <= 0.035F) continue;
+            const Float3 tangent = axis * (1.0F / segmentLength);
+            const Float3 radialA = SafePerpendicular(tangent);
+            const Float3 radialB = Normalized(Cross(tangent, radialA));
+            const bool pine = chain.bearingKind == 2;
+            const int clusterCount = pine
+                ? std::clamp(static_cast<int>(std::ceil(segmentLength / 0.30F)), 1, 2)
+                : std::clamp(static_cast<int>(std::ceil(segmentLength / 0.22F)), 1, 3);
+            const int needlesPerCluster = pine ? 2 : 5;
+            const float phase = HashUnit01(seed,
+                static_cast<std::uint64_t>(chainIndex) * 65537u + segmentIndex * 17u) *
+                kTau;
+
+            for (int cluster = 0; cluster < clusterCount; ++cluster)
+            {
+                const float along = (static_cast<float>(cluster) + 0.5F) /
+                    static_cast<float>(clusterCount);
+                const Float3 center = Lerp(segment.start, segment.end, along);
+                const float angle = phase + static_cast<float>(cluster) * 2.39996323F;
+                const Float3 radial = Normalized(radialA * std::cos(angle) +
+                    radialB * std::sin(angle));
+                const float branchRadius = segment.startRadius +
+                    (segment.endRadius - segment.startRadius) * along;
+                const Float3 attachment = center + radial * (branchRadius * 0.78F);
+
+                for (int needle = 0; needle < needlesPerCluster; ++needle)
+                {
+                    const float jitter = HashUnit01(seed,
+                        static_cast<std::uint64_t>(chainIndex) * 104729u +
+                        segmentIndex * 97u + static_cast<std::uint64_t>(cluster * 11 + needle));
+                    Float3 direction;
+                    if (pine)
+                    {
+                        const float pairSide = needle == 0 ? -1.0F : 1.0F;
+                        direction = Normalized(radial * 0.72F + tangent * 0.48F +
+                            radialB * (pairSide * 0.20F));
+                    }
+                    else
+                    {
+                        direction = Normalized(radial * 0.88F + tangent * 0.22F +
+                            radialB * ((jitter - 0.5F) * 0.18F));
+                    }
+                    const float needleLength = pine
+                        ? 0.040F + jitter * 0.018F
+                        : 0.020F + jitter * 0.012F;
+                    const float width = pine ? 0.0032F : 0.0019F;
+                    appendBlade(attachment, direction, radialB,
+                        needleLength, width);
+                    appendBlade(attachment, direction,
+                        Normalized(Cross(direction, radialB)),
+                        needleLength, width);
+                }
+            }
+        }
+    }
+
+    if (section.indexCount > 0u)
+        mesh.sections.push_back(section);
+    return mesh;
+}
+
 } // namespace talvisota::vegetation
