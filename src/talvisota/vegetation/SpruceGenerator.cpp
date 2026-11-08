@@ -90,6 +90,7 @@ TreeSkeleton GenerateSpruce(const SpeciesBuild& build) noexcept
     trunk.taperPower = 2.1F;
     trunk.noiseScale = 0.014F * (1.0F + 2.0F * Clamp01(build.windLean));
     trunk.bendRecovery = 0.30F;
+    trunk.windLean = Clamp01(build.windLean);
     // Spruce keeps a dominant straight central leader.
     trunk.straightness = 0.78F + 0.18F * random.Uniform01();
     trunk.seed = trunkSeed;
