@@ -34,6 +34,14 @@ TreeSkeleton GenerateBirch(const SpeciesBuild& build) noexcept
     trunk.seed = Mix64(seed + 29);
     const auto trunkFirst = BuildTrunkChain(tree, trunk);
     const int trunkCount = tree.chains.front().segmentCount;
+    // Mature silver birch has a darker, fissured basal bark zone beneath the
+    // pale upper stem. Keep it as a separate material range for correct PBR.
+    for (int i = 0; i < trunkCount; ++i)
+    {
+        auto& segment = tree.segments[static_cast<std::size_t>(trunkFirst + i)];
+        if (segment.start[1] < 0.85F)
+            segment.materialGroup = 3;
+    }
 
     // Silver birch has an irregular, light crown and a fine winter silhouette:
     // scaffold limbs divide repeatedly into slender, often pendulous twigs.
