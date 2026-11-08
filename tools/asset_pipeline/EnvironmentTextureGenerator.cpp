@@ -248,18 +248,25 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
             v - (windX - 0.5F) * 0.022F, 29, seed ^ 0xa54ff53aU, 3);
         const float crystalClusters = Fbm(u, v, 164, seed ^ 0x68bc21ebU, 3);
         const float crystalGrain = Fbm(u, v, 392, seed ^ 0x02e5be93U, 2);
+        const float microCrust = Fbm(u, v, 620, seed ^ 0x9b05688cU, 2);
+        const float microSparkle = Fbm(u, v, 940, seed ^ 0x1f83d9abU, 2);
         const float micro = (crystalClusters - 0.5F) * 0.052F +
-            (crystalGrain - 0.5F) * 0.026F;
+            (crystalGrain - 0.5F) * 0.026F +
+            (microCrust - 0.5F) * 0.014F + (microSparkle - 0.5F) * 0.008F;
         const float height = 0.50F + (drift - 0.5F) * 0.105F +
             (driftShoulder - 0.5F) * 0.042F + micro;
         const float albedoVariation = (drift - 0.5F) * 0.032F +
-            (driftShoulder - 0.5F) * 0.018F + micro * 0.30F;
+            (driftShoulder - 0.5F) * 0.018F + micro * 0.30F +
+            (microCrust - 0.5F) * 0.006F;
         const float frost = Smooth((crystalClusters - 0.34F) * 2.4F);
+        const float packedCrust = Smooth((microCrust - 0.56F) * 4.5F);
         sample = {0.875F + albedoVariation,
                   0.895F + albedoVariation * 0.91F,
                   0.925F + albedoVariation * 0.78F,
-                  height, 0.91F + driftShoulder * 0.075F + frost * 0.012F,
-                  0.985F - frost * 0.075F - Smooth((crystalGrain - 0.88F) * 8.0F) * 0.035F};
+                  height, 0.89F + driftShoulder * 0.075F + frost * 0.012F +
+                    packedCrust * 0.018F + microSparkle * 0.012F,
+                  0.985F - frost * 0.075F - Smooth((crystalGrain - 0.88F) * 8.0F) * 0.035F -
+                    packedCrust * 0.018F};
     }
     else if (preset == "packed_snow")
     {
