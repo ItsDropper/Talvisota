@@ -174,8 +174,8 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
             registry, world, worldDiagnostics), "Sakkola world definition should load.");
     Require(world.id == "world.sakkola" && world.terrainModelId == "model.terrain.sakkola",
             "Sakkola world should own its registered terrain model.");
-    Require(world.hasEnvironment && std::abs(world.environment.sunIntensity - 1.85F) < 0.001F &&
-            std::abs(world.environment.fogDensity - 0.00065F) < 0.00001F &&
+    Require(world.hasEnvironment && std::abs(world.environment.sunIntensity - 2.10F) < 0.001F &&
+            std::abs(world.environment.fogDensity - 0.00030F) < 0.00001F &&
             std::abs(world.environment.windStrength - 0.06F) < 0.001F,
             "Sakkola world should expose validated winter sun, fog, ambient, and wind settings.");
 
@@ -209,10 +209,10 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
         [](const auto& item) { return item.category == talvisota::world::PlacementCategory::Prop; });
     const auto winterBrush = std::count_if(region.placements.begin(), region.placements.end(),
         [](const auto& item) { return item.modelAssetId == "model.environment.winter_brush"; });
-    Require(vegetation == 1044U && structures == 35U && rocks == 32U && props == 383U,
+    Require(vegetation == 1294U && structures == 35U && rocks == 32U && props == 383U,
             "Sakkola should retain its dense mixed forest and village props while adding distributed ground clutter.");
-    Require(winterBrush == 300U && region.placements.size() == 1495U,
-            "Sakkola should contain 300 deterministic winter brush clumps and 418 trees across four ecological stands.");
+    Require(winterBrush == 300U && region.placements.size() == 1745U,
+            "Sakkola should contain 300 deterministic winter brush clumps and 1,294 mixed trees distributed across ecological stands.");
     const auto brushInQuadrant = [&region](const bool east, const bool south) {
         return std::count_if(region.placements.begin(), region.placements.end(),
             [=](const auto& item) {
