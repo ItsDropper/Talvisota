@@ -152,7 +152,7 @@ The game-facing contract is deliberately independent of the engine:
 - `talvisota::presentation::SceneSnapshot` owns game-side mesh, material, instance, and camera data.
 - `ISceneRenderer` exposes initialization, resize, render, and device-loss state without exposing Direct3D or VantaEngine types.
 - `ValidateSceneSnapshot` rejects invalid indices, non-finite vertex/camera data, invalid PBR factors, missing references, and singular instance transforms.
-- `VantaSceneRenderer` is the optional adapter. It translates the snapshot into VantaEngine's public scene-submission API and is pinned to one exact engine commit.
+- `VantaSceneRenderer` is the optional adapter. It translates the snapshot into VantaEngine's public scene-submission API and is pinned to one exact engine commit. Translation is persistent across submissions: meshes and materials are retranslated only when their storage identity or values change, and each submission otherwise validates the camera, environment, and instances and applies only the instance diffs that actually changed. Mesh vertex/index storage and material values must therefore not be mutated in place between submissions; replacing content requires replacing the storage so the adapter detects the change and retranslates it with the full validation diagnostics.
 
 Build the standalone sample on Windows x64 with MSVC:
 
@@ -166,7 +166,7 @@ ctest --test-dir build-msvc --output-on-failure -R Talvisota.Presentation.SceneR
 
 The adapter is opt-in because VantaEngine currently uses the Windows SDK and MSVC's WRL headers. The normal MinGW core build remains independent of that dependency. The sample imports the authored Sakkola world definition and region, resolves the manifest assets and materials, builds the full placed environment scene, and renders it through either backend.
 
-Current adapter limitations are explicit: game materials support scalar base colour, roughness, and metallic values only; texture-backed materials and persistent per-mesh GPU caches are not implemented yet. The first backend path uploads submitted geometry per frame. D3D12 retains each frame's upload buffers until its fence completes; D3D11 uses dynamic write-discard buffers. Real-device smoke testing is still required before M2 can be closed.
+Current adapter limitations are explicit: game materials support scalar base colour, roughness, and metallic values only; texture-backed materials and persistent per-mesh GPU caches are not implemented yet. On the game side, per-frame translation cost is limited to camera/environment validation, instance validation, and diff-only instance sync; meshes and materials are retranslated only when their identity changes. The remaining per-frame geometry rebuild and upload happens inside VantaEngine and is out of this repository's scope. D3D12 retains each frame's upload buffers until its fence completes; D3D11 uses dynamic write-discard buffers. Real-device smoke testing is still required before M2 can be closed.
 
 ## Engine boundary
 

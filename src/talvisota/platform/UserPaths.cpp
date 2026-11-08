@@ -1,9 +1,14 @@
 #include "talvisota/platform/UserPaths.hpp"
 #include <cstdlib>
+#include <memory>
 namespace talvisota::platform {
 bool ResolveUserPaths(UserPaths& p,std::string& error) {
 #if defined(_WIN32)
-    const char* root=std::getenv("LOCALAPPDATA");
+    // MSVC 14.4x+ deprecates getenv under /W4; _dupenv_s is the supported replacement.
+    char* rootValue=nullptr;std::size_t rootValueLength=0U;
+    if(_dupenv_s(&rootValue,&rootValueLength,"LOCALAPPDATA")!=0)rootValue=nullptr;
+    const std::unique_ptr<char,void(*)(void*)> rootOwner(rootValue,&std::free);
+    const char* root=rootValue;
     if(!root||!*root){error="LOCALAPPDATA is not defined";return false;}
     p.configurationDirectory=std::filesystem::path(root)/"Talvisota"/"config";
     p.dataDirectory=std::filesystem::path(root)/"Talvisota"/"data";

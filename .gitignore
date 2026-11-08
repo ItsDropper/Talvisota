@@ -47,4 +47,5 @@ compile_commands.json
 
 # Local CMake build directories
 /build-baseline/
+/build-mingw/
 /build-perf/

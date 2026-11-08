@@ -1,9 +1,12 @@
+#include "talvisota/presentation/SceneValidation.hpp"
+
 #include "talvisota/presentation/SceneRenderer.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
 #include <limits>
+#include <string>
 
 namespace talvisota::presentation
 {
@@ -34,44 +37,55 @@ bool IsInvertible(const std::array<float, 16>& matrix) noexcept
 }
 } // namespace
 
-bool ValidateSceneSnapshot(const SceneSnapshot& scene, std::string& error)
+namespace detail
 {
-    if (!IsFinite(scene.camera.view) || !IsFinite(scene.camera.projection) ||
-        !IsFinite(scene.camera.position) || !std::isfinite(scene.camera.elapsedSeconds)) {
+bool ValidateCameraFrame(const CameraFrame& camera, std::string& error)
+{
+    if (!IsFinite(camera.view) || !IsFinite(camera.projection) ||
+        !IsFinite(camera.position) || !std::isfinite(camera.elapsedSeconds)) {
         error = "Camera frame contains non-finite values.";
         return false;
     }
+    return true;
+}
 
-    if (scene.environment.enabled) {
-        const auto length3 = [](const std::array<float, 3>& v) {
-            return std::sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-        };
-        const float sunLength = length3(scene.environment.sunDirection);
-        const float windLength = std::hypot(scene.environment.windDirection[0],
-            scene.environment.windDirection[1]);
-        const auto validColor = [](const std::array<float, 3>& v) {
-            return std::all_of(v.begin(), v.end(), [](float x) {
-                return std::isfinite(x) && x >= 0.0F && x <= 16.0F;
-            });
-        };
-        if (!validColor(scene.environment.sunColor) || !validColor(scene.environment.ambientColor) ||
-            !validColor(scene.environment.fogColor) || !std::isfinite(sunLength) ||
-            std::abs(sunLength - 1.0F) > 0.02F || !std::isfinite(windLength) ||
-            std::abs(windLength - 1.0F) > 0.02F ||
-            !std::isfinite(scene.environment.sunIntensity) || scene.environment.sunIntensity < 0.0F ||
-            scene.environment.sunIntensity > 10.0F ||
-            !std::isfinite(scene.environment.ambientIntensity) || scene.environment.ambientIntensity < 0.0F ||
-            scene.environment.ambientIntensity > 4.0F ||
-            !std::isfinite(scene.environment.fogDensity) || scene.environment.fogDensity < 0.0F ||
-            scene.environment.fogDensity > 0.1F ||
-            !std::isfinite(scene.environment.fogStart) || scene.environment.fogStart < 0.0F ||
-            !std::isfinite(scene.environment.windStrength) || scene.environment.windStrength < 0.0F ||
-            scene.environment.windStrength > 1.0F) {
-            error = "Scene environment contains invalid lighting, fog, or wind parameters.";
-            return false;
-        }
+bool ValidateEnvironment(const RenderEnvironment& environment, std::string& error)
+{
+    if (!environment.enabled)
+        return true;
+
+    const auto length3 = [](const std::array<float, 3>& v) {
+        return std::sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+    };
+    const float sunLength = length3(environment.sunDirection);
+    const float windLength = std::hypot(environment.windDirection[0],
+        environment.windDirection[1]);
+    const auto validColor = [](const std::array<float, 3>& v) {
+        return std::all_of(v.begin(), v.end(), [](float x) {
+            return std::isfinite(x) && x >= 0.0F && x <= 16.0F;
+        });
+    };
+    if (!validColor(environment.sunColor) || !validColor(environment.ambientColor) ||
+        !validColor(environment.fogColor) || !std::isfinite(sunLength) ||
+        std::abs(sunLength - 1.0F) > 0.02F || !std::isfinite(windLength) ||
+        std::abs(windLength - 1.0F) > 0.02F ||
+        !std::isfinite(environment.sunIntensity) || environment.sunIntensity < 0.0F ||
+        environment.sunIntensity > 10.0F ||
+        !std::isfinite(environment.ambientIntensity) || environment.ambientIntensity < 0.0F ||
+        environment.ambientIntensity > 4.0F ||
+        !std::isfinite(environment.fogDensity) || environment.fogDensity < 0.0F ||
+        environment.fogDensity > 0.1F ||
+        !std::isfinite(environment.fogStart) || environment.fogStart < 0.0F ||
+        !std::isfinite(environment.windStrength) || environment.windStrength < 0.0F ||
+        environment.windStrength > 1.0F) {
+        error = "Scene environment contains invalid lighting, fog, or wind parameters.";
+        return false;
     }
+    return true;
+}
 
+bool ValidateMeshes(const SceneSnapshot& scene, std::string& error)
+{
     for (std::size_t meshIndex = 0; meshIndex < scene.meshes.size(); ++meshIndex) {
         const RenderMesh& mesh = scene.meshes[meshIndex];
         if (mesh.vertices.empty() || mesh.indices.empty() || mesh.indices.size() % 3U != 0U) {
@@ -103,7 +117,11 @@ bool ValidateSceneSnapshot(const SceneSnapshot& scene, std::string& error)
             }
         }
     }
+    return true;
+}
 
+bool ValidateMaterials(const SceneSnapshot& scene, std::string& error)
+{
     for (std::size_t materialIndex = 0; materialIndex < scene.materials.size(); ++materialIndex) {
         const RenderMaterial& material = scene.materials[materialIndex];
         if (!IsFinite(material.baseColor) || material.baseColor[0] < 0.0F ||
@@ -127,7 +145,11 @@ bool ValidateSceneSnapshot(const SceneSnapshot& scene, std::string& error)
             }
         }
     }
+    return true;
+}
 
+bool ValidateInstances(const SceneSnapshot& scene, std::string& error)
+{
     for (std::size_t instanceIndex = 0; instanceIndex < scene.instances.size(); ++instanceIndex) {
         const RenderInstance& instance = scene.instances[instanceIndex];
         if (instance.meshIndex >= scene.meshes.size() ||
@@ -140,6 +162,26 @@ bool ValidateSceneSnapshot(const SceneSnapshot& scene, std::string& error)
             return false;
         }
     }
+    return true;
+}
+} // namespace detail
+
+bool ValidateSceneSnapshot(const SceneSnapshot& scene, std::string& error)
+{
+    if (!detail::ValidateCameraFrame(scene.camera, error))
+        return false;
+
+    if (!detail::ValidateEnvironment(scene.environment, error))
+        return false;
+
+    if (!detail::ValidateMeshes(scene, error))
+        return false;
+
+    if (!detail::ValidateMaterials(scene, error))
+        return false;
+
+    if (!detail::ValidateInstances(scene, error))
+        return false;
 
     error.clear();
     return true;
