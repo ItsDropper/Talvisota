@@ -180,15 +180,18 @@ Do not attempt a huge open world at this stage. Prove a small region first.
 
 ## M5 — Core player experience
 
+**Status (2026-11-08): in progress.** The first renderer-independent player simulation component is implemented: validated movement configuration, terrain-grounded spawn, normalized walking/sprinting movement, frame-delta clamping, yaw/pitch camera control, jump/gravity, axis-separated collision against authored region AABBs, and a derived first-person camera pose. The controller uses the game-owned world terrain and collision queries and has no renderer, window, input-device, or VantaEngine dependency. Headless regression tests cover spawn grounding, timestep clamping, diagonal normalization, jumping, pitch limits, camera height, obstacle blocking, invalid input rejection, and transactional state preservation. This is a simulation foundation, not yet an integrated interactive game loop: platform input collection, application-owned runtime composition, renderer submission, interaction, and mission progression remain open.
+
 **Goal:** Implement the minimum complete first-person player loop.
 
 Work:
-- Define player state and input mapping independently of the renderer.
-- Implement movement, camera behavior, interaction, and player-state transitions.
-- Establish separation between simulation state and presentation state.
-- Add accessibility and input settings early enough to influence the architecture.
-- Add save-safe state boundaries and deterministic tests for core rules.
-- Integrate animation and sound through presentation events rather than embedding them in domain logic.
+- [x] Define player state and renderer-independent movement/camera simulation.
+- [ ] Add platform input collection and configurable input bindings.
+- [ ] Integrate player/world ownership into an application runtime and connect it to the renderer contract.
+- [ ] Add robust terrain following, step/slope policy, and collision coverage for vertical obstacles and ceilings.
+- [ ] Implement interaction, mission objectives, and player-state transitions.
+- [ ] Establish save-safe state boundaries and deterministic tests for core rules.
+- [ ] Integrate animation and sound through presentation events rather than embedding them in domain logic.
 
 Exit criteria:
 - The player can enter the environment, move, interact with intended objects, and reach a defined end state.

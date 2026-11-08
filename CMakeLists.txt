@@ -42,6 +42,15 @@ target_include_directories(talvisota_world PUBLIC "$<BUILD_INTERFACE:${CMAKE_CUR
 target_link_libraries(talvisota_world PUBLIC Talvisota::Content)
 talvisota_apply_compiler_options(talvisota_world)
 
+add_library(talvisota_gameplay STATIC
+    src/talvisota/game/PlayerController.cpp
+)
+add_library(Talvisota::Gameplay ALIAS talvisota_gameplay)
+target_compile_features(talvisota_gameplay PUBLIC cxx_std_23)
+target_include_directories(talvisota_gameplay PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>")
+target_link_libraries(talvisota_gameplay PUBLIC Talvisota::World)
+talvisota_apply_compiler_options(talvisota_gameplay)
+
 add_library(talvisota_platform STATIC
     src/talvisota/platform/CrashDiagnostics.cpp
     src/talvisota/platform/UserPaths.cpp
