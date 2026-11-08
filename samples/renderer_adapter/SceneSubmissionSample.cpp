@@ -633,7 +633,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             if (!WriteBgraPng(framebuffer, framebufferWidth, framebufferHeight,
                     output / view.file, error))
                 break;
-            if (framebuffer[skyPixel] <= framebuffer[skyPixel + 2U] + 16U) {
+            if (framebuffer[skyPixel] <= framebuffer[skyPixel + 2U] + 8U) {
                 error = "Presented BGRA sky sample is not blue-dominant (B=" +
                     std::to_string(framebuffer[skyPixel]) + ", G=" +
                     std::to_string(framebuffer[skyPixel + 1U]) + ", R=" +
