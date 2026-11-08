@@ -25,7 +25,7 @@ void TestSakkolaTerrainMaterialTiling()
     Require(static_cast<bool>(input), "Could not open the Sakkola terrain source mesh.");
 
     constexpr double expectedWorldSpan = 4096.0;
-    constexpr double expectedTileWorldSpan = 64.0;
+    constexpr double expectedTileWorldSpan = 40.0;
     constexpr double expectedUvSpan = expectedWorldSpan / expectedTileWorldSpan;
     double minimumU = std::numeric_limits<double>::max();
     double maximumU = std::numeric_limits<double>::lowest();
@@ -55,8 +55,8 @@ void TestSakkolaTerrainMaterialTiling()
     Require(std::abs(minimumU) <= 0.0001 && std::abs(minimumV) <= 0.0001 &&
             std::abs((maximumU - minimumU) - expectedUvSpan) <= 0.0001 &&
             std::abs((maximumV - minimumV) - expectedUvSpan) <= 0.0001,
-            "Sakkola terrain snow materials must repeat every 64 metres, not once across the 4 km region.");
-    std::cout << "Verified Sakkola terrain PBR UV tiling: 64 m per repeat across 4096 m.\n";
+            "Sakkola terrain snow materials must repeat every 40 metres, not once across the 4 km region.");
+    std::cout << "Verified Sakkola terrain PBR UV tiling: 40 m per repeat across 4096 m.\n";
 }
 } // namespace
 
