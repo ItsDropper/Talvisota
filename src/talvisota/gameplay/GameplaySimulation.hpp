@@ -9,6 +9,7 @@
 #include <set>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace talvisota::content { struct AuthoredDefinition; }
@@ -44,6 +45,12 @@ struct CommandResult final
     CommandOutcome outcome = CommandOutcome::Ignored;
 };
 
+struct InteractionTargetSelection final
+{
+    std::string entityId;
+    float distanceMeters = 0.0F;
+};
+
 struct SimulationState final
 {
     entities::EntityRegistry entities;
@@ -73,6 +80,13 @@ struct SimulationState final
     const world::WorldRegion& region,
     const std::array<float, 3>& playerSpawn,
     const GameplayRules& rules, SimulationState& output, std::string& error);
+
+// Selects the nearest active entity for the mission's currently active objective.
+// Equal-distance candidates resolve by stable entity ID. A valid query with no
+// eligible target succeeds and returns an empty entityId. Output is unchanged on error.
+[[nodiscard]] bool FindNearestActiveObjectiveTarget(const SimulationState& state,
+    std::string_view actorEntityId, float maximumDistanceMeters,
+    InteractionTargetSelection& output, std::string& error);
 
 // Advances exactly one deterministic simulation tick. Commands are processed in
 // caller-provided order. The state and result vector are unchanged on validation failure.
