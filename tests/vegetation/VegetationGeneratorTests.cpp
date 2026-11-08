@@ -1,0 +1,54 @@
+#include "talvisota/vegetation/Species.hpp"
+
+#include <cassert>
+#include <cmath>
+#include <cstdint>
+
+using namespace talvisota::vegetation;
+
+namespace
+{
+void Validate(const Species species, const std::uint64_t seed)
+{
+    SpeciesBuild build{};
+    build.seed = seed;
+    build.height = 16.0F;
+    const auto a = GenerateTree(species, build);
+    const auto b = GenerateTree(species, build);
+    assert(a.height > 0.0F);
+    assert(a.trunkRadius > 0.0F);
+    assert(a.segments.size() > 100);
+    assert(a.segments.size() == b.segments.size());
+    assert(a.chains.size() == b.chains.size());
+    assert(std::abs(a.height - b.height) < 1.0e-6F);
+    for (std::size_t i = 0; i < a.segments.size(); ++i)
+    {
+        const auto& x = a.segments[i];
+        const auto& y = b.segments[i];
+        assert(x.parentIndex == y.parentIndex);
+        assert(x.start == y.start);
+        assert(x.end == y.end);
+        assert(x.startRadius > 0.0F);
+        assert(x.endRadius > 0.0F);
+        assert(x.endRadius <= x.startRadius);
+        assert(std::isfinite(x.start[0]) && std::isfinite(x.start[1]) &&
+            std::isfinite(x.start[2]));
+        if (x.parentIndex >= 0)
+            assert(static_cast<std::size_t>(x.parentIndex) < a.segments.size());
+    }
+    const auto measurements = MeasureTrunk(a);
+    assert(measurements.height == a.height);
+    assert(measurements.buttRadius > measurements.tipRadius);
+}
+}
+
+int main()
+{
+    Validate(Species::Spruce, 0x12345678u);
+    Validate(Species::Pine, 0x12345678u);
+    Validate(Species::Birch, 0x12345678u);
+    const auto pine = GenerateTree(Species::Pine, SpeciesBuild{ .seed = 1 });
+    const auto birch = GenerateTree(Species::Birch, SpeciesBuild{ .seed = 1 });
+    assert(pine.segments.size() != birch.segments.size());
+    return 0;
+}
