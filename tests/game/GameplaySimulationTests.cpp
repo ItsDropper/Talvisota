@@ -150,7 +150,7 @@ void TestAuthoredWorldSimulation()
         {"command.first-patrol.inspect-woodpile", state.playerEntityId, "prop.woodpile.west"}
     }};
     Check(AdvanceSimulation(state, rules, 1.0 / 60.0, inspectWoodpile, results, error) &&
-        results.size() == 1U && results[0].outcome == CommandOutcome.ObjectiveCompleted &&
+        results.size() == 1U && results[0].outcome == CommandOutcome::ObjectiveCompleted &&
         state.mission.completedObjectives == 2U,
         "interacting with the real woodpile placement completes the second objective");
 
@@ -160,7 +160,7 @@ void TestAuthoredWorldSimulation()
         {"command.first-patrol.report-church", state.playerEntityId, "church.sakkola"}
     }};
     Check(AdvanceSimulation(state, rules, 1.0 / 60.0, reportChurch, results, error) &&
-        results.size() == 1U && results[0].outcome == CommandOutcome.MissionCompleted &&
+        results.size() == 1U && results[0].outcome == CommandOutcome::MissionCompleted &&
         state.mission.status == game::MissionStatus::Completed,
         "interacting with the real church placement completes First Patrol");
 
