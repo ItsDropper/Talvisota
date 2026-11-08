@@ -103,4 +103,80 @@ TreeMesh BuildTreeMesh(const TreeSkeleton& skeleton, const std::uint64_t seed,
     }
     return mesh;
 }
+TreeMesh BuildSnowMesh(const TreeSkeleton& skeleton)
+{
+    TreeMesh mesh;
+    constexpr int crossSectionSteps = 4;
+    constexpr int verticesPerRing = crossSectionSteps + 1;
+    mesh.vertices.reserve(skeleton.segments.size() * verticesPerRing * 2u);
+    mesh.indices.reserve(skeleton.segments.size() * crossSectionSteps * 6u);
+
+    MeshSection snowSection{kSnowMeshMaterialGroup, 0u, 0u};
+    for (const SkeletonChain& chain : skeleton.chains)
+    {
+        if ((chain.bearingKind != 1 && chain.bearingKind != 2) ||
+            chain.snowCapture.fitness < 0.08F ||
+            chain.snowCapture.carryingRadius <= 0.0F ||
+            chain.firstSegment < 0 || chain.segmentCount <= 0 ||
+            static_cast<std::size_t>(chain.firstSegment + chain.segmentCount) >
+                skeleton.segments.size())
+            continue;
+
+        const float fitness = Clamp01(chain.snowCapture.fitness);
+        const float width = chain.snowCapture.carryingRadius * (0.72F + 0.52F * fitness);
+        const float thickness = chain.snowCapture.carryingRadius *
+            (0.18F + 0.30F * fitness) + 0.0025F;
+        for (int offset = 0; offset < chain.segmentCount; ++offset)
+        {
+            const auto& segment = skeleton.segments[
+                static_cast<std::size_t>(chain.firstSegment + offset)];
+            const Float3 axis = segment.end - segment.start;
+            const float length = Length(axis);
+            if (length <= 1.0e-5F) continue;
+            const Float3 tangent = axis * (1.0F / length);
+            Float3 up = Float3{0.0F, 1.0F, 0.0F} -
+                tangent * Dot(Float3{0.0F, 1.0F, 0.0F}, tangent);
+            if (Length(up) <= 1.0e-4F) up = SafePerpendicular(tangent);
+            else up = Normalized(up);
+            const Float3 side = Normalized(Cross(tangent, up));
+            const std::uint32_t base = static_cast<std::uint32_t>(mesh.vertices.size());
+
+            for (int ring = 0; ring < 2; ++ring)
+            {
+                const Float3 center = ring == 0 ? segment.start : segment.end;
+                const float branchRadius = ring == 0 ? segment.startRadius : segment.endRadius;
+                for (int sample = 0; sample <= crossSectionSteps; ++sample)
+                {
+                    const float angle = -1.57079632679F +
+                        3.14159265359F * static_cast<float>(sample) /
+                        static_cast<float>(crossSectionSteps);
+                    const float across = std::sin(angle);
+                    const float crown = std::cos(angle);
+                    const Float3 normal = Normalized(up * crown + side * across);
+                    const Float3 position = center + up * (branchRadius + thickness * crown) +
+                        side * (width * across);
+                    mesh.vertices.push_back({position, normal,
+                        static_cast<float>(sample) / static_cast<float>(crossSectionSteps),
+                        (static_cast<float>(segment.generation) + static_cast<float>(ring)) *
+                            length * 1.8F});
+                }
+            }
+
+            constexpr std::uint32_t ringStride = verticesPerRing;
+            for (int sample = 0; sample < crossSectionSteps; ++sample)
+            {
+                const std::uint32_t a = base + static_cast<std::uint32_t>(sample);
+                const std::uint32_t b = a + 1u;
+                const std::uint32_t c = a + ringStride;
+                const std::uint32_t d = c + 1u;
+                mesh.indices.insert(mesh.indices.end(), {a, b, c, b, d, c});
+                snowSection.indexCount += 6u;
+            }
+        }
+    }
+    if (snowSection.indexCount > 0u)
+        mesh.sections.push_back(snowSection);
+    return mesh;
+}
+
 } // namespace talvisota::vegetation
