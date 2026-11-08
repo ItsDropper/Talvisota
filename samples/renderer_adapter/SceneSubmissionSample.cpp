@@ -3,6 +3,8 @@
 #include "talvisota/content/WorldDefinition.hpp"
 #include "talvisota/presentation/VantaSceneRenderer.hpp"
 #include "talvisota/world/WorldRegion.hpp"
+#include "talvisota/vegetation/Species.hpp"
+#include "talvisota/vegetation/Mesh.hpp"
 #include "vanta/assets/ObjLoader.hpp"
 #include "vanta/math/Math.hpp"
 #include <Windows.h>
@@ -255,9 +257,142 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
     }
 
     std::map<std::string, std::vector<SubmeshBinding>> importedModels;
+    std::map<std::string, std::vector<SubmeshBinding>> proceduralTreeModels;
     std::map<std::string, talvisota::content::MaterialDefinition> typedMaterials;
     std::size_t importedModelCount = 0;
     for (const auto& placement : region.placements) {
+        // Replace the coarse hand-authored spruce/pine/birch meshes with shared,
+        // deterministic procedural archetypes. The region placements remain the
+        // source of truth for position, yaw and scale; only the local tree geometry
+        // changes. Eight reusable variants/species bound GPU memory and draw count.
+        talvisota::vegetation::Species treeSpecies{};
+        bool proceduralTree = true;
+        if (placement.modelAssetId == "model.environment.spruce")
+            treeSpecies = talvisota::vegetation::Species::Spruce;
+        else if (placement.modelAssetId == "model.environment.pine")
+            treeSpecies = talvisota::vegetation::Species::Pine;
+        else if (placement.modelAssetId == "model.environment.birch")
+            treeSpecies = talvisota::vegetation::Species::Birch;
+        else
+            proceduralTree = false;
+
+        if (proceduralTree) {
+            std::uint64_t placementHash = 1469598103934665603ULL;
+            for (const unsigned char character : placement.id) {
+                placementHash ^= character;
+                placementHash *= 1099511628211ULL;
+            }
+            const std::uint32_t variant = static_cast<std::uint32_t>(placementHash % 8ULL);
+            const std::string cacheKey = placement.modelAssetId + "#procedural-" +
+                std::to_string(variant);
+            auto procedural = proceduralTreeModels.find(cacheKey);
+            if (procedural == proceduralTreeModels.end()) {
+                talvisota::vegetation::SpeciesBuild build{};
+                build.seed = 0x54414C5649534F54ULL ^
+                    (static_cast<std::uint64_t>(treeSpecies) << 48U) ^
+                    (static_cast<std::uint64_t>(variant) * 0x9E3779B97F4A7C15ULL);
+                build.height = treeSpecies == talvisota::vegetation::Species::Spruce ? 11.0F :
+                    (treeSpecies == talvisota::vegetation::Species::Pine ? 9.0F : 8.0F);
+                build.branchDiversity = 0.88F + 0.045F * static_cast<float>(variant);
+                build.asymmetry = static_cast<float>((variant * 3U) % 8U) / 7.0F;
+                build.windLean = 0.12F + 0.035F * static_cast<float>(variant % 4U);
+                const auto skeleton = talvisota::vegetation::GenerateTree(treeSpecies, build);
+                const auto woodMesh = talvisota::vegetation::BuildTreeMesh(skeleton, build.seed, 8);
+                const auto snowMesh = talvisota::vegetation::BuildSnowMesh(skeleton);
+                std::vector<SubmeshBinding> bindings;
+
+                const auto addTreeMesh = [&](const talvisota::vegetation::TreeMesh& source) -> bool {
+                    for (const auto& section : source.sections) {
+                        if (section.indexCount == 0U ||
+                            static_cast<std::size_t>(section.firstIndex) + section.indexCount >
+                                source.indices.size()) {
+                            error = "Procedural tree generator emitted an invalid material section.";
+                            return false;
+                        }
+                        RenderMesh mesh;
+                        std::vector<std::uint32_t> remap(source.vertices.size(),
+                            std::numeric_limits<std::uint32_t>::max());
+                        mesh.indices.reserve(section.indexCount);
+                        mesh.vertices.reserve(section.indexCount);
+                        for (std::size_t i = section.firstIndex;
+                             i < static_cast<std::size_t>(section.firstIndex) + section.indexCount; ++i) {
+                            const std::uint32_t sourceIndex = source.indices[i];
+                            if (sourceIndex >= source.vertices.size()) {
+                                error = "Procedural tree mesh contains an out-of-range vertex index.";
+                                return false;
+                            }
+                            if (remap[sourceIndex] == std::numeric_limits<std::uint32_t>::max()) {
+                                const auto& vertex = source.vertices[sourceIndex];
+                                const auto destinationIndex =
+                                    static_cast<std::uint32_t>(mesh.vertices.size());
+                                mesh.vertices.push_back({vertex.position, vertex.normal, vertex.u, vertex.v});
+                                remap[sourceIndex] = destinationIndex;
+                            }
+                            mesh.indices.push_back(remap[sourceIndex]);
+                        }
+                        if (mesh.vertices.empty() || mesh.indices.empty()) continue;
+
+                        RenderMaterial material;
+                        material.baseColor = {1.0F, 1.0F, 1.0F};
+                        material.roughness = 0.92F;
+                        std::string albedoId;
+                        std::string normalId;
+                        std::string roughnessId;
+                        std::string aoId;
+                        if (section.materialGroup == talvisota::vegetation::kSnowMeshMaterialGroup) {
+                            albedoId = "texture.environment.snow_pbr_albedo";
+                            normalId = "texture.environment.snow_pbr_normal";
+                            roughnessId = "texture.environment.snow_pbr_roughness";
+                            aoId = "texture.environment.snow_pbr_ao";
+                        } else if (section.materialGroup == 4) {
+                            albedoId = "texture.environment.pine_needles_albedo";
+                            normalId = "texture.environment.pine_needles_normal";
+                            roughnessId = "texture.environment.pine_needles_roughness";
+                            aoId = "texture.environment.pine_needles_ao";
+                        } else if (treeSpecies == talvisota::vegetation::Species::Birch) {
+                            albedoId = "texture.environment.birch_bark_albedo";
+                            normalId = "texture.environment.birch_bark_normal";
+                            roughnessId = "texture.environment.birch_bark_roughness";
+                            aoId = "texture.environment.birch_bark_ao";
+                        } else {
+                            albedoId = "texture.environment.bark_albedo";
+                            normalId = "texture.environment.bark_normal";
+                            roughnessId = "texture.environment.bark_roughness";
+                            aoId = "texture.environment.bark_ao";
+                        }
+                        if (!ResolveTexture(registry, albedoId, material.baseColorTexture, error) ||
+                            !ResolveTexture(registry, normalId, material.normalTexture, error) ||
+                            !ResolveTexture(registry, roughnessId, material.roughnessTexture, error) ||
+                            !ResolveTexture(registry, aoId, material.ambientOcclusionTexture, error))
+                            return false;
+
+                        const auto meshIndex = static_cast<std::uint32_t>(scene.meshes.size());
+                        const auto materialIndex = static_cast<std::uint32_t>(scene.materials.size());
+                        scene.meshes.push_back(std::move(mesh));
+                        scene.materials.push_back(std::move(material));
+                        bindings.push_back({meshIndex, materialIndex});
+                    }
+                    return true;
+                };
+
+                if (!addTreeMesh(woodMesh) || !addTreeMesh(snowMesh))
+                    return false;
+                procedural = proceduralTreeModels.emplace(cacheKey, std::move(bindings)).first;
+                ++importedModelCount;
+            }
+
+            auto transform = talvisota::world::BuildPlacementTransform(placement);
+            transform[13] += SnowDriftDisplacement(placement.position[0], placement.position[2]);
+            for (const auto& binding : procedural->second) {
+                RenderInstance instance;
+                instance.meshIndex = binding.meshIndex;
+                instance.materialIndex = binding.materialIndex;
+                instance.world = transform;
+                scene.instances.push_back(instance);
+            }
+            continue;
+        }
+
         auto model = importedModels.find(placement.modelAssetId);
         if (model == importedModels.end()) {
             const auto* modelAsset = registry.Find(placement.modelAssetId);
