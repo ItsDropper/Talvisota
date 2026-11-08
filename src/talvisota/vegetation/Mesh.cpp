@@ -106,7 +106,7 @@ TreeMesh BuildTreeMesh(const TreeSkeleton& skeleton, const std::uint64_t seed,
                     const float angle = kTau * static_cast<float>(side) /
                         static_cast<float>(radialSegments);
                     const int boundaryIndex = segment.chainStart + segment.generation + ring;
-                    const float relief = BarkRelief(seed, boundaryIndex, side);
+                    const float relief = BarkRelief(seed, boundaryIndex, side % radialSegments);
                     const float displacedRadius = radius * (1.0F + relief);
                     const Float3 radial = Normalized(frameA * std::cos(angle) +
                         frameB * std::sin(angle));
