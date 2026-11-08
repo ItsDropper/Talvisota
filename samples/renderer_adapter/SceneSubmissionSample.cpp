@@ -974,13 +974,13 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             const double averageRenderMs = profileRenderMs / 120.0;
             std::cout << "Performance (last 120 frames): "
                 << averageFrameMs << " ms/frame (" << (1000.0 / averageFrameMs)
-                << " FPS), CPU Render() " << averageRenderMs << " ms/frame.\\n";
+                << " FPS), CPU Render() " << averageRenderMs << " ms/frame.\n";
             profileFrameMs = 0.0;
             profileRenderMs = 0.0;
             profileFrameCount = 0U;
         }
         if (!renderSucceeded) {
-            std::cerr << "Renderer failed: " << error << "\\\\n";
+            std::cerr << "Renderer failed: " << error << "\n";
             break;
         }
         Sleep(1);
