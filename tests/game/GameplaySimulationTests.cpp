@@ -153,6 +153,12 @@ void TestAuthoredWorldSimulation()
 
     Check(state.entities.SetPosition(state.playerEntityId, well->position, error),
         "player simulation entity moves into range of the authored well placement");
+    InteractionTargetSelection authoredSelection;
+    Check(FindNearestActiveObjectiveTarget(state, state.playerEntityId,
+        rules.interactionRadiusMeters, authoredSelection, error) &&
+        authoredSelection.entityId == "prop.well.farmstead" &&
+        authoredSelection.distanceMeters == 0.0F,
+        "active First Patrol objective resolves to the nearest in-range authored well entity");
     const std::array<InteractionCommand, 1> inspectWellInRange{{
         {"command.first-patrol.inspect-well-in-range",
             state.playerEntityId, "prop.well.farmstead"}
@@ -286,6 +292,13 @@ int main()
         state.mission.objectives.front().status == game::ObjectiveStatus::Active,
         "simulation starts the first mission objective");
 
+    InteractionTargetSelection selectedTarget;
+    Check(FindNearestActiveObjectiveTarget(state, "entity.player",
+        rules.interactionRadiusMeters, selectedTarget, error) &&
+        selectedTarget.entityId == "entity.radio" &&
+        selectedTarget.distanceMeters == 1.0F,
+        "target query selects the active objective target and reports its distance");
+
     std::vector<CommandResult> results;
     const std::array<InteractionCommand, 1> outOfOrder{{
         {"command.telephone-first", "entity.player", "entity.telephone"}
@@ -307,6 +320,12 @@ int main()
         state.mission.objectives[1].status == game::ObjectiveStatus::Active,
         "interaction activates the next authored objective");
 
+    Check(FindNearestActiveObjectiveTarget(state, "entity.player",
+        rules.interactionRadiusMeters, selectedTarget, error) &&
+        selectedTarget.entityId == "entity.telephone" &&
+        selectedTarget.distanceMeters == 2.0F,
+        "target query follows mission progression to the newly active objective");
+
     Check(AdvanceSimulation(state, rules, 1.0 / 60.0, firstObjective, results, error),
         "replayed command is accepted without applying twice");
     Check(results.size() == 1U && results[0].outcome == CommandOutcome::Duplicate &&
@@ -324,6 +343,11 @@ int main()
     Check(results[0].outcome == CommandOutcome::OutOfRange &&
         state.mission.completedObjectives == 1U,
         "out-of-range interaction cannot progress the mission");
+
+    Check(FindNearestActiveObjectiveTarget(state, "entity.player",
+        rules.interactionRadiusMeters, selectedTarget, error) &&
+        selectedTarget.entityId.empty(),
+        "target query returns no selection when the active objective is outside search range");
 
     Check(state.entities.SetPosition("entity.telephone", {2.0F, 0.0F, 0.0F}, error),
         "target returns to interaction range");
