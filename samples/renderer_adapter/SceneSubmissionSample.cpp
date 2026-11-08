@@ -129,15 +129,19 @@ float TerrainFbm(const float x, const float z) noexcept {
 float SnowDriftDisplacement(const float x, const float z) noexcept {
     // Multi-scale glacial moraine relief, wind-sculpted snow banks, and fine
     // granular drift. Domain warping avoids the smooth, repeated noise look.
-    const float warpX = TerrainValueNoise(x*0.009F+17.3F,z*0.009F-8.1F)-0.5F;
-    const float warpZ = TerrainValueNoise(x*0.009F-31.7F,z*0.009F+22.9F)-0.5F;
-    const float broad = TerrainFbm((x+warpX*24.0F)*0.021F,(z+warpZ*24.0F)*0.021F);
-    const float ridgeField = TerrainFbm((x+warpZ*11.0F)*0.034F-41.0F,(z+warpX*11.0F)*0.034F+23.0F);
+    const float warpX = TerrainValueNoise(x*0.0045F+17.3F,z*0.0045F-8.1F)-0.5F;
+    const float warpZ = TerrainValueNoise(x*0.0045F-31.7F,z*0.0045F+22.9F)-0.5F;
+    // The source terrain grid is ~23 m between samples. These wavelengths are
+    // deliberately kept above its refined-mesh Nyquist limit: broad glacial
+    // undulations and moraine shoulders belong in geometry, finer snow crystals
+    // belong in the tiled PBR maps rather than aliased vertex displacement.
+    const float broad = TerrainFbm((x+warpX*68.0F)*0.0065F,(z+warpZ*68.0F)*0.0065F);
+    const float ridgeField = TerrainFbm((x+warpZ*24.0F)*0.014F-41.0F,(z+warpX*24.0F)*0.014F+23.0F);
     const float ridges = 1.0F-std::abs(2.0F*ridgeField-1.0F);
-    const float drift = TerrainFbm((x+warpX*3.8F)*0.112F+9.1F,(z+warpZ*3.8F)*0.112F-13.7F);
-    const float granular = TerrainFbm(x*0.46F+4.7F,z*0.46F+18.2F);
-    return (broad-0.5F)*2.35F+(ridges-0.5F)*0.72F+
-        (drift-0.5F)*0.58F+(granular-0.5F)*0.14F;
+    const float drift = TerrainFbm((x+warpX*8.0F)*0.032F+9.1F,(z+warpZ*8.0F)*0.032F-13.7F);
+    const float granular = TerrainFbm(x*0.040F+4.7F,z*0.040F+18.2F);
+    return (broad-0.5F)*5.2F+(ridges-0.5F)*1.55F+
+        (drift-0.5F)*0.72F+(granular-0.5F)*0.20F;
 }
 bool RefineSnowTerrain(RenderMesh& mesh, std::string& error) {
     if (mesh.vertices.empty() || mesh.indices.empty() || mesh.indices.size()%3U!=0U) {
@@ -298,8 +302,18 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
                     if (remapped == vertexRemap.end()) {
                         const auto& vertex = imported.vertices[sourceIndex];
                         const auto destinationIndex = static_cast<std::uint32_t>(mesh.vertices.size());
+                        const bool tiledSakkolaSnow =
+                            placement.modelAssetId == "model.terrain.sakkola" &&
+                            sourceMaterial.name == "snow";
+                        // The authored OBJ maps one 1024² texture across the entire
+                        // 4 km region (UV 0..1). That makes every snow PBR map effectively
+                        // kilometre-scale and visually erases its detail. Tile in world
+                        // space at a 40 m repeat so albedo, normal and roughness resolve
+                        // as actual snow-grain/micro-drift detail at ground scale.
+                        const float u = tiledSakkolaSnow ? vertex.position.x * 0.025F : vertex.u;
+                        const float v = tiledSakkolaSnow ? vertex.position.z * 0.025F : vertex.v;
                         mesh.vertices.push_back({{vertex.position.x, vertex.position.y, vertex.position.z},
-                            {vertex.normal.x, vertex.normal.y, vertex.normal.z}, vertex.u, vertex.v});
+                            {vertex.normal.x, vertex.normal.y, vertex.normal.z}, u, v});
                         remapped = vertexRemap.emplace(sourceIndex, destinationIndex).first;
                     }
                     mesh.indices.push_back(remapped->second);
@@ -720,11 +734,17 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         return 0;
     }
 
-    if (!SetCamera(scene, {0.0F, 24.0F, -90.0F}, {0.0F, 8.0F, 90.0F}, width, height)) {
+    constexpr vanta::math::Vec3 previewEye{0.0F, 24.0F, -90.0F};
+    constexpr vanta::math::Vec3 previewTarget{0.0F, 8.0F, 90.0F};
+    if (!SetCamera(scene, previewEye, previewTarget, width, height)) {
         renderer.reset(); DestroyWindow(window);
         if (ownsCom) CoUninitialize();
         return 8;
     }
+    // The preview camera is fixed. Cull once before the render loop instead of
+    // sending every regional tree, shrub and prop through every frame.
+    CullCaptureInstances(scene, previewEye, previewTarget,
+        static_cast<float>(width) / static_cast<float>(height));
     using Clock = std::chrono::steady_clock;
     const auto start = Clock::now();
     int oldWidth = client.right - client.left, oldHeight = client.bottom - client.top;
