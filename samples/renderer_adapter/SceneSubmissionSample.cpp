@@ -280,7 +280,7 @@ StaticBatchStats BatchStaticSceneInstances(SceneSnapshot& scene)
             continue;
         }
         const auto [meshIndex, materialIndex, cellX, cellZ] = key;
-        const RenderMesh& source = scene.meshes[meshIndex];
+        const RenderMesh source = scene.meshes[meshIndex];
         const std::size_t maxInstancesPerBatch =
             std::max<std::size_t>(1U, MaximumBatchVertices / source.vertices.size());
 
@@ -499,7 +499,7 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
         << " source draws -> " << batchStats.outputInstances
         << " chunk draws (" << batchStats.batchedInstances
         << " source instances merged, " << batchStats.transformedVertices
-        << " vertices transformed).\\n";
+        << " vertices transformed).\n";
     placementCount = region.placements.size();
     drawCount = scene.instances.size();
     if (placementCount == 0U || scene.meshes.empty() || scene.materials.empty() || scene.instances.empty()) {
@@ -823,6 +823,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     using Clock = std::chrono::steady_clock;
     auto previousFrame = Clock::now();
     const auto start = previousFrame;
+    double accumulatedFrameMs = 0.0;
+    double accumulatedRenderMs = 0.0;
+    std::uint32_t profiledFrames = 0U;
     int oldWidth = client.right - client.left, oldHeight = client.bottom - client.top;
     MSG message{};
     bool running = true;
@@ -892,7 +895,24 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         }
         scene.camera.elapsedSeconds = std::chrono::duration<float>(now - start).count();
         scene.camera.frameNumber = frameNumber++;
-        if (!renderer->Render(scene, error)) {
+        const auto renderStart = Clock::now();
+        const bool renderSucceeded = renderer->Render(scene, error);
+        const auto renderEnd = Clock::now();
+        accumulatedFrameMs += static_cast<double>(deltaSeconds) * 1000.0;
+        accumulatedRenderMs += std::chrono::duration<double, std::milli>(
+            renderEnd - renderStart).count();
+        ++profiledFrames;
+        if (profiledFrames == 120U) {
+            const double frameMs = accumulatedFrameMs / 120.0;
+            const double renderMs = accumulatedRenderMs / 120.0;
+            std::cout << "Frame profile (120-frame average): " << frameMs
+                << " ms (" << (frameMs > 0.0 ? 1000.0 / frameMs : 0.0)
+                << " FPS), Render() CPU " << renderMs << " ms.\\n";
+            accumulatedFrameMs = 0.0;
+            accumulatedRenderMs = 0.0;
+            profiledFrames = 0U;
+        }
+        if (!renderSucceeded) {
             std::cerr << "Renderer failed: " << error << "\\n";
             break;
         }
