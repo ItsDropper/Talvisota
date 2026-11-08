@@ -341,7 +341,7 @@ constexpr std::array<CaptureView, 5> Views = {{
     {L"02-church-village.png", {-28.0F, 16.0F, 135.0F}, {0.0F, 16.0F, 178.0F}},
     {L"03-suvanto-shoreline.png", {-145.0F, 14.0F, -100.0F}, {-85.0F, 8.0F, -143.0F}},
     {L"04-karelian-forest.png", {160.0F, 20.0F, -170.0F}, {160.0F, 10.0F, -25.0F}},
-    {L"05-farmstead.png", {0.0F, 17.0F, 90.0F}, {0.0F, 11.0F, 132.0F}}
+    {L"05-farmstead.png", {0.0F, 24.0F, 35.0F}, {0.0F, 12.0F, 130.0F}}
 }};
 }
 
