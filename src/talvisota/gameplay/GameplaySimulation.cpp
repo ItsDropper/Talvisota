@@ -157,6 +157,118 @@ bool InitializeSimulationFromAuthoredMission(
     return true;
 }
 
+bool FindActiveObjectiveTarget(const SimulationState& state,
+    const std::string_view actorEntityId, ActiveObjectiveTarget& output,
+    std::string& error)
+{
+    if (!entities::IsValidStableId(actorEntityId))
+    {
+        error = "Active-objective query contains an invalid actor ID.";
+        return false;
+    }
+
+    const entities::EntityState* const actor = state.entities.Find(actorEntityId);
+    if (actor == nullptr || !actor->active || actor->kind == entities::EntityKind::WorldObject)
+    {
+        error = "Active-objective query requires an active actor entity.";
+        return false;
+    }
+    for (const float coordinate : actor->position)
+    {
+        if (!std::isfinite(coordinate))
+        {
+            error = "Active-objective query actor position must be finite.";
+            return false;
+        }
+    }
+
+    // Reuse mission-state validation without changing the live simulation.
+    game::MissionState validatedMission = state.mission;
+    game::InteractionResult ignoredResult = game::InteractionResult::Ignored;
+    if (!game::ApplyMissionInteraction(validatedMission, {}, ignoredResult, error))
+        return false;
+
+    ActiveObjectiveTarget candidate;
+    if (state.mission.status != game::MissionStatus::Active)
+    {
+        output = std::move(candidate);
+        error.clear();
+        return true;
+    }
+
+    const game::ObjectiveState* activeObjective = nullptr;
+    for (const game::ObjectiveState& objective : state.mission.objectives)
+    {
+        if (objective.status != game::ObjectiveStatus::Active)
+            continue;
+        if (activeObjective != nullptr)
+        {
+            error = "Active mission contains more than one active objective.";
+            return false;
+        }
+        activeObjective = &objective;
+    }
+    if (activeObjective == nullptr ||
+        !entities::IsValidStableId(activeObjective->interactionTargetId))
+    {
+        error = "Active mission does not resolve to one valid active objective.";
+        return false;
+    }
+
+    const entities::EntityState* target = nullptr;
+    for (const auto& [entityId, entity] : state.entities.All())
+    {
+        if (entity.interactionTargetId != activeObjective->interactionTargetId ||
+            entity.kind != entities::EntityKind::WorldObject)
+            continue;
+        if (target != nullptr)
+        {
+            error = "Active objective resolves to multiple world-object entities: " +
+                activeObjective->interactionTargetId;
+            return false;
+        }
+        if (entity.id != entityId || !entities::IsValidStableId(entityId))
+        {
+            error = "Active objective target has an inconsistent entity identity.";
+            return false;
+        }
+        target = &entity;
+    }
+
+    if (target == nullptr || !target->active)
+    {
+        error = "Active objective target is missing or inactive: " +
+            activeObjective->interactionTargetId;
+        return false;
+    }
+    for (const float coordinate : target->position)
+    {
+        if (!std::isfinite(coordinate))
+        {
+            error = "Active objective target position must be finite.";
+            return false;
+        }
+    }
+
+    const double x = static_cast<double>(actor->position[0]) - target->position[0];
+    const double y = static_cast<double>(actor->position[1]) - target->position[1];
+    const double z = static_cast<double>(actor->position[2]) - target->position[2];
+    const double distance = std::sqrt(x * x + y * y + z * z);
+    if (!std::isfinite(distance) ||
+        distance > static_cast<double>(std::numeric_limits<float>::max()))
+    {
+        error = "Active objective actor-to-target distance is not representable.";
+        return false;
+    }
+
+    candidate.entityId = target->id;
+    candidate.position = target->position;
+    candidate.distanceMeters = static_cast<float>(distance);
+    output = std::move(candidate);
+    error.clear();
+    return true;
+}
+
 bool FindNearestActiveObjectiveTarget(const SimulationState& state,
     const std::string_view actorEntityId, const float maximumDistanceMeters,
     InteractionTargetSelection& output, std::string& error)
