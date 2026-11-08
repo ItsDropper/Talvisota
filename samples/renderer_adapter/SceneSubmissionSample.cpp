@@ -736,22 +736,24 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         return 0;
     }
 
-    constexpr vanta::math::Vec3 previewEye{0.0F, 24.0F, -90.0F};
-    constexpr vanta::math::Vec3 previewTarget{0.0F, 8.0F, 90.0F};
-    if (!SetCamera(scene, previewEye, previewTarget, width, height)) {
+    vanta::math::Vec3 cameraPosition{0.0F, 24.0F, -90.0F};
+    float cameraYaw = 0.0F;
+    float cameraPitch = -0.0889F;
+    const auto initialTarget = vanta::math::Vec3{0.0F, 8.0F, 90.0F};
+    if (!SetCamera(scene, cameraPosition, initialTarget, width, height)) {
         renderer.reset(); DestroyWindow(window);
         if (ownsCom) CoUninitialize();
         return 8;
     }
-    // The preview camera is fixed. Cull once before the render loop instead of
-    // sending every regional tree, shrub and prop through every frame.
-    CullCaptureInstances(scene, previewEye, previewTarget,
+    CullCaptureInstances(scene, cameraPosition, initialTarget,
         static_cast<float>(width) / static_cast<float>(height));
     using Clock = std::chrono::steady_clock;
-    const auto start = Clock::now();
+    auto previousFrame = Clock::now();
+    const auto start = previousFrame;
     int oldWidth = client.right - client.left, oldHeight = client.bottom - client.top;
     MSG message{};
     bool running = true;
+    std::cout << "Free camera: WASD move, Q/E descend/ascend, arrow keys look, Shift accelerates, Escape exits.\\n";
     while (running) {
         while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE) != FALSE) {
             if (message.message == WM_QUIT) { running = false; break; }
@@ -759,21 +761,68 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             DispatchMessageW(&message);
         }
         if (!running) break;
+        const auto now = Clock::now();
+        const float deltaSeconds = std::clamp(
+            std::chrono::duration<float>(now - previousFrame).count(), 0.0F, 0.1F);
+        previousFrame = now;
+        const float lookStep = 1.45F * deltaSeconds;
+        const float moveSpeed = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0 ? 48.0F : 14.0F;
+        bool cameraChanged = false;
+        if ((GetAsyncKeyState(VK_LEFT) & 0x8000) != 0) { cameraYaw -= lookStep; cameraChanged = true; }
+        if ((GetAsyncKeyState(VK_RIGHT) & 0x8000) != 0) { cameraYaw += lookStep; cameraChanged = true; }
+        if ((GetAsyncKeyState(VK_UP) & 0x8000) != 0) { cameraPitch = std::min(1.45F, cameraPitch + lookStep); cameraChanged = true; }
+        if ((GetAsyncKeyState(VK_DOWN) & 0x8000) != 0) { cameraPitch = std::max(-1.45F, cameraPitch - lookStep); cameraChanged = true; }
+        const float cosPitch = std::cos(cameraPitch);
+        const float forwardX = std::sin(cameraYaw) * cosPitch;
+        const float forwardY = std::sin(cameraPitch);
+        const float forwardZ = std::cos(cameraYaw) * cosPitch;
+        const float rightX = std::cos(cameraYaw);
+        const float rightZ = -std::sin(cameraYaw);
+        const float distance = moveSpeed * deltaSeconds;
+        if ((GetAsyncKeyState('W') & 0x8000) != 0) {
+            cameraPosition.x += forwardX * distance; cameraPosition.y += forwardY * distance;
+            cameraPosition.z += forwardZ * distance; cameraChanged = true;
+        }
+        if ((GetAsyncKeyState('S') & 0x8000) != 0) {
+            cameraPosition.x -= forwardX * distance; cameraPosition.y -= forwardY * distance;
+            cameraPosition.z -= forwardZ * distance; cameraChanged = true;
+        }
+        if ((GetAsyncKeyState('D') & 0x8000) != 0) {
+            cameraPosition.x += rightX * distance; cameraPosition.z += rightZ * distance;
+            cameraChanged = true;
+        }
+        if ((GetAsyncKeyState('A') & 0x8000) != 0) {
+            cameraPosition.x -= rightX * distance; cameraPosition.z -= rightZ * distance;
+            cameraChanged = true;
+        }
+        if ((GetAsyncKeyState('E') & 0x8000) != 0) { cameraPosition.y += distance; cameraChanged = true; }
+        if ((GetAsyncKeyState('Q') & 0x8000) != 0) { cameraPosition.y -= distance; cameraChanged = true; }
+        const vanta::math::Vec3 cameraTarget{
+            cameraPosition.x + forwardX * 180.0F,
+            cameraPosition.y + forwardY * 180.0F,
+            cameraPosition.z + forwardZ * 180.0F};
         GetClientRect(window, &client);
         const int w = client.right - client.left, h = client.bottom - client.top;
         if (w <= 0 || h <= 0) { Sleep(16); continue; }
         if (w != oldWidth || h != oldHeight) {
-            if (!renderer->Resize(w, h, error) || !SetCamera(scene,
-                    {0.0F, 24.0F, -90.0F}, {0.0F, 8.0F, 90.0F}, w, h)) {
-                std::cerr << "Renderer resize failed: " << error << "\n";
+            if (!renderer->Resize(w, h, error)) {
+                std::cerr << "Renderer resize failed: " << error << "\\n";
                 break;
             }
-            oldWidth = w; oldHeight = h;
+            oldWidth = w; oldHeight = h; cameraChanged = true;
         }
-        scene.camera.elapsedSeconds = std::chrono::duration<float>(Clock::now() - start).count();
+        if (cameraChanged) {
+            if (!SetCamera(scene, cameraPosition, cameraTarget, w, h)) {
+                error = "Free camera view/projection update failed.";
+                break;
+            }
+            CullCaptureInstances(scene, cameraPosition, cameraTarget,
+                static_cast<float>(w) / static_cast<float>(h));
+        }
+        scene.camera.elapsedSeconds = std::chrono::duration<float>(now - start).count();
         scene.camera.frameNumber = frameNumber++;
         if (!renderer->Render(scene, error)) {
-            std::cerr << "Renderer failed: " << error << "\n";
+            std::cerr << "Renderer failed: " << error << "\\n";
             break;
         }
         Sleep(1);
