@@ -668,8 +668,12 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
             const auto collision = std::find_if(candidate.collision.begin(), candidate.collision.end(),
                 [&collisionId](const CollisionBox& box) { return box.id == collisionId; });
             if (collision != candidate.collision.end())
-                collision->center[1] += SampleTerrainDisplacement(candidate,
+            {
+                const float displacement = SampleTerrainDisplacement(candidate,
                     placement.position[0], placement.position[2]);
+                collision->center[1] = placement.position[1] + displacement +
+                                       collision->halfExtents[1];
+            }
         }
     }
 
