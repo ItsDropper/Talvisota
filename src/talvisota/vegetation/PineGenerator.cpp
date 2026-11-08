@@ -101,7 +101,7 @@ TreeSkeleton GeneratePine(const SpeciesBuild& build) noexcept
                 shoot.stepCount = 2;
                 shoot.droop = 0.015F;
                 shoot.order = 2;
-                shoot.materialGroup = 2;
+                shoot.materialGroup = 4;
                 shoot.noiseScale = 0.22F;
                 shoot.taperPower = 0.8F;
                 shoot.bearingKind = 2;
