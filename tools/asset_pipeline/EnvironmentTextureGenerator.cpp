@@ -227,7 +227,7 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
     {
         // Compaction follows irregular pressure and foot/vehicle scuffing rather
         // than a periodic sine wave, which produced conspicuous parallel tracks.
-        const float compression = Fbm(u * 0.25F, v, 18,
+        const float compression = Fbm(u * 0.5F, v, 18,
             seed ^ 0x510e527fU, 4);
         const float scuff = Fbm(u, v, 42, seed ^ 0x1f83d9abU, 3);
         const float granular = Fbm(u, v, 156, seed ^ 0x5be0cd19U, 2);
