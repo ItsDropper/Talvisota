@@ -672,10 +672,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
 
     std::cout << "Sakkola scene composition: placements=" << placements
         << ", draw submissions=" << draws << ", unique meshes=" << scene.meshes.size()
-        << ", materials=" << scene.materials.size() << ".\\n";
+        << ", materials=" << scene.materials.size() << ".\n";
     if (captureLog) captureLog << "Sakkola scene composition: placements=" << placements
         << ", draw submissions=" << draws << ", unique meshes=" << scene.meshes.size()
-        << ", materials=" << scene.materials.size() << ".\\n";
+        << ", materials=" << scene.materials.size() << ".\n";
 
     const std::vector<float> meshCullRadii = BuildMeshCullRadii(scene);
 
@@ -785,8 +785,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 std::to_string(p95FrameMs) + ", avgRenderCpuMs=" +
                 std::to_string(averageRenderMs) + ", p95RenderCpuMs=" +
                 std::to_string(p95RenderMs);
-            std::cout << timingSummary << "\\n";
-            if (captureLog) captureLog << timingSummary << "\\n";
+            std::cout << timingSummary << "\n";
+            if (captureLog) captureLog << timingSummary << "\n";
             std::vector<std::uint8_t> framebuffer;
             std::uint32_t framebufferWidth = 0U, framebufferHeight = 0U;
             if (!renderer->ReadbackPresentedFrame(framebuffer, framebufferWidth, framebufferHeight, error))
@@ -826,7 +826,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 << view.eye.y << "," << view.eye.z << ") target=(" << view.target.x << ","
                 << view.target.y << "," << view.target.z << "), frame=" << frameNumber
                 << ", framebuffer=" << framebufferWidth << "x" << framebufferHeight
-                << ", FNV1a=0x" << std::hex << frameHash << std::dec << "\\n";
+                << ", FNV1a=0x" << std::hex << frameHash << std::dec << "\n";
 
         }
         renderer.reset();
@@ -861,7 +861,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     int oldWidth = client.right - client.left, oldHeight = client.bottom - client.top;
     MSG message{};
     bool running = true;
-    std::cout << "Free camera: WASD move, Q/E descend/ascend, arrow keys look, Shift accelerates, Escape exits.\\n";
+    std::cout << "Free camera: WASD move, Q/E descend/ascend, arrow keys look, Shift accelerates, Escape exits.\n";
     while (running) {
         while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE) != FALSE) {
             if (message.message == WM_QUIT) { running = false; break; }
@@ -916,7 +916,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         if (w <= 0 || h <= 0) { Sleep(16); continue; }
         if (w != oldWidth || h != oldHeight) {
             if (!renderer->Resize(w, h, error)) {
-                std::cerr << "Renderer resize failed: " << error << "\\n";
+                std::cerr << "Renderer resize failed: " << error << "\n";
                 break;
             }
             oldWidth = w; oldHeight = h; cameraChanged = true;
