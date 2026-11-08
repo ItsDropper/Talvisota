@@ -171,9 +171,12 @@ public:
 
         const bool rendered = m_d3d12 ? m_d3d12->Render(frame) : m_d3d11->Render(frame);
         if (!rendered) {
-            error = IsDeviceLost()
-                ? "The graphics device was removed while rendering the submitted scene."
-                : "VantaEngine failed to render the submitted scene frame.";
+            if (m_d3d12 && !m_d3d12->LastRenderError().empty())
+                error = m_d3d12->LastRenderError();
+            else
+                error = IsDeviceLost()
+                    ? "The graphics device was removed while rendering the submitted scene."
+                    : "VantaEngine failed to render the submitted scene frame.";
             return false;
         }
 
