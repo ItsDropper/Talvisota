@@ -158,29 +158,48 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
 
     if (preset == "bark")
     {
-        const float ridge = std::sin((u * 34.0F + (broad - 0.5F) * 0.7F) * 2.0F * Pi);
-        const float fissure = Smooth((std::abs(ridge) - 0.72F) * 7.0F);
-        const float height = 0.50F + ridge * 0.12F + (medium - 0.5F) * 0.12F +
-            (fine - 0.5F) * 0.045F - fissure * 0.065F - knot * 0.08F;
-        const float variation = (broad - 0.5F) * 0.11F + (fine - 0.5F) * 0.035F;
-        sample = {0.205F + variation - fissure * 0.055F,
-                  0.108F + variation * 0.62F - fissure * 0.035F,
-                  0.052F + variation * 0.38F - fissure * 0.020F,
-                  height, 0.82F + medium * 0.13F, 0.96F - fissure * 0.48F - knot * 0.22F};
+        // Longitudinal spruce bark plates, torn fissure edges, shallow flakes,
+        // fine fibre relief and sparse cold-weather lichen.
+        const float warpedU = u + (broad - 0.5F) * 0.018F + (medium - 0.5F) * 0.006F;
+        const float ridge = std::sin((warpedU * 39.0F + (broad - 0.5F) * 0.7F) * 2.0F * Pi);
+        const float fissure = Smooth((std::abs(ridge) - 0.67F) * 9.0F);
+        const float flakeNoise = Fbm(u, v, 188, seed ^ 0x243f6a88U, 3);
+        const float flakeEdges = Smooth((std::abs(flakeNoise - 0.5F) - 0.30F) * 15.0F);
+        const float lichenField = Fbm(u, v, 17, seed ^ 0xb7e15162U, 4);
+        const float lichen = Smooth((lichenField - 0.70F) * 7.0F) *
+            Smooth((fine - 0.39F) * 3.5F);
+        const float fibre = Fbm(u, v, 420, seed ^ 0x9e3779b9U, 2);
+        const float height = 0.50F + ridge * 0.13F + (medium - 0.5F) * 0.11F +
+            (fine - 0.5F) * 0.052F + (fibre - 0.5F) * 0.025F -
+            fissure * 0.085F - flakeEdges * 0.022F - knot * 0.08F;
+        const float variation = (broad - 0.5F) * 0.12F + (fine - 0.5F) * 0.035F;
+        sample = {0.205F + variation - fissure * 0.070F + lichen * 0.035F,
+                  0.108F + variation * 0.62F - fissure * 0.045F + lichen * 0.030F,
+                  0.052F + variation * 0.38F - fissure * 0.026F + lichen * 0.018F,
+                  height, 0.79F + medium * 0.15F + flakeEdges * 0.035F,
+                  0.96F - fissure * 0.54F - knot * 0.22F - flakeEdges * 0.08F};
     }
     else if (preset == "pine_needles")
     {
+        // Directional individual-needle striations sit inside larger,
+        // irregular sprays; the two scales break up the old sinusoidal tiling.
         const float clumps = Fbm(u, v, 18, seed ^ 0x3c6ef372U, 4);
-        const float needle = std::sin((u * 142.0F + v * 57.0F +
-            (clumps - 0.5F) * 1.8F) * 2.0F * Pi);
+        const float sprays = Fbm(u, v, 54, seed ^ 0xa54ff53aU, 3);
+        const float needle = std::sin((u * 186.0F + v * 71.0F +
+            (clumps - 0.5F) * 2.4F + (sprays - 0.5F) * 0.9F) * 2.0F * Pi);
+        const float needleEdge = Smooth((std::abs(needle) - 0.80F) * 11.0F);
         const float clusters = Smooth((clumps - 0.27F) * 2.3F);
-        const float height = 0.50F + needle * (0.055F + clusters * 0.045F) +
-            (fine - 0.5F) * 0.065F + (grain - 0.5F) * 0.025F;
-        const float highlight = std::max(0.0F, needle) * clusters * 0.035F;
-        sample = {0.038F + broad * 0.035F + highlight,
-                  0.105F + broad * 0.070F + highlight * 1.2F,
-                  0.045F + medium * 0.030F + highlight * 0.45F,
-                  height, 0.86F + medium * 0.10F, 0.88F + clusters * 0.08F};
+        const float cuticle = Fbm(u, v, 360, seed ^ 0x510e527fU, 2);
+        const float height = 0.50F + needle * (0.065F + clusters * 0.055F) +
+            (fine - 0.5F) * 0.055F + (grain - 0.5F) * 0.030F +
+            (cuticle - 0.5F) * 0.022F - needleEdge * 0.025F;
+        const float highlight = std::max(0.0F, needle) * clusters * 0.032F;
+        const float shadow = needleEdge * clusters * 0.018F;
+        sample = {0.038F + broad * 0.035F + highlight - shadow,
+                  0.105F + broad * 0.070F + highlight * 1.2F - shadow * 0.8F,
+                  0.045F + medium * 0.030F + highlight * 0.45F - shadow * 0.4F,
+                  height, 0.86F + medium * 0.10F + cuticle * 0.025F,
+                  0.88F + clusters * 0.08F - needleEdge * 0.045F};
     }
     else if (preset == "birch_bark")
     {
