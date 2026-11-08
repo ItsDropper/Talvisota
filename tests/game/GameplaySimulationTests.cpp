@@ -142,10 +142,11 @@ int main()
 
     Check(state.entities.SetPosition("entity.telephone", {20.0F, 0.0F, 0.0F}, error),
         "target can be moved outside interaction range");
-    const std::array<InteractionCommand, 1> secondObjective{{
-        {"command.report-contact", "entity.player", "entity.telephone"}
+    const std::array<InteractionCommand, 1> secondObjectiveOutOfRange{{
+        {"command.report-contact-out-of-range", "entity.player", "entity.telephone"}
     }};
-    Check(AdvanceSimulation(state, rules, 1.0 / 60.0, secondObjective, results, error),
+    Check(AdvanceSimulation(state, rules, 1.0 / 60.0,
+        secondObjectiveOutOfRange, results, error),
         "out-of-range interaction is handled without failing the tick");
     Check(results[0].outcome == CommandOutcome::OutOfRange &&
         state.mission.completedObjectives == 1U,
@@ -153,7 +154,11 @@ int main()
 
     Check(state.entities.SetPosition("entity.telephone", {2.0F, 0.0F, 0.0F}, error),
         "target returns to interaction range");
-    Check(AdvanceSimulation(state, rules, 1.0 / 60.0, secondObjective, results, error),
+    const std::array<InteractionCommand, 1> secondObjectiveInRange{{
+        {"command.report-contact-in-range", "entity.player", "entity.telephone"}
+    }};
+    Check(AdvanceSimulation(state, rules, 1.0 / 60.0,
+        secondObjectiveInRange, results, error),
         "second in-range interaction advances the mission");
     Check(results[0].outcome == CommandOutcome::MissionCompleted &&
         state.mission.status == game::MissionStatus::Completed,
