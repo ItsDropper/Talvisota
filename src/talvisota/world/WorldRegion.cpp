@@ -526,7 +526,8 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
             if (!haveMin || !haveMax ||
                 surface.minX >= surface.maxX || surface.minZ >= surface.maxZ ||
                 surface.minX < candidate.boundsMin[0] || surface.maxX > candidate.boundsMax[0] ||
-                surface.minZ < candidate.boundsMin[2] || surface.maxZ > candidate.boundsMax[2])
+                surface.minZ < candidate.boundsMin[2] || surface.maxZ > candidate.boundsMax[2] ||
+                surface.elevation < candidate.boundsMin[1] || surface.elevation > candidate.boundsMax[1])
                 valid = false;
             if (!valid)
                 Add(diagnostics, path, lineNumber, "water_surface.bounds",
