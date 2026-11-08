@@ -164,6 +164,10 @@ TreeMesh BuildSnowMesh(const TreeSkeleton& skeleton)
             const float length = Length(axis);
             if (length <= 1.0e-5F) continue;
             const Float3 tangent = axis * (1.0F / length);
+            const float radiusScale = std::clamp(
+                segment.startRadius / chain.snowCapture.carryingRadius, 0.18F, 1.0F);
+            const float localWidth = width * radiusScale;
+            const float localThickness = thickness * std::sqrt(radiusScale);
             Float3 up = Float3{0.0F, 1.0F, 0.0F} -
                 tangent * Dot(Float3{0.0F, 1.0F, 0.0F}, tangent);
             if (Length(up) <= 1.0e-4F) up = SafePerpendicular(tangent);
@@ -183,8 +187,8 @@ TreeMesh BuildSnowMesh(const TreeSkeleton& skeleton)
                     const float across = std::sin(angle);
                     const float crown = std::cos(angle);
                     const Float3 normal = Normalized(up * crown + side * across);
-                    const Float3 position = center + up * (branchRadius + thickness * crown) +
-                        side * (width * across);
+                    const Float3 position = center + up * (branchRadius + localThickness * crown) +
+                        side * (localWidth * across);
                     mesh.vertices.push_back({position, normal,
                         static_cast<float>(sample) / static_cast<float>(crossSectionSteps),
                         (static_cast<float>(segment.generation) + static_cast<float>(ring)) *
