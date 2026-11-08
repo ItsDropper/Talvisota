@@ -210,11 +210,26 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
             (cuticle - 0.5F) * 0.022F - needleEdge * 0.025F;
         const float highlight = std::max(0.0F, needle) * clusters * 0.032F;
         const float shadow = needleEdge * clusters * 0.018F;
-        sample = {0.038F + broad * 0.035F + highlight - shadow,
-                  0.105F + broad * 0.070F + highlight * 1.2F - shadow * 0.8F,
-                  0.045F + medium * 0.030F + highlight * 0.45F - shadow * 0.4F,
-                  height, 0.86F + medium * 0.10F + cuticle * 0.025F,
-                  0.88F + clusters * 0.08F - needleEdge * 0.045F};
+        // Snow catches in dense needle sprays and on the upper faces of the
+        // foliage cards. Keep the coverage broken up so the crown remains
+        // recognizably evergreen instead of becoming a uniform white mass.
+        const float snowClumps = Smooth((clumps - 0.58F) * 8.0F);
+        const float snowFrost = Smooth((sprays - 0.52F) * 9.0F);
+        const float snowCoverage = std::clamp(
+            snowClumps * (0.60F + snowFrost * 0.40F) * 0.70F, 0.0F, 0.70F);
+        const float greenRed = 0.038F + broad * 0.035F + highlight - shadow;
+        const float green = 0.105F + broad * 0.070F + highlight * 1.2F - shadow * 0.8F;
+        const float greenBlue = 0.045F + medium * 0.030F + highlight * 0.45F - shadow * 0.4F;
+        sample = {
+            greenRed + (0.78F - greenRed) * snowCoverage,
+            green + (0.85F - green) * snowCoverage,
+            greenBlue + (0.94F - greenBlue) * snowCoverage,
+            height + snowCoverage * 0.035F,
+            0.86F + medium * 0.10F + cuticle * 0.025F +
+                snowCoverage * 0.075F,
+            0.88F + clusters * 0.08F - needleEdge * 0.045F +
+                snowCoverage * 0.09F
+        };
     }
     else if (preset == "birch_bark")
     {
@@ -289,18 +304,21 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
             (microCrust - 0.5F) * 0.014F + (microSparkle - 0.5F) * 0.008F;
         const float height = 0.50F + (drift - 0.5F) * 0.105F +
             (driftShoulder - 0.5F) * 0.042F + micro;
-        const float albedoVariation = (drift - 0.5F) * 0.105F +
-            (driftShoulder - 0.5F) * 0.060F + micro * 0.52F +
-            (microCrust - 0.5F) * 0.020F;
+        // Preserve a bright snow response while giving the broad drift,
+        // shoulder and crystal fields enough encoded contrast to survive
+        // distance filtering on the 4 km Sakkola terrain.
+        const float albedoVariation = (drift - 0.5F) * 0.19F +
+            (driftShoulder - 0.5F) * 0.11F + micro * 0.72F +
+            (microCrust - 0.5F) * 0.045F;
         const float frost = Smooth((crystalClusters - 0.34F) * 2.4F);
         const float packedCrust = Smooth((microCrust - 0.56F) * 4.5F);
         sample = {0.875F + albedoVariation,
                   0.895F + albedoVariation * 0.91F,
                   0.925F + albedoVariation * 0.78F,
-                  height, 0.89F + driftShoulder * 0.075F + frost * 0.012F +
-                    packedCrust * 0.018F + microSparkle * 0.012F,
+                  height, 0.89F + driftShoulder * 0.095F + frost * 0.012F +
+                    packedCrust * 0.032F + microSparkle * 0.018F,
                   0.985F - frost * 0.075F - Smooth((crystalGrain - 0.88F) * 8.0F) * 0.035F -
-                    packedCrust * 0.018F};
+                    packedCrust * 0.025F};
     }
     else if (preset == "packed_snow")
     {
@@ -390,11 +408,13 @@ bool VerifyProceduralPreset(const std::string_view preset, const std::uint32_t s
             return false;
         }
     }
-    if (preset != "snow" && preset != "ice")
+    if (preset != "snow" && preset != "ice" && preset != "pine_needles")
     {
         error.clear();
         return true;
     }
+    std::size_t snowCoveredNeedleSamples = 0U;
+    constexpr std::size_t sampleCount = 64U * 64U;
     for (int y = 0; y < 64; ++y)
     {
         for (int x = 0; x < 64; ++x)
@@ -407,11 +427,23 @@ bool VerifyProceduralPreset(const std::string_view preset, const std::uint32_t s
             maximumRoughness = std::max(maximumRoughness, sample.roughness);
             minimumAlbedo = std::min(minimumAlbedo, sample.red);
             maximumAlbedo = std::max(maximumAlbedo, sample.red);
+            if (preset == "pine_needles" && sample.red > 0.25F)
+                ++snowCoveredNeedleSamples;
+        }
+    }
+    if (preset == "pine_needles")
+    {
+        const double snowCoverage = static_cast<double>(snowCoveredNeedleSamples) /
+            static_cast<double>(sampleCount);
+        if (snowCoverage < 0.05 || snowCoverage > 0.45)
+        {
+            error = "Pine needle PBR field must retain broken-up, measurable snow coverage.";
+            return false;
         }
     }
     if (maximumHeight - minimumHeight < 0.018F ||
         maximumRoughness - minimumRoughness < (preset == "ice" ? 0.16F : 0.045F) ||
-        (preset == "snow" && maximumAlbedo - minimumAlbedo < 0.045F))
+        (preset == "snow" && maximumAlbedo - minimumAlbedo < 0.075F))
     {
         error = std::string(preset) + " procedural PBR fields lack the required relief or roughness variation.";
         return false;
@@ -645,7 +677,7 @@ bool VerifyAll(const std::filesystem::path& directory, std::string& error)
             const std::string filename = std::string(preset) + "-" +
                 std::string(channel) + ".bmp";
             const float minimumAlbedoDeviation =
-                preset == "snow" || preset == "packed_snow" ? 1.5F : 0.0F;
+                 preset == "snow" ? 3.5F : preset == "packed_snow" ? 1.5F : 0.0F;
             if (!VerifyBmp(directory / filename, error,
                     channel == "albedo" ? minimumAlbedoDeviation : 0.0F))
                 return false;
@@ -695,7 +727,8 @@ bool GeneratePreset(const std::filesystem::path& outputDirectory,
     }
 
     const float normalStrength = preset == "ice" ? 9.0F :
-        preset == "snow" ? 7.0F : preset == "packed_snow" ? 6.2F : 8.0F;
+        preset == "snow" ? 7.0F : preset == "packed_snow" ? 6.2F :
+        preset == "pine_needles" ? 3.0F : 8.0F;
     for (int y = 0; y < height; ++y)
     {
         const int y0 = Wrap(y - 1, height);
