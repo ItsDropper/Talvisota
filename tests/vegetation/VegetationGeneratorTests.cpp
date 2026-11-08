@@ -66,7 +66,14 @@ void Validate(const Species species, const std::uint64_t seed)
     if (species == Species::Birch)
         assert(needles.indices.empty());
     else
+    {
         assert(!needles.indices.empty() && needles.sections.front().materialGroup == 4);
+        for (const auto index : needles.indices)
+            assert(index < needles.vertices.size());
+        for (const auto& vertex : needles.vertices)
+            assert(std::isfinite(vertex.position[0]) && std::isfinite(vertex.position[1]) &&
+                std::isfinite(vertex.position[2]));
+    }
     if (species == Species::Birch)
         assert(snow.indices.empty());
     else
