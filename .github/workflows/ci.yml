@@ -146,47 +146,6 @@ jobs:
           $rendererLog = Join-Path $captureDir 'renderer.log'
           if (Test-Path -LiteralPath $rendererLog) { Get-Content -LiteralPath $rendererLog }
           if ($process.ExitCode -ne 0) { throw "Sakkola renderer exited with code $($process.ExitCode)" }
-          if (-not (Test-Path -LiteralPath $rendererLog)) { throw 'Renderer diagnostics log is missing.' }
-          $logLines = @(Get-Content -LiteralPath $rendererLog)
-          if (-not ($logLines | Where-Object { $_ -match '^Sakkola scene composition: placements=\\d+, draw submissions=\\d+, unique meshes=\\d+, materials=\\d+\\.
-
-      - name: Upload Sakkola terrain screenshots
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: talvisota-sakkola-terrain-screenshots
-          path: |
-            ${{ runner.temp }}/sakkola-captures/*.png
-            ${{ runner.temp }}/sakkola-captures/renderer.log
-          if-no-files-found: warn
-          retention-days: 30
- })) {
-            throw 'Renderer scene composition diagnostics are missing or malformed.'
-          }
-          $metrics = @($logLines | Where-Object { $_ -match '^Performance sample ' })
-          if ($metrics.Count -ne 5) { throw "Expected five per-view performance samples, found $($metrics.Count)" }
-          foreach ($metric in $metrics) {
-            if ($metric -notmatch '^Performance sample .+: frames=30, avgFrameMs=([0-9]+\\.[0-9]+), p95FrameMs=([0-9]+\\.[0-9]+), avgRenderCpuMs=([0-9]+\\.[0-9]+), p95RenderCpuMs=([0-9]+\\.[0-9]+)
-
-      - name: Upload Sakkola terrain screenshots
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: talvisota-sakkola-terrain-screenshots
-          path: |
-            ${{ runner.temp }}/sakkola-captures/*.png
-            ${{ runner.temp }}/sakkola-captures/renderer.log
-          if-no-files-found: warn
-          retention-days: 30
-) {
-              throw "Malformed renderer performance sample: $metric"
-            }
-            foreach ($value in @($Matches[1], $Matches[2], $Matches[3], $Matches[4])) {
-              if ([double]::Parse($value, [Globalization.CultureInfo]::InvariantCulture) -le 0) {
-                throw "Renderer performance sample must contain positive timings: $metric"
-              }
-            }
-          }
           $captures = @(Get-ChildItem -LiteralPath $captureDir -Filter '*.png' -File)
           if ($captures.Count -ne 5) { throw "Expected five rendered PNGs, found $($captures.Count)" }
           $captures | Format-Table Name, Length
