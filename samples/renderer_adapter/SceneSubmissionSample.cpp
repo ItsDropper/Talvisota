@@ -278,7 +278,8 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
 
         if (proceduralTree) {
             std::uint64_t placementHash = 1469598103934665603ULL;
-            for (const unsigned char character : placement.id) {
+            for (const char rawCharacter : placement.id) {
+                const auto character = static_cast<unsigned char>(rawCharacter);
                 placementHash ^= character;
                 placementHash *= 1099511628211ULL;
             }
