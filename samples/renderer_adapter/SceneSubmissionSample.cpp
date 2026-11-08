@@ -504,7 +504,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 break;
             }
             capturedFrameHashes.push_back(frameHash);
-            std::cout << "Viewpoint " << view.file << ": eye=(" << view.eye.x << ","
+            std::cout << "Viewpoint " << std::filesystem::path(view.file).string() << ": eye=(" << view.eye.x << ","
                 << view.eye.y << "," << view.eye.z << ") target=(" << view.target.x << ","
                 << view.target.y << "," << view.target.z << "), frame=" << frameNumber
                 << ", framebuffer=" << framebufferWidth << "x" << framebufferHeight
