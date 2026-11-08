@@ -145,6 +145,22 @@ void TestAuthoredWorldSimulation()
         {"command.first-patrol.inspect-well-out-of-range",
             state.playerEntityId, "prop.well.farmstead"}
     }};
+    ActiveObjectiveTarget waypoint;
+    Check(FindActiveObjectiveTarget(state, state.playerEntityId, waypoint, error) &&
+        waypoint.entityId == "prop.well.farmstead" &&
+        waypoint.position == well->position &&
+        waypoint.distanceMeters > rules.interactionRadiusMeters,
+        "all-range objective query resolves the authored well waypoint from player spawn");
+
+    ActiveObjectiveTarget preservedWaypoint;
+    preservedWaypoint.entityId = "preserved.waypoint";
+    preservedWaypoint.position = {9.0F, 8.0F, 7.0F};
+    preservedWaypoint.distanceMeters = 6.0F;
+    Check(!FindActiveObjectiveTarget(state, "entity.missing", preservedWaypoint, error) &&
+        preservedWaypoint.entityId == "preserved.waypoint" &&
+        preservedWaypoint.distanceMeters == 6.0F,
+        "invalid actor query fails without mutating waypoint output");
+
     Check(AdvanceSimulation(state, rules, 1.0 / 60.0,
         inspectWellOutOfRange, results, error) &&
         results.size() == 1U && results[0].outcome == CommandOutcome::OutOfRange &&
@@ -169,6 +185,28 @@ void TestAuthoredWorldSimulation()
         state.mission.completedObjectives == 1U,
         "a new in-range command completes the first authored objective after the out-of-range attempt");
 
+    Check(FindActiveObjectiveTarget(state, state.playerEntityId, waypoint, error) &&
+        waypoint.entityId == "prop.woodpile.west" &&
+        waypoint.position == woodpile->position,
+        "all-range waypoint advances to the authored woodpile after well completion");
+
+    SimulationState missingTargetState = state;
+    Check(missingTargetState.entities.Despawn("prop.woodpile.west", error),
+        "active waypoint target can be removed for missing-target regression");
+    preservedWaypoint.entityId = "preserved.missing";
+    Check(!FindActiveObjectiveTarget(missingTargetState, state.playerEntityId,
+        preservedWaypoint, error) && preservedWaypoint.entityId == "preserved.missing",
+        "missing active objective entity is rejected without changing waypoint output");
+
+    SimulationState inactiveTargetState = state;
+    Check(inactiveTargetState.entities.SetActive("prop.woodpile.west", false, error),
+        "active waypoint target can be deactivated for regression");
+    preservedWaypoint.entityId = "preserved.inactive";
+    Check(!FindActiveObjectiveTarget(inactiveTargetState, state.playerEntityId,
+        preservedWaypoint, error) && preservedWaypoint.entityId == "preserved.inactive",
+        "inactive active-objective target is rejected without changing waypoint output");
+
+
     Check(state.entities.SetPosition(state.playerEntityId, woodpile->position, error),
         "player simulation entity moves to the authored woodpile placement");
     const std::array<InteractionCommand, 1> inspectWoodpile{{
@@ -179,6 +217,12 @@ void TestAuthoredWorldSimulation()
         state.mission.completedObjectives == 2U,
         "interacting with the real woodpile placement completes the second objective");
 
+    Check(FindActiveObjectiveTarget(state, state.playerEntityId, waypoint, error) &&
+        waypoint.entityId == "church.sakkola" &&
+        waypoint.position == church->position,
+        "all-range waypoint advances to the authored church after woodpile completion");
+
+
     Check(state.entities.SetPosition(state.playerEntityId, church->position, error),
         "player simulation entity moves to the authored church placement");
     const std::array<InteractionCommand, 1> reportChurch{{
@@ -188,6 +232,11 @@ void TestAuthoredWorldSimulation()
         results.size() == 1U && results[0].outcome == CommandOutcome::MissionCompleted &&
         state.mission.status == game::MissionStatus::Completed,
         "interacting with the real church placement completes First Patrol");
+
+    Check(FindActiveObjectiveTarget(state, state.playerEntityId, waypoint, error) &&
+        waypoint.entityId.empty(),
+        "completed First Patrol produces no active-objective waypoint");
+
 
     SimulationState preserved;
     preserved.tickIndex = 91U;
