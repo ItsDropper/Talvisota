@@ -51,6 +51,15 @@ struct InteractionTargetSelection final
     float distanceMeters = 0.0F;
 };
 
+// All-range waypoint snapshot for the currently active objective. This is
+// deliberately separate from InteractionTargetSelection, which is range-limited.
+struct ActiveObjectiveTarget final
+{
+    std::string entityId;
+    std::array<float, 3> position{};
+    float distanceMeters = 0.0F;
+};
+
 struct SimulationState final
 {
     entities::EntityRegistry entities;
@@ -87,6 +96,12 @@ struct SimulationState final
 [[nodiscard]] bool FindNearestActiveObjectiveTarget(const SimulationState& state,
     std::string_view actorEntityId, float maximumDistanceMeters,
     InteractionTargetSelection& output, std::string& error);
+
+// Resolves the active objective's world-object entity regardless of distance.
+// Terminal/ready missions return an empty snapshot. Missing, inactive, ambiguous,
+// or malformed active targets are errors; output is unchanged on error.
+[[nodiscard]] bool FindActiveObjectiveTarget(const SimulationState& state,
+    std::string_view actorEntityId, ActiveObjectiveTarget& output, std::string& error);
 
 // Advances exactly one deterministic simulation tick. Commands are processed in
 // caller-provided order. The state and result vector are unchanged on validation failure.
