@@ -96,63 +96,99 @@ public:
         if (!ValidateSceneSnapshot(snapshot, error))
             return false;
 
-        m_scene.Clear();
-        std::vector<vanta::renderer::MeshHandle> meshes;
-        meshes.reserve(snapshot.meshes.size());
-        for (const RenderMesh& source : snapshot.meshes) {
-            vanta::renderer::MeshDescription mesh;
-            mesh.vertices.reserve(source.vertices.size());
-            mesh.indices = source.indices;
-            for (const RenderVertex& vertex : source.vertices) {
-                mesh.vertices.push_back({
-                    {vertex.position[0], vertex.position[1], vertex.position[2]},
-                    {vertex.normal[0], vertex.normal[1], vertex.normal[2]},
-                    vertex.u, vertex.v
-                });
-            }
-            const auto handle = m_scene.CreateMesh(std::move(mesh));
-            if (!handle.IsValid()) {
-                error = "VantaEngine rejected a game-owned mesh during scene translation.";
-                m_scene.Clear();
-                return false;
-            }
-            meshes.push_back(handle);
+        // Static world resources are uploaded to SceneSubmission once. Rebuilding these
+        // handles every frame caused every mesh/material/instance to be copied and recreated
+        // on the CPU before the renderer could even begin its GPU work.
+        const bool rebuildResources = m_meshes.size() != snapshot.meshes.size() ||
+            m_materials.size() != snapshot.materials.size();
+        if (rebuildResources) {
+            m_scene.Clear();
+            m_meshes.clear();
+            m_materials.clear();
+            m_instances.clear();
         }
 
-        std::vector<vanta::renderer::MaterialHandle> materials;
-        materials.reserve(snapshot.materials.size());
-        for (const RenderMaterial& source : snapshot.materials) {
-            vanta::renderer::MaterialDescription material;
-            material.baseColor = {
-                source.baseColor[0], source.baseColor[1], source.baseColor[2]
-            };
-            material.roughness = source.roughness;
-            material.metallic = source.metallic;
-            material.baseColorTexture = source.baseColorTexture;
-            material.normalTexture = source.normalTexture;
-            material.roughnessTexture = source.roughnessTexture;
-            material.metallicTexture = source.metallicTexture;
-            material.ambientOcclusionTexture = source.ambientOcclusionTexture;
-            material.packedMetallicRoughness = source.packedMetallicRoughness;
-            const auto handle = m_scene.CreateMaterial(std::move(material));
-            if (!handle.IsValid()) {
-                error = "VantaEngine rejected a game-owned material during scene translation.";
-                m_scene.Clear();
-                return false;
+        if (m_meshes.empty() && !snapshot.meshes.empty()) {
+            m_meshes.reserve(snapshot.meshes.size());
+            for (const RenderMesh& source : snapshot.meshes) {
+                vanta::renderer::MeshDescription mesh;
+                mesh.vertices.reserve(source.vertices.size());
+                mesh.indices = source.indices;
+                for (const RenderVertex& vertex : source.vertices) {
+                    mesh.vertices.push_back({
+                        {vertex.position[0], vertex.position[1], vertex.position[2]},
+                        {vertex.normal[0], vertex.normal[1], vertex.normal[2]},
+                        vertex.u, vertex.v
+                    });
+                }
+                const auto handle = m_scene.CreateMesh(std::move(mesh));
+                if (!handle.IsValid()) {
+                    error = "VantaEngine rejected a game-owned mesh during scene translation.";
+                    ResetSubmission();
+                    return false;
+                }
+                m_meshes.push_back(handle);
             }
-            materials.push_back(handle);
         }
 
-        for (const RenderInstance& source : snapshot.instances) {
-            if (!source.visible)
-                continue;
-            vanta::math::Mat4 world;
-            std::copy(source.world.begin(), source.world.end(), world.elements);
-            if (!m_scene.CreateInstance(meshes[source.meshIndex],
-                    materials[source.materialIndex], world).IsValid()) {
-                error = "VantaEngine rejected a game-owned scene instance.";
-                m_scene.Clear();
-                return false;
+        if (m_materials.empty() && !snapshot.materials.empty()) {
+            m_materials.reserve(snapshot.materials.size());
+            for (const RenderMaterial& source : snapshot.materials) {
+                vanta::renderer::MaterialDescription material;
+                material.baseColor = {
+                    source.baseColor[0], source.baseColor[1], source.baseColor[2]
+                };
+                material.roughness = source.roughness;
+                material.metallic = source.metallic;
+                material.baseColorTexture = source.baseColorTexture;
+                material.normalTexture = source.normalTexture;
+                material.roughnessTexture = source.roughnessTexture;
+                material.metallicTexture = source.metallicTexture;
+                material.ambientOcclusionTexture = source.ambientOcclusionTexture;
+                material.packedMetallicRoughness = source.packedMetallicRoughness;
+                const auto handle = m_scene.CreateMaterial(std::move(material));
+                if (!handle.IsValid()) {
+                    error = "VantaEngine rejected a game-owned material during scene translation.";
+                    ResetSubmission();
+                    return false;
+                }
+                m_materials.push_back(handle);
+            }
+        }
+
+        if (m_instances.size() != snapshot.instances.size()) {
+            for (const auto handle : m_instances)
+                (void)m_scene.DestroyInstance(handle);
+            m_instances.clear();
+            m_instances.reserve(snapshot.instances.size());
+            for (const RenderInstance& source : snapshot.instances) {
+                vanta::math::Mat4 world;
+                std::copy(source.world.begin(), source.world.end(), world.elements);
+                const auto handle = m_scene.CreateInstance(
+                    m_meshes[source.meshIndex], m_materials[source.materialIndex], world);
+                if (!handle.IsValid()) {
+                    error = "VantaEngine rejected a game-owned scene instance.";
+                    ResetSubmission();
+                    return false;
+                }
+                m_instances.push_back(handle);
+                if (!m_scene.SetVisible(handle, source.visible)) {
+                    error = "VantaEngine rejected an instance visibility update.";
+                    ResetSubmission();
+                    return false;
+                }
+            }
+        } else {
+            for (std::size_t index = 0; index < snapshot.instances.size(); ++index) {
+                const RenderInstance& source = snapshot.instances[index];
+                vanta::math::Mat4 world;
+                std::copy(source.world.begin(), source.world.end(), world.elements);
+                if (!m_scene.SetTransform(m_instances[index], world) ||
+                    !m_scene.SetVisible(m_instances[index], source.visible)) {
+                    error = "VantaEngine rejected a persistent scene-instance update.";
+                    ResetSubmission();
+                    return false;
+                }
             }
         }
 
@@ -209,10 +245,21 @@ public:
     }
 
 private:
+    void ResetSubmission() noexcept
+    {
+        m_scene.Clear();
+        m_meshes.clear();
+        m_materials.clear();
+        m_instances.clear();
+    }
+
     RendererBackend m_backend;
     std::unique_ptr<vanta::D3D11Renderer> m_d3d11;
     std::unique_ptr<vanta::D3D12Renderer> m_d3d12;
     vanta::renderer::SceneSubmission m_scene;
+    std::vector<vanta::renderer::MeshHandle> m_meshes;
+    std::vector<vanta::renderer::MaterialHandle> m_materials;
+    std::vector<vanta::renderer::InstanceHandle> m_instances;
 };
 } // namespace
 
