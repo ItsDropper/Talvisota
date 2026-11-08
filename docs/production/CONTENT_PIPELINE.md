@@ -54,3 +54,6 @@ Every manifest record requires source and licence/permission metadata. Keep sour
 ## Renderer capture diagnostics
 
 The Windows MSVC renderer-adapter CI job renders five genuine D3D12 Sakkola viewpoints for 30 frames each. Its `renderer.log` artifact records the submitted scene placement/draw/unique-mesh/material counts and per-view average/p95 wall-frame time plus average/p95 `Render()` CPU-call time. Wall-frame timing includes the sample's 16 ms pacing delay; `Render()` timing is CPU-observed call duration and may include driver/present blocking. Neither value is a GPU timestamp measurement. CI runner numbers are useful for regressions on the same runner class only; they do not establish target-PC performance or replace real-device D3D11/D3D12 profiling and visual review.
+
+
+Screenshot CI uses one rendered frame per viewpoint and disables the sample's interactive 16 ms frame pacing while capture mode is active. This minimizes capture overhead; its single-frame timing is diagnostic only and is not a stable performance benchmark. Interactive renderer mode retains frame pacing.
