@@ -85,6 +85,18 @@ void Validate(const Species species, const std::uint64_t seed)
             assert(std::isfinite(vertex.position[0]) && std::isfinite(vertex.position[1]) &&
                 std::isfinite(vertex.position[2]));
     }
+    if (species == Species::Birch)
+    {
+        bool hasDarkBase = false;
+        bool hasPaleStem = false;
+        for (const auto& segment : a.segments)
+        {
+            if (segment.order != 0) continue;
+            hasDarkBase = hasDarkBase || segment.materialGroup == 3;
+            hasPaleStem = hasPaleStem || segment.materialGroup == 0;
+        }
+        assert(hasDarkBase && hasPaleStem);
+    }
     const auto measurements = MeasureTrunk(a);
     assert(measurements.height == a.height);
     assert(measurements.buttRadius > measurements.tipRadius);
