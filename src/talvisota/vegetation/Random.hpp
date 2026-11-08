@@ -8,7 +8,7 @@ namespace talvisota::vegetation
 // SplitMix64 core: the vegetation library must only ever produce deterministic
 // geometry, so all variation flows through this single well-defined mixing
 // function. Same seed -> identical tree bytes across tool runs and machines.
-[[nodiscard]] std::uint64_t Mix64(std::uint64_t value) noexcept
+[[nodiscard]] inline std::uint64_t Mix64(std::uint64_t value) noexcept
 {
     value += 0x9E3779B97F4A7C15ULL;
     value = (value ^ (value >> 30U)) * 0xBF58476D1CE4E5B9ULL;
@@ -94,7 +94,7 @@ private:
     return a + (b - a) * eased;
 }
 
-[[nodiscard]] inline float FbmNoise(const std::uint64_t seed, const float x, const int octaves) noexcept
+[[nodiscard]] inline float FbmNoise(const std::uint64_t seed, const float x, const int octaves = 4) noexcept
 {
     float amplitude = 0.5F;
     float total = 0.0F;
