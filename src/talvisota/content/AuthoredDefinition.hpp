@@ -16,6 +16,13 @@ enum class AuthoredDefinitionKind
     Equipment
 };
 
+struct MissionObjectiveDefinition final
+{
+    std::string id;
+    // Must resolve to a placement ID in the mission's authored world region.
+    std::string interactionTargetId;
+};
+
 struct AuthoredDefinition final
 {
     AuthoredDefinitionKind kind = AuthoredDefinitionKind::Mission;
@@ -23,6 +30,8 @@ struct AuthoredDefinition final
     std::string name;
     std::string classification;
     std::string worldId;
+    std::string regionId;
+    std::vector<MissionObjectiveDefinition> objectives;
     std::string factionId;
     std::string characterId;
     std::string modelId;
