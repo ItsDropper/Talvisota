@@ -384,7 +384,7 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
             float maxDrawDistance = 1200.0F;
             if (placement.modelAssetId == "model.environment.juniper" ||
                 placement.modelAssetId == "model.environment.winter_brush") {
-                maxDrawDistance = 360.0F;
+                maxDrawDistance = 280.0F;
             } else switch (placement.category) {
             case talvisota::world::PlacementCategory::Vegetation:
                 maxDrawDistance = 360.0F;
@@ -536,7 +536,7 @@ void CullCaptureInstances(SceneSnapshot& scene, const std::vector<float>& meshRa
         if(instance.visible) ++visibleCount;
     }
     std::cout<<"Visibility culling: "<<visibleCount<<" / "<<scene.instances.size()
-        <<" instances visible (vegetation 360 m, props 600 m).\n";
+        <<" instances visible (vegetation/understory 280 m, props 600 m).\n";
 }
 
 bool WriteBgraPng(const std::vector<std::uint8_t>& pixels, const UINT width,
@@ -892,10 +892,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         accumulatedRenderMs += std::chrono::duration<double, std::milli>(
             renderEnd - renderStart).count();
         ++profiledFrames;
-        if (profiledFrames == 120U) {
-            const double frameMs = accumulatedFrameMs / 120.0;
-            const double renderMs = accumulatedRenderMs / 120.0;
-            std::cout << "Frame profile (120-frame average): " << frameMs
+        if (profiledFrames == 30U) {
+            const double frameMs = accumulatedFrameMs / 30.0;
+            const double renderMs = accumulatedRenderMs / 30.0;
+            std::cout << "Frame profile (30-frame average): " << frameMs
                 << " ms (" << (frameMs > 0.0 ? 1000.0 / frameMs : 0.0)
                 << " FPS), Render() CPU " << renderMs << " ms.\n";
             accumulatedFrameMs = 0.0;
