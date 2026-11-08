@@ -500,8 +500,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             static std::vector<std::uint64_t> capturedFrameHashes;
             if (std::find(capturedFrameHashes.begin(), capturedFrameHashes.end(), frameHash) !=
                 capturedFrameHashes.end()) {
-                error = "Capture produced a duplicate presented framebuffer for viewpoint " +
-                    std::string(view.file, view.file + std::wcslen(view.file)) + ".";
+                error = "Capture produced a duplicate presented framebuffer across distinct viewpoints.";
                 break;
             }
             capturedFrameHashes.push_back(frameHash);

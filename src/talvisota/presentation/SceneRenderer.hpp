@@ -76,9 +76,9 @@ struct RenderEnvironment final
     float sunIntensity = 2.4F;
     std::array<float, 3> ambientColor{0.32F, 0.42F, 0.56F};
     float ambientIntensity = 0.9F;
-    std::array<float, 3> fogColor{0.55F, 0.66F, 0.78F};
-    float fogDensity = 0.0035F;
-    float fogStart = 40.0F;
+    std::array<float, 3> fogColor{0.50F, 0.59F, 0.68F};
+    float fogDensity = 0.0014F;
+    float fogStart = 75.0F;
     std::array<float, 2> windDirection{0.914F, 0.406F};
     float windStrength = 0.06F;
 };
