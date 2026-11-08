@@ -95,7 +95,7 @@ if(TALVISOTA_ENABLE_VANTA_ENGINE)
     endif()
 
     include(FetchContent)
-    set(TALVISOTA_VANTA_ENGINE_REVISION "fb2d0780558cdb0f2a4724af8bd2169c734d1a06")
+    set(TALVISOTA_VANTA_ENGINE_REVISION "1e469f048a0438e9d56d3b3a98c691cb0c569bdf")
     set(_talvisota_build_testing "${BUILD_TESTING}")
     set(BUILD_TESTING OFF)
     FetchContent_Declare(vantaengine

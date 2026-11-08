@@ -49,6 +49,16 @@ public:
         return true;
     }
 
+    bool ReadbackPresentedFrame(std::vector<std::uint8_t>& bgra,
+        std::uint32_t& width, std::uint32_t& height, std::string& error) override
+    {
+        bgra.clear();
+        width = 0U;
+        height = 0U;
+        error = "Fake renderer does not provide a GPU framebuffer.";
+        return false;
+    }
+
     bool IsDeviceLost() const noexcept override { return deviceLost; }
 
     bool initialized = false;
@@ -138,7 +148,8 @@ int main()
     winterEnvironment.environment.sunDirection = {-0.45F, 0.28F, -0.85F};
     winterEnvironment.environment.windDirection = {0.914F, 0.406F};
     winterEnvironment.environment.sunIntensity = 2.4F;
-    winterEnvironment.environment.fogDensity = 0.0035F;
+    winterEnvironment.environment.fogDensity = 0.0014F;
+    winterEnvironment.environment.fogStart = 75.0F;
     Require(ValidateSceneSnapshot(winterEnvironment, error));
 
     SceneSnapshot invalidEnvironment = winterEnvironment;
