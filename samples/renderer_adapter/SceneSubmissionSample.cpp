@@ -1092,13 +1092,14 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 ((GetAsyncKeyState(VK_UP)&0x8000)!=0?lookStep:0.0F)-
                 ((GetAsyncKeyState(VK_DOWN)&0x8000)!=0?lookStep:0.0F);
             const auto previousPosition=playerState.position;
+            const bool wasCrouched=playerState.crouched;
             if(!talvisota::game::UpdatePlayer(gameRegion,playerConfig,playerInput,
                     std::max(deltaSeconds,1.0F/1000.0F),playerState,error)) {
                 std::cerr<<"Player simulation failed: "<<error<<"\\n"; break;
             }
             cameraChanged=playerState.position!=previousPosition ||
                 playerInput.lookYawRadians!=0.0F || playerInput.lookPitchRadians!=0.0F ||
-                playerInput.crouch!=playerState.crouched;
+                playerState.crouched!=wasCrouched;
         } else { rawMouseDeltaX=0; rawMouseDeltaY=0; jumpWasDown=false; }
         if (cameraChanged) {
             playerCamera = talvisota::game::BuildPlayerCamera(playerState, playerConfig);
