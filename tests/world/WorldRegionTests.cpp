@@ -219,6 +219,21 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
     Require(species.size() == 5U,
             "Sakkola forest should mix spruce, pine, birch, aspen, and alder rather than repeat one tree model.");
 
+    const auto countStand = [&region](const float minX, const float maxX,
+        const float minZ, const float maxZ) {
+        return std::count_if(region.placements.begin(), region.placements.end(),
+            [=](const auto& item) {
+                return item.category == talvisota::world::PlacementCategory::Vegetation &&
+                    item.position[0] >= minX && item.position[0] <= maxX &&
+                    item.position[2] >= minZ && item.position[2] <= maxZ;
+            });
+    };
+    Require(countStand(108.0F, 236.0F, -100.0F, -15.0F) >= 70U &&
+            countStand(-236.0F, -108.0F, -100.0F, -15.0F) >= 70U &&
+            countStand(-236.0F, -108.0F, 184.0F, 250.0F) >= 50U &&
+            countStand(108.0F, 236.0F, 184.0F, 250.0F) >= 50U,
+            "Sakkola trees must form four dense, species-mixed forest stands while preserving the central village clearing.");
+
     std::size_t matureTreeCount = 0U;
     for (const auto& placement : region.placements) {
         const bool tree = placement.category == talvisota::world::PlacementCategory::Vegetation;
