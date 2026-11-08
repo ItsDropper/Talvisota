@@ -225,14 +225,21 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
     }
     else if (preset == "packed_snow")
     {
-        const float compression = std::sin((v * 34.0F +
-            (broad - 0.5F) * 0.24F) * 2.0F * Pi);
-        const float scuff = Fbm(u, v, 42, seed ^ 0x510e527fU, 3);
-        const float height = 0.50F + compression * 0.055F + (scuff - 0.5F) * 0.055F;
-        sample = {0.65F + broad * 0.08F + scuff * 0.025F,
-                  0.70F + broad * 0.075F + scuff * 0.025F,
-                  0.76F + broad * 0.07F + scuff * 0.03F,
-                  height, 0.86F + medium * 0.11F, 0.94F - Smooth((scuff - 0.8F) * 3.0F) * 0.13F};
+        // Compaction follows irregular pressure and foot/vehicle scuffing rather
+        // than a periodic sine wave, which produced conspicuous parallel tracks.
+        const float compression = Fbm(u * 0.25F, v, 18,
+            seed ^ 0x510e527fU, 4);
+        const float scuff = Fbm(u, v, 42, seed ^ 0x1f83d9abU, 3);
+        const float granular = Fbm(u, v, 156, seed ^ 0x5be0cd19U, 2);
+        const float height = 0.50F + (compression - 0.5F) * 0.075F +
+            (scuff - 0.5F) * 0.040F + (granular - 0.5F) * 0.012F;
+        const float albedoVariation = (compression - 0.5F) * 0.035F +
+            (scuff - 0.5F) * 0.022F + (granular - 0.5F) * 0.008F;
+        sample = {0.65F + broad * 0.045F + albedoVariation,
+                  0.70F + broad * 0.043F + albedoVariation * 0.92F,
+                  0.76F + broad * 0.040F + albedoVariation * 0.82F,
+                  height, 0.86F + medium * 0.11F,
+                  0.94F - Smooth((scuff - 0.8F) * 3.0F) * 0.13F};
     }
     else if (preset == "ice")
     {
