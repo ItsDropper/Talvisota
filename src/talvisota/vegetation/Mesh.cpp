@@ -46,7 +46,11 @@ TreeMesh BuildTreeMesh(const TreeSkeleton& skeleton, const std::uint64_t seed,
     for (const auto& segment : skeleton.segments)
         if (segment.startRadius > 0.0F && segment.endRadius > 0.0F &&
             segment.endRadius <= segment.startRadius)
-            materialGroups.push_back(segment.materialGroup);
+            // Trunk, limbs and twigs share the same species bark material. Keep
+            // them in one contiguous draw section instead of issuing up to three
+            // material-identical draws for every tree instance. Group 3 remains
+            // separate for silver-birch basal bark.
+            materialGroups.push_back(segment.materialGroup == 3 ? 3 : 0);
     std::sort(materialGroups.begin(), materialGroups.end());
     materialGroups.erase(std::unique(materialGroups.begin(), materialGroups.end()),
         materialGroups.end());
@@ -63,7 +67,8 @@ TreeMesh BuildTreeMesh(const TreeSkeleton& skeleton, const std::uint64_t seed,
         for (std::size_t segmentIndex = 0; segmentIndex < skeleton.segments.size(); ++segmentIndex)
         {
             const SkeletonSegment& segment = skeleton.segments[segmentIndex];
-            if (segment.materialGroup != materialGroup) continue;
+            const std::int32_t segmentMaterialGroup = segment.materialGroup == 3 ? 3 : 0;
+            if (segmentMaterialGroup != materialGroup) continue;
             const Float3 axis = segment.end - segment.start;
             const float length = Length(axis);
             if (length <= 1.0e-5F) continue;
@@ -313,11 +318,9 @@ TreeMesh BuildNeedleMesh(const TreeSkeleton& skeleton, const std::uint64_t seed)
                         ? 0.040F + jitter * 0.018F
                         : 0.020F + jitter * 0.012F;
                     const float width = pine ? 0.0032F : 0.0019F;
-                    appendBlade(attachment, direction, radialB,
-                        needleLength, width);
-                    appendBlade(attachment, direction,
-                        Normalized(Cross(direction, radialB)),
-                        needleLength, width);
+                    // Each blade is double-sided; a second crossed quad doubled
+                    // vertex and triangle work without adding useful needle silhouette.
+                    appendBlade(attachment, direction, radialB, needleLength, width);
                 }
             }
         }
