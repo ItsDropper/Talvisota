@@ -144,7 +144,7 @@ bool RefineSnowTerrain(RenderMesh& mesh, std::string& error) {
     // village mesh and the expanded regional mesh. Larger source grids use a
     // coarser final edge target so refinement stays bounded instead of failing
     // solely because the playable area is larger.
-    const float maximumEdgeLength=originalVertexCount>20000U?30.0F:2.2F;
+    const float maximumEdgeLength=originalVertexCount>20000U?8.5F:2.2F;
     const auto distanceSquared=[](const auto& a,const auto& b) {
         const float x=a.position[0]-b.position[0], y=a.position[1]-b.position[1], z=a.position[2]-b.position[2];
         return x*x+y*y+z*z;
