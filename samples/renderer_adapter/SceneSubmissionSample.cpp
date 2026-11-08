@@ -382,7 +382,10 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
             instance.world = transform;
             scene.instances.push_back(instance);
             float maxDrawDistance = 1200.0F;
-            switch (placement.category) {
+            if (placement.modelAssetId == "model.environment.juniper" ||
+                placement.modelAssetId == "model.environment.winter_brush") {
+                maxDrawDistance = 360.0F;
+            } else switch (placement.category) {
             case talvisota::world::PlacementCategory::Vegetation:
                 maxDrawDistance = 360.0F;
                 break;
@@ -404,6 +407,16 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
     }
     placementCount = region.placements.size();
     drawCount = scene.instances.size();
+    if (instanceMaxDrawDistances.size() != scene.instances.size()) {
+        error = "Per-instance draw-distance metadata does not match the submitted scene.";
+        return false;
+    }
+    for (const float distance : instanceMaxDrawDistances) {
+        if (!std::isfinite(distance) || distance <= 0.0F) {
+            error = "Scene contains an invalid per-instance draw distance.";
+            return false;
+        }
+    }
     if (placementCount == 0U || scene.meshes.empty() || scene.materials.empty() || scene.instances.empty()) {
         error = "Sakkola scene import produced no renderable world content.";
         return false;
