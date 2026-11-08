@@ -10,6 +10,7 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <stdexcept>
 
 namespace
 {
@@ -71,6 +72,7 @@ private:
 
 void TestManifestParserToMissionAdapter()
 {
+    std::string error;
     using namespace talvisota::content;
     using namespace talvisota::game;
 
@@ -162,6 +164,7 @@ void TestManifestParserToMissionAdapter()
 
 int main()
 {
+    TestManifestParserToMissionAdapter();
     using namespace talvisota::game;
     std::string error;
     MissionState mission;
