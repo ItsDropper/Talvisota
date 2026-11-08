@@ -74,7 +74,7 @@ jobs:
           -DTALVISOTA_ENABLE_VANTA_ENGINE=ON
 
       - name: Build renderer adapter and content asset tools
-        run: cmake --build build-msvc --target talvisota_renderer_sample talvisota_renderer_contract_tests talvisota_asset_validate talvisota_content_package talvisota_texture_process talvisota_engine_asset_validation_tests talvisota_engine_asset_package_tests talvisota_engine_asset_pipeline_tests --parallel
+        run: cmake --build build-msvc --target talvisota talvisota_renderer_sample talvisota_renderer_contract_tests talvisota_asset_validate talvisota_content_package talvisota_texture_process talvisota_engine_asset_validation_tests talvisota_engine_asset_package_tests talvisota_engine_asset_pipeline_tests --parallel
 
       - name: Test game-owned renderer and asset contracts
         run: ctest --test-dir build-msvc --output-on-failure -R "Talvisota.Presentation.SceneRendererContract|Talvisota.Content.EngineAssetValidation|Talvisota.Content.EngineAssetPackage|Talvisota.Content.EngineAssetPipeline|Talvisota.Environment.PbrMaps"
@@ -96,7 +96,7 @@ jobs:
         run: |
           $packageRoot = Join-Path $env:RUNNER_TEMP 'talvisota-sakkola-windows-x64'
           New-Item -ItemType Directory -Force -Path $packageRoot | Out-Null
-          Copy-Item -LiteralPath '.\\build-msvc\\talvisota_renderer_sample.exe' -Destination (Join-Path $packageRoot 'TalvisotaSakkola.exe')
+          Copy-Item -LiteralPath '.\\build-msvc\\talvisota.exe' -Destination (Join-Path $packageRoot 'Talvisota.exe')
           Copy-Item -Path 'content', 'assets' -Destination $packageRoot -Recurse
           $runtimeDlls = @(Get-ChildItem -LiteralPath 'build-msvc' -Filter '*.dll' -File -Recurse)
           foreach ($dll in $runtimeDlls) {
@@ -142,7 +142,7 @@ jobs:
         run: |
           $captureDir = Join-Path $env:RUNNER_TEMP 'sakkola-captures'
           New-Item -ItemType Directory -Force -Path $captureDir | Out-Null
-          $process = Start-Process -FilePath .\\build-msvc\\talvisota_renderer_sample.exe -ArgumentList @('--backend=d3d12', "--capture-dir=$captureDir", '--frames-per-view=1') -Wait -PassThru
+          $process = Start-Process -FilePath .\\build-msvc\\talvisota.exe -ArgumentList @('--backend=d3d12', "--capture-dir=$captureDir", '--frames-per-view=1') -Wait -PassThru
           $rendererLog = Join-Path $captureDir 'renderer.log'
           if (Test-Path -LiteralPath $rendererLog) { Get-Content -LiteralPath $rendererLog }
           if ($process.ExitCode -ne 0) { throw "Sakkola renderer exited with code $($process.ExitCode)" }
