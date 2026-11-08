@@ -62,6 +62,11 @@ void Validate(const Species species, const std::uint64_t seed)
         assert(normalLength > 0.99F && normalLength < 1.01F);
     }
     const auto snow = BuildSnowMesh(a);
+    const auto needles = BuildNeedleMesh(a, seed);
+    if (species == Species::Birch)
+        assert(needles.indices.empty());
+    else
+        assert(!needles.indices.empty() && needles.sections.front().materialGroup == 4);
     if (species == Species::Birch)
         assert(snow.indices.empty());
     else
