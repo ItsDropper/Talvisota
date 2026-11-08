@@ -66,7 +66,7 @@ struct SimulationState final
     const GameplayRules& rules, SimulationState& output, std::string& error);
 
 
- // Builds a playable entity set from authored mission targets and their actual region
+// Builds a playable entity set from authored mission targets and their actual region
  // placements, then publishes the mission and entities atomically.
 [[nodiscard]] bool InitializeSimulationFromAuthoredMission(
     const content::AuthoredDefinition& authoredMission,

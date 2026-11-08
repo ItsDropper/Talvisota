@@ -60,7 +60,6 @@ bool InitializeSimulation(const game::MissionDefinition& mission,
     return true;
 }
 
-
 bool InitializeSimulationFromAuthoredMission(
     const content::AuthoredDefinition& authoredMission,
     const world::WorldRegion& region,

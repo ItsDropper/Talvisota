@@ -5,6 +5,7 @@
 #include "talvisota/content/WorldDefinition.hpp"
 #include "talvisota/world/WorldRegion.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstdlib>
 #include <filesystem>
@@ -215,6 +216,20 @@ int main()
     Check(registry.Despawn("entity.radio", error), "registered entity can be despawned");
     Check(registry.Find("entity.radio") == nullptr, "despawn removes the entity");
     Check(!registry.Despawn("entity.missing", error), "unknown entity cannot be despawned");
+
+    entities::EntityRegistry factionValidation;
+    const entities::EntityDefinition neutralWorldObject{
+        "entity.neutral-world-object", {}, entities::EntityKind::WorldObject,
+        {0.0F, 0.0F, 0.0F}, "target.neutral-world-object"
+    };
+    Check(factionValidation.Spawn(neutralWorldObject, error),
+        "unaligned world objects may omit faction ownership");
+    const entities::EntityDefinition factionlessPlayer{
+        "entity.factionless-player", {}, entities::EntityKind::Player,
+        {0.0F, 0.0F, 0.0F}, {}
+    };
+    Check(!factionValidation.Spawn(factionlessPlayer, error),
+        "player entities must retain an authored faction");
 
     const GameplayRules rules{};
     const auto missionDefinition = MakeMission();
