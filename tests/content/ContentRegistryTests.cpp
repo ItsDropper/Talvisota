@@ -395,13 +395,18 @@ void TestTypedMissionFactionCharacterAndEquipmentDefinitions()
         "category = clothing\n"
         "model_id = model.player\n"
         "icon_texture_id = texture.portrait\n");
+    directory.Write("regions/test.tregion", "region fixture");
     directory.Write("missions/first.tmission",
         "talvisota-mission\t1\n"
         "id = mission.first\n"
         "name = First Mission\n"
         "world_id = world.test\n"
+        "region_id = region.test\n"
         "player_character_id = character.player\n"
-        "faction_id = faction.finnish\n");
+        "faction_id = faction.finnish\n"
+        "objective = objective.inspect-well -> prop.well.farmstead\n"
+        "objective = objective.inspect-woodpile -> prop.woodpile.west\n"
+        "objective = objective.report-church -> church.sakkola\n");
     directory.Write("models/player.obj", "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n");
     directory.Write("textures/portrait.bmp", "fixture");
     directory.Manifest(
@@ -412,7 +417,8 @@ void TestTypedMissionFactionCharacterAndEquipmentDefinitions()
         "asset\ttexture.portrait\ttexture\ttextures/portrait.bmp\trequired\t-\tproject\tproject\n"
         "asset\tcharacter.player\tdefinition\tcharacters/player.tcharacter\trequired\tfaction.finnish,model.player,texture.portrait\tproject\tproject\n"
         "asset\tequipment.uniform\tdefinition\tequipment/uniform.tequipment\trequired\tmodel.player,texture.portrait\tproject\tproject\n"
-        "asset\tmission.first\tdefinition\tmissions/first.tmission\trequired\tworld.test,character.player,faction.finnish\tproject\tproject\n");
+        "asset\tregion.test\tdefinition\tregions/test.tregion\trequired\tworld.test\tproject\tproject\n"
+        "asset\tmission.first\tdefinition\tmissions/first.tmission\trequired\tworld.test,region.test,character.player,faction.finnish\tproject\tproject\n");
     ContentRegistry registry;
     std::vector<ContentDiagnostic> registryDiagnostics;
     if (!Load(directory, registry, registryDiagnostics))
@@ -432,6 +438,48 @@ void TestTypedMissionFactionCharacterAndEquipmentDefinitions()
         Require(LoadAuthoredDefinition(directory.Path() / relativePath, registry, definition, diagnostics),
                 "Valid typed authored definition should load.");
     }
+
+    AuthoredDefinition mission;
+    std::vector<AuthoredDefinitionDiagnostic> missionDiagnostics;
+    Require(LoadAuthoredDefinition(directory.Path() / "missions/first.tmission",
+                                   registry, mission, missionDiagnostics),
+            "Mission with ordered interaction objectives should load.");
+    Require(mission.regionId == "region.test" && mission.objectives.size() == 3U,
+            "Mission should retain its region and all authored objectives.");
+    Require(mission.objectives[0].id == "objective.inspect-well" &&
+            mission.objectives[0].interactionTargetId == "prop.well.farmstead" &&
+            mission.objectives[1].interactionTargetId == "prop.woodpile.west" &&
+            mission.objectives[2].interactionTargetId == "church.sakkola",
+            "Mission objectives must preserve authored order and stable placement target IDs.");
+
+    directory.Write("missions/first.tmission",
+        "talvisota-mission\t1\n"
+        "id = mission.first\n"
+        "name = First Mission\n"
+        "world_id = world.test\n"
+        "region_id = region.test\n"
+        "player_character_id = character.player\n"
+        "faction_id = faction.finnish\n"
+        "objective = objective.inspect-well -> prop.well.farmstead\n"
+        "objective = objective.inspect-woodpile -> prop.well.farmstead\n");
+    Require(!LoadAuthoredDefinition(directory.Path() / "missions/first.tmission",
+                                    registry, mission, missionDiagnostics),
+            "Duplicate mission interaction targets must be rejected.");
+    Require(mission.objectives.size() == 3U && mission.objectives[0].id == "objective.inspect-well",
+            "Rejected mission reload must preserve the previously published definition.");
+
+    directory.Write("missions/first.tmission",
+        "talvisota-mission\t1\n"
+        "id = mission.first\n"
+        "name = First Mission\n"
+        "world_id = world.test\n"
+        "region_id = region.test\n"
+        "player_character_id = character.player\n"
+        "faction_id = faction.finnish\n"
+        "objective = malformed-objective-record\n");
+    Require(!LoadAuthoredDefinition(directory.Path() / "missions/first.tmission",
+                                    registry, mission, missionDiagnostics),
+            "Malformed mission objective records must be rejected.");
 }
 
 void TestTypedDefinitionRejectsUndeclaredDependenciesAtomically()
