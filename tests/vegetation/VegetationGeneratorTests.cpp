@@ -20,6 +20,25 @@ void Validate(const Species species, const std::uint64_t seed)
     assert(a.trunkRadius > 0.0F);
     assert(a.segments.size() > 100);
     assert(a.segments.size() == b.segments.size());
+    for (const auto& chain : a.chains)
+    {
+        assert(chain.firstSegment >= 0 && chain.segmentCount > 0);
+        assert(static_cast<std::size_t>(chain.firstSegment + chain.segmentCount) <=
+            a.segments.size());
+        for (int offset = 0; offset < chain.segmentCount; ++offset)
+        {
+            const auto index = static_cast<std::size_t>(chain.firstSegment + offset);
+            const auto& segment = a.segments[index];
+            assert(segment.chainStart == chain.firstSegment);
+            assert(segment.generation == offset);
+            if (offset > 0)
+            {
+                const auto& previous = a.segments[index - 1U];
+                assert(segment.parentIndex == static_cast<std::int32_t>(index - 1U));
+                assert(Length(segment.start - previous.end) < 1.0e-4F);
+            }
+        }
+    }
     assert(a.chains.size() == b.chains.size());
     assert(std::abs(a.height - b.height) < 1.0e-6F);
     for (std::size_t i = 0; i < a.segments.size(); ++i)
@@ -77,8 +96,14 @@ void Validate(const Species species, const std::uint64_t seed)
         for (const auto index : needles.indices)
             assert(index < needles.vertices.size());
         for (const auto& vertex : needles.vertices)
+        {
             assert(std::isfinite(vertex.position[0]) && std::isfinite(vertex.position[1]) &&
                 std::isfinite(vertex.position[2]));
+            assert(std::isfinite(vertex.normal[0]) && std::isfinite(vertex.normal[1]) &&
+                std::isfinite(vertex.normal[2]));
+            assert(std::isfinite(vertex.u) && std::isfinite(vertex.v));
+            assert(std::abs(Length(vertex.normal) - 1.0F) < 1.0e-3F);
+        }
     }
     if (species == Species::Birch)
         assert(snow.indices.empty());
@@ -88,8 +113,14 @@ void Validate(const Species species, const std::uint64_t seed)
         for (const auto index : snow.indices)
             assert(index < snow.vertices.size());
         for (const auto& vertex : snow.vertices)
+        {
             assert(std::isfinite(vertex.position[0]) && std::isfinite(vertex.position[1]) &&
                 std::isfinite(vertex.position[2]));
+            assert(std::isfinite(vertex.normal[0]) && std::isfinite(vertex.normal[1]) &&
+                std::isfinite(vertex.normal[2]));
+            assert(std::isfinite(vertex.u) && std::isfinite(vertex.v));
+            assert(std::abs(Length(vertex.normal) - 1.0F) < 1.0e-3F);
+        }
     }
     if (species == Species::Birch)
     {
