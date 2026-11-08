@@ -1,3 +1,5 @@
+#include "talvisota/content/AuthoredDefinition.hpp"
+#include "talvisota/game/MissionContentAdapter.hpp"
 #include "talvisota/game/MissionRuntime.hpp"
 
 #include <cstdlib>
@@ -35,6 +37,58 @@ int main()
     using namespace talvisota::game;
     std::string error;
     MissionState mission;
+
+    talvisota::content::AuthoredDefinition authored;
+    authored.kind = talvisota::content::AuthoredDefinitionKind::Mission;
+    authored.id = "mission.sakkola.first-patrol";
+    authored.worldId = "world.sakkola";
+    authored.regionId = "region.sakkola.church_village";
+    authored.objectives = {
+        {"objective.inspect-well", "prop.well.farmstead"},
+        {"objective.inspect-woodpile", "prop.woodpile.west"},
+        {"objective.report-church", "church.sakkola"}
+    };
+    MissionDefinition mapped;
+    Check(BuildMissionDefinition(authored, mapped, error),
+        "authored Sakkola mission converts to gameplay definition");
+    Check(mapped.id == authored.id && mapped.objectives.size() == 3U &&
+        mapped.objectives[0].interactionTargetId == "prop.well.farmstead" &&
+        mapped.objectives[1].interactionTargetId == "prop.woodpile.west" &&
+        mapped.objectives[2].interactionTargetId == "church.sakkola",
+        "mission adapter preserves objective order and placement target IDs");
+
+    MissionState authoredState;
+    Check(InitializeMissionFromAuthoredDefinition(authored, authoredState, error),
+        "authored Sakkola mission initializes and starts");
+    Check(authoredState.missionId == authored.id &&
+        authoredState.status == MissionStatus::Active &&
+        authoredState.objectives.size() == 3U &&
+        authoredState.objectives[0].status == ObjectiveStatus::Active,
+        "authored mission publishes an active first objective");
+
+    MissionDefinition preservedDefinition{"mission.preserved", {{"objective.keep", "target.keep"}}};
+    auto nonMission = authored;
+    nonMission.kind = talvisota::content::AuthoredDefinitionKind::Faction;
+    Check(!BuildMissionDefinition(nonMission, preservedDefinition, error),
+        "non-mission authored definitions cannot be converted");
+    Check(preservedDefinition.id == "mission.preserved",
+        "failed content conversion preserves definition output");
+    auto incompleteMission = authored;
+    incompleteMission.regionId.clear();
+    MissionState preservedState;
+    preservedState.missionId = "mission.preserved";
+    preservedState.status = MissionStatus::Failed;
+    Check(!InitializeMissionFromAuthoredDefinition(incompleteMission, preservedState, error),
+        "authored mission without a region cannot initialize");
+    Check(preservedState.missionId == "mission.preserved" &&
+        preservedState.status == MissionStatus::Failed,
+        "failed authored initialization preserves existing mission state");
+    auto duplicateTargetMission = authored;
+    duplicateTargetMission.objectives[1].interactionTargetId =
+        duplicateTargetMission.objectives[0].interactionTargetId;
+    Check(!BuildMissionDefinition(duplicateTargetMission, preservedDefinition, error),
+        "duplicate authored interaction targets cannot enter gameplay runtime");
+
     const MissionDefinition definition = MakeMission();
 
     Check(ValidateMissionDefinition(definition, error), "valid mission definition is accepted");
