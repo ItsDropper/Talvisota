@@ -287,8 +287,10 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
         Require(talvisota::world::SampleTerrainHeight(region, placement.position[0],
                 placement.position[2], surfaceHeight, surfaceNormal, terrainError),
                 "Grounded Sakkola environment placements must lie within the terrain heightfield.");
-        Require(std::abs(placement.position[1] - surfaceHeight) <= 0.002F,
-                "Trees, boulders, and shoreline reeds must rest on the sampled terrain surface.");
+        const float surfaceDisplacement = talvisota::world::SampleTerrainDisplacement(
+            region, placement.position[0], placement.position[2]);
+        Require(std::abs(placement.position[1] + surfaceDisplacement - surfaceHeight) <= 0.002F,
+                "Rendered trees, boulders, and shoreline reeds must rest on the displaced terrain surface.");
 
         if (tree) {
             const float maximumScale = placement.modelAssetId == "model.environment.spruce" ? 1.95F :
@@ -308,8 +310,9 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
                 [&collisionId](const auto& box) { return box.id == collisionId; });
             Require(collision != region.collision.end(),
                     "Every grounded tree, fallen log, and stump must have its matching collision volume.");
-            Require(std::abs((collision->center[1] - collision->halfExtents[1]) - surfaceHeight) <= 0.002F,
-                    "Grounded vegetation and deadwood collision bottoms must agree with the terrain surface.");
+            Require(std::abs((collision->center[1] - collision->halfExtents[1]) -
+                    placement.position[1]) <= 0.002F,
+                    "Grounded vegetation and deadwood collision bottoms must agree with their authored placement height.");
             if (tree && collision->halfExtents[1] * 2.0F >= 11.0F)
                 ++matureTreeCount;
         }
