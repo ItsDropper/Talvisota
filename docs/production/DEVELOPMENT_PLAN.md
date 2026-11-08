@@ -180,13 +180,14 @@ Do not attempt a huge open world at this stage. Prove a small region first.
 
 ## M5 — Core player experience
 
-**Status (2026-11-08): in progress.** The first renderer-independent player simulation component is implemented: validated movement configuration, terrain-grounded spawn, normalized walking/sprinting movement, frame-delta clamping, yaw/pitch camera control, jump/gravity, axis-separated collision against authored region AABBs, and a derived first-person camera pose. The controller uses the game-owned world terrain and collision queries and has no renderer, window, input-device, or VantaEngine dependency. Headless regression tests cover spawn grounding, timestep clamping, diagonal normalization, jumping, pitch limits, camera height, obstacle blocking, invalid input rejection, and transactional state preservation. This is a simulation foundation, not yet an integrated interactive game loop: platform input collection, application-owned runtime composition, renderer submission, interaction, and mission progression remain open.
+**Status (2026-11-08): in progress.** The renderer-independent player simulation implements validated movement configuration, terrain-grounded spawn, normalized walking/sprinting movement, frame-delta clamping, yaw/pitch camera control, jump/gravity, axis-separated collision against authored region AABBs, and a derived first-person camera pose. The Sakkola renderer sample now drives this controller against the loaded world region: WASD movement, Shift sprint, Space jump, arrow-key look, terrain grounding, and authored collision replace the previous unconstrained flying camera. Spawn selection searches deterministically for a collision-free location. Headless tests cover spawn grounding, timestep clamping, diagonal normalization, sprint speed, jump/landing, pitch limits, camera height, obstacle blocking, invalid input rejection, and transactional state preservation. This is an interactive renderer sample, not yet the application-owned game loop: mouse input/configurable bindings, runtime composition in the main application, interaction, and mission progression remain open.
 
 **Goal:** Implement the minimum complete first-person player loop.
 
 Work:
 - [x] Define player state and renderer-independent movement/camera simulation.
-- [ ] Add platform input collection and configurable input bindings.
+- [x] Exercise the player simulation in the Sakkola renderer sample with keyboard movement, sprint, jump, and look.
+- [ ] Add mouse input and configurable input bindings.
 - [ ] Integrate player/world ownership into an application runtime and connect it to the renderer contract.
 - [ ] Add robust terrain following, step/slope policy, and collision coverage for vertical obstacles and ceilings.
 - [ ] Implement interaction, mission objectives, and player-state transitions.
