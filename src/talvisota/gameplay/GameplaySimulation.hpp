@@ -3,12 +3,16 @@
 #include "talvisota/entities/EntityRegistry.hpp"
 #include "talvisota/game/MissionRuntime.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <set>
 #include <span>
 #include <string>
 #include <vector>
+
+namespace talvisota::content { struct AuthoredDefinition; }
+namespace talvisota::world { struct WorldRegion; }
 
 namespace talvisota::gameplay
 {
@@ -43,6 +47,8 @@ struct CommandResult final
 struct SimulationState final
 {
     entities::EntityRegistry entities;
+    // Set by authored-mission initialization; empty for generic test/simulation fixtures.
+    std::string playerEntityId;
     game::MissionState mission;
     std::uint64_t tickIndex = 0U;
     double elapsedSeconds = 0.0;
@@ -57,6 +63,15 @@ struct SimulationState final
 // unchanged if any entity or mission definition is invalid.
 [[nodiscard]] bool InitializeSimulation(const game::MissionDefinition& mission,
     std::span<const entities::EntityDefinition> entityDefinitions,
+    const GameplayRules& rules, SimulationState& output, std::string& error);
+
+
+ // Builds a playable entity set from authored mission targets and their actual region
+ // placements, then publishes the mission and entities atomically.
+[[nodiscard]] bool InitializeSimulationFromAuthoredMission(
+    const content::AuthoredDefinition& authoredMission,
+    const world::WorldRegion& region,
+    const std::array<float, 3>& playerSpawn,
     const GameplayRules& rules, SimulationState& output, std::string& error);
 
 // Advances exactly one deterministic simulation tick. Commands are processed in

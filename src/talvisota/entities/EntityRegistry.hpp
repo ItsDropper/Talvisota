@@ -20,6 +20,7 @@ enum class EntityKind
 struct EntityDefinition final
 {
     std::string id;
+    // Empty only for unaligned world objects; actors and vehicles require a faction.
     std::string factionId;
     EntityKind kind = EntityKind::WorldObject;
     std::array<float, 3> position{};

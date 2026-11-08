@@ -1,7 +1,13 @@
 #include "talvisota/gameplay/GameplaySimulation.hpp"
 
+#include "talvisota/content/AuthoredDefinition.hpp"
+#include "talvisota/content/ContentRegistry.hpp"
+#include "talvisota/content/WorldDefinition.hpp"
+#include "talvisota/world/WorldRegion.hpp"
+
 #include <array>
 #include <cstdlib>
+#include <filesystem>
 #include <iostream>
 #include <limits>
 #include <string>
@@ -46,11 +52,144 @@ talvisota::game::MissionDefinition MakeMission()
 }
 } // namespace
 
+
+void TestAuthoredWorldSimulation()
+{
+    using namespace talvisota;
+    using namespace talvisota::content;
+    using namespace talvisota::gameplay;
+    using namespace talvisota::world;
+
+    const std::filesystem::path sourceRoot{TALVISOTA_SOURCE_DIR};
+    std::string error;
+    ContentRegistry registry;
+    std::vector<ContentDiagnostic> contentDiagnostics;
+    Check(LoadContentManifest(sourceRoot / "content/catalog.tmanifest", sourceRoot,
+        registry, contentDiagnostics), "shipped content manifest loads for gameplay integration");
+
+    const auto* missionAsset = registry.Find("mission.sakkola.first-patrol");
+    const auto* worldAsset = registry.Find("world.sakkola");
+    const auto* regionAsset = registry.Find("region.sakkola.church_village");
+    Check(missionAsset != nullptr && worldAsset != nullptr && regionAsset != nullptr,
+        "First Patrol mission, Sakkola world, and church-village region are registered");
+    if (missionAsset == nullptr || worldAsset == nullptr || regionAsset == nullptr)
+        return;
+
+    AuthoredDefinition authoredMission;
+    std::vector<AuthoredDefinitionDiagnostic> missionDiagnostics;
+    Check(LoadAuthoredDefinition(sourceRoot / missionAsset->relativePath, registry,
+        authoredMission, missionDiagnostics),
+        "shipped First Patrol mission parses through the authored content loader");
+
+    WorldDefinition worldDefinition;
+    std::vector<WorldDiagnostic> worldDiagnostics;
+    Check(LoadWorldDefinition(sourceRoot / worldAsset->relativePath, registry,
+        worldDefinition, worldDiagnostics),
+        "shipped Sakkola world definition loads");
+
+    WorldRegion region;
+    std::vector<WorldRegionDiagnostic> regionDiagnostics;
+    Check(LoadWorldRegion(sourceRoot / regionAsset->relativePath, registry,
+        worldDefinition, region, regionDiagnostics),
+        "shipped Sakkola church-village region and placements load");
+    if (authoredMission.id.empty() || region.id.empty())
+        return;
+
+    const auto findPlacement = [&](const std::string_view id) -> const WorldPlacement*
+    {
+        const auto found = std::find_if(region.placements.begin(), region.placements.end(),
+            [id](const WorldPlacement& placement) { return placement.id == id; });
+        return found == region.placements.end() ? nullptr : &*found;
+    };
+    const WorldPlacement* const well = findPlacement("prop.well.farmstead");
+    const WorldPlacement* const woodpile = findPlacement("prop.woodpile.west");
+    const WorldPlacement* const church = findPlacement("church.sakkola");
+    Check(well != nullptr && woodpile != nullptr && church != nullptr,
+        "all three authored mission targets resolve to real Sakkola region placements");
+    if (well == nullptr || woodpile == nullptr || church == nullptr)
+        return;
+
+    const GameplayRules rules{};
+    SimulationState state;
+    Check(InitializeSimulationFromAuthoredMission(authoredMission, region, well->position,
+        rules, state, error),
+        "authored mission and loaded region initialize a complete gameplay simulation");
+    Check(state.playerEntityId == "player.character.sakkola_infantryman" &&
+        state.entities.Size() == 4U,
+        "simulation contains one authored player and exactly three mission target entities");
+
+    const entities::EntityState* const player = state.entities.Find(state.playerEntityId);
+    const entities::EntityState* const wellEntity = state.entities.Find("prop.well.farmstead");
+    const entities::EntityState* const woodpileEntity = state.entities.Find("prop.woodpile.west");
+    const entities::EntityState* const churchEntity = state.entities.Find("church.sakkola");
+    Check(player != nullptr && player->kind == entities::EntityKind::Player &&
+        player->factionId == "faction.finnish",
+        "player entity inherits the authored Finnish character/faction identity");
+    Check(wellEntity != nullptr && woodpileEntity != nullptr && churchEntity != nullptr &&
+        wellEntity->factionId.empty() && woodpileEntity->factionId.empty() &&
+        churchEntity->factionId.empty(),
+        "world-object entities remain unaligned rather than being assigned the player's faction");
+    Check(wellEntity != nullptr && wellEntity->position == well->position &&
+        woodpileEntity != nullptr && woodpileEntity->position == woodpile->position &&
+        churchEntity != nullptr && churchEntity->position == church->position,
+        "mission entities use exact authored placement transforms from the loaded region");
+
+    std::vector<CommandResult> results;
+    const std::array<InteractionCommand, 1> inspectWell{{
+        {"command.first-patrol.inspect-well", state.playerEntityId, "prop.well.farmstead"}
+    }};
+    Check(AdvanceSimulation(state, rules, 1.0 / 60.0, inspectWell, results, error) &&
+        results.size() == 1U && results[0].outcome == CommandOutcome::ObjectiveCompleted &&
+        state.mission.completedObjectives == 1U,
+        "interacting with the real well placement completes the first authored objective");
+
+    Check(state.entities.SetPosition(state.playerEntityId, woodpile->position, error),
+        "player simulation entity moves to the authored woodpile placement");
+    const std::array<InteractionCommand, 1> inspectWoodpile{{
+        {"command.first-patrol.inspect-woodpile", state.playerEntityId, "prop.woodpile.west"}
+    }};
+    Check(AdvanceSimulation(state, rules, 1.0 / 60.0, inspectWoodpile, results, error) &&
+        results.size() == 1U && results[0].outcome == CommandOutcome.ObjectiveCompleted &&
+        state.mission.completedObjectives == 2U,
+        "interacting with the real woodpile placement completes the second objective");
+
+    Check(state.entities.SetPosition(state.playerEntityId, church->position, error),
+        "player simulation entity moves to the authored church placement");
+    const std::array<InteractionCommand, 1> reportChurch{{
+        {"command.first-patrol.report-church", state.playerEntityId, "church.sakkola"}
+    }};
+    Check(AdvanceSimulation(state, rules, 1.0 / 60.0, reportChurch, results, error) &&
+        results.size() == 1U && results[0].outcome == CommandOutcome.MissionCompleted &&
+        state.mission.status == game::MissionStatus::Completed,
+        "interacting with the real church placement completes First Patrol");
+
+    SimulationState preserved;
+    preserved.tickIndex = 91U;
+    auto mismatchedRegion = region;
+    mismatchedRegion.id = "region.other";
+    Check(!InitializeSimulationFromAuthoredMission(authoredMission, mismatchedRegion,
+        well->position, rules, preserved, error),
+        "authored mission cannot initialize against a different region");
+    Check(preserved.tickIndex == 91U,
+        "region mismatch preserves the caller's existing simulation state");
+
+    auto incompleteRegion = region;
+    std::erase_if(incompleteRegion.placements,
+        [](const WorldPlacement& placement) { return placement.id == "prop.woodpile.west"; });
+    Check(!InitializeSimulationFromAuthoredMission(authoredMission, incompleteRegion,
+        well->position, rules, preserved, error),
+        "mission cannot initialize when an authored target has no world placement");
+    Check(preserved.tickIndex == 91U,
+        "missing mission placement preserves the caller's existing simulation state");
+}
+
 int main()
 {
     using namespace talvisota;
     using namespace talvisota::gameplay;
     std::string error;
+
+    TestAuthoredWorldSimulation();
 
     // Registry validation and stable lookup.
     entities::EntityRegistry registry;

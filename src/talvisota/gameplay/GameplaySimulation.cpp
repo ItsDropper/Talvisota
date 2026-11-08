@@ -1,5 +1,9 @@
 #include "talvisota/gameplay/GameplaySimulation.hpp"
 
+#include "talvisota/game/MissionContentAdapter.hpp"
+#include "talvisota/world/WorldRegion.hpp"
+
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <utility>
@@ -51,6 +55,104 @@ bool InitializeSimulation(const game::MissionDefinition& mission,
     }
     if (!game::StartMission(candidate.mission, error)) return false;
 
+    output = std::move(candidate);
+    error.clear();
+    return true;
+}
+
+
+bool InitializeSimulationFromAuthoredMission(
+    const content::AuthoredDefinition& authoredMission,
+    const world::WorldRegion& region,
+    const std::array<float, 3>& playerSpawn,
+    const GameplayRules& rules, SimulationState& output, std::string& error)
+{
+    game::MissionDefinition missionDefinition;
+    if (!game::BuildMissionDefinition(authoredMission, missionDefinition, error))
+        return false;
+
+    if (region.id != authoredMission.regionId || region.worldId != authoredMission.worldId)
+    {
+        error = "Loaded world region does not match the authored mission's world and region IDs.";
+        return false;
+    }
+    if (!entities::IsValidStableId(authoredMission.characterId) ||
+        !entities::IsValidStableId(authoredMission.factionId))
+    {
+        error = "Authored mission requires valid player-character and faction IDs.";
+        return false;
+    }
+
+    for (std::size_t axis = 0; axis < playerSpawn.size(); ++axis)
+    {
+        if (!std::isfinite(region.boundsMin[axis]) ||
+            !std::isfinite(region.boundsMax[axis]) ||
+            region.boundsMin[axis] > region.boundsMax[axis] ||
+            !std::isfinite(playerSpawn[axis]) ||
+            playerSpawn[axis] < region.boundsMin[axis] ||
+            playerSpawn[axis] > region.boundsMax[axis])
+        {
+            error = "Player spawn must be finite and contained by the loaded region bounds.";
+            return false;
+        }
+    }
+
+    const std::string playerId = "player." + authoredMission.characterId;
+    if (!entities::IsValidStableId(playerId))
+    {
+        error = "Derived player entity ID exceeds the stable-ID constraints.";
+        return false;
+    }
+
+    std::vector<entities::EntityDefinition> definitions;
+    definitions.reserve(missionDefinition.objectives.size() + 1U);
+    definitions.push_back({
+        playerId, authoredMission.factionId, entities::EntityKind::Player, playerSpawn, {}
+    });
+
+    for (const game::MissionObjectiveDefinition& objective : authoredMission.objectives)
+    {
+        const world::WorldPlacement* targetPlacement = nullptr;
+        for (const world::WorldPlacement& placement : region.placements)
+        {
+            if (placement.id != objective.interactionTargetId)
+                continue;
+            if (targetPlacement != nullptr)
+            {
+                error = "Mission interaction target resolves to multiple region placements: " +
+                    objective.interactionTargetId;
+                return false;
+            }
+            targetPlacement = &placement;
+        }
+
+        if (targetPlacement == nullptr)
+        {
+            error = "Mission interaction target is not placed in the loaded region: " +
+                objective.interactionTargetId;
+            return false;
+        }
+        if (targetPlacement->category != world::PlacementCategory::Prop &&
+            targetPlacement->category != world::PlacementCategory::Structure)
+        {
+            error = "Mission interaction target must resolve to a prop or structure placement: " +
+                objective.interactionTargetId;
+            return false;
+        }
+
+        // World props have no owning faction. Their placement ID is also their
+        // entity ID, so mission events resolve to the exact authored world object.
+        definitions.push_back({
+            targetPlacement->id, {}, entities::EntityKind::WorldObject,
+            targetPlacement->position, targetPlacement->id
+        });
+    }
+
+    SimulationState candidate;
+    if (!InitializeSimulation(missionDefinition, definitions, rules, candidate, error))
+        return false;
+
+    candidate.playerEntityId = playerId;
     output = std::move(candidate);
     error.clear();
     return true;

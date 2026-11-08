@@ -46,12 +46,15 @@ bool IsValidStableId(const std::string_view value) noexcept
 
 bool EntityRegistry::Spawn(const EntityDefinition& definition, std::string& error)
 {
-    if (!IsValidStableId(definition.id) || !IsValidStableId(definition.factionId) ||
+    const bool validFaction = definition.factionId.empty()
+        ? definition.kind == EntityKind::WorldObject
+        : IsValidStableId(definition.factionId);
+    if (!IsValidStableId(definition.id) || !validFaction ||
         (!definition.interactionTargetId.empty() &&
             !IsValidStableId(definition.interactionTargetId)) ||
         !IsValidEntityKind(definition.kind) || !IsFinitePosition(definition.position))
     {
-        error = "Entity definition contains an invalid ID, kind, or non-finite position.";
+        error = "Entity definition contains an invalid ID, faction assignment, kind, or non-finite position.";
         return false;
     }
     if (entities_.contains(definition.id))
