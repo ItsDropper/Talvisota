@@ -90,6 +90,38 @@ float Fbm(const float u, const float v, const int baseFrequency,
     return normalization > 0.0F ? total / normalization : 0.5F;
 }
 
+float VoronoiEdge(const float u, const float v, const int period,
+                   const std::uint32_t seed) noexcept
+{
+    const float x = u * static_cast<float>(period);
+    const float y = v * static_cast<float>(period);
+    const int cellX = static_cast<int>(std::floor(x));
+    const int cellY = static_cast<int>(std::floor(y));
+    float nearest = 1000.0F;
+    float second = 1000.0F;
+    for (int oy = -1; oy <= 1; ++oy)
+    {
+        for (int ox = -1; ox <= 1; ++ox)
+        {
+            const int wrappedX = Wrap(cellX + ox, period);
+            const int wrappedY = Wrap(cellY + oy, period);
+            const float jitterX = 0.16F + Hash(wrappedX, wrappedY, seed) * 0.68F;
+            const float jitterY = 0.16F + Hash(wrappedX, wrappedY, seed ^ 0xa54ff53aU) * 0.68F;
+            const float dx = static_cast<float>(ox) + jitterX - (x - static_cast<float>(cellX));
+            const float dy = static_cast<float>(oy) + jitterY - (y - static_cast<float>(cellY));
+            const float distance = std::sqrt(dx * dx + dy * dy);
+            if (distance < nearest)
+            {
+                second = nearest;
+                nearest = distance;
+            }
+            else if (distance < second)
+                second = distance;
+        }
+    }
+    return second - nearest;
+}
+
 float PeriodicDistance(const float a, const float b) noexcept
 {
     const float difference = std::abs(a - b);
@@ -206,22 +238,28 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
     }
     else if (preset == "snow")
     {
-        // Wind-shaped snow is broad, low-amplitude and stochastic. A periodic sine
-        // created visible diagonal bands across the entire terrain when tiled.
-        const float drift = Fbm(u, v, 9, seed ^ 0x243f6a88U, 4);
-        const float driftDetail = Fbm(u, v, 38, seed ^ 0xb7e15162U, 3);
-        const float micro = (fine - 0.5F) * 0.035F + (grain - 0.5F) * 0.018F;
-        const float windAccumulation = (drift - 0.5F) * 0.055F +
-            (driftDetail - 0.5F) * 0.018F;
-        const float height = 0.50F + windAccumulation +
-            (broad - 0.5F) * 0.035F + micro;
-        const float albedoVariation = (drift - 0.5F) * 0.018F +
-            (driftDetail - 0.5F) * 0.010F + micro * 0.62F;
-        sample = {0.82F + albedoVariation,
-                  0.87F + albedoVariation * 0.88F,
-                  0.94F + albedoVariation * 0.62F,
-                  height, 0.94F + medium * 0.045F,
-                  0.98F - Smooth((fine - 0.82F) * 4.0F) * 0.10F};
+        // Domain-warped, isotropic drift fields create broad wind accumulation
+        // without the diagonal directional bias of periodic ridge functions.
+        const float windX = Fbm(u, v, 5, seed ^ 0x243f6a88U, 4);
+        const float windZ = Fbm(u, v, 7, seed ^ 0xb7e15162U, 4);
+        const float drift = Fbm(u + (windX - 0.5F) * 0.075F,
+            v + (windZ - 0.5F) * 0.075F, 8, seed ^ 0x3c6ef372U, 5);
+        const float driftShoulder = Fbm(u + (windZ - 0.5F) * 0.022F,
+            v - (windX - 0.5F) * 0.022F, 29, seed ^ 0xa54ff53aU, 3);
+        const float crystalClusters = Fbm(u, v, 164, seed ^ 0x68bc21ebU, 3);
+        const float crystalGrain = Fbm(u, v, 392, seed ^ 0x02e5be93U, 2);
+        const float micro = (crystalClusters - 0.5F) * 0.052F +
+            (crystalGrain - 0.5F) * 0.026F;
+        const float height = 0.50F + (drift - 0.5F) * 0.105F +
+            (driftShoulder - 0.5F) * 0.042F + micro;
+        const float albedoVariation = (drift - 0.5F) * 0.032F +
+            (driftShoulder - 0.5F) * 0.018F + micro * 0.30F;
+        const float frost = Smooth((crystalClusters - 0.34F) * 2.4F);
+        sample = {0.875F + albedoVariation,
+                  0.895F + albedoVariation * 0.91F,
+                  0.925F + albedoVariation * 0.78F,
+                  height, 0.91F + driftShoulder * 0.075F + frost * 0.012F,
+                  0.985F - frost * 0.075F - Smooth((crystalGrain - 0.88F) * 8.0F) * 0.035F};
     }
     else if (preset == "packed_snow")
     {
@@ -243,25 +281,30 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
     }
     else if (preset == "ice")
     {
-        // Fractures follow irregular noise contours rather than a repeated sine
-        // wave, avoiding the artificial parallel bands visible across the lake.
-        const float fractureNoise = Fbm(u, v, 12, seed ^ 0x5be0cd19U, 4);
-        const float branchNoise = Fbm(u, v, 36, seed ^ 0x9b05688cU, 3);
-        const float iceCloud = Fbm(u, v, 6, seed ^ 0x1f83d9abU, 4);
-        const float mainCracks = 1.0F - Smooth(
-            (std::abs(fractureNoise - 0.5F) - 0.006F) * 140.0F);
-        const float fineCracks = 1.0F - Smooth(
-            (std::abs(branchNoise - 0.5F) - 0.003F) * 220.0F);
-        const float fracture = std::clamp(std::max(mainCracks, fineCracks * 0.45F), 0.0F, 1.0F);
-        const float frost = Smooth((medium - 0.42F) * 2.1F);
-        const float height = 0.50F + (iceCloud - 0.5F) * 0.065F +
-            (fractureNoise - 0.5F) * 0.025F + (fine - 0.5F) * 0.025F -
-            fracture * 0.025F;
-        sample = {0.43F + iceCloud * 0.10F + frost * 0.15F - fracture * 0.20F,
-                  0.57F + iceCloud * 0.11F + frost * 0.16F - fracture * 0.19F,
-                  0.68F + iceCloud * 0.12F + frost * 0.17F - fracture * 0.17F,
-                  height, 0.18F + frost * 0.34F + medium * 0.08F + fracture * 0.22F,
-                  0.98F - fracture * 0.58F};
+        // Fractures are a jittered, periodic Voronoi network with a second
+        // finer branch scale. This produces connected, branching lake-ice
+        // seams rather than parallel contour bands or a tiled crack stencil.
+        const float cellEdges = VoronoiEdge(u, v, 13, seed ^ 0x5be0cd19U);
+        const float branchEdges = VoronoiEdge(u, v, 31, seed ^ 0x9b05688cU);
+        const float branchNoise = Fbm(u, v, 43, seed ^ 0x1f83d9abU, 3);
+        const float iceCloud = Fbm(u, v, 6, seed ^ 0x243f6a88U, 5);
+        const float frostCloud = Fbm(u, v, 19, seed ^ 0xb7e15162U, 4);
+        const float mainCracks = 1.0F - Smooth((cellEdges - 0.012F) * 58.0F);
+        const float fineCracks = 1.0F - Smooth((branchEdges - 0.006F) * 110.0F);
+        const float fracture = std::clamp(std::max(mainCracks,
+            fineCracks * Smooth((branchNoise - 0.28F) * 2.2F) * 0.30F), 0.0F, 1.0F);
+        const float frost = Smooth((frostCloud - 0.38F) * 2.5F);
+        const float bubbles = Smooth((Fbm(u, v, 88, seed ^ 0xa54ff53aU, 3) - 0.72F) * 7.0F);
+        const float height = 0.50F + (iceCloud - 0.5F) * 0.085F +
+            (frostCloud - 0.5F) * 0.032F - fracture * 0.012F +
+            (fine - 0.5F) * 0.018F;
+        const float cloudTint = (iceCloud - 0.5F) * 0.12F +
+            (frostCloud - 0.5F) * 0.055F + bubbles * 0.035F;
+        sample = {0.54F + cloudTint + frost * 0.12F - fracture * 0.085F,
+                  0.665F + cloudTint * 0.94F + frost * 0.13F - fracture * 0.082F,
+                  0.775F + cloudTint * 0.86F + frost * 0.14F - fracture * 0.078F,
+                  height, 0.11F + frost * 0.52F + iceCloud * 0.08F + fracture * 0.15F,
+                  0.99F - fracture * 0.28F - bubbles * 0.035F};
     }
     else
     {
@@ -524,8 +567,8 @@ bool GeneratePreset(const std::filesystem::path& outputDirectory,
         }
     }
 
-    const float normalStrength = preset == "ice" ? 12.0F :
-        preset == "snow" ? 4.5F : preset == "packed_snow" ? 5.2F : 8.0F;
+    const float normalStrength = preset == "ice" ? 9.0F :
+        preset == "snow" ? 7.0F : preset == "packed_snow" ? 6.2F : 8.0F;
     for (int y = 0; y < height; ++y)
     {
         const int y0 = Wrap(y - 1, height);
