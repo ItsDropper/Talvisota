@@ -73,7 +73,7 @@ struct SkeletonSegment final
     float startRadius = 0.0F;
     float endRadius = 0.0F;
     // Material group the swept tube emits into: 0 bark (trunk), 1 bark (branch
-    // primary/secondary), 2 twigs, 3 bark lower regions, 4 needles carrier.
+    // primary/secondary), 2 twigs, 3 bark lower regions, 4 needle fascicles, 5 snow.
     // Per-species material allocation happens in the mesher so submeshes stay
     // consolidated (few material groups => few draw instances per placement).
     std::int32_t materialGroup = 0;
