@@ -4,6 +4,7 @@
 #include <fstream>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 namespace talvisota::content
@@ -128,6 +129,7 @@ bool LoadAuthoredDefinition(const std::filesystem::path& path, const ContentRegi
         return false;
     }
     std::unordered_map<std::string, std::pair<std::string, std::size_t>> values;
+    std::vector<std::pair<MissionObjectiveDefinition, std::size_t>> missionObjectives;
     std::string line;
     std::size_t totalBytes = 0U;
     std::size_t lineNumber = 0U;
@@ -178,6 +180,27 @@ bool LoadAuthoredDefinition(const std::filesystem::path& path, const ContentRegi
             Add(diagnostics, path, lineNumber, "record", "Key and value must both be non-empty.");
             continue;
         }
+        if (key == "objective" && kindInfo->kind == AuthoredDefinitionKind::Mission)
+        {
+            const std::size_t separator = value.find("->");
+            if (separator == std::string_view::npos ||
+                value.find("->", separator + 2U) != std::string_view::npos)
+            {
+                Add(diagnostics, path, lineNumber, "objective",
+                    "Expected objective = objective-id -> interaction-target-id.");
+                continue;
+            }
+            const std::string_view objectiveId = Trim(value.substr(0U, separator));
+            const std::string_view targetId = Trim(value.substr(separator + 2U));
+            if (objectiveId.empty() || targetId.empty())
+            {
+                Add(diagnostics, path, lineNumber, "objective",
+                    "Objective ID and interaction target ID must both be non-empty.");
+                continue;
+            }
+            missionObjectives.push_back({{std::string(objectiveId), std::string(targetId)}, lineNumber});
+            continue;
+        }
         if (!values.emplace(std::string(key), std::pair{std::string(value), lineNumber}).second)
             Add(diagnostics, path, lineNumber, std::string(key), "Duplicate field.");
     }
@@ -187,7 +210,7 @@ bool LoadAuthoredDefinition(const std::filesystem::path& path, const ContentRegi
         Add(diagnostics, path, 0U, "header", "Definition is empty or has no version header.");
 
     static constexpr std::string_view common[] = {"id", "name", "description"};
-    static constexpr std::string_view mission[] = {"world_id", "player_character_id", "faction_id"};
+    static constexpr std::string_view mission[] = {"world_id", "region_id", "player_character_id", "faction_id"};
     static constexpr std::string_view faction[] = {"side"};
     static constexpr std::string_view character[] = {"faction_id", "model_id", "portrait_texture_id"};
     static constexpr std::string_view equipment[] = {"category", "model_id", "icon_texture_id"};
@@ -201,7 +224,7 @@ bool LoadAuthoredDefinition(const std::filesystem::path& path, const ContentRegi
         };
         switch (kindInfo->kind)
         {
-        case AuthoredDefinitionKind::Mission: return contains(mission);
+        case AuthoredDefinitionKind::Mission: return key == "objective" || contains(mission);
         case AuthoredDefinitionKind::Faction: return contains(faction);
         case AuthoredDefinitionKind::Character: return contains(character);
         case AuthoredDefinitionKind::Equipment: return contains(equipment);
@@ -231,8 +254,24 @@ bool LoadAuthoredDefinition(const std::filesystem::path& path, const ContentRegi
     {
     case AuthoredDefinitionKind::Mission:
         if (const auto* value = required("world_id")) candidate.worldId = value->first;
+        if (const auto* value = required("region_id")) candidate.regionId = value->first;
         if (const auto* value = required("player_character_id")) candidate.characterId = value->first;
         if (const auto* value = Get(values, "faction_id")) candidate.factionId = value->first;
+        if (missionObjectives.empty())
+            Add(diagnostics, path, 0U, "objective", "Mission requires at least one ordered objective.");
+        {
+            std::unordered_set<std::string> objectiveIds;
+            std::unordered_set<std::string> targetIds;
+            for (const auto& [objective, line] : missionObjectives)
+            {
+                if (!objectiveIds.insert(objective.id).second)
+                    Add(diagnostics, path, line, "objective", "Objective IDs must be unique: " + objective.id);
+                if (!targetIds.insert(objective.interactionTargetId).second)
+                    Add(diagnostics, path, line, "objective",
+                        "Interaction target IDs must be unique: " + objective.interactionTargetId);
+                candidate.objectives.push_back(objective);
+            }
+        }
         break;
     case AuthoredDefinitionKind::Faction:
         if (const auto* value = required("side"))
@@ -282,6 +321,9 @@ bool LoadAuthoredDefinition(const std::filesystem::path& path, const ContentRegi
         ValidateReference(candidate.worldId, AssetKind::Definition, ".tworld", registry, owner,
                           path, Get(values, "world_id") ? Get(values, "world_id")->second : 0U,
                           "world_id", diagnostics);
+        ValidateReference(candidate.regionId, AssetKind::Definition, ".tregion", registry, owner,
+                          path, Get(values, "region_id") ? Get(values, "region_id")->second : 0U,
+                          "region_id", diagnostics);
         ValidateReference(candidate.characterId, AssetKind::Definition, ".tcharacter", registry, owner,
                           path, Get(values, "player_character_id") ? Get(values, "player_character_id")->second : 0U,
                           "player_character_id", diagnostics);
