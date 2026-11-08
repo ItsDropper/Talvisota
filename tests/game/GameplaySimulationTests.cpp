@@ -49,6 +49,7 @@ talvisota::game::MissionDefinition MakeMission()
 int main()
 {
     using namespace talvisota;
+    using namespace talvisota::gameplay;
     std::string error;
 
     // Registry validation and stable lookup.
