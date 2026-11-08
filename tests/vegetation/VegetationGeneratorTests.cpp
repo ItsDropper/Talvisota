@@ -1,4 +1,5 @@
 #include "talvisota/vegetation/Species.hpp"
+#include "talvisota/vegetation/Mesh.hpp"
 
 #include <cassert>
 #include <cmath>
@@ -50,5 +51,15 @@ int main()
     const auto pine = GenerateTree(Species::Pine, SpeciesBuild{ .seed = 1 });
     const auto birch = GenerateTree(Species::Birch, SpeciesBuild{ .seed = 1 });
     assert(pine.segments.size() != birch.segments.size());
+    const auto spruce = GenerateTree(Species::Spruce, SpeciesBuild{ .seed = 77 });
+    const auto mesh = BuildTreeMesh(spruce, 77, 9);
+    assert(!mesh.vertices.empty() && !mesh.indices.empty() && !mesh.sections.empty());
+    for (const auto& vertex : mesh.vertices)
+    {
+        assert(std::isfinite(vertex.position[0]) && std::isfinite(vertex.position[1]) &&
+            std::isfinite(vertex.position[2]));
+        const float normalLength = Length(vertex.normal);
+        assert(normalLength > 0.99F && normalLength < 1.01F);
+    }
     return 0;
 }
