@@ -114,6 +114,8 @@ public:
         void* nativeWindow, int width, int height, std::string& error) = 0;
     [[nodiscard]] virtual bool Resize(int width, int height, std::string& error) = 0;
     [[nodiscard]] virtual bool Render(const SceneSnapshot& scene, std::string& error) = 0;
+    [[nodiscard]] virtual bool ReadbackPresentedFrame(std::vector<std::uint8_t>& bgra,
+        std::uint32_t& width, std::uint32_t& height, std::string& error) = 0;
     [[nodiscard]] virtual bool IsDeviceLost() const noexcept = 0;
 };
 

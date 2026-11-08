@@ -69,6 +69,20 @@ public:
         return true;
     }
 
+    bool ReadbackPresentedFrame(std::vector<std::uint8_t>& bgra,
+        std::uint32_t& width, std::uint32_t& height, std::string& error) override
+    {
+        if (!m_d3d12) {
+            error = "Presented-frame readback is currently implemented for the D3D12 backend only.";
+            return false;
+        }
+        UINT nativeWidth = 0U, nativeHeight = 0U;
+        const bool captured = m_d3d12->ReadbackPresentedFrame(bgra, nativeWidth, nativeHeight, error);
+        width = nativeWidth;
+        height = nativeHeight;
+        return captured;
+    }
+
     bool Render(const SceneSnapshot& snapshot, std::string& error) override
     {
         if (!m_d3d11 && !m_d3d12) {

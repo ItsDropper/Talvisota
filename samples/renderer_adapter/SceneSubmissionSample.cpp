@@ -293,82 +293,22 @@ bool SetCamera(SceneSnapshot& scene, const vanta::math::Vec3& eye,
     return true;
 }
 
-bool CaptureClientPng(HWND window, const std::filesystem::path& path, std::string& error) {
-    RECT client{};
-    if (!GetClientRect(window, &client)) { error = "Could not query client rectangle."; return false; }
-    const int width = client.right - client.left, height = client.bottom - client.top;
-    if (width <= 0 || height <= 0) { error = "Renderer window has no drawable client area."; return false; }
-    HDC windowDc = GetDC(window);
-    if (!windowDc) { error = "Could not acquire renderer window DC."; return false; }
-    HDC memoryDc = CreateCompatibleDC(windowDc);
-    HBITMAP bitmap = CreateCompatibleBitmap(windowDc, width, height);
-    if (!memoryDc || !bitmap) {
-        if (bitmap) DeleteObject(bitmap);
-        if (memoryDc) DeleteDC(memoryDc);
-        ReleaseDC(window, windowDc);
-        error = "Could not allocate screenshot surface.";
+bool WriteBgraPng(const std::vector<std::uint8_t>& pixels, const UINT width,
+    const UINT height, const std::filesystem::path& path, std::string& error) {
+    if (width == 0U || height == 0U ||
+        pixels.size() != static_cast<std::size_t>(width) * height * 4U) {
+        error = "D3D12 framebuffer readback returned invalid dimensions or byte count.";
         return false;
     }
-    HGDIOBJ previous = SelectObject(memoryDc, bitmap);
-    const BOOL copied = BitBlt(memoryDc, 0, 0, width, height, windowDc, 0, 0, SRCCOPY | CAPTUREBLT);
-    GdiFlush();
-    if (previous && previous != HGDI_ERROR) SelectObject(memoryDc, previous);
-    DeleteDC(memoryDc);
-    ReleaseDC(window, windowDc);
-    if (!copied) { DeleteObject(bitmap); error = "Could not copy rendered client surface."; return false; }
-
     ComPtr<IWICImagingFactory> factory;
     HRESULT hr = CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER,
         IID_PPV_ARGS(factory.GetAddressOf()));
-    if (FAILED(hr)) { DeleteObject(bitmap); error = "WIC factory creation failed."; return false; }
-    ComPtr<IWICBitmap> source;
-    hr = factory->CreateBitmapFromHBITMAP(bitmap, nullptr, WICBitmapUseAlpha, source.GetAddressOf());
-    DeleteObject(bitmap);
-    if (FAILED(hr)) { error = "Could not convert screenshot bitmap to WIC."; return false; }
-
-    ComPtr<IWICFormatConverter> converter;
-    hr = factory->CreateFormatConverter(converter.GetAddressOf());
-    if (SUCCEEDED(hr))
-        hr = converter->Initialize(source.Get(), GUID_WICPixelFormat32bppBGRA,
-            WICBitmapDitherTypeNone, nullptr, 0.0, WICBitmapPaletteTypeCustom);
-    if (FAILED(hr)) { error = "Could not normalize the screenshot to 32-bit BGRA."; return false; }
-    const UINT stride = static_cast<UINT>(width) * 4U;
-    const std::size_t pixelBytes = static_cast<std::size_t>(stride) * static_cast<std::size_t>(height);
-    if (pixelBytes > std::numeric_limits<UINT>::max()) {
-        error = "Screenshot dimensions exceed WIC's supported pixel buffer range.";
-        return false;
-    }
-    std::vector<BYTE> pixels(pixelBytes);
-    hr = converter->CopyPixels(nullptr, stride, static_cast<UINT>(pixelBytes), pixels.data());
-    if (FAILED(hr)) { error = "Could not read back the captured framebuffer pixels."; return false; }
-    std::array<bool, 32768> colorBins{};
-    std::size_t distinctColorBins = 0U;
-    std::uint64_t luminanceSum = 0U;
-    std::uint64_t luminanceSquaredSum = 0U;
-    std::size_t visiblePixels = 0U;
-    for (std::size_t offset = 0U; offset < pixels.size(); offset += 4U) {
-        const std::uint32_t blue = pixels[offset];
-        const std::uint32_t green = pixels[offset + 1U];
-        const std::uint32_t red = pixels[offset + 2U];
-        const std::uint32_t luminance = (54U * red + 183U * green + 19U * blue) >> 8U;
-        luminanceSum += luminance;
-        luminanceSquaredSum += static_cast<std::uint64_t>(luminance) * luminance;
-        if (luminance > 18U) ++visiblePixels;
-        const std::size_t bin = ((red >> 3U) << 10U) | ((green >> 3U) << 5U) | (blue >> 3U);
-        if (!colorBins[bin]) { colorBins[bin] = true; ++distinctColorBins; }
-    }
-    const std::uint64_t pixelCount = pixels.size() / 4U;
-    const double meanLuminance = static_cast<double>(luminanceSum) / static_cast<double>(pixelCount);
-    const double meanSquared = static_cast<double>(luminanceSquaredSum) / static_cast<double>(pixelCount);
-    const double luminanceVariance = std::max(0.0, meanSquared - meanLuminance * meanLuminance);
-    if (distinctColorBins < 64U || visiblePixels < pixelCount / 100U || luminanceVariance < 36.0) {
-        error = "Captured framebuffer failed the non-blank image-content check (distinct colors=" +
-            std::to_string(distinctColorBins) + ", visible pixels=" +
-            std::to_string(visiblePixels) + ", luminance deviation=" +
-            std::to_string(std::sqrt(luminanceVariance)) + ").";
-        return false;
-    }
-
+    if (FAILED(hr)) { error = "WIC factory creation failed."; return false; }
+    ComPtr<IWICBitmap> bitmap;
+    hr = factory->CreateBitmapFromMemory(width, height, GUID_WICPixelFormat32bppBGRA,
+        width * 4U, static_cast<UINT>(pixels.size()),
+        const_cast<BYTE*>(pixels.data()), bitmap.GetAddressOf());
+    if (FAILED(hr)) { error = "Could not wrap the D3D12 framebuffer pixels for PNG encoding."; return false; }
     std::error_code ec;
     std::filesystem::create_directories(path.parent_path(), ec);
     if (ec) { error = "Could not create screenshot directory: " + ec.message(); return false; }
@@ -381,23 +321,17 @@ bool CaptureClientPng(HWND window, const std::filesystem::path& path, std::strin
     ComPtr<IWICBitmapFrameEncode> frame;
     if (SUCCEEDED(hr)) hr = encoder->CreateNewFrame(frame.GetAddressOf(), nullptr);
     if (SUCCEEDED(hr)) hr = frame->Initialize(nullptr);
-    if (SUCCEEDED(hr)) hr = frame->SetSize(static_cast<UINT>(width), static_cast<UINT>(height));
+    if (SUCCEEDED(hr)) hr = frame->SetSize(width, height);
     WICPixelFormatGUID format = GUID_WICPixelFormat32bppBGRA;
     if (SUCCEEDED(hr)) hr = frame->SetPixelFormat(&format);
-    if (SUCCEEDED(hr)) hr = frame->WriteSource(converter.Get(), nullptr);
+    if (SUCCEEDED(hr)) hr = frame->WriteSource(bitmap.Get(), nullptr);
     if (SUCCEEDED(hr)) hr = frame->Commit();
     if (SUCCEEDED(hr)) hr = encoder->Commit();
-    if (FAILED(hr)) { error = "PNG encoding failed with HRESULT " +
-        std::to_string(static_cast<unsigned long>(hr)); return false; }
-    std::error_code sizeError;
-    const auto bytes = std::filesystem::file_size(path, sizeError);
-    if (sizeError || bytes < 1024U) {
-        error = "Screenshot encoder returned success but the PNG file is absent or implausibly small.";
+    if (FAILED(hr)) {
+        error = "PNG encoding failed with HRESULT " + std::to_string(static_cast<unsigned long>(hr));
         return false;
     }
     error.clear();
-    std::cout << "Captured " << path.string() << " (" << width << "x" << height
-        << ", " << bytes << " bytes).\n";
     return true;
 }
 
@@ -554,9 +488,30 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 Sleep(16);
             }
             if (!error.empty()) break;
-            (void)DwmFlush();
-            Sleep(350);
-            if (!CaptureClientPng(window, output / view.file, error)) break;
+            std::vector<std::uint8_t> framebuffer;
+            std::uint32_t framebufferWidth = 0U, framebufferHeight = 0U;
+            if (!renderer->ReadbackPresentedFrame(framebuffer, framebufferWidth, framebufferHeight, error))
+                break;
+            std::uint64_t frameHash = 1469598103934665603ULL;
+            for (const std::uint8_t byte : framebuffer) {
+                frameHash ^= byte;
+                frameHash *= 1099511628211ULL;
+            }
+            static std::vector<std::uint64_t> capturedFrameHashes;
+            if (std::find(capturedFrameHashes.begin(), capturedFrameHashes.end(), frameHash) !=
+                capturedFrameHashes.end()) {
+                error = "Capture produced a duplicate presented framebuffer for viewpoint " +
+                    std::string(view.file, view.file + std::wcslen(view.file)) + ".";
+                break;
+            }
+            capturedFrameHashes.push_back(frameHash);
+            std::cout << "Viewpoint " << view.file << ": eye=(" << view.eye.x << ","
+                << view.eye.y << "," << view.eye.z << ") target=(" << view.target.x << ","
+                << view.target.y << "," << view.target.z << "), frame=" << frameNumber
+                << ", framebuffer=" << framebufferWidth << "x" << framebufferHeight
+                << ", FNV1a=0x" << std::hex << frameHash << std::dec << "\\n";
+            if (!WriteBgraPng(framebuffer, framebufferWidth, framebufferHeight,
+                    output / view.file, error)) break;
         }
         renderer.reset();
         if (IsWindow(window)) DestroyWindow(window);
