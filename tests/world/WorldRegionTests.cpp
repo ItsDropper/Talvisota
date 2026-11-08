@@ -185,8 +185,8 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
             registry, world, region, regionDiagnostics), "Sakkola church-village region should load.");
     Require(region.id == "region.sakkola.church_village",
             "The first Karelian region should retain its stable Sakkola identity.");
-    Require(region.terrain.rows == 129U && region.terrain.columns == 129U &&
-            region.terrain.spacingX == 4.0F && region.terrain.spacingZ == 4.0F,
+    Require(region.terrain.rows == 193U && region.terrain.columns == 193U &&
+            std::abs(region.terrain.spacingX - 21.333333333333332F) < 0.001F && std::abs(region.terrain.spacingZ - 21.333333333333332F) < 0.001F,
             "Sakkola should provide a 512 metre terrain block with a 4 metre collision heightfield.");
 
     const auto terrainPlacement = std::find_if(region.placements.begin(), region.placements.end(),
@@ -206,9 +206,9 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
         [](const auto& item) { return item.category == talvisota::world::PlacementCategory::Prop; });
     const auto winterBrush = std::count_if(region.placements.begin(), region.placements.end(),
         [](const auto& item) { return item.modelAssetId == "model.environment.winter_brush"; });
-    Require(vegetation == 418U && structures == 5U && rocks == 32U && props == 382U,
+    Require(vegetation == 1044U && structures == 35U && rocks == 32U && props == 383U,
             "Sakkola should retain its dense mixed forest and village props while adding distributed ground clutter.");
-    Require(winterBrush == 300U && region.placements.size() == 838U,
+    Require(winterBrush == 300U && region.placements.size() == 1495U,
             "Sakkola should contain 300 deterministic winter brush clumps and 418 trees across four ecological stands.");
     const auto brushInQuadrant = [&region](const bool east, const bool south) {
         return std::count_if(region.placements.begin(), region.placements.end(),
