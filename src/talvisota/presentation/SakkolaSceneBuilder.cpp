@@ -253,15 +253,10 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
                         }
                         const auto& vertex = imported.vertices[sourceIndex];
                         const auto destinationIndex = static_cast<std::uint32_t>(mesh.vertices.size());
-                        const auto& sourceMaterial = imported.materials[submesh.materialIndex];
-                        const bool tiledSakkolaSnow =
-                            placement.modelAssetId == "model.terrain.sakkola" &&
-                            sourceMaterial.name == "snow";
-                        // Tile the regional snow PBR maps in world space at a 40 m repeat.
-                        const float u = tiledSakkolaSnow ? vertex.position.x * 0.025F : vertex.u;
-                        const float v = tiledSakkolaSnow ? vertex.position.z * 0.025F : vertex.v;
+                        // Preserve asset-authored UVs. Terrain texture scale is owned by
+                        // the OBJ/material content contract, not a renderer-side override.
                         mesh.vertices.push_back({{vertex.position.x, vertex.position.y, vertex.position.z},
-                            {vertex.normal.x, vertex.normal.y, vertex.normal.z}, u, v});
+                            {vertex.normal.x, vertex.normal.y, vertex.normal.z}, vertex.u, vertex.v});
                         remapped = vertexRemap.emplace(sourceIndex, destinationIndex).first;
                     }
                     mesh.indices.push_back(remapped->second);
