@@ -174,10 +174,12 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
             registry, world, worldDiagnostics), "Sakkola world definition should load.");
     Require(world.id == "world.sakkola" && world.terrainModelId == "model.terrain.sakkola",
             "Sakkola world should own its registered terrain model.");
-    Require(world.hasEnvironment && std::abs(world.environment.sunIntensity - 2.10F) < 0.001F &&
-            std::abs(world.environment.fogDensity - 0.00030F) < 0.00001F &&
+    Require(world.hasEnvironment && std::abs(world.environment.sunIntensity - 1.15F) < 0.001F &&
+            std::abs(world.environment.ambientIntensity - 0.66F) < 0.001F &&
+            std::abs(world.environment.fogDensity - 0.00062F) < 0.00001F &&
+            std::abs(world.environment.fogStart - 115.0F) < 0.001F &&
             std::abs(world.environment.windStrength - 0.06F) < 0.001F,
-            "Sakkola world should expose validated winter sun, fog, ambient, and wind settings.");
+            "Sakkola world should expose the authored overcast winter lighting, aerial perspective, and wind.");
 
     talvisota::world::WorldRegion region;
     std::vector<talvisota::world::WorldRegionDiagnostic> regionDiagnostics;
@@ -186,6 +188,10 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
             std::cerr << diagnostic.line << " " << diagnostic.field << ": " << diagnostic.message << "\\n";
         throw std::runtime_error("Sakkola church-village region should load.");
     }
+    const auto juniperCount = static_cast<std::size_t>(std::count_if(region.placements.begin(), region.placements.end(),
+        [](const auto& placement) { return placement.modelAssetId == "model.environment.juniper"; }));
+    Require(juniperCount == 420U,
+            "Sakkola winter understory must retain all authored common-juniper clusters.");
     Require(region.id == "region.sakkola.church_village",
             "The first Karelian region should retain its stable Sakkola identity.");
     Require(region.terrain.rows == 177U && region.terrain.columns == 177U &&
