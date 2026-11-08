@@ -177,6 +177,7 @@ if(TALVISOTA_ENABLE_VANTA_ENGINE)
         Talvisota::RendererAdapter
         Talvisota::Content
         Talvisota::World
+        Talvisota::Gameplay
         VantaEngine::Runtime
         windowscodecs
         ole32
