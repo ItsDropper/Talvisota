@@ -287,6 +287,21 @@ bool FindNearestActiveObjectiveTarget(const SimulationState& state,
         error = "Interaction-target query requires an active actor entity.";
         return false;
     }
+    for (const float coordinate : actor->position)
+    {
+        if (!std::isfinite(coordinate))
+        {
+            error = "Interaction-target query actor position must be finite.";
+            return false;
+        }
+    }
+
+    // Validate the complete mission state before deriving a presentation target.
+    // This keeps malformed progression from silently appearing as "no target".
+    game::MissionState validatedMission = state.mission;
+    game::InteractionResult ignoredResult = game::InteractionResult::Ignored;
+    if (!game::ApplyMissionInteraction(validatedMission, {}, ignoredResult, error))
+        return false;
 
     InteractionTargetSelection candidate;
     if (state.mission.status != game::MissionStatus::Active)
@@ -325,9 +340,24 @@ bool FindNearestActiveObjectiveTarget(const SimulationState& state,
     double bestDistanceSquared = maximumDistanceSquared;
     for (const auto& [entityId, target] : state.entities.All())
     {
-        if (!target.active || target.kind != entities::EntityKind::WorldObject ||
+        if (target.kind != entities::EntityKind::WorldObject ||
             target.interactionTargetId != activeObjective->interactionTargetId)
             continue;
+        if (!target.active)
+            continue;
+        if (target.id != entityId || !entities::IsValidStableId(entityId))
+        {
+            error = "Active objective target has an inconsistent entity identity.";
+            return false;
+        }
+        for (const float coordinate : target.position)
+        {
+            if (!std::isfinite(coordinate))
+            {
+                error = "Active objective target position must be finite.";
+                return false;
+            }
+        }
 
         const double x = static_cast<double>(actor->position[0]) - target.position[0];
         const double y = static_cast<double>(actor->position[1]) - target.position[1];
