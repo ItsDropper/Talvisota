@@ -28,6 +28,14 @@ target_compile_features(talvisota_content_tests PRIVATE cxx_std_23)
 talvisota_apply_compiler_options(talvisota_content_tests)
 add_test(NAME Talvisota.Content.Registry COMMAND talvisota_content_tests)
 
+add_executable(talvisota_environment_asset_tests assets/EnvironmentAssetTests.cpp)
+target_compile_definitions(talvisota_environment_asset_tests PRIVATE
+    TALVISOTA_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\"
+)
+target_compile_features(talvisota_environment_asset_tests PRIVATE cxx_std_23)
+talvisota_apply_compiler_options(talvisota_environment_asset_tests)
+add_test(NAME Talvisota.Environment.AssetContracts COMMAND talvisota_environment_asset_tests)
+
 
 if(TALVISOTA_ENABLE_VANTA_ENGINE)
     add_executable(talvisota_engine_asset_pipeline_tests
