@@ -45,13 +45,13 @@ jobs:
         run: ctest --test-dir build --output-on-failure
 
       - name: Application smoke test
-        run: .\build\talvisota.exe --help
+        run: .\\build\\talvisota.exe --help
 
       - name: Content validator help smoke test
-        run: .\build\talvisota_content_validate.exe --help
+        run: .\\build\\talvisota_content_validate.exe --help
 
       - name: Validate shipped content
-        run: .\build\talvisota_content_validate.exe content/catalog.tmanifest .
+        run: .\\build\\talvisota_content_validate.exe content/catalog.tmanifest .
 
   windows-msvc-renderer-adapter:
     name: Windows x64 / MSVC renderer adapter
@@ -80,16 +80,61 @@ jobs:
         run: ctest --test-dir build-msvc --output-on-failure -R "Talvisota.Presentation.SceneRendererContract|Talvisota.Content.EngineAssetValidation|Talvisota.Content.EngineAssetPackage|Talvisota.Content.EngineAssetPipeline|Talvisota.Environment.PbrMaps"
 
       - name: Engine-backed content asset validation smoke test
-        run: .\build-msvc\talvisota_asset_validate.exe content/catalog.tmanifest .
+        run: .\\build-msvc\\talvisota_asset_validate.exe content/catalog.tmanifest .
 
       - name: Build deterministic content package
-        run: .\build-msvc\talvisota_content_package.exe content/catalog.tmanifest . "$env:RUNNER_TEMP\talvisota-content-package"
+        run: .\\build-msvc\\talvisota_content_package.exe content/catalog.tmanifest . "$env:RUNNER_TEMP\\talvisota-content-package"
 
       - name: Verify packaged content integrity
-        run: .\build-msvc\talvisota_content_package.exe --verify "$env:RUNNER_TEMP\talvisota-content-package"
+        run: .\\build-msvc\\talvisota_content_package.exe --verify "$env:RUNNER_TEMP\\talvisota-content-package"
 
       - name: Texture processor help smoke test
-        run: .\build-msvc\talvisota_texture_process.exe --help
+        run: .\\build-msvc\\talvisota_texture_process.exe --help
+
+      - name: Assemble playable Sakkola download
+        shell: pwsh
+        run: |
+          $packageRoot = Join-Path $env:RUNNER_TEMP 'talvisota-sakkola-windows-x64'
+          New-Item -ItemType Directory -Force -Path $packageRoot | Out-Null
+          Copy-Item -LiteralPath '.\\build-msvc\\talvisota_renderer_sample.exe' -Destination (Join-Path $packageRoot 'TalvisotaSakkola.exe')
+          Copy-Item -Path 'content', 'assets' -Destination $packageRoot -Recurse
+          $runtimeDlls = @(Get-ChildItem -LiteralPath 'build-msvc' -Filter '*.dll' -File -Recurse)
+          foreach ($dll in $runtimeDlls) {
+            $destination = Join-Path $packageRoot $dll.Name
+            if (Test-Path -LiteralPath $destination) {
+              throw "Runtime DLL name collision while packaging: $($dll.Name)"
+            }
+            Copy-Item -LiteralPath $dll.FullName -Destination $destination
+          }
+          @'
+          @echo off
+          cd /d "%~dp0"
+          TalvisotaSakkola.exe
+          '@ | Set-Content -LiteralPath (Join-Path $packageRoot 'Start-Talvisota.bat') -Encoding Ascii
+          @'
+          TALVISOTA - SAKKOLA WORLD PREVIEW
+
+          Double-click Start-Talvisota.bat to launch.
+          Press Esc or close the window to exit.
+
+          This is the current fixed-camera Sakkola world renderer preview,
+          not yet the complete first-person gameplay build.
+          '@ | Set-Content -LiteralPath (Join-Path $packageRoot 'README.txt') -Encoding UTF8
+          if (-not (Test-Path -LiteralPath (Join-Path $packageRoot 'content\\catalog.tmanifest'))) {
+            throw 'Packaged Sakkola content manifest is missing.'
+          }
+          if (-not (Test-Path -LiteralPath (Join-Path $packageRoot 'assets'))) {
+            throw 'Packaged game assets are missing.'
+          }
+          Get-ChildItem -LiteralPath $packageRoot -Force | Select-Object Name, Length
+
+      - name: Upload playable Sakkola Windows build
+        uses: actions/upload-artifact@v4
+        with:
+          name: talvisota-sakkola-windows-x64
+          path: ${{ runner.temp }}/talvisota-sakkola-windows-x64/
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Render Sakkola terrain viewpoints
         timeout-minutes: 8
@@ -97,7 +142,7 @@ jobs:
         run: |
           $captureDir = Join-Path $env:RUNNER_TEMP 'sakkola-captures'
           New-Item -ItemType Directory -Force -Path $captureDir | Out-Null
-          $process = Start-Process -FilePath .\build-msvc\talvisota_renderer_sample.exe -ArgumentList @('--backend=d3d12', "--capture-dir=$captureDir", '--frames-per-view=1') -Wait -PassThru
+          $process = Start-Process -FilePath .\\build-msvc\\talvisota_renderer_sample.exe -ArgumentList @('--backend=d3d12', "--capture-dir=$captureDir", '--frames-per-view=1') -Wait -PassThru
           $rendererLog = Join-Path $captureDir 'renderer.log'
           if (Test-Path -LiteralPath $rendererLog) { Get-Content -LiteralPath $rendererLog }
           if ($process.ExitCode -ne 0) { throw "Sakkola renderer exited with code $($process.ExitCode)" }
