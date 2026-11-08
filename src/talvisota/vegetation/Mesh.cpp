@@ -158,27 +158,41 @@ TreeMesh BuildSnowMesh(const TreeSkeleton& skeleton)
             (0.18F + 0.30F * fitness) + 0.0025F;
         for (int offset = 0; offset < chain.segmentCount; ++offset)
         {
-            const auto& segment = skeleton.segments[
-                static_cast<std::size_t>(chain.firstSegment + offset)];
+            const std::size_t segmentIndex =
+                static_cast<std::size_t>(chain.firstSegment + offset);
+            const auto& segment = skeleton.segments[segmentIndex];
             const Float3 axis = segment.end - segment.start;
             const float length = Length(axis);
             if (length <= 1.0e-5F) continue;
             const Float3 tangent = axis * (1.0F / length);
-            const float radiusScale = std::clamp(
-                segment.startRadius / chain.snowCapture.carryingRadius, 0.18F, 1.0F);
-            const float localWidth = width * radiusScale;
-            const float localThickness = thickness * std::sqrt(radiusScale);
-            Float3 up = Float3{0.0F, 1.0F, 0.0F} -
-                tangent * Dot(Float3{0.0F, 1.0F, 0.0F}, tangent);
-            if (Length(up) <= 1.0e-4F) up = SafePerpendicular(tangent);
-            else up = Normalized(up);
-            const Float3 side = Normalized(Cross(tangent, up));
+            Float3 startTangent = tangent;
+            Float3 endTangent = tangent;
+            if (offset > 0)
+            {
+                const auto& previous = skeleton.segments[segmentIndex - 1u];
+                startTangent = Normalized(Normalized(previous.end - previous.start) + tangent);
+            }
+            if (offset + 1 < chain.segmentCount)
+            {
+                const auto& next = skeleton.segments[segmentIndex + 1u];
+                endTangent = Normalized(tangent + Normalized(next.end - next.start));
+            }
             const std::uint32_t base = static_cast<std::uint32_t>(mesh.vertices.size());
 
             for (int ring = 0; ring < 2; ++ring)
             {
                 const Float3 center = ring == 0 ? segment.start : segment.end;
                 const float branchRadius = ring == 0 ? segment.startRadius : segment.endRadius;
+                const Float3& ringTangent = ring == 0 ? startTangent : endTangent;
+                const float radiusScale = std::clamp(
+                    branchRadius / chain.snowCapture.carryingRadius, 0.18F, 1.0F);
+                const float localWidth = width * radiusScale;
+                const float localThickness = thickness * std::sqrt(radiusScale);
+                Float3 up = Float3{0.0F, 1.0F, 0.0F} -
+                    ringTangent * Dot(Float3{0.0F, 1.0F, 0.0F}, ringTangent);
+                if (Length(up) <= 1.0e-4F) up = SafePerpendicular(ringTangent);
+                else up = Normalized(up);
+                const Float3 side = Normalized(Cross(ringTangent, up));
                 for (int sample = 0; sample <= crossSectionSteps; ++sample)
                 {
                     const float angle = -1.57079632679F +
