@@ -157,6 +157,88 @@ bool InitializeSimulationFromAuthoredMission(
     return true;
 }
 
+bool FindNearestActiveObjectiveTarget(const SimulationState& state,
+    const std::string_view actorEntityId, const float maximumDistanceMeters,
+    InteractionTargetSelection& output, std::string& error)
+{
+    if (!entities::IsValidStableId(actorEntityId) ||
+        !std::isfinite(maximumDistanceMeters) || maximumDistanceMeters <= 0.0F ||
+        maximumDistanceMeters > 10.0F)
+    {
+        error = "Interaction-target query contains an invalid actor ID or search radius.";
+        return false;
+    }
+
+    const entities::EntityState* const actor = state.entities.Find(actorEntityId);
+    if (actor == nullptr || !actor->active || actor->kind == entities::EntityKind::WorldObject)
+    {
+        error = "Interaction-target query requires an active actor entity.";
+        return false;
+    }
+
+    InteractionTargetSelection candidate;
+    if (state.mission.status != game::MissionStatus::Active)
+    {
+        output = std::move(candidate);
+        error.clear();
+        return true;
+    }
+
+    const game::ObjectiveState* activeObjective = nullptr;
+    for (const game::ObjectiveState& objective : state.mission.objectives)
+    {
+        if (objective.status != game::ObjectiveStatus::Active)
+            continue;
+        if (activeObjective != nullptr)
+        {
+            error = "Active mission contains more than one active objective.";
+            return false;
+        }
+        activeObjective = &objective;
+    }
+
+    if (activeObjective == nullptr)
+    {
+        error = "Active mission does not contain an active objective.";
+        return false;
+    }
+    if (!entities::IsValidStableId(activeObjective->interactionTargetId))
+    {
+        error = "Active mission objective contains an invalid interaction-target ID.";
+        return false;
+    }
+
+    const double maximumDistanceSquared =
+        static_cast<double>(maximumDistanceMeters) * maximumDistanceMeters;
+    double bestDistanceSquared = maximumDistanceSquared;
+    for (const auto& [entityId, target] : state.entities.All())
+    {
+        if (!target.active || target.kind != entities::EntityKind::WorldObject ||
+            target.interactionTargetId != activeObjective->interactionTargetId)
+            continue;
+
+        const double x = static_cast<double>(actor->position[0]) - target.position[0];
+        const double y = static_cast<double>(actor->position[1]) - target.position[1];
+        const double z = static_cast<double>(actor->position[2]) - target.position[2];
+        const double distanceSquared = x * x + y * y + z * z;
+        // EntityRegistry iteration is stable-ID ordered, so strict comparison gives
+        // deterministic tie-breaking without depending on insertion order.
+        if (distanceSquared <= bestDistanceSquared &&
+            (candidate.entityId.empty() || distanceSquared < bestDistanceSquared))
+        {
+            candidate.entityId = entityId;
+            bestDistanceSquared = distanceSquared;
+        }
+    }
+
+    if (!candidate.entityId.empty())
+        candidate.distanceMeters = static_cast<float>(std::sqrt(bestDistanceSquared));
+
+    output = std::move(candidate);
+    error.clear();
+    return true;
+}
+
 bool AdvanceSimulation(SimulationState& state, const GameplayRules& rules,
     const double deltaSeconds, const std::span<const InteractionCommand> commands,
     std::vector<CommandResult>& outputResults, std::string& error)
