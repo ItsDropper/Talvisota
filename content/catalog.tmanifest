@@ -73,4 +73,4 @@ asset	texture.environment.alder_bark_albedo	texture	assets/textures/environment/
 asset	texture.environment.alder_bark_normal	texture	assets/textures/environment/alder_bark-normal.bmp	required	-	project	project
 asset	texture.environment.alder_bark_roughness	texture	assets/textures/environment/alder_bark-roughness.bmp	required	-	project	project
 asset	texture.environment.alder_bark_ao	texture	assets/textures/environment/alder_bark-ao.bmp	required	-	project	project
-asset	model.environment.sakkola_roads	model	assets/models/environment/sakkola-roads.obj	required	material.environment.landscape_mtl	project	project
+asset	model.environment.sakkola_roads	model	assets/models/environment/sakkola-roads.obj	required	material.environment.landscape_mtl,texture.environment.packed_snow_albedo,texture.environment.packed_snow_normal,texture.environment.packed_snow_roughness,texture.environment.packed_snow_ao	project	project
