@@ -299,6 +299,7 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
                 const auto skeleton = talvisota::vegetation::GenerateTree(treeSpecies, build);
                 const auto woodMesh = talvisota::vegetation::BuildTreeMesh(skeleton, build.seed, 8);
                 const auto snowMesh = talvisota::vegetation::BuildSnowMesh(skeleton);
+                const auto needleMesh = talvisota::vegetation::BuildNeedleMesh(skeleton, build.seed);
                 std::vector<SubmeshBinding> bindings;
 
                 const auto addTreeMesh = [&](const talvisota::vegetation::TreeMesh& source) -> bool {
@@ -375,7 +376,7 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
                     return true;
                 };
 
-                if (!addTreeMesh(woodMesh) || !addTreeMesh(snowMesh))
+                if (!addTreeMesh(woodMesh) || !addTreeMesh(needleMesh) || !addTreeMesh(snowMesh))
                     return false;
                 procedural = proceduralTreeModels.emplace(cacheKey, std::move(bindings)).first;
                 ++importedModelCount;
@@ -557,7 +558,7 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
         expandedVertices * sizeof(talvisota::presentation::RenderVertex) +
         expandedIndices * sizeof(std::uint32_t);
     std::cout << "Loaded " << region.id << ": " << placementCount << " placements, "
-        << importedModelCount << " distinct OBJ models, " << scene.meshes.size()
+        << importedModelCount << " distinct source/procedural model variants, " << scene.meshes.size()
         << " submeshes, " << drawCount << " material-bound draw instances; "
         << uniqueVertices << " unique mesh vertices, " << expandedVertices
         << " expanded instance vertices, " << uniqueGeometryBytes
