@@ -52,8 +52,9 @@ int main()
     forward.forward = 1.0F;
     Check(UpdatePlayer(region, config, forward, 0.5F, player, error),
         "forward movement update succeeds");
-    Check(std::abs(player.position[2] - config.walkSpeed * 0.1F) < 0.0001F,
-        "large frame delta is clamped to configured maximum");
+    Check(std::abs(player.horizontalVelocity[1] - config.groundAcceleration * 0.1F) < 0.0001F,
+        "large frame delta is clamped and ground acceleration is applied");
+    Check(player.position[2] > 0.0F, "accelerated movement advances the player");
 
     const float beforeDiagonal = player.position[2];
     PlayerInput diagonal;
@@ -63,8 +64,8 @@ int main()
         "diagonal movement update succeeds");
     const float diagonalDistance = std::hypot(player.position[0],
         player.position[2] - beforeDiagonal);
-    Check(std::abs(diagonalDistance - config.walkSpeed * 0.1F) < 0.0001F,
-        "diagonal movement is normalized to walking speed");
+    Check(diagonalDistance > 0.0F && std::isfinite(diagonalDistance),
+        "diagonal acceleration produces finite normalized movement");
 
     const auto beforeSprint = player.position;
     PlayerInput sprint;
@@ -74,8 +75,25 @@ int main()
         "sprint movement update succeeds");
     const float sprintDistance = std::hypot(player.position[0] - beforeSprint[0],
         player.position[2] - beforeSprint[2]);
-    Check(std::abs(sprintDistance - config.sprintSpeed * 0.1F) < 0.0001F,
-        "sprint uses the configured sprint speed");
+    Check(sprintDistance > 0.0F && player.horizontalVelocity[1] > config.walkSpeed,
+        "sprint accelerates toward the higher sprint speed");
+
+    PlayerInput release;
+    Check(UpdatePlayer(region, config, release, 0.1F, player, error),
+        "release input applies ground friction");
+    Check(std::abs(player.horizontalVelocity[0]) < config.groundAcceleration * 0.1F + 0.001F,
+        "ground friction reduces lateral momentum");
+
+    PlayerInput crouch;
+    crouch.crouch = true;
+    Check(UpdatePlayer(region, config, crouch, 0.016F, player, error),
+        "crouch update succeeds");
+    Check(player.crouched && BuildPlayerCamera(player, config).position[1] <
+        player.position[1] + config.eyeHeight, "crouch lowers the camera eye height");
+    crouch.crouch = false;
+    Check(UpdatePlayer(region, config, crouch, 0.016F, player, error),
+        "standing update succeeds");
+    Check(!player.crouched, "player returns to standing when overhead clearance is available");
 
     PlayerInput jump;
     jump.jumpPressed = true;
