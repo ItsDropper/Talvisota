@@ -36,9 +36,29 @@ using talvisota::presentation::RenderMaterial;
 using talvisota::presentation::RenderMesh;
 using talvisota::presentation::SceneSnapshot;
 
+LONG rawMouseDeltaX = 0;
+LONG rawMouseDeltaY = 0;
+
 LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM wParam, LPARAM lParam) {
     if (message == WM_CLOSE) { DestroyWindow(window); return 0; }
     if (message == WM_DESTROY) { PostQuitMessage(0); return 0; }
+    if (message == WM_KILLFOCUS) { rawMouseDeltaX = 0; rawMouseDeltaY = 0; }
+    if (message == WM_SETCURSOR && LOWORD(lParam) == HTCLIENT) {
+        SetCursor(nullptr);
+        return TRUE;
+    }
+    if (message == WM_INPUT) {
+        RAWINPUT input{};
+        UINT size = sizeof(input);
+        if (GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT,
+                &input, &size, sizeof(RAWINPUTHEADER)) == size &&
+            input.header.dwType == RIM_TYPEMOUSE &&
+            (input.data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE) == 0U) {
+            rawMouseDeltaX += input.data.mouse.lLastX;
+            rawMouseDeltaY += input.data.mouse.lLastY;
+        }
+        return DefWindowProcW(window, message, wParam, lParam);
+    }
     if (message == WM_KEYDOWN && wParam == VK_ESCAPE) { DestroyWindow(window); return 0; }
     return DefWindowProcW(window, message, wParam, lParam);
 }
@@ -731,6 +751,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         if (ownsCom) CoUninitialize();
         return 5;
     }
+    RAWINPUTDEVICE mouseDevice{0x01U, 0x02U, 0U, window};
+    const bool rawMouseAvailable = RegisterRawInputDevices(&mouseDevice, 1U, sizeof(mouseDevice)) != FALSE;
+    if (!rawMouseAvailable)
+        std::cerr << "Raw mouse registration failed; use arrow keys for camera look.\\n";
     ShowWindow(window, showCommand);
     UpdateWindow(window);
     SetForegroundWindow(window);
@@ -895,7 +919,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     MSG message{};
     bool running = true;
     bool jumpWasDown = false;
-    std::cout << "First-person preview: WASD move, Space jump, Shift sprint, arrow keys look, Escape exits.\n";
+    std::cout << "First-person preview: WASD move, mouse/arrow keys look, Space jump, Shift sprint, Escape exits.\n";
     while (running) {
         while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE) != FALSE) {
             if (message.message == WM_QUIT) { running = false; break; }
@@ -919,10 +943,13 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         playerInput.jumpPressed = jumpDown && !jumpWasDown;
         jumpWasDown = jumpDown;
         const float lookStep = 1.45F * deltaSeconds;
-        playerInput.lookYawRadians =
+        constexpr float mouseRadiansPerCount = 0.0025F;
+        const LONG mouseX = std::exchange(rawMouseDeltaX, 0L);
+        const LONG mouseY = std::exchange(rawMouseDeltaY, 0L);
+        playerInput.lookYawRadians = static_cast<float>(mouseX) * mouseRadiansPerCount +
             ((GetAsyncKeyState(VK_RIGHT) & 0x8000) != 0 ? lookStep : 0.0F) -
             ((GetAsyncKeyState(VK_LEFT) & 0x8000) != 0 ? lookStep : 0.0F);
-        playerInput.lookPitchRadians =
+        playerInput.lookPitchRadians = -static_cast<float>(mouseY) * mouseRadiansPerCount +
             ((GetAsyncKeyState(VK_UP) & 0x8000) != 0 ? lookStep : 0.0F) -
             ((GetAsyncKeyState(VK_DOWN) & 0x8000) != 0 ? lookStep : 0.0F);
         bool cameraChanged = !playerState.grounded || playerInput.forward != 0.0F ||
