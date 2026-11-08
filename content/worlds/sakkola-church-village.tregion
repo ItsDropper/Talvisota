@@ -266,345 +266,345 @@ collision	barn.north.collision	69.00	11.44	165.00	6.80	2.20	4.40
 placement	sauna.shore	structure	model.environment.sauna	-	-85.00	3.763	-143.00	274.0	1.000
 collision	sauna.shore.collision	-85.00	5.46	-143.00	3.20	1.70	2.80
 placement	tree.aspen.001	vegetation	model.environment.aspen	-	-225.32	4.439	-59.29	43.3	0.961
-collision	tree.aspen.001.trunk	-225.32	4.669	-59.29	0.23	4.09	0.23
+collision	tree.aspen.001.trunk	-225.32	8.529	-59.29	0.23	4.09	0.23
 placement	tree.alder.002	vegetation	model.environment.alder	-	-215.80	4.118	-59.54	54.7	0.849
-collision	tree.alder.002.trunk	-215.80	4.318	-59.54	0.20	2.55	0.20
+collision	tree.alder.002.trunk	-215.80	6.668	-59.54	0.20	2.55	0.20
 placement	tree.birch.003	vegetation	model.environment.birch	-	-206.51	3.779	-55.94	225.5	1.176
-collision	tree.birch.003.trunk	-206.51	4.059	-55.94	0.28	3.94	0.28
+collision	tree.birch.003.trunk	-206.51	7.719	-55.94	0.28	3.94	0.28
 placement	tree.birch.004	vegetation	model.environment.birch	-	-197.42	3.540	-61.34	19.2	1.112
-collision	tree.birch.004.trunk	-197.42	3.810	-61.34	0.27	3.73	0.27
+collision	tree.birch.004.trunk	-197.42	7.270	-61.34	0.27	3.73	0.27
 placement	tree.spruce.005	vegetation	model.environment.spruce	-	-188.16	3.248	-58.14	18.2	1.213
-collision	tree.spruce.005.trunk	-188.16	3.538	-58.14	0.29	3.64	0.29
+collision	tree.spruce.005.trunk	-188.16	6.888	-58.14	0.29	3.64	0.29
 placement	tree.spruce.006	vegetation	model.environment.spruce	-	-176.33	3.083	-59.16	79.2	1.262
-collision	tree.spruce.006.trunk	-176.33	3.383	-59.16	0.30	3.79	0.30
+collision	tree.spruce.006.trunk	-176.33	6.873	-59.16	0.30	3.79	0.30
 placement	tree.alder.007	vegetation	model.environment.alder	-	-171.47	3.051	-58.38	48.7	1.086
-collision	tree.alder.007.trunk	-171.47	3.311	-58.38	0.26	3.26	0.26
+collision	tree.alder.007.trunk	-171.47	6.311	-58.38	0.26	3.26	0.26
 placement	tree.spruce.008	vegetation	model.environment.spruce	-	-160.47	3.122	-58.91	165.6	0.976
-collision	tree.spruce.008.trunk	-160.47	3.352	-58.91	0.23	2.93	0.23
+collision	tree.spruce.008.trunk	-160.47	6.052	-58.91	0.23	2.93	0.23
 placement	tree.spruce.009	vegetation	model.environment.spruce	-	-149.70	3.302	-57.80	235.6	0.852
-collision	tree.spruce.009.trunk	-149.70	3.502	-57.80	0.20	2.55	0.20
+collision	tree.spruce.009.trunk	-149.70	5.852	-57.80	0.20	2.55	0.20
 placement	tree.birch.010	vegetation	model.environment.birch	-	-142.40	3.500	-60.20	247.5	1.103
-collision	tree.birch.010.trunk	-142.40	3.760	-60.20	0.26	3.70	0.26
+collision	tree.birch.010.trunk	-142.40	7.200	-60.20	0.26	3.70	0.26
 placement	tree.spruce.011	vegetation	model.environment.spruce	-	-132.57	3.715	-56.67	137.9	0.831
-collision	tree.spruce.011.trunk	-132.57	3.915	-56.67	0.20	2.49	0.20
+collision	tree.spruce.011.trunk	-132.57	6.205	-56.67	0.20	2.49	0.20
 placement	tree.alder.012	vegetation	model.environment.alder	-	-120.36	4.065	-60.85	341.8	0.919
-collision	tree.alder.012.trunk	-120.36	4.285	-60.85	0.22	2.76	0.22
+collision	tree.alder.012.trunk	-120.36	6.825	-60.85	0.22	2.76	0.22
 placement	tree.alder.013	vegetation	model.environment.alder	-	-229.58	4.700	-50.89	353.4	1.126
-collision	tree.alder.013.trunk	-229.58	4.970	-50.89	0.27	3.38	0.27
+collision	tree.alder.013.trunk	-229.58	8.080	-50.89	0.27	3.38	0.27
 placement	tree.spruce.014	vegetation	model.environment.spruce	-	-220.50	4.394	-46.37	43.4	0.810
-collision	tree.spruce.014.trunk	-220.50	4.584	-46.37	0.19	2.43	0.19
+collision	tree.spruce.014.trunk	-220.50	6.824	-46.37	0.19	2.43	0.19
 placement	tree.pine.015	vegetation	model.environment.pine	-	-207.05	3.793	-49.75	146.6	1.250
-collision	tree.pine.015.trunk	-207.05	4.093	-49.75	0.30	5.00	0.30
+collision	tree.pine.015.trunk	-207.05	8.793	-49.75	0.30	5.00	0.30
 placement	tree.pine.016	vegetation	model.environment.pine	-	-197.17	3.426	-47.35	192.7	0.909
-collision	tree.pine.016.trunk	-197.17	3.646	-47.35	0.22	3.64	0.22
+collision	tree.pine.016.trunk	-197.17	7.066	-47.35	0.22	3.64	0.22
 placement	tree.birch.017	vegetation	model.environment.birch	-	-188.68	3.185	-49.95	292.7	1.036
-collision	tree.birch.017.trunk	-188.68	3.435	-49.95	0.25	3.47	0.25
+collision	tree.birch.017.trunk	-188.68	6.655	-49.95	0.25	3.47	0.25
 placement	tree.aspen.018	vegetation	model.environment.aspen	-	-178.26	3.006	-46.49	331.1	0.836
-collision	tree.aspen.018.trunk	-178.26	3.206	-46.49	0.20	3.55	0.20
+collision	tree.aspen.018.trunk	-178.26	6.556	-46.49	0.20	3.55	0.20
 placement	tree.alder.019	vegetation	model.environment.alder	-	-167.36	2.986	-49.16	285.6	0.847
-collision	tree.alder.019.trunk	-167.36	3.186	-49.16	0.20	2.54	0.20
+collision	tree.alder.019.trunk	-167.36	5.526	-49.16	0.20	2.54	0.20
 placement	tree.spruce.020	vegetation	model.environment.spruce	-	-158.48	3.077	-46.23	59.6	1.108
-collision	tree.spruce.020.trunk	-158.48	3.347	-46.23	0.27	3.33	0.27
+collision	tree.spruce.020.trunk	-158.48	6.407	-46.23	0.27	3.33	0.27
 placement	tree.birch.021	vegetation	model.environment.birch	-	-148.91	3.255	-48.83	142.7	1.002
-collision	tree.birch.021.trunk	-148.91	3.495	-48.83	0.24	3.36	0.24
+collision	tree.birch.021.trunk	-148.91	6.615	-48.83	0.24	3.36	0.24
 placement	tree.spruce.022	vegetation	model.environment.spruce	-	-140.73	3.430	-46.38	303.3	1.186
-collision	tree.spruce.022.trunk	-140.73	3.710	-46.38	0.28	3.56	0.28
+collision	tree.spruce.022.trunk	-140.73	6.990	-46.38	0.28	3.56	0.28
 placement	tree.aspen.023	vegetation	model.environment.aspen	-	-132.57	3.630	-47.46	318.1	1.270
-collision	tree.aspen.023.trunk	-132.57	3.930	-47.46	0.30	5.40	0.30
+collision	tree.aspen.023.trunk	-132.57	9.030	-47.46	0.30	5.40	0.30
 placement	tree.birch.024	vegetation	model.environment.birch	-	-121.59	3.917	-49.72	67.8	0.782
-collision	tree.birch.024.trunk	-121.59	4.107	-49.72	0.19	2.62	0.19
+collision	tree.birch.024.trunk	-121.59	6.537	-49.72	0.19	2.62	0.19
 placement	tree.pine.025	vegetation	model.environment.pine	-	-230.20	4.997	-38.39	201.2	0.938
-collision	tree.pine.025.trunk	-230.20	5.227	-38.39	0.23	3.75	0.23
+collision	tree.pine.025.trunk	-230.20	8.747	-38.39	0.23	3.75	0.23
 placement	tree.spruce.026	vegetation	model.environment.spruce	-	-219.01	4.413	-40.56	184.5	1.236
-collision	tree.spruce.026.trunk	-219.01	4.713	-40.56	0.30	3.71	0.30
+collision	tree.spruce.026.trunk	-219.01	8.123	-40.56	0.30	3.71	0.30
 placement	tree.birch.027	vegetation	model.environment.birch	-	-210.18	4.030	-38.17	84.4	1.011
-collision	tree.birch.027.trunk	-210.18	4.270	-38.17	0.24	3.39	0.24
+collision	tree.birch.027.trunk	-210.18	7.420	-38.17	0.24	3.39	0.24
 placement	tree.birch.028	vegetation	model.environment.birch	-	-199.78	3.567	-39.39	25.7	1.079
-collision	tree.birch.028.trunk	-199.78	3.827	-39.39	0.26	3.61	0.26
+collision	tree.birch.028.trunk	-199.78	7.177	-39.39	0.26	3.61	0.26
 placement	tree.spruce.029	vegetation	model.environment.spruce	-	-191.59	3.321	-37.26	149.9	0.759
-collision	tree.spruce.029.trunk	-191.59	3.501	-37.26	0.18	2.28	0.18
+collision	tree.spruce.029.trunk	-191.59	5.601	-37.26	0.18	2.28	0.18
 placement	tree.aspen.030	vegetation	model.environment.aspen	-	-177.62	3.038	-39.67	0.6	1.322
-collision	tree.aspen.030.trunk	-177.62	3.358	-39.67	0.32	5.62	0.32
+collision	tree.aspen.030.trunk	-177.62	8.658	-39.67	0.32	5.62	0.32
 placement	tree.pine.031	vegetation	model.environment.pine	-	-167.16	3.049	-37.20	39.4	1.306
-collision	tree.pine.031.trunk	-167.16	3.359	-37.20	0.31	5.22	0.31
+collision	tree.pine.031.trunk	-167.16	8.269	-37.20	0.31	5.22	0.31
 placement	tree.spruce.032	vegetation	model.environment.spruce	-	-159.13	3.080	-41.72	287.3	0.889
-collision	tree.spruce.032.trunk	-159.13	3.290	-41.72	0.21	2.67	0.21
+collision	tree.spruce.032.trunk	-159.13	5.750	-41.72	0.21	2.67	0.21
 placement	tree.spruce.033	vegetation	model.environment.spruce	-	-149.18	3.243	-41.43	27.0	1.049
-collision	tree.spruce.033.trunk	-149.18	3.493	-41.43	0.25	3.15	0.25
+collision	tree.spruce.033.trunk	-149.18	6.393	-41.43	0.25	3.15	0.25
 placement	tree.pine.034	vegetation	model.environment.pine	-	-138.10	3.465	-37.61	227.2	0.803
-collision	tree.pine.034.trunk	-138.10	3.655	-37.61	0.19	3.21	0.19
+collision	tree.pine.034.trunk	-138.10	6.675	-37.61	0.19	3.21	0.19
 placement	tree.aspen.035	vegetation	model.environment.aspen	-	-127.42	3.713	-41.69	195.9	0.943
-collision	tree.aspen.035.trunk	-127.42	3.943	-41.69	0.23	4.01	0.23
+collision	tree.aspen.035.trunk	-127.42	7.723	-41.69	0.23	4.01	0.23
 placement	tree.spruce.036	vegetation	model.environment.spruce	-	-117.76	3.924	-38.42	300.4	1.152
-collision	tree.spruce.036.trunk	-117.76	4.204	-38.42	0.28	3.45	0.28
+collision	tree.spruce.036.trunk	-117.76	7.374	-38.42	0.28	3.45	0.28
 placement	tree.alder.037	vegetation	model.environment.alder	-	-228.08	5.119	-29.71	114.7	1.220
-collision	tree.alder.037.trunk	-228.08	5.409	-29.71	0.29	3.66	0.29
+collision	tree.alder.037.trunk	-228.08	8.779	-29.71	0.29	3.66	0.29
 placement	tree.spruce.038	vegetation	model.environment.spruce	-	-219.83	4.765	-26.41	245.1	1.298
-collision	tree.spruce.038.trunk	-219.83	5.075	-26.41	0.31	3.89	0.31
+collision	tree.spruce.038.trunk	-219.83	8.655	-26.41	0.31	3.89	0.31
 placement	tree.pine.039	vegetation	model.environment.pine	-	-210.15	4.179	-30.11	160.5	1.291
-collision	tree.pine.039.trunk	-210.15	4.489	-30.11	0.31	5.16	0.31
+collision	tree.pine.039.trunk	-210.15	9.339	-30.11	0.31	5.16	0.31
 placement	tree.birch.040	vegetation	model.environment.birch	-	-198.90	3.776	-26.62	42.9	1.013
-collision	tree.birch.040.trunk	-198.90	4.016	-26.62	0.24	3.39	0.24
+collision	tree.birch.040.trunk	-198.90	7.166	-26.62	0.24	3.39	0.24
 placement	tree.spruce.041	vegetation	model.environment.spruce	-	-190.26	3.429	-29.62	351.5	0.815
-collision	tree.spruce.041.trunk	-190.26	3.629	-29.62	0.20	2.45	0.20
+collision	tree.spruce.041.trunk	-190.26	5.879	-29.62	0.20	2.45	0.20
 placement	tree.birch.042	vegetation	model.environment.birch	-	-179.32	3.253	-28.42	223.3	0.833
-collision	tree.birch.042.trunk	-179.32	3.453	-28.42	0.20	2.79	0.20
+collision	tree.birch.042.trunk	-179.32	6.043	-28.42	0.20	2.79	0.20
 placement	tree.alder.043	vegetation	model.environment.alder	-	-171.41	3.230	-27.16	135.3	1.003
-collision	tree.alder.043.trunk	-171.41	3.470	-27.16	0.24	3.01	0.24
+collision	tree.alder.043.trunk	-171.41	6.240	-27.16	0.24	3.01	0.24
 placement	tree.pine.044	vegetation	model.environment.pine	-	-159.17	3.190	-31.13	115.4	0.956
-collision	tree.pine.044.trunk	-159.17	3.420	-31.13	0.23	3.82	0.23
+collision	tree.pine.044.trunk	-159.17	7.010	-31.13	0.23	3.82	0.23
 placement	tree.spruce.045	vegetation	model.environment.spruce	-	-147.96	3.374	-26.43	66.8	0.745
-collision	tree.spruce.045.trunk	-147.96	3.554	-26.43	0.18	2.24	0.18
+collision	tree.spruce.045.trunk	-147.96	5.614	-26.43	0.18	2.24	0.18
 placement	tree.aspen.046	vegetation	model.environment.aspen	-	-137.56	3.487	-31.09	160.9	0.727
-collision	tree.aspen.046.trunk	-137.56	3.657	-31.09	0.17	3.09	0.17
+collision	tree.aspen.046.trunk	-137.56	6.577	-31.09	0.17	3.09	0.17
 placement	tree.spruce.047	vegetation	model.environment.spruce	-	-129.67	3.649	-26.82	149.5	1.317
-collision	tree.spruce.047.trunk	-129.67	3.969	-26.82	0.32	3.95	0.32
+collision	tree.spruce.047.trunk	-129.67	7.599	-26.82	0.32	3.95	0.32
 placement	tree.pine.048	vegetation	model.environment.pine	-	-119.59	3.860	-31.16	92.9	1.021
-collision	tree.pine.048.trunk	-119.59	4.100	-31.16	0.24	4.08	0.24
+collision	tree.pine.048.trunk	-119.59	7.940	-31.16	0.24	4.08	0.24
 placement	tree.birch.049	vegetation	model.environment.birch	-	-228.80	4.693	189.07	338.2	0.864
-collision	tree.birch.049.trunk	-228.80	4.903	189.07	0.21	2.89	0.21
+collision	tree.birch.049.trunk	-228.80	7.583	189.07	0.21	2.89	0.21
 placement	tree.alder.050	vegetation	model.environment.alder	-	-218.53	4.747	191.04	245.1	1.139
-collision	tree.alder.050.trunk	-218.53	5.017	191.04	0.27	3.42	0.27
+collision	tree.alder.050.trunk	-218.53	8.167	191.04	0.27	3.42	0.27
 placement	tree.birch.051	vegetation	model.environment.birch	-	-209.24	4.758	188.93	21.1	1.062
-collision	tree.birch.051.trunk	-209.24	5.008	188.93	0.25	3.56	0.25
+collision	tree.birch.051.trunk	-209.24	8.318	188.93	0.25	3.56	0.25
 placement	tree.spruce.052	vegetation	model.environment.spruce	-	-198.87	4.745	192.22	128.4	0.818
-collision	tree.spruce.052.trunk	-198.87	4.945	192.22	0.20	2.45	0.20
+collision	tree.spruce.052.trunk	-198.87	7.195	192.22	0.20	2.45	0.20
 placement	tree.spruce.053	vegetation	model.environment.spruce	-	-188.36	4.800	188.40	340.7	1.067
-collision	tree.spruce.053.trunk	-188.36	5.060	188.40	0.26	3.20	0.26
+collision	tree.spruce.053.trunk	-188.36	8.000	188.40	0.26	3.20	0.26
 placement	tree.pine.054	vegetation	model.environment.pine	-	-179.15	4.829	190.96	133.4	0.827
-collision	tree.pine.054.trunk	-179.15	5.029	190.96	0.20	3.31	0.20
+collision	tree.pine.054.trunk	-179.15	8.139	190.96	0.20	3.31	0.20
 placement	tree.pine.055	vegetation	model.environment.pine	-	-167.51	5.036	188.74	241.4	0.845
-collision	tree.pine.055.trunk	-167.51	5.236	188.74	0.20	3.38	0.20
+collision	tree.pine.055.trunk	-167.51	8.416	188.74	0.20	3.38	0.20
 placement	tree.pine.056	vegetation	model.environment.pine	-	-155.90	5.267	191.41	250.4	1.007
-collision	tree.pine.056.trunk	-155.90	5.507	191.41	0.24	4.03	0.24
+collision	tree.pine.056.trunk	-155.90	9.297	191.41	0.24	4.03	0.24
 placement	tree.pine.057	vegetation	model.environment.pine	-	-144.96	5.696	187.54	155.5	0.745
-collision	tree.pine.057.trunk	-144.96	5.876	187.54	0.18	2.98	0.18
+collision	tree.pine.057.trunk	-144.96	8.676	187.54	0.18	2.98	0.18
 placement	tree.spruce.058	vegetation	model.environment.spruce	-	-135.16	6.033	188.22	237.3	0.932
-collision	tree.spruce.058.trunk	-135.16	6.253	188.22	0.22	2.80	0.22
+collision	tree.spruce.058.trunk	-135.16	8.833	188.22	0.22	2.80	0.22
 placement	tree.spruce.059	vegetation	model.environment.spruce	-	-123.65	6.392	190.92	212.2	0.847
-collision	tree.spruce.059.trunk	-123.65	6.592	190.92	0.20	2.54	0.20
+collision	tree.spruce.059.trunk	-123.65	8.932	190.92	0.20	2.54	0.20
 placement	tree.pine.060	vegetation	model.environment.pine	-	-227.62	4.815	199.83	338.1	0.764
-collision	tree.pine.060.trunk	-227.62	4.995	199.83	0.18	3.06	0.18
+collision	tree.pine.060.trunk	-227.62	7.875	199.83	0.18	3.06	0.18
 placement	tree.birch.061	vegetation	model.environment.birch	-	-215.13	4.799	200.89	63.2	0.780
-collision	tree.birch.061.trunk	-215.13	4.989	200.89	0.19	2.61	0.19
+collision	tree.birch.061.trunk	-215.13	7.409	200.89	0.19	2.61	0.19
 placement	tree.alder.062	vegetation	model.environment.alder	-	-206.38	4.753	200.15	18.5	1.026
-collision	tree.alder.062.trunk	-206.38	5.003	200.15	0.25	3.08	0.25
+collision	tree.alder.062.trunk	-206.38	7.833	200.15	0.25	3.08	0.25
 placement	tree.pine.063	vegetation	model.environment.pine	-	-196.78	4.707	202.68	225.8	1.298
-collision	tree.pine.063.trunk	-196.78	5.017	202.68	0.31	5.19	0.31
+collision	tree.pine.063.trunk	-196.78	9.897	202.68	0.31	5.19	0.31
 placement	tree.spruce.064	vegetation	model.environment.spruce	-	-189.36	4.710	197.76	147.0	1.242
-collision	tree.spruce.064.trunk	-189.36	5.010	197.76	0.30	3.73	0.30
+collision	tree.spruce.064.trunk	-189.36	8.440	197.76	0.30	3.73	0.30
 placement	tree.aspen.065	vegetation	model.environment.aspen	-	-179.00	4.739	200.32	231.4	1.139
-collision	tree.aspen.065.trunk	-179.00	5.009	200.32	0.27	4.84	0.27
+collision	tree.aspen.065.trunk	-179.00	9.579	200.32	0.27	4.84	0.27
 placement	tree.spruce.066	vegetation	model.environment.spruce	-	-168.60	4.872	199.56	267.7	1.093
-collision	tree.spruce.066.trunk	-168.60	5.132	199.56	0.26	3.28	0.26
+collision	tree.spruce.066.trunk	-168.60	8.152	199.56	0.26	3.28	0.26
 placement	tree.alder.067	vegetation	model.environment.alder	-	-158.07	5.071	200.98	163.9	0.795
-collision	tree.alder.067.trunk	-158.07	5.261	200.98	0.19	2.39	0.19
+collision	tree.alder.067.trunk	-158.07	7.461	200.98	0.19	2.39	0.19
 placement	tree.pine.068	vegetation	model.environment.pine	-	-148.76	5.314	200.55	64.6	1.065
-collision	tree.pine.068.trunk	-148.76	5.574	200.55	0.26	4.26	0.26
+collision	tree.pine.068.trunk	-148.76	9.574	200.55	0.26	4.26	0.26
 placement	tree.pine.069	vegetation	model.environment.pine	-	-136.67	5.714	198.86	299.6	1.327
-collision	tree.pine.069.trunk	-136.67	6.034	198.86	0.32	5.31	0.32
+collision	tree.pine.069.trunk	-136.67	11.024	198.86	0.32	5.31	0.32
 placement	tree.pine.070	vegetation	model.environment.pine	-	-126.45	6.010	201.01	125.4	0.953
-collision	tree.pine.070.trunk	-126.45	6.240	201.01	0.23	3.81	0.23
+collision	tree.pine.070.trunk	-126.45	9.820	201.01	0.23	3.81	0.23
 placement	tree.pine.071	vegetation	model.environment.pine	-	-227.63	4.911	208.55	161.0	1.227
-collision	tree.pine.071.trunk	-227.63	5.201	208.55	0.29	4.91	0.29
+collision	tree.pine.071.trunk	-227.63	9.821	208.55	0.29	4.91	0.29
 placement	tree.pine.072	vegetation	model.environment.pine	-	-217.39	4.895	212.58	216.2	1.338
-collision	tree.pine.072.trunk	-217.39	5.215	212.58	0.32	5.35	0.32
+collision	tree.pine.072.trunk	-217.39	10.245	212.58	0.32	5.35	0.32
 placement	tree.pine.073	vegetation	model.environment.pine	-	-206.43	4.777	207.81	34.0	1.092
-collision	tree.pine.073.trunk	-206.43	5.037	207.81	0.26	4.37	0.26
+collision	tree.pine.073.trunk	-206.43	9.147	207.81	0.26	4.37	0.26
 placement	tree.birch.074	vegetation	model.environment.birch	-	-195.64	4.724	211.31	341.4	0.934
-collision	tree.birch.074.trunk	-195.64	4.944	211.31	0.22	3.13	0.22
+collision	tree.birch.074.trunk	-195.64	7.854	211.31	0.22	3.13	0.22
 placement	tree.birch.075	vegetation	model.environment.birch	-	-185.09	4.695	207.62	30.2	1.146
-collision	tree.birch.075.trunk	-185.09	4.975	207.62	0.28	3.84	0.28
+collision	tree.birch.075.trunk	-185.09	8.535	207.62	0.28	3.84	0.28
 placement	tree.pine.076	vegetation	model.environment.pine	-	-175.16	4.764	212.44	230.9	1.042
-collision	tree.pine.076.trunk	-175.16	5.014	212.44	0.25	4.17	0.25
+collision	tree.pine.076.trunk	-175.16	8.934	212.44	0.25	4.17	0.25
 placement	tree.aspen.077	vegetation	model.environment.aspen	-	-164.02	4.898	209.76	70.4	0.781
-collision	tree.aspen.077.trunk	-164.02	5.088	209.76	0.19	3.32	0.19
+collision	tree.aspen.077.trunk	-164.02	8.218	209.76	0.19	3.32	0.19
 placement	tree.spruce.078	vegetation	model.environment.spruce	-	-157.35	5.025	208.22	227.0	0.985
-collision	tree.spruce.078.trunk	-157.35	5.265	208.22	0.24	2.96	0.24
+collision	tree.spruce.078.trunk	-157.35	7.985	208.22	0.24	2.96	0.24
 placement	tree.aspen.079	vegetation	model.environment.aspen	-	-149.16	5.162	212.91	260.7	0.922
-collision	tree.aspen.079.trunk	-149.16	5.382	212.91	0.22	3.92	0.22
+collision	tree.aspen.079.trunk	-149.16	9.082	212.91	0.22	3.92	0.22
 placement	tree.aspen.080	vegetation	model.environment.aspen	-	-136.86	5.531	207.69	244.5	0.728
-collision	tree.aspen.080.trunk	-136.86	5.701	207.69	0.17	3.09	0.17
+collision	tree.aspen.080.trunk	-136.86	8.621	207.69	0.17	3.09	0.17
 placement	tree.spruce.081	vegetation	model.environment.spruce	-	-127.97	5.724	211.71	77.2	0.907
-collision	tree.spruce.081.trunk	-127.97	5.944	211.71	0.22	2.72	0.22
+collision	tree.spruce.081.trunk	-127.97	8.444	211.71	0.22	2.72	0.22
 placement	tree.spruce.082	vegetation	model.environment.spruce	-	-228.56	5.019	219.29	46.2	1.288
-collision	tree.spruce.082.trunk	-228.56	5.329	219.29	0.31	3.86	0.31
+collision	tree.spruce.082.trunk	-228.56	8.879	219.29	0.31	3.86	0.31
 placement	tree.spruce.083	vegetation	model.environment.spruce	-	-219.29	4.992	222.29	169.0	1.174
-collision	tree.spruce.083.trunk	-219.29	5.272	222.29	0.28	3.52	0.28
+collision	tree.spruce.083.trunk	-219.29	8.512	222.29	0.28	3.52	0.28
 placement	tree.spruce.084	vegetation	model.environment.spruce	-	-208.06	4.877	219.98	91.4	1.028
-collision	tree.spruce.084.trunk	-208.06	5.127	219.98	0.25	3.08	0.25
+collision	tree.spruce.084.trunk	-208.06	7.957	219.98	0.25	3.08	0.25
 placement	tree.pine.085	vegetation	model.environment.pine	-	-200.11	4.845	222.47	172.6	0.802
-collision	tree.pine.085.trunk	-200.11	5.035	222.47	0.19	3.21	0.19
+collision	tree.pine.085.trunk	-200.11	8.055	222.47	0.19	3.21	0.19
 placement	tree.spruce.086	vegetation	model.environment.spruce	-	-185.84	4.767	219.04	350.7	1.259
-collision	tree.spruce.086.trunk	-185.84	5.067	219.04	0.30	3.78	0.30
+collision	tree.spruce.086.trunk	-185.84	8.547	219.04	0.30	3.78	0.30
 placement	tree.birch.087	vegetation	model.environment.birch	-	-175.80	4.846	223.06	173.9	0.856
-collision	tree.birch.087.trunk	-175.80	5.056	223.06	0.21	2.87	0.21
+collision	tree.birch.087.trunk	-175.80	7.716	223.06	0.21	2.87	0.21
 placement	tree.alder.088	vegetation	model.environment.alder	-	-166.73	4.902	221.72	340.2	1.046
-collision	tree.alder.088.trunk	-166.73	5.152	221.72	0.25	3.14	0.25
+collision	tree.alder.088.trunk	-166.73	8.042	221.72	0.25	3.14	0.25
 placement	tree.spruce.089	vegetation	model.environment.spruce	-	-154.15	5.048	218.12	228.0	1.194
-collision	tree.spruce.089.trunk	-154.15	5.338	218.12	0.29	3.58	0.29
+collision	tree.spruce.089.trunk	-154.15	8.628	218.12	0.29	3.58	0.29
 placement	tree.spruce.090	vegetation	model.environment.spruce	-	-145.01	5.190	222.19	162.1	1.182
-collision	tree.spruce.090.trunk	-145.01	5.470	222.19	0.28	3.54	0.28
+collision	tree.spruce.090.trunk	-145.01	8.730	222.19	0.28	3.54	0.28
 placement	tree.alder.091	vegetation	model.environment.alder	-	-135.08	5.430	218.21	140.2	1.329
-collision	tree.alder.091.trunk	-135.08	5.750	218.21	0.32	3.99	0.32
+collision	tree.alder.091.trunk	-135.08	9.420	218.21	0.32	3.99	0.32
 placement	tree.birch.092	vegetation	model.environment.birch	-	-125.52	5.650	222.98	30.0	1.189
-collision	tree.birch.092.trunk	-125.52	5.940	222.98	0.29	3.98	0.29
+collision	tree.birch.092.trunk	-125.52	9.630	222.98	0.29	3.98	0.29
 placement	tree.pine.093	vegetation	model.environment.pine	-	-228.52	5.103	230.29	26.4	1.305
-collision	tree.pine.093.trunk	-228.52	5.413	230.29	0.31	5.22	0.31
+collision	tree.pine.093.trunk	-228.52	10.323	230.29	0.31	5.22	0.31
 placement	tree.spruce.094	vegetation	model.environment.spruce	-	-218.16	5.070	231.95	79.0	1.129
-collision	tree.spruce.094.trunk	-218.16	5.340	231.95	0.27	3.39	0.27
+collision	tree.spruce.094.trunk	-218.16	8.460	231.95	0.27	3.39	0.27
 placement	tree.spruce.095	vegetation	model.environment.spruce	-	-208.69	4.977	228.87	275.8	1.054
-collision	tree.spruce.095.trunk	-208.69	5.227	228.87	0.25	3.16	0.25
+collision	tree.spruce.095.trunk	-208.69	8.137	228.87	0.25	3.16	0.25
 placement	tree.aspen.096	vegetation	model.environment.aspen	-	-198.43	4.969	231.99	128.5	1.053
-collision	tree.aspen.096.trunk	-198.43	5.219	231.99	0.25	4.48	0.25
+collision	tree.aspen.096.trunk	-198.43	9.449	231.99	0.25	4.48	0.25
 placement	tree.birch.097	vegetation	model.environment.birch	-	-189.89	4.913	229.58	169.0	1.179
-collision	tree.birch.097.trunk	-189.89	5.193	229.58	0.28	3.95	0.28
+collision	tree.birch.097.trunk	-189.89	8.863	229.58	0.28	3.95	0.28
 placement	tree.birch.098	vegetation	model.environment.birch	-	-178.27	4.909	228.45	288.7	1.164
-collision	tree.birch.098.trunk	-178.27	5.189	228.45	0.28	3.90	0.28
+collision	tree.birch.098.trunk	-178.27	8.809	228.45	0.28	3.90	0.28
 placement	tree.alder.099	vegetation	model.environment.alder	-	-166.96	5.027	233.32	186.8	1.217
-collision	tree.alder.099.trunk	-166.96	5.317	233.32	0.29	3.65	0.29
+collision	tree.alder.099.trunk	-166.96	8.677	233.32	0.29	3.65	0.29
 placement	tree.spruce.100	vegetation	model.environment.spruce	-	-157.47	5.039	228.75	333.5	0.790
-collision	tree.spruce.100.trunk	-157.47	5.229	228.75	0.19	2.37	0.19
+collision	tree.spruce.100.trunk	-157.47	7.409	228.75	0.19	2.37	0.19
 placement	tree.spruce.101	vegetation	model.environment.spruce	-	-144.29	5.199	231.66	227.9	1.325
-collision	tree.spruce.101.trunk	-144.29	5.519	231.66	0.32	3.98	0.32
+collision	tree.spruce.101.trunk	-144.29	9.179	231.66	0.32	3.98	0.32
 placement	tree.birch.102	vegetation	model.environment.birch	-	-135.44	5.354	230.73	341.5	1.167
-collision	tree.birch.102.trunk	-135.44	5.634	230.73	0.28	3.91	0.28
+collision	tree.birch.102.trunk	-135.44	9.264	230.73	0.28	3.91	0.28
 placement	tree.spruce.103	vegetation	model.environment.spruce	-	-124.51	5.641	231.59	69.1	0.743
-collision	tree.spruce.103.trunk	-124.51	5.821	231.59	0.18	2.23	0.18
+collision	tree.spruce.103.trunk	-124.51	7.871	231.59	0.18	2.23	0.18
 placement	tree.spruce.104	vegetation	model.environment.spruce	-	-226.56	5.162	240.86	342.2	0.810
-collision	tree.spruce.104.trunk	-226.56	5.352	240.86	0.19	2.43	0.19
+collision	tree.spruce.104.trunk	-226.56	7.592	240.86	0.19	2.43	0.19
 placement	tree.spruce.105	vegetation	model.environment.spruce	-	-217.52	5.182	243.63	263.9	1.268
-collision	tree.spruce.105.trunk	-217.52	5.482	243.63	0.30	3.81	0.30
+collision	tree.spruce.105.trunk	-217.52	8.992	243.63	0.30	3.81	0.30
 placement	tree.aspen.106	vegetation	model.environment.aspen	-	-205.16	5.125	240.37	330.0	0.818
-collision	tree.aspen.106.trunk	-205.16	5.325	240.37	0.20	3.48	0.20
+collision	tree.aspen.106.trunk	-205.16	8.605	240.37	0.20	3.48	0.20
 placement	tree.birch.107	vegetation	model.environment.birch	-	-194.88	5.138	241.51	159.6	1.124
-collision	tree.birch.107.trunk	-194.88	5.408	241.51	0.27	3.77	0.27
+collision	tree.birch.107.trunk	-194.88	8.908	241.51	0.27	3.77	0.27
 placement	tree.pine.108	vegetation	model.environment.pine	-	-189.00	5.128	240.94	315.6	1.241
-collision	tree.pine.108.trunk	-189.00	5.428	240.94	0.30	4.96	0.30
+collision	tree.pine.108.trunk	-189.00	10.088	240.94	0.30	4.96	0.30
 placement	tree.pine.109	vegetation	model.environment.pine	-	-179.25	5.105	239.51	82.1	1.159
-collision	tree.pine.109.trunk	-179.25	5.385	239.51	0.28	4.64	0.28
+collision	tree.pine.109.trunk	-179.25	9.745	239.51	0.28	4.64	0.28
 placement	tree.birch.110	vegetation	model.environment.birch	-	116.52	8.340	190.50	21.6	0.746
-collision	tree.birch.110.trunk	116.52	8.520	190.50	0.18	2.50	0.18
+collision	tree.birch.110.trunk	116.52	10.840	190.50	0.18	2.50	0.18
 placement	tree.spruce.111	vegetation	model.environment.spruce	-	127.39	8.252	189.79	11.8	0.806
-collision	tree.spruce.111.trunk	127.39	8.442	189.79	0.19	2.42	0.19
+collision	tree.spruce.111.trunk	127.39	10.672	189.79	0.19	2.42	0.19
 placement	tree.alder.112	vegetation	model.environment.alder	-	134.73	7.998	191.90	161.3	0.826
-collision	tree.alder.112.trunk	134.73	8.198	191.90	0.20	2.48	0.20
+collision	tree.alder.112.trunk	134.73	10.478	191.90	0.20	2.48	0.20
 placement	tree.spruce.113	vegetation	model.environment.spruce	-	146.42	7.967	188.67	155.8	1.136
-collision	tree.spruce.113.trunk	146.42	8.237	188.67	0.27	3.41	0.27
+collision	tree.spruce.113.trunk	146.42	11.377	188.67	0.27	3.41	0.27
 placement	tree.aspen.114	vegetation	model.environment.aspen	-	154.53	7.599	191.74	313.8	1.084
-collision	tree.aspen.114.trunk	154.53	7.859	191.74	0.26	4.61	0.26
+collision	tree.aspen.114.trunk	154.53	12.209	191.74	0.26	4.61	0.26
 placement	tree.pine.115	vegetation	model.environment.pine	-	165.45	7.624	188.21	44.6	0.794
-collision	tree.pine.115.trunk	165.45	7.814	188.21	0.19	3.18	0.19
+collision	tree.pine.115.trunk	165.45	10.804	188.21	0.19	3.18	0.19
 placement	tree.birch.116	vegetation	model.environment.birch	-	177.06	7.315	191.24	148.1	1.301
-collision	tree.birch.116.trunk	177.06	7.625	191.24	0.31	4.36	0.31
+collision	tree.birch.116.trunk	177.06	11.675	191.24	0.31	4.36	0.31
 placement	tree.spruce.117	vegetation	model.environment.spruce	-	186.08	7.321	189.91	241.9	1.236
-collision	tree.spruce.117.trunk	186.08	7.621	189.91	0.30	3.71	0.30
+collision	tree.spruce.117.trunk	186.08	11.031	189.91	0.30	3.71	0.30
 placement	tree.aspen.118	vegetation	model.environment.aspen	-	196.36	7.274	189.73	77.7	1.221
-collision	tree.aspen.118.trunk	196.36	7.564	189.73	0.29	5.19	0.29
+collision	tree.aspen.118.trunk	196.36	12.464	189.73	0.29	5.19	0.29
 placement	tree.birch.119	vegetation	model.environment.birch	-	207.11	7.172	190.34	310.5	0.921
-collision	tree.birch.119.trunk	207.11	7.392	190.34	0.22	3.09	0.22
+collision	tree.birch.119.trunk	207.11	10.262	190.34	0.22	3.09	0.22
 placement	tree.alder.120	vegetation	model.environment.alder	-	218.86	7.084	188.15	346.4	0.941
-collision	tree.alder.120.trunk	218.86	7.314	188.15	0.23	2.82	0.23
+collision	tree.alder.120.trunk	218.86	9.904	188.15	0.23	2.82	0.23
 placement	tree.spruce.121	vegetation	model.environment.spruce	-	117.70	7.826	200.40	146.1	0.720
-collision	tree.spruce.121.trunk	117.70	7.996	200.40	0.17	2.16	0.17
+collision	tree.spruce.121.trunk	117.70	9.986	200.40	0.17	2.16	0.17
 placement	tree.pine.122	vegetation	model.environment.pine	-	127.19	7.722	198.93	42.3	1.120
-collision	tree.pine.122.trunk	127.19	7.992	198.93	0.27	4.48	0.27
+collision	tree.pine.122.trunk	127.19	12.202	198.93	0.27	4.48	0.27
 placement	tree.alder.123	vegetation	model.environment.alder	-	138.52	7.214	202.99	230.4	1.046
-collision	tree.alder.123.trunk	138.52	7.464	202.99	0.25	3.14	0.25
+collision	tree.alder.123.trunk	138.52	10.354	202.99	0.25	3.14	0.25
 placement	tree.spruce.124	vegetation	model.environment.spruce	-	148.29	7.192	199.90	21.2	0.784
-collision	tree.spruce.124.trunk	148.29	7.382	199.90	0.19	2.35	0.19
+collision	tree.spruce.124.trunk	148.29	9.542	199.90	0.19	2.35	0.19
 placement	tree.pine.125	vegetation	model.environment.pine	-	158.79	6.906	201.58	302.5	1.281
-collision	tree.pine.125.trunk	158.79	7.216	201.58	0.31	5.13	0.31
+collision	tree.pine.125.trunk	158.79	12.036	201.58	0.31	5.13	0.31
 placement	tree.aspen.126	vegetation	model.environment.aspen	-	168.30	6.956	199.03	256.1	0.724
-collision	tree.aspen.126.trunk	168.30	7.126	199.03	0.17	3.08	0.17
+collision	tree.aspen.126.trunk	168.30	10.036	199.03	0.17	3.08	0.17
 placement	tree.pine.127	vegetation	model.environment.pine	-	176.17	6.815	200.86	193.3	0.819
-collision	tree.pine.127.trunk	176.17	7.015	200.86	0.20	3.28	0.20
+collision	tree.pine.127.trunk	176.17	10.095	200.86	0.20	3.28	0.20
 placement	tree.spruce.128	vegetation	model.environment.spruce	-	185.14	6.712	202.81	227.8	0.842
-collision	tree.spruce.128.trunk	185.14	6.912	202.81	0.20	2.53	0.20
+collision	tree.spruce.128.trunk	185.14	9.242	202.81	0.20	2.53	0.20
 placement	tree.pine.129	vegetation	model.environment.pine	-	196.05	6.928	198.07	164.3	1.296
-collision	tree.pine.129.trunk	196.05	7.238	198.07	0.31	5.18	0.31
+collision	tree.pine.129.trunk	196.05	12.108	198.07	0.31	5.18	0.31
 placement	tree.pine.130	vegetation	model.environment.pine	-	207.18	6.713	202.01	9.3	0.865
-collision	tree.pine.130.trunk	207.18	6.923	202.01	0.21	3.46	0.21
+collision	tree.pine.130.trunk	207.18	10.173	202.01	0.21	3.46	0.21
 placement	tree.birch.131	vegetation	model.environment.birch	-	215.86	6.798	197.84	158.1	1.145
-collision	tree.birch.131.trunk	215.86	7.068	197.84	0.27	3.84	0.27
+collision	tree.birch.131.trunk	215.86	10.638	197.84	0.27	3.84	0.27
 placement	tree.pine.132	vegetation	model.environment.pine	-	113.68	7.315	213.18	194.4	1.031
-collision	tree.pine.132.trunk	113.68	7.565	213.18	0.25	4.12	0.25
+collision	tree.pine.132.trunk	113.68	11.435	213.18	0.25	4.12	0.25
 placement	tree.spruce.133	vegetation	model.environment.spruce	-	124.22	7.224	209.11	34.5	0.927
-collision	tree.spruce.133.trunk	124.22	7.444	209.11	0.22	2.78	0.22
+collision	tree.spruce.133.trunk	124.22	10.004	209.11	0.22	2.78	0.22
 placement	tree.spruce.134	vegetation	model.environment.spruce	-	135.88	6.699	212.61	130.0	1.324
-collision	tree.spruce.134.trunk	135.88	7.019	212.61	0.32	3.97	0.32
+collision	tree.spruce.134.trunk	135.88	10.669	212.61	0.32	3.97	0.32
 placement	tree.spruce.135	vegetation	model.environment.spruce	-	148.50	6.566	209.85	332.7	1.051
-collision	tree.spruce.135.trunk	148.50	6.816	209.85	0.25	3.15	0.25
+collision	tree.spruce.135.trunk	148.50	9.716	209.85	0.25	3.15	0.25
 placement	tree.spruce.136	vegetation	model.environment.spruce	-	157.98	6.373	210.71	336.3	1.150
-collision	tree.spruce.136.trunk	157.98	6.653	210.71	0.28	3.45	0.28
+collision	tree.spruce.136.trunk	157.98	9.823	210.71	0.28	3.45	0.28
 placement	tree.pine.137	vegetation	model.environment.pine	-	167.13	6.427	208.53	146.5	1.026
-collision	tree.pine.137.trunk	167.13	6.677	208.53	0.25	4.11	0.25
+collision	tree.pine.137.trunk	167.13	10.537	208.53	0.25	4.11	0.25
 placement	tree.alder.138	vegetation	model.environment.alder	-	178.05	6.347	209.82	165.9	0.882
-collision	tree.alder.138.trunk	178.05	6.557	209.82	0.21	2.65	0.21
+collision	tree.alder.138.trunk	178.05	8.997	209.82	0.21	2.65	0.21
 placement	tree.spruce.139	vegetation	model.environment.spruce	-	188.45	6.260	212.06	74.8	0.722
-collision	tree.spruce.139.trunk	188.45	6.430	212.06	0.17	2.17	0.17
+collision	tree.spruce.139.trunk	188.45	8.430	212.06	0.17	2.17	0.17
 placement	tree.pine.140	vegetation	model.environment.pine	-	197.93	6.416	209.15	141.8	0.793
-collision	tree.pine.140.trunk	197.93	6.606	209.15	0.19	3.17	0.19
+collision	tree.pine.140.trunk	197.93	9.586	209.15	0.19	3.17	0.19
 placement	tree.pine.141	vegetation	model.environment.pine	-	208.52	6.268	211.71	340.4	1.155
-collision	tree.pine.141.trunk	208.52	6.548	211.71	0.28	4.62	0.28
+collision	tree.pine.141.trunk	208.52	10.888	211.71	0.28	4.62	0.28
 placement	tree.alder.142	vegetation	model.environment.alder	-	216.69	6.386	207.76	289.1	1.123
-collision	tree.alder.142.trunk	216.69	6.656	207.76	0.27	3.37	0.27
+collision	tree.alder.142.trunk	216.69	9.756	207.76	0.27	3.37	0.27
 placement	tree.birch.143	vegetation	model.environment.birch	-	113.50	7.007	220.66	158.9	1.041
-collision	tree.birch.143.trunk	113.50	7.257	220.66	0.25	3.49	0.25
+collision	tree.birch.143.trunk	113.50	10.497	220.66	0.25	3.49	0.25
 placement	tree.pine.144	vegetation	model.environment.pine	-	125.95	6.634	219.45	300.3	0.815
-collision	tree.pine.144.trunk	125.95	6.834	219.45	0.20	3.26	0.20
+collision	tree.pine.144.trunk	125.95	9.894	219.45	0.20	3.26	0.20
 placement	tree.spruce.145	vegetation	model.environment.spruce	-	133.72	6.284	221.39	199.4	1.273
-collision	tree.spruce.145.trunk	133.72	6.594	221.39	0.31	3.82	0.31
+collision	tree.spruce.145.trunk	133.72	10.104	221.39	0.31	3.82	0.31
 placement	tree.alder.146	vegetation	model.environment.alder	-	143.93	6.076	220.09	313.4	1.069
-collision	tree.alder.146.trunk	143.93	6.336	220.09	0.26	3.21	0.26
+collision	tree.alder.146.trunk	143.93	9.286	220.09	0.26	3.21	0.26
 placement	tree.spruce.147	vegetation	model.environment.spruce	-	155.91	5.777	222.05	53.6	1.308
-collision	tree.spruce.147.trunk	155.91	6.087	222.05	0.31	3.92	0.31
+collision	tree.spruce.147.trunk	155.91	9.697	222.05	0.31	3.92	0.31
 placement	tree.pine.148	vegetation	model.environment.pine	-	164.55	5.685	222.73	137.2	0.750
-collision	tree.pine.148.trunk	164.55	5.865	222.73	0.18	3.00	0.18
+collision	tree.pine.148.trunk	164.55	8.685	222.73	0.18	3.00	0.18
 placement	tree.birch.149	vegetation	model.environment.birch	-	175.35	5.792	220.54	332.6	1.306
-collision	tree.birch.149.trunk	175.35	6.102	220.54	0.31	4.37	0.31
+collision	tree.birch.149.trunk	175.35	10.162	220.54	0.31	4.37	0.31
 placement	tree.spruce.150	vegetation	model.environment.spruce	-	188.66	5.736	222.38	115.3	1.312
-collision	tree.spruce.150.trunk	188.66	6.046	222.38	0.31	3.94	0.31
+collision	tree.spruce.150.trunk	188.66	9.676	222.38	0.31	3.94	0.31
 placement	tree.birch.151	vegetation	model.environment.birch	-	198.03	5.893	219.65	35.6	1.296
-collision	tree.birch.151.trunk	198.03	6.203	219.65	0.31	4.34	0.31
+collision	tree.birch.151.trunk	198.03	10.233	219.65	0.31	4.34	0.31
 placement	tree.pine.152	vegetation	model.environment.pine	-	209.88	5.788	221.44	101.3	1.308
-collision	tree.pine.152.trunk	209.88	6.098	221.44	0.31	5.23	0.31
+collision	tree.pine.152.trunk	209.88	11.018	221.44	0.31	5.23	0.31
 placement	tree.pine.153	vegetation	model.environment.pine	-	218.40	5.821	220.08	105.0	0.952
-collision	tree.pine.153.trunk	218.40	6.051	220.08	0.23	3.81	0.23
+collision	tree.pine.153.trunk	218.40	9.631	220.08	0.23	3.81	0.23
 placement	tree.spruce.154	vegetation	model.environment.spruce	-	117.99	6.439	230.87	150.6	1.077
-collision	tree.spruce.154.trunk	117.99	6.699	230.87	0.26	3.23	0.26
+collision	tree.spruce.154.trunk	117.99	9.669	230.87	0.26	3.23	0.26
 placement	tree.spruce.155	vegetation	model.environment.spruce	-	128.32	6.096	229.24	292.9	1.151
-collision	tree.spruce.155.trunk	128.32	6.376	229.24	0.28	3.45	0.28
+collision	tree.spruce.155.trunk	128.32	9.546	229.24	0.28	3.45	0.28
 placement	tree.pine.156	vegetation	model.environment.pine	-	136.55	5.697	232.10	42.1	0.993
-collision	tree.pine.156.trunk	136.55	5.937	232.10	0.24	3.97	0.24
+collision	tree.pine.156.trunk	136.55	9.667	232.10	0.24	3.97	0.24
 placement	tree.spruce.157	vegetation	model.environment.spruce	-	146.38	5.513	230.70	327.0	1.228
-collision	tree.spruce.157.trunk	146.38	5.803	230.70	0.29	3.68	0.29
+collision	tree.spruce.157.trunk	146.38	9.193	230.70	0.29	3.68	0.29
 placement	tree.spruce.158	vegetation	model.environment.spruce	-	155.70	5.301	232.30	24.0	0.934
-collision	tree.spruce.158.trunk	155.70	5.521	232.30	0.22	2.80	0.22
+collision	tree.spruce.158.trunk	155.70	8.101	232.30	0.22	2.80	0.22
 placement	tree.birch.159	vegetation	model.environment.birch	-	165.67	5.226	232.49	284.4	1.157
-collision	tree.birch.159.trunk	165.67	5.506	232.49	0.28	3.88	0.28
+collision	tree.birch.159.trunk	165.67	9.106	232.49	0.28	3.88	0.28
 placement	tree.aspen.160	vegetation	model.environment.aspen	-	176.62	5.293	230.76	62.9	1.012
-collision	tree.aspen.160.trunk	176.62	5.533	230.76	0.24	4.30	0.24
+collision	tree.aspen.160.trunk	176.62	9.593	230.76	0.24	4.30	0.24
 placement	tree.spruce.161	vegetation	model.environment.spruce	-	184.85	5.280	231.24	52.2	1.103
-collision	tree.spruce.161.trunk	184.85	5.540	231.24	0.26	3.31	0.26
+collision	tree.spruce.161.trunk	184.85	8.590	231.24	0.26	3.31	0.26
 placement	tree.spruce.162	vegetation	model.environment.spruce	-	196.24	5.375	229.64	180.8	1.311
-collision	tree.spruce.162.trunk	196.24	5.685	229.64	0.31	3.93	0.31
+collision	tree.spruce.162.trunk	196.24	9.305	229.64	0.31	3.93	0.31
 placement	tree.spruce.163	vegetation	model.environment.spruce	-	207.10	5.205	233.08	129.1	0.909
-collision	tree.spruce.163.trunk	207.10	5.425	233.08	0.22	2.73	0.22
+collision	tree.spruce.163.trunk	207.10	7.935	233.08	0.22	2.73	0.22
 placement	tree.birch.164	vegetation	model.environment.birch	-	219.27	5.328	230.70	151.8	1.038
-collision	tree.birch.164.trunk	219.27	5.578	230.70	0.25	3.48	0.25
+collision	tree.birch.164.trunk	219.27	8.808	230.70	0.25	3.48	0.25
 placement	tree.spruce.165	vegetation	model.environment.spruce	-	117.72	6.111	241.26	283.6	0.878
-collision	tree.spruce.165.trunk	117.72	6.321	241.26	0.21	2.64	0.21
+collision	tree.spruce.165.trunk	117.72	8.751	241.26	0.21	2.64	0.21
 placement	tree.spruce.166	vegetation	model.environment.spruce	-	128.90	5.730	238.23	306.7	1.169
-collision	tree.spruce.166.trunk	128.90	6.010	238.23	0.28	3.51	0.28
+collision	tree.spruce.166.trunk	128.90	9.240	238.23	0.28	3.51	0.28
 placement	tree.pine.167	vegetation	model.environment.pine	-	137.83	5.284	242.65	332.0	0.851
-collision	tree.pine.167.trunk	137.83	5.484	242.65	0.20	3.41	0.20
+collision	tree.pine.167.trunk	137.83	8.694	242.65	0.20	3.41	0.20
 placement	tree.birch.168	vegetation	model.environment.birch	-	146.96	5.183	238.78	251.3	1.049
-collision	tree.birch.168.trunk	146.96	5.433	238.78	0.25	3.51	0.25
+collision	tree.birch.168.trunk	146.96	8.693	238.78	0.25	3.51	0.25
 placement	tree.spruce.169	vegetation	model.environment.spruce	-	157.05	4.951	240.99	62.0	0.957
-collision	tree.spruce.169.trunk	157.05	5.181	240.99	0.23	2.87	0.23
+collision	tree.spruce.169.trunk	157.05	7.821	240.99	0.23	2.87	0.23
 placement	tree.birch.170	vegetation	model.environment.birch	-	168.68	4.794	242.69	24.6	1.182
-collision	tree.birch.170.trunk	168.68	5.074	242.69	0.28	3.96	0.28
+collision	tree.birch.170.trunk	168.68	8.754	242.69	0.28	3.96	0.28
 placement	rock.granite.1	rock	model.environment.boulder	-	-211.00	5.412	5.00	118.7	1.328
 collision	rock.granite.1.collision	-211.00	6.472	5.00	1.59	1.06	1.33
 placement	rock.granite.2	rock	model.environment.boulder	-	-178.00	7.346	92.00	281.7	1.038
@@ -707,126 +707,126 @@ collision	prop.fence.09.collision	-60.00	10.09	184.00	2.00	0.80	0.12
 collision	prop.fence.10.collision	-40.00	10.54	184.00	2.00	0.80	0.12
 collision	prop.fence.11.collision	40.00	9.77	184.00	2.00	0.80	0.12
 collision	prop.fence.12.collision	60.00	9.61	184.00	2.00	0.80	0.12
-collision	tree.alder.147.trunk	115.85	7.759	-89.69	0.514	6.439	0.514
-collision	tree.pine.168.trunk	123.98	8.011	-85.62	0.543	9.048	0.543
-collision	tree.spruce.170.trunk	133.74	8.412	-89.80	0.638	8.003	0.638
-collision	tree.pine.169.trunk	146.71	8.541	-87.55	0.465	7.744	0.465
-collision	tree.birch.171.trunk	157.96	8.851	-90.59	0.575	8.038	0.575
-collision	tree.birch.172.trunk	166.44	8.910	-90.61	0.537	7.496	0.537
-collision	tree.birch.173.trunk	175.18	9.031	-85.50	0.563	7.871	0.563
-collision	tree.pine.170.trunk	185.42	9.031	-90.24	0.522	8.699	0.522
-collision	tree.alder.148.trunk	194.92	9.043	-87.93	0.447	5.603	0.447
-collision	tree.spruce.171.trunk	206.07	9.197	-88.84	0.572	7.173	0.572
-collision	tree.pine.171.trunk	215.42	9.216	-85.70	0.538	8.957	0.538
-collision	tree.pine.172.trunk	221.55	9.079	-88.20	0.495	8.250	0.495
-collision	tree.pine.173.trunk	115.45	7.656	-76.39	0.495	8.249	0.495
-collision	tree.pine.174.trunk	124.83	8.016	-78.81	0.554	9.228	0.554
-collision	tree.spruce.172.trunk	135.55	8.340	-75.82	0.581	7.280	0.581
-collision	tree.pine.175.trunk	145.28	8.485	-76.89	0.485	8.076	0.485
-collision	tree.spruce.173.trunk	152.90	8.726	-79.60	0.561	7.027	0.561
-collision	tree.pine.176.trunk	164.00	8.842	-76.39	0.497	8.277	0.497
-collision	tree.spruce.174.trunk	177.04	9.113	-78.22	0.581	7.283	0.581
-collision	tree.spruce.175.trunk	186.73	9.316	-76.17	0.628	7.876	0.628
-collision	tree.spruce.176.trunk	197.08	9.317	-78.50	0.544	6.815	0.544
-collision	tree.pine.177.trunk	206.94	9.393	-76.00	0.512	8.529	0.512
-collision	tree.spruce.177.trunk	215.23	9.398	-80.80	0.622	7.795	0.622
-collision	tree.pine.178.trunk	225.54	9.246	-76.75	0.527	8.784	0.527
-collision	tree.spruce.178.trunk	116.94	7.839	-70.04	0.632	7.927	0.632
-collision	tree.pine.179.trunk	125.00	8.000	-70.84	0.551	9.180	0.551
-collision	tree.spruce.179.trunk	133.71	8.252	-66.21	0.569	7.134	0.569
-collision	tree.spruce.180.trunk	143.02	8.576	-70.92	0.652	8.169	0.652
-collision	tree.pine.180.trunk	154.88	8.687	-66.79	0.523	8.707	0.523
-collision	tree.pine.181.trunk	163.12	8.893	-69.70	0.562	9.361	0.562
-collision	tree.pine.182.trunk	172.52	9.010	-66.80	0.483	8.052	0.483
-collision	tree.spruce.181.trunk	183.31	9.297	-70.32	0.591	7.407	0.591
-collision	tree.spruce.182.trunk	194.34	9.608	-65.61	0.649	8.136	0.649
-collision	tree.spruce.183.trunk	205.68	9.597	-70.39	0.614	7.693	0.614
-collision	tree.spruce.184.trunk	214.81	9.593	-67.54	0.578	7.248	0.578
-collision	tree.birch.174.trunk	224.94	9.443	-65.68	0.556	7.765	0.556
-collision	tree.aspen.161.trunk	116.45	7.729	-58.96	0.488	8.697	0.488
-collision	tree.spruce.185.trunk	125.94	8.135	-58.31	0.645	8.084	0.645
-collision	tree.spruce.186.trunk	137.95	8.397	-58.85	0.622	7.803	0.622
-collision	tree.pine.183.trunk	147.16	8.510	-57.28	0.530	8.824	0.530
-collision	tree.spruce.187.trunk	154.05	8.684	-60.50	0.546	6.847	0.546
-collision	tree.spruce.188.trunk	163.66	8.990	-56.37	0.618	7.747	0.618
-collision	tree.spruce.189.trunk	173.61	9.207	-60.33	0.610	7.642	0.610
-collision	tree.pine.184.trunk	184.11	9.384	-56.93	0.494	8.227	0.494
-collision	tree.birch.175.trunk	192.82	9.539	-59.34	0.505	7.055	0.505
-collision	tree.birch.176.trunk	203.07	9.738	-57.59	0.556	7.773	0.556
-collision	tree.pine.185.trunk	211.45	9.675	-58.39	0.501	8.348	0.501
-collision	tree.spruce.190.trunk	222.94	9.625	-58.68	0.612	7.668	0.612
-collision	tree.pine.186.trunk	116.30	7.898	-48.21	0.550	9.169	0.550
-collision	tree.spruce.191.trunk	127.28	8.209	-48.96	0.643	8.057	0.643
-collision	tree.birch.177.trunk	136.33	8.248	-48.10	0.494	6.908	0.494
-collision	tree.spruce.192.trunk	147.34	8.635	-50.14	0.645	8.091	0.645
-collision	tree.spruce.193.trunk	157.81	8.821	-46.47	0.552	6.924	0.552
-collision	tree.birch.178.trunk	166.62	9.021	-49.33	0.523	7.309	0.523
-collision	tree.aspen.162.trunk	176.22	9.257	-46.57	0.450	8.023	0.450
-collision	tree.pine.187.trunk	181.88	9.468	-49.46	0.539	8.979	0.539
-collision	tree.alder.149.trunk	192.00	9.666	-49.58	0.508	6.359	0.508
-collision	tree.alder.150.trunk	203.47	9.795	-46.91	0.477	5.973	0.477
-collision	tree.aspen.163.trunk	213.69	9.754	-51.32	0.516	9.183	0.516
-collision	tree.spruce.194.trunk	223.47	9.725	-46.39	0.612	7.672	0.612
-collision	tree.pine.188.trunk	114.19	7.962	-40.30	0.528	8.795	0.528
-collision	tree.spruce.195.trunk	125.69	8.238	-37.81	0.591	7.403	0.591
-collision	tree.spruce.196.trunk	135.58	8.331	-41.75	0.555	6.962	0.555
-collision	tree.alder.151.trunk	146.09	8.549	-37.00	0.512	6.414	0.512
-collision	tree.aspen.164.trunk	155.30	8.736	-40.05	0.489	8.716	0.489
-collision	tree.pine.189.trunk	167.17	9.152	-36.80	0.507	8.443	0.507
-collision	tree.spruce.197.trunk	176.32	9.483	-37.62	0.564	7.071	0.564
-collision	tree.pine.190.trunk	186.74	9.691	-39.63	0.521	8.682	0.521
-collision	tree.spruce.198.trunk	195.06	9.953	-37.90	0.619	7.761	0.619
-collision	tree.birch.179.trunk	204.89	9.954	-41.42	0.586	8.184	0.586
-collision	tree.spruce.199.trunk	213.52	9.899	-36.59	0.557	6.985	0.557
-collision	tree.pine.191.trunk	221.27	9.754	-40.90	0.559	9.306	0.559
-collision	tree.aspen.165.trunk	114.70	8.237	-27.22	0.514	9.162	0.514
-collision	tree.birch.180.trunk	124.59	8.321	-30.96	0.586	8.194	0.586
-collision	tree.birch.181.trunk	133.70	8.453	-27.50	0.540	7.550	0.540
-collision	tree.spruce.200.trunk	145.01	8.692	-29.70	0.594	7.444	0.594
-collision	tree.aspen.166.trunk	154.73	8.857	-30.71	0.517	9.209	0.517
-collision	tree.aspen.167.trunk	167.78	9.301	-29.07	0.532	9.483	0.532
-collision	tree.aspen.168.trunk	177.48	9.514	-29.71	0.463	8.256	0.463
-collision	tree.pine.192.trunk	184.66	9.732	-28.17	0.487	8.114	0.487
-collision	tree.pine.193.trunk	194.62	9.905	-30.13	0.519	8.654	0.519
-collision	tree.spruce.201.trunk	205.95	10.079	-27.38	0.651	8.163	0.651
-collision	tree.pine.194.trunk	214.24	9.828	-31.93	0.480	8.005	0.480
-collision	tree.spruce.202.trunk	226.08	9.739	-27.38	0.585	7.332	0.585
-collision	tree.spruce.203.trunk	-228.11	5.166	-86.55	0.542	6.791	0.542
-collision	tree.pine.195.trunk	-219.54	5.119	-88.95	0.548	9.128	0.548
-collision	tree.pine.196.trunk	-210.86	4.918	-87.71	0.476	7.937	0.476
-collision	tree.spruce.204.trunk	-199.48	4.927	-88.70	0.585	7.327	0.585
-collision	tree.pine.197.trunk	-190.22	4.614	-86.23	0.498	8.292	0.498
-collision	tree.pine.198.trunk	-177.94	4.584	-89.97	0.479	7.986	0.479
-collision	tree.aspen.169.trunk	-168.27	4.318	-86.66	0.459	8.173	0.459
-collision	tree.birch.182.trunk	-159.19	4.388	-86.57	0.566	7.908	0.566
-collision	tree.birch.183.trunk	-147.79	4.460	-89.60	0.501	7.002	0.501
-collision	tree.birch.184.trunk	-138.77	4.513	-86.53	0.517	7.221	0.517
-collision	tree.spruce.205.trunk	-128.05	4.756	-89.68	0.545	6.829	0.545
-collision	tree.spruce.206.trunk	-118.45	4.890	-85.76	0.555	6.952	0.555
-collision	tree.pine.199.trunk	-226.96	5.044	-79.38	0.542	9.031	0.542
-collision	tree.alder.152.trunk	-220.56	4.822	-77.55	0.456	5.717	0.456
-collision	tree.birch.185.trunk	-209.99	4.743	-79.83	0.523	7.304	0.523
-collision	tree.birch.186.trunk	-200.40	4.521	-76.03	0.582	8.134	0.582
-collision	tree.spruce.207.trunk	-190.00	4.479	-80.54	0.589	7.388	0.589
-collision	tree.spruce.208.trunk	-179.23	4.308	-79.13	0.639	8.015	0.639
-collision	tree.pine.200.trunk	-170.86	4.006	-76.01	0.530	8.822	0.530
-collision	tree.pine.201.trunk	-160.22	4.131	-79.32	0.553	9.207	0.553
-collision	tree.pine.202.trunk	-146.81	4.178	-76.18	0.526	8.758	0.526
-collision	tree.spruce.209.trunk	-138.28	4.488	-80.64	0.587	7.353	0.587
-collision	tree.spruce.210.trunk	-129.09	4.669	-77.85	0.611	7.655	0.611
-collision	tree.spruce.211.trunk	-118.90	4.848	-79.34	0.565	7.080	0.565
-collision	tree.spruce.212.trunk	-227.31	5.007	-66.05	0.545	6.836	0.545
-collision	tree.aspen.170.trunk	-217.48	4.742	-69.39	0.530	9.441	0.530
-collision	tree.spruce.213.trunk	-206.36	4.470	-67.36	0.577	7.232	0.577
-collision	tree.pine.203.trunk	-199.39	4.232	-66.52	0.545	9.082	0.545
-collision	tree.spruce.214.trunk	-191.31	4.186	-69.69	0.621	7.788	0.621
-collision	tree.pine.204.trunk	-179.46	3.805	-66.36	0.540	9.003	0.540
-collision	tree.spruce.215.trunk	-169.37	3.884	-70.69	0.574	7.196	0.574
-collision	tree.aspen.171.trunk	-159.66	3.789	-68.25	0.499	8.887	0.499
-collision	tree.spruce.216.trunk	-151.86	4.021	-69.02	0.603	7.556	0.603
-collision	tree.alder.153.trunk	-142.32	4.107	-67.30	0.512	6.412	0.512
-collision	tree.spruce.217.trunk	-131.46	4.466	-70.76	0.552	6.920	0.552
-collision	tree.pine.205.trunk	-118.66	4.729	-68.31	0.545	9.079	0.545
+collision	tree.alder.147.trunk	115.85	13.684	-89.69	0.514	6.439	0.514
+collision	tree.pine.168.trunk	123.98	16.516	-85.62	0.543	9.048	0.543
+collision	tree.spruce.170.trunk	133.74	15.777	-89.80	0.638	8.003	0.638
+collision	tree.pine.169.trunk	146.71	15.820	-87.55	0.465	7.744	0.465
+collision	tree.birch.171.trunk	157.96	16.314	-90.59	0.575	8.038	0.575
+collision	tree.birch.172.trunk	166.44	15.869	-90.61	0.537	7.496	0.537
+collision	tree.birch.173.trunk	175.18	16.339	-85.50	0.563	7.871	0.563
+collision	tree.pine.170.trunk	185.42	17.208	-90.24	0.522	8.699	0.522
+collision	tree.alder.148.trunk	194.92	14.199	-87.93	0.447	5.603	0.447
+collision	tree.spruce.171.trunk	206.07	15.798	-88.84	0.572	7.173	0.572
+collision	tree.pine.171.trunk	215.42	17.635	-85.70	0.538	8.957	0.538
+collision	tree.pine.172.trunk	221.55	16.834	-88.20	0.495	8.250	0.495
+collision	tree.pine.173.trunk	115.45	15.410	-76.39	0.495	8.249	0.495
+collision	tree.pine.174.trunk	124.83	16.690	-78.81	0.554	9.228	0.554
+collision	tree.spruce.172.trunk	135.55	15.039	-75.82	0.581	7.280	0.581
+collision	tree.pine.175.trunk	145.28	16.076	-76.89	0.485	8.076	0.485
+collision	tree.spruce.173.trunk	152.90	15.192	-79.60	0.561	7.027	0.561
+collision	tree.pine.176.trunk	164.00	16.622	-76.39	0.497	8.277	0.497
+collision	tree.spruce.174.trunk	177.04	15.815	-78.22	0.581	7.283	0.581
+collision	tree.spruce.175.trunk	186.73	16.564	-76.17	0.628	7.876	0.628
+collision	tree.spruce.176.trunk	197.08	15.588	-78.50	0.544	6.815	0.544
+collision	tree.pine.177.trunk	206.94	17.410	-76.00	0.512	8.529	0.512
+collision	tree.spruce.177.trunk	215.23	16.571	-80.80	0.622	7.795	0.622
+collision	tree.pine.178.trunk	225.54	17.503	-76.75	0.527	8.784	0.527
+collision	tree.spruce.178.trunk	116.94	15.134	-70.04	0.632	7.927	0.632
+collision	tree.pine.179.trunk	125.00	16.629	-70.84	0.551	9.180	0.551
+collision	tree.spruce.179.trunk	133.71	14.817	-66.21	0.569	7.134	0.569
+collision	tree.spruce.180.trunk	143.02	16.093	-70.92	0.652	8.169	0.652
+collision	tree.pine.180.trunk	154.88	16.871	-66.79	0.523	8.707	0.523
+collision	tree.pine.181.trunk	163.12	17.692	-69.70	0.562	9.361	0.562
+collision	tree.pine.182.trunk	172.52	16.579	-66.80	0.483	8.052	0.483
+collision	tree.spruce.181.trunk	183.31	16.113	-70.32	0.591	7.407	0.591
+collision	tree.spruce.182.trunk	194.34	17.095	-65.61	0.649	8.136	0.649
+collision	tree.spruce.183.trunk	205.68	16.676	-70.39	0.614	7.693	0.614
+collision	tree.spruce.184.trunk	214.81	16.263	-67.54	0.578	7.248	0.578
+collision	tree.birch.174.trunk	224.94	16.652	-65.68	0.556	7.765	0.556
+collision	tree.aspen.161.trunk	116.45	15.938	-58.96	0.488	8.697	0.488
+collision	tree.spruce.185.trunk	125.94	15.574	-58.31	0.645	8.084	0.645
+collision	tree.spruce.186.trunk	137.95	15.578	-58.85	0.622	7.803	0.622
+collision	tree.pine.183.trunk	147.16	16.804	-57.28	0.530	8.824	0.530
+collision	tree.spruce.187.trunk	154.05	14.985	-60.50	0.546	6.847	0.546
+collision	tree.spruce.188.trunk	163.66	16.119	-56.37	0.618	7.747	0.618
+collision	tree.spruce.189.trunk	173.61	16.239	-60.33	0.610	7.642	0.610
+collision	tree.pine.184.trunk	184.11	17.117	-56.93	0.494	8.227	0.494
+collision	tree.birch.175.trunk	192.82	16.089	-59.34	0.505	7.055	0.505
+collision	tree.birch.176.trunk	203.07	16.955	-57.59	0.556	7.773	0.556
+collision	tree.pine.185.trunk	211.45	17.522	-58.39	0.501	8.348	0.501
+collision	tree.spruce.190.trunk	222.94	16.681	-58.68	0.612	7.668	0.612
+collision	tree.pine.186.trunk	116.30	16.517	-48.21	0.550	9.169	0.550
+collision	tree.spruce.191.trunk	127.28	15.623	-48.96	0.643	8.057	0.643
+collision	tree.birch.177.trunk	136.33	14.662	-48.10	0.494	6.908	0.494
+collision	tree.spruce.192.trunk	147.34	16.081	-50.14	0.645	8.091	0.645
+collision	tree.spruce.193.trunk	157.81	15.193	-46.47	0.552	6.924	0.552
+collision	tree.birch.178.trunk	166.62	15.807	-49.33	0.523	7.309	0.523
+collision	tree.aspen.162.trunk	176.22	16.830	-46.57	0.450	8.023	0.450
+collision	tree.pine.187.trunk	181.88	17.908	-49.46	0.539	8.979	0.539
+collision	tree.alder.149.trunk	192.00	15.517	-49.58	0.508	6.359	0.508
+collision	tree.alder.150.trunk	203.47	15.291	-46.91	0.477	5.973	0.477
+collision	tree.aspen.163.trunk	213.69	18.421	-51.32	0.516	9.183	0.516
+collision	tree.spruce.194.trunk	223.47	16.785	-46.39	0.612	7.672	0.612
+collision	tree.pine.188.trunk	114.19	16.229	-40.30	0.528	8.795	0.528
+collision	tree.spruce.195.trunk	125.69	15.050	-37.81	0.591	7.403	0.591
+collision	tree.spruce.196.trunk	135.58	14.738	-41.75	0.555	6.962	0.555
+collision	tree.alder.151.trunk	146.09	14.451	-37.00	0.512	6.414	0.512
+collision	tree.aspen.164.trunk	155.30	16.963	-40.05	0.489	8.716	0.489
+collision	tree.pine.189.trunk	167.17	17.088	-36.80	0.507	8.443	0.507
+collision	tree.spruce.197.trunk	176.32	15.990	-37.62	0.564	7.071	0.564
+collision	tree.pine.190.trunk	186.74	17.852	-39.63	0.521	8.682	0.521
+collision	tree.spruce.198.trunk	195.06	17.095	-37.90	0.619	7.761	0.619
+collision	tree.birch.179.trunk	204.89	17.552	-41.42	0.586	8.184	0.586
+collision	tree.spruce.199.trunk	213.52	16.327	-36.59	0.557	6.985	0.557
+collision	tree.pine.191.trunk	221.27	18.501	-40.90	0.559	9.306	0.559
+collision	tree.aspen.165.trunk	114.70	16.885	-27.22	0.514	9.162	0.514
+collision	tree.birch.180.trunk	124.59	15.929	-30.96	0.586	8.194	0.586
+collision	tree.birch.181.trunk	133.70	15.463	-27.50	0.540	7.550	0.540
+collision	tree.spruce.200.trunk	145.01	15.542	-29.70	0.594	7.444	0.594
+collision	tree.aspen.166.trunk	154.73	17.549	-30.71	0.517	9.209	0.517
+collision	tree.aspen.167.trunk	167.78	18.252	-29.07	0.532	9.483	0.532
+collision	tree.aspen.168.trunk	177.48	17.307	-29.71	0.463	8.256	0.463
+collision	tree.pine.192.trunk	184.66	17.359	-28.17	0.487	8.114	0.487
+collision	tree.pine.193.trunk	194.62	18.040	-30.13	0.519	8.654	0.519
+collision	tree.spruce.201.trunk	205.95	17.591	-27.38	0.651	8.163	0.651
+collision	tree.pine.194.trunk	214.24	17.353	-31.93	0.480	8.005	0.480
+collision	tree.spruce.202.trunk	226.08	16.486	-27.38	0.585	7.332	0.585
+collision	tree.spruce.203.trunk	-228.11	11.415	-86.55	0.542	6.791	0.542
+collision	tree.pine.195.trunk	-219.54	13.699	-88.95	0.548	9.128	0.548
+collision	tree.pine.196.trunk	-210.86	12.379	-87.71	0.476	7.937	0.476
+collision	tree.spruce.204.trunk	-199.48	11.669	-88.70	0.585	7.327	0.585
+collision	tree.pine.197.trunk	-190.22	12.408	-86.23	0.498	8.292	0.498
+collision	tree.pine.198.trunk	-177.94	12.091	-89.97	0.479	7.986	0.479
+collision	tree.aspen.169.trunk	-168.27	12.032	-86.66	0.459	8.173	0.459
+collision	tree.birch.182.trunk	-159.19	11.730	-86.57	0.566	7.908	0.566
+collision	tree.birch.183.trunk	-147.79	10.961	-89.60	0.501	7.002	0.501
+collision	tree.birch.184.trunk	-138.77	11.217	-86.53	0.517	7.221	0.517
+collision	tree.spruce.205.trunk	-128.05	11.040	-89.68	0.545	6.829	0.545
+collision	tree.spruce.206.trunk	-118.45	11.287	-85.76	0.555	6.952	0.555
+collision	tree.pine.199.trunk	-226.96	13.533	-79.38	0.542	9.031	0.542
+collision	tree.alder.152.trunk	-220.56	10.083	-77.55	0.456	5.717	0.456
+collision	tree.birch.185.trunk	-209.99	11.524	-79.83	0.523	7.304	0.523
+collision	tree.birch.186.trunk	-200.40	12.073	-76.03	0.582	8.134	0.582
+collision	tree.spruce.207.trunk	-190.00	11.278	-80.54	0.589	7.388	0.589
+collision	tree.spruce.208.trunk	-179.23	11.684	-79.13	0.639	8.015	0.639
+collision	tree.pine.200.trunk	-170.86	12.298	-76.01	0.530	8.822	0.530
+collision	tree.pine.201.trunk	-160.22	12.785	-79.32	0.553	9.207	0.553
+collision	tree.pine.202.trunk	-146.81	12.410	-76.18	0.526	8.758	0.526
+collision	tree.spruce.209.trunk	-138.28	11.254	-80.64	0.587	7.353	0.587
+collision	tree.spruce.210.trunk	-129.09	11.713	-77.85	0.611	7.655	0.611
+collision	tree.spruce.211.trunk	-118.90	11.363	-79.34	0.565	7.080	0.565
+collision	tree.spruce.212.trunk	-227.31	11.298	-66.05	0.545	6.836	0.545
+collision	tree.aspen.170.trunk	-217.48	13.653	-69.39	0.530	9.441	0.530
+collision	tree.spruce.213.trunk	-206.36	11.125	-67.36	0.577	7.232	0.577
+collision	tree.pine.203.trunk	-199.39	12.769	-66.52	0.545	9.082	0.545
+collision	tree.spruce.214.trunk	-191.31	11.353	-69.69	0.621	7.788	0.621
+collision	tree.pine.204.trunk	-179.46	12.268	-66.36	0.540	9.003	0.540
+collision	tree.spruce.215.trunk	-169.37	10.506	-70.69	0.574	7.196	0.574
+collision	tree.aspen.171.trunk	-159.66	12.177	-68.25	0.499	8.887	0.499
+collision	tree.spruce.216.trunk	-151.86	10.974	-69.02	0.603	7.556	0.603
+collision	tree.alder.153.trunk	-142.32	10.007	-67.30	0.512	6.412	0.512
+collision	tree.spruce.217.trunk	-131.46	10.834	-70.76	0.552	6.920	0.552
+collision	tree.pine.205.trunk	-118.66	13.263	-68.31	0.545	9.079	0.545
 nav_node	path.west	-235.00	6.929	40.57
 nav_node	path.crossroads	0.00	9.186	50.00
 nav_node	path.church	0.00	9.430	178.00
