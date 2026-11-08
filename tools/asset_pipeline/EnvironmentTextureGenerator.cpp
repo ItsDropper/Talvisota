@@ -289,9 +289,9 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
             (microCrust - 0.5F) * 0.014F + (microSparkle - 0.5F) * 0.008F;
         const float height = 0.50F + (drift - 0.5F) * 0.105F +
             (driftShoulder - 0.5F) * 0.042F + micro;
-        const float albedoVariation = (drift - 0.5F) * 0.032F +
-            (driftShoulder - 0.5F) * 0.018F + micro * 0.30F +
-            (microCrust - 0.5F) * 0.006F;
+        const float albedoVariation = (drift - 0.5F) * 0.105F +
+            (driftShoulder - 0.5F) * 0.060F + micro * 0.52F +
+            (microCrust - 0.5F) * 0.020F;
         const float frost = Smooth((crystalClusters - 0.34F) * 2.4F);
         const float packedCrust = Smooth((microCrust - 0.56F) * 4.5F);
         sample = {0.875F + albedoVariation,
@@ -314,8 +314,8 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
         const float granular = Fbm(u, v, 156, seed ^ 0x5be0cd19U, 2);
         const float height = 0.50F + (compression - 0.5F) * 0.075F +
             (scuff - 0.5F) * 0.040F + (granular - 0.5F) * 0.012F;
-        const float albedoVariation = (compression - 0.5F) * 0.035F +
-            (scuff - 0.5F) * 0.022F + (granular - 0.5F) * 0.008F;
+        const float albedoVariation = (compression - 0.5F) * 0.095F +
+            (scuff - 0.5F) * 0.060F + (granular - 0.5F) * 0.025F;
         sample = {0.65F + broad * 0.045F + albedoVariation,
                   0.70F + broad * 0.043F + albedoVariation * 0.92F,
                   0.76F + broad * 0.040F + albedoVariation * 0.82F,
@@ -327,13 +327,13 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
         // Fractures are a jittered, periodic Voronoi network with a second
         // finer branch scale. This produces connected, branching lake-ice
         // seams rather than parallel contour bands or a tiled crack stencil.
-        const float cellEdges = VoronoiEdge(u, v, 13, seed ^ 0x5be0cd19U);
-        const float branchEdges = VoronoiEdge(u, v, 31, seed ^ 0x9b05688cU);
+        const float cellEdges = VoronoiEdge(u, v, 37, seed ^ 0x5be0cd19U);
+        const float branchEdges = VoronoiEdge(u, v, 89, seed ^ 0x9b05688cU);
         const float branchNoise = Fbm(u, v, 43, seed ^ 0x1f83d9abU, 3);
         const float iceCloud = Fbm(u, v, 6, seed ^ 0x243f6a88U, 5);
         const float frostCloud = Fbm(u, v, 19, seed ^ 0xb7e15162U, 4);
-        const float mainCracks = 1.0F - Smooth((cellEdges - 0.012F) * 58.0F);
-        const float fineCracks = 1.0F - Smooth((branchEdges - 0.006F) * 110.0F);
+        const float mainCracks = 1.0F - Smooth((cellEdges - 0.0042F) * 165.0F);
+        const float fineCracks = 1.0F - Smooth((branchEdges - 0.0021F) * 316.0F);
         const float fracture = std::clamp(std::max(mainCracks,
             fineCracks * Smooth((branchNoise - 0.28F) * 2.2F) * 0.30F), 0.0F, 1.0F);
         const float frost = Smooth((frostCloud - 0.38F) * 2.5F);
@@ -374,6 +374,7 @@ bool VerifyProceduralPreset(const std::string_view preset, const std::uint32_t s
     constexpr float tolerance = 0.00015F;
     float minimumHeight = 1.0F, maximumHeight = 0.0F;
     float minimumRoughness = 1.0F, maximumRoughness = 0.0F;
+    float minimumAlbedo = 1.0F, maximumAlbedo = 0.0F;
     const auto close = [tolerance](const Sample& a, const Sample& b) {
         return std::abs(a.red-b.red)<=tolerance && std::abs(a.green-b.green)<=tolerance &&
             std::abs(a.blue-b.blue)<=tolerance && std::abs(a.height-b.height)<=tolerance &&
@@ -404,10 +405,13 @@ bool VerifyProceduralPreset(const std::string_view preset, const std::uint32_t s
             maximumHeight = std::max(maximumHeight, sample.height);
             minimumRoughness = std::min(minimumRoughness, sample.roughness);
             maximumRoughness = std::max(maximumRoughness, sample.roughness);
+            minimumAlbedo = std::min(minimumAlbedo, std::min({sample.red, sample.green, sample.blue}));
+            maximumAlbedo = std::max(maximumAlbedo, std::max({sample.red, sample.green, sample.blue}));
         }
     }
     if (maximumHeight - minimumHeight < 0.018F ||
-        maximumRoughness - minimumRoughness < (preset == "ice" ? 0.16F : 0.045F))
+        maximumRoughness - minimumRoughness < (preset == "ice" ? 0.16F : 0.045F) ||
+        (preset == "snow" && maximumAlbedo - minimumAlbedo < 0.045F))
     {
         error = std::string(preset) + " procedural PBR fields lack the required relief or roughness variation.";
         return false;
