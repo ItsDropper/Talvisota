@@ -56,38 +56,53 @@ float Smooth(const float value) noexcept
     return t * t * (3.0F - 2.0F * t);
 }
 
-float NoiseTile(const float x, const float y, const int period, const std::uint32_t seed) noexcept
+float NoiseTile(const float x, const float y, const int periodX, const int periodY,
+                const std::uint32_t seed) noexcept
 {
     const int x0 = static_cast<int>(std::floor(x));
     const int y0 = static_cast<int>(std::floor(y));
     const float tx = Smooth(x - static_cast<float>(x0));
     const float ty = Smooth(y - static_cast<float>(y0));
-    const float a = Hash(Wrap(x0, period), Wrap(y0, period), seed);
-    const float b = Hash(Wrap(x0 + 1, period), Wrap(y0, period), seed);
-    const float c = Hash(Wrap(x0, period), Wrap(y0 + 1, period), seed);
-    const float d = Hash(Wrap(x0 + 1, period), Wrap(y0 + 1, period), seed);
+    const float a = Hash(Wrap(x0, periodX), Wrap(y0, periodY), seed);
+    const float b = Hash(Wrap(x0 + 1, periodX), Wrap(y0, periodY), seed);
+    const float c = Hash(Wrap(x0, periodX), Wrap(y0 + 1, periodY), seed);
+    const float d = Hash(Wrap(x0 + 1, periodX), Wrap(y0 + 1, periodY), seed);
     const float top = a + (b - a) * tx;
     const float bottom = c + (d - c) * tx;
     return top + (bottom - top) * ty;
 }
 
-float Fbm(const float u, const float v, const int baseFrequency,
-          const std::uint32_t seed, const int octaves) noexcept
+float NoiseTile(const float x, const float y, const int period,
+                const std::uint32_t seed) noexcept
+{
+    return NoiseTile(x, y, period, period, seed);
+}
+
+float Fbm(const float u, const float v, const int baseFrequencyX,
+          const int baseFrequencyY, const std::uint32_t seed, const int octaves) noexcept
 {
     float total = 0.0F;
     float amplitude = 0.5F;
     float normalization = 0.0F;
-    int frequency = baseFrequency;
+    int frequencyX = baseFrequencyX;
+    int frequencyY = baseFrequencyY;
     for (int octave = 0; octave < octaves; ++octave)
     {
-        total += NoiseTile(u * static_cast<float>(frequency),
-            v * static_cast<float>(frequency), frequency,
+        total += NoiseTile(u * static_cast<float>(frequencyX),
+            v * static_cast<float>(frequencyY), frequencyX, frequencyY,
             seed + static_cast<std::uint32_t>(octave) * 0x9e3779b9U) * amplitude;
         normalization += amplitude;
         amplitude *= 0.5F;
-        frequency *= 2;
+        frequencyX *= 2;
+        frequencyY *= 2;
     }
     return normalization > 0.0F ? total / normalization : 0.5F;
+}
+
+float Fbm(const float u, const float v, const int baseFrequency,
+          const std::uint32_t seed, const int octaves) noexcept
+{
+    return Fbm(u, v, baseFrequency, baseFrequency, seed, octaves);
 }
 
 float VoronoiEdge(const float u, const float v, const int period,
@@ -291,7 +306,9 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
     {
         // Compaction follows irregular pressure and foot/vehicle scuffing rather
         // than a periodic sine wave, which produced conspicuous parallel tracks.
-        const float compression = Fbm(u * 0.5F, v, 18,
+        // Preserve the original 9x18 compression scale while making both
+        // texture axes repeat at their own integer lattice periods.
+        const float compression = Fbm(u, v, 9, 18,
             seed ^ 0x510e527fU, 4);
         const float scuff = Fbm(u, v, 42, seed ^ 0x1f83d9abU, 3);
         const float granular = Fbm(u, v, 156, seed ^ 0x5be0cd19U, 2);
@@ -354,16 +371,13 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
 bool VerifyProceduralPreset(const std::string_view preset, const std::uint32_t seed,
                            std::string& error) noexcept
 {
-    if (preset != "snow" && preset != "ice")
-        return true;
     constexpr float tolerance = 0.00015F;
     float minimumHeight = 1.0F, maximumHeight = 0.0F;
     float minimumRoughness = 1.0F, maximumRoughness = 0.0F;
-    const auto close = [](const Sample& a, const Sample& b) {
-        constexpr float limit = 0.00015F;
-        return std::abs(a.red-b.red)<limit && std::abs(a.green-b.green)<limit &&
-            std::abs(a.blue-b.blue)<limit && std::abs(a.height-b.height)<limit &&
-            std::abs(a.roughness-b.roughness)<limit && std::abs(a.occlusion-b.occlusion)<limit;
+    const auto close = [tolerance](const Sample& a, const Sample& b) {
+        return std::abs(a.red-b.red)<=tolerance && std::abs(a.green-b.green)<=tolerance &&
+            std::abs(a.blue-b.blue)<=tolerance && std::abs(a.height-b.height)<=tolerance &&
+            std::abs(a.roughness-b.roughness)<=tolerance && std::abs(a.occlusion-b.occlusion)<=tolerance;
     };
     for (int i = 0; i <= 128; ++i)
     {
@@ -374,6 +388,11 @@ bool VerifyProceduralPreset(const std::string_view preset, const std::uint32_t s
             error = std::string(preset) + " procedural PBR field is not seamless at its texture boundaries.";
             return false;
         }
+    }
+    if (preset != "snow" && preset != "ice")
+    {
+        error.clear();
+        return true;
     }
     for (int y = 0; y < 64; ++y)
     {
@@ -393,7 +412,6 @@ bool VerifyProceduralPreset(const std::string_view preset, const std::uint32_t s
         error = std::string(preset) + " procedural PBR fields lack the required relief or roughness variation.";
         return false;
     }
-    (void)tolerance;
     error.clear();
     return true;
 }

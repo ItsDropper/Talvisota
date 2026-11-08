@@ -31,16 +31,16 @@ Useful historical context:
 
 ## Current authored blockout
 
-The current region is a **512 x 512 metre playable slice**, not a full 10 km map sheet.
+The current authored region is a **4,096 x 4,096 metre environment blockout**, not a full 10 km map sheet.
 
-- 129 x 129 terrain heightfield, 4 m spacing.
+- 177 x 177 terrain heightfield at approximately 23.2727 m spacing.
 - Terrain OBJ vertex grid matches the collision/query heightfield.
 - Frozen Suvanto ice surface at the southern edge.
 - A packed rural track and frozen agricultural clearings.
-- 170 vegetation placements using five distinct models: Norway spruce, Scots pine, silver birch, aspen, and alder.
-- Eight granite boulder placements.
-- Five period-inspired structures: a church, two farmhouses, a barn, and a sauna.
-- 50 forest-floor and farmstead props: fallen logs, stumps, woodpiles, a well, fence sections, and shoreline reeds.
+- 3,094 vegetation placements across five distinct models: 960 Norway spruce, 947 Scots pine, 497 silver birch, 351 aspen, and 339 alder.
+- 32 granite boulder placements.
+- 35 structure placements: one church, 12 farmhouses, 11 barns, and 11 saunas.
+- 803 prop-category placements, including 420 common juniper, 300 winter brush, 28 fallen logs, 26 stumps, 12 fence sections, 12 reed placements, two woodpiles, a well, the ice surface, and the rural track.
 - Independent collision volumes and a directed village footpath graph.
 - Tree, boulder, fallen-log, stump, and shoreline-reed bases aligned to the sampled terrain; tree, log, and stump collision bottoms are regression-tested against the same surface.
 
@@ -64,7 +64,7 @@ All newly authored OBJ and MTL content in this region is original project conten
 
 ### Mature forest stand pass
 
-The Sakkola region now contains 290 tree placements across the five regional species families. A further 120 mature trees were placed as a deterministic, fixed-content forest pass using seed `0x5A4B2026`. Candidate stands are concentrated in the western and eastern woodland belts and the northern tree line, rather than uniformly filling village fields or the frozen lake. Candidate placement rejects steep sampled terrain, existing tree spacing below 9 m, building clearances below 14 m, prop clearances below 7 m, and authored navigation corridors below 7 m. The new mature layer targets approximately 11–19 m tree heights and has independently aligned trunk collision volumes. These are authored environmental-art distributions, not claims about surveyed 1939 tree locations.
+The current 3,094-tree regional composition includes the deterministic 120-tree mature-canopy pass generated with seed `0x5A4B2026`. Its stands are concentrated in the western and eastern woodland belts and the northern tree line rather than uniformly filling village fields or the frozen lake. Candidate placement rejects steep sampled terrain, existing tree spacing below 9 m, building clearances below 14 m, prop clearances below 7 m, and authored navigation corridors below 7 m. The mature layer targets approximately 11–19 m tree heights and has independently aligned trunk collision volumes. These are authored environmental-art distributions, not claims about surveyed 1939 tree locations.
 
 
 ### World-authored winter lighting and weather parameters

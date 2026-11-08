@@ -40,6 +40,18 @@ The texture processor uses WIC decoding and deterministic CPU mip generation. Th
 little-endian `TVTTEX01` output omits timestamps, absolute paths, and host-specific
 metadata. Use sRGB for colour maps and linear for normal/ORM/data maps.
 
+## Procedural environment PBR maps
+
+The default build runs `talvisota_environment_texture_gen` to create 41 deterministic
+1024x1024 BMP maps: albedo, tangent-space normal, roughness, and AO for ten material
+families, plus packed snow ORM. The generator checks periodic continuity on both UV
+axes for all ten source fields before writing. Packed-snow compression uses independent
+integer U/V periods, preserving its anisotropic detail without a wrap seam.
+`Talvisota.Environment.PbrMaps` runs the generator's `--verify` path to validate all
+41 BMP headers, dimensions, byte counts, pixel variation, and the snow/ice relief
+ranges. Generated maps are build products and are recreated before content validation
+and packaging.
+
 ## Deterministic packages
 
 The package tool validates source definitions and media, stages every present manifest
