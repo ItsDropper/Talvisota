@@ -476,6 +476,32 @@ void TestTypedMissionFactionCharacterAndEquipmentDefinitions()
         "region_id = region.test\n"
         "player_character_id = character.player\n"
         "faction_id = faction.finnish\n"
+        "objective = objective.inspect-well -> prop.well.farmstead\n"
+        "objective = objective.inspect-well -> prop.woodpile.west\n");
+    Require(!LoadAuthoredDefinition(directory.Path() / "missions/first.tmission",
+                                    registry, mission, missionDiagnostics),
+            "Duplicate mission objective IDs must be rejected.");
+
+    directory.Write("missions/first.tmission",
+        "talvisota-mission\t1\n"
+        "id = mission.first\n"
+        "name = First Mission\n"
+        "world_id = world.test\n"
+        "region_id = region.test\n"
+        "player_character_id = character.player\n"
+        "faction_id = faction.finnish\n");
+    Require(!LoadAuthoredDefinition(directory.Path() / "missions/first.tmission",
+                                    registry, mission, missionDiagnostics),
+            "Mission definitions without objectives must be rejected.");
+
+    directory.Write("missions/first.tmission",
+        "talvisota-mission\t1\n"
+        "id = mission.first\n"
+        "name = First Mission\n"
+        "world_id = world.test\n"
+        "region_id = region.test\n"
+        "player_character_id = character.player\n"
+        "faction_id = faction.finnish\n"
         "objective = malformed-objective-record\n");
     Require(!LoadAuthoredDefinition(directory.Path() / "missions/first.tmission",
                                     registry, mission, missionDiagnostics),
