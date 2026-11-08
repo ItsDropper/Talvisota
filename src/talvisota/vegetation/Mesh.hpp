@@ -37,9 +37,6 @@ struct TreeMesh final
 [[nodiscard]] TreeMesh BuildTreeMesh(const TreeSkeleton& skeleton,
     std::uint64_t seed, int radialSegments = 8);
 
-// Snow mesh sections use this reserved material group.
-inline constexpr std::int32_t kSnowMeshMaterialGroup = 5;
-
 // Builds geometry-aware snow caps only for conifer bearing chains. Snow width
 // and thickness follow each chain's capture fitness and carrying radius.
 [[nodiscard]] TreeMesh BuildSnowMesh(const TreeSkeleton& skeleton);
