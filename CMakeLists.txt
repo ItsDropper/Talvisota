@@ -58,6 +58,20 @@ target_include_directories(talvisota_application PUBLIC "$<BUILD_INTERFACE:${CMA
 target_link_libraries(talvisota_application PUBLIC Talvisota::Core Talvisota::Platform)
 talvisota_apply_compiler_options(talvisota_application)
 
+add_library(talvisota_vegetation STATIC
+    src/talvisota/vegetation/Skeleton.cpp
+    src/talvisota/vegetation/Species.cpp
+    src/talvisota/vegetation/SpruceGenerator.cpp
+    src/talvisota/vegetation/PineGenerator.cpp
+    src/talvisota/vegetation/BirchGenerator.cpp
+)
+add_library(Talvisota::Vegetation ALIAS talvisota_vegetation)
+target_compile_features(talvisota_vegetation PUBLIC cxx_std_23)
+target_include_directories(talvisota_vegetation PUBLIC
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
+)
+talvisota_apply_compiler_options(talvisota_vegetation)
+
 add_executable(talvisota_content_validate tools/validation/main.cpp)
 target_compile_features(talvisota_content_validate PRIVATE cxx_std_23)
 target_link_libraries(talvisota_content_validate PRIVATE Talvisota::Content Talvisota::World)
