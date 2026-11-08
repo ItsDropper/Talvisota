@@ -492,6 +492,18 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             std::uint32_t framebufferWidth = 0U, framebufferHeight = 0U;
             if (!renderer->ReadbackPresentedFrame(framebuffer, framebufferWidth, framebufferHeight, error))
                 break;
+            if (framebufferWidth < 8U || framebufferHeight < 8U ||
+                framebuffer.size() != static_cast<std::size_t>(framebufferWidth) *
+                    static_cast<std::size_t>(framebufferHeight) * 4U) {
+                error = "Presented framebuffer has invalid BGRA dimensions or byte count.";
+                break;
+            }
+            const std::size_t skyPixel = (static_cast<std::size_t>(framebufferHeight / 8U) *
+                framebufferWidth + framebufferWidth / 4U) * 4U;
+            if (framebuffer[skyPixel] <= framebuffer[skyPixel + 2U] + 16U) {
+                error = "Presented BGRA sky sample is not blue-dominant; framebuffer channel order or sky environment is incorrect.";
+                break;
+            }
             std::uint64_t frameHash = 1469598103934665603ULL;
             for (const std::uint8_t byte : framebuffer) {
                 frameHash ^= byte;
