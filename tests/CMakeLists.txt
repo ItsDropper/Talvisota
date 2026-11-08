@@ -77,7 +77,7 @@ add_executable(talvisota_gameplay_simulation_tests
 )
 target_link_libraries(talvisota_gameplay_simulation_tests PRIVATE Talvisota::Gameplay)
 target_compile_definitions(talvisota_gameplay_simulation_tests PRIVATE
-    TALVISOTA_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+    TALVISOTA_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\"
 )
 target_compile_features(talvisota_gameplay_simulation_tests PRIVATE cxx_std_23)
 talvisota_apply_compiler_options(talvisota_gameplay_simulation_tests)
