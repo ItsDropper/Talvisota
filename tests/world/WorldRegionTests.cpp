@@ -289,7 +289,15 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
                 "Grounded Sakkola environment placements must lie within the terrain heightfield.");
         const float surfaceDisplacement = talvisota::world::SampleTerrainDisplacement(
             region, placement.position[0], placement.position[2]);
-        Require(std::abs(placement.position[1] + surfaceDisplacement - surfaceHeight) <= 0.002F,
+        const float groundingError = placement.position[1] + surfaceDisplacement - surfaceHeight;
+        if (std::abs(groundingError) > 0.002F) {
+            std::cerr << "Ungrounded placement " << placement.id << " model=" << placement.modelAssetId
+                      << " positionY=" << placement.position[1]
+                      << " displacement=" << surfaceDisplacement
+                      << " sampledHeight=" << surfaceHeight
+                      << " error=" << groundingError << '\\n';
+        }
+        Require(std::abs(groundingError) <= 0.002F,
                 "Rendered trees, boulders, and shoreline reeds must rest on the displaced terrain surface.");
 
         if (tree) {
