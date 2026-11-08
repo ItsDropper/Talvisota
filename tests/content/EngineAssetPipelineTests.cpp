@@ -100,6 +100,7 @@ public:
         WriteBase64("audio/ice.flac",
             "ZkxhQwAAACIQABAAAAHcAAHcAfQA8AAAAyB/a20x6fr45hR4Z2rR3N4jhAAAKCAAAAByZWZlcmVuY2UgbGliRkxBQyAxLjQuMyAyMDIzMDYyMwAAAAD/+HQIAAMf90gAAAisEFEWCRkmtK+Fbvap73OYBPsxBhBiGb1SnOr9EMQYIRjZ+5zqWpDCGEGYkilc51/IxhhDCEupRVKXxkMMIYxkWOc5XXoZhAhBDSdTlOr9kYMQQQjWupxV7wzGGGIIlzlcp+uxBDDDEZl7nK5VSIIEIII29Kope9JjDDCGI1flFUr7MQYQYhm9Upzq/RDEGCEY2fuc6lqQwhhBmJIpXOdfyMYYQwhLqUVSl8ZDDCGMZFjnOV16GYQIQQ0nU5Tq/ZCCDDEM1rqcVe8MxhhiCJc5XKfrsQQwwxGZe5yuVUiCBCCCNvSqKXvSYwwwhiNX5RVK+zEGEGIZveOpSr0QxBghGNn7nOpakMIYQZiSKVznX8jGGEMIS6lFUpfGQwwhjGRY5zldehmECEENJ1OU6v2QggwxDNa6nFXvDMYYYgiXOVyn67EEMMMRmXucrlVIggQggjb1zld3pMYYYQxGr8oqlfZiDCDEM3qlOdX6IYgwQjGz9znUtSGEMIMxJFK5zr+RjDCGEJdSiqUvjIYYQxjIsc5yuvQzCBCCGk6nKdX7IQQYYhmtdTir3hmMMMQRLnK5T9diCGGGIzL3OVyqkQQIQQRt65yu70mMMMIYjVzqTg==");
         WriteProcessedTexture("textures/ground.ttex");
+        WriteNormalProcessedTexture("textures/normal.ttex");
         Write("catalog.tmanifest",
             "talvisota-content-manifest\t1\n"
             "asset\taudio.wind\taudio\taudio/wind.wav\trequired\t-\tproject\tproject\n"
@@ -109,7 +110,8 @@ public:
             "asset\tmodel.tree\tmodel\tmodels/tree.obj\trequired\tmaterial.tree,texture.albedo\tproject\tproject\n"
             "asset\tmodel.embedded\tmodel\tmodels/embedded.gltf\trequired\t-\tproject\tproject\n"
             "asset\ttexture.albedo\ttexture\ttextures/albedo.bmp\trequired\t-\tproject\tproject\n"
-            "asset\ttexture.ground\ttexture\ttextures/ground.ttex\trequired\t-\tproject\tproject\n");
+            "asset\ttexture.ground\ttexture\ttextures/ground.ttex\trequired\t-\tproject\tproject\n"
+            "asset\ttexture.normal\ttexture\ttextures/normal.ttex\trequired\t-\tproject\tproject\n");
     }
     ~PipelineFixture()
     {
@@ -226,6 +228,31 @@ public:
                 "Repeated source processing should produce byte-identical .ttex containers.");
         std::filesystem::remove(repeatedPath);
     }
+    void WriteNormalProcessedTexture(const std::filesystem::path& relative)
+    {
+        std::filesystem::create_directories((root_ / relative).parent_path());
+        vanta::assets::CpuTexture source;
+        source.width = 2U;
+        source.height = 2U;
+        source.rgba = {
+            128U,128U,255U,255U, 255U,128U,128U,255U,
+            128U,255U,128U,255U, 128U,128U,255U,255U
+        };
+        std::vector<vanta::assets::TextureMip> mips;
+        std::string error;
+        Require(vanta::assets::BuildNormalMapMipChain(source, mips, error) &&
+                    mips.size() == 2U && mips.back().width == 1U && mips.back().height == 1U,
+                "Tangent-space normal processing must produce a complete mip chain.");
+        Require(vanta::assets::WriteProcessedTexture(root_ / relative, mips,
+                    vanta::assets::TextureColorSpace::Linear, error),
+                "Could not write processed normal-map fixture.");
+        vanta::assets::ProcessedTexture verified;
+        Require(vanta::assets::LoadProcessedTexture(root_ / relative, verified, error) &&
+                    verified.colorSpace == vanta::assets::TextureColorSpace::Linear &&
+                    verified.mipChain.size() == mips.size() &&
+                    verified.mipChain.back().rgba == mips.back().rgba,
+                "Processed normal-map texture must round-trip as linear data.");
+    }
     const std::filesystem::path& Root() const { return root_; }
     const std::filesystem::path& Package() const { return package_; }
 private:
@@ -246,13 +273,13 @@ void TestCompleteAssetImportValidationAndPackagingPath()
     std::vector<EngineAssetDiagnostic> diagnostics;
     Require(ValidateEngineAssets(registry, media, diagnostics),
             "OBJ/MTL, external image, processed texture, and WAV assets should all validate.");
-    Require(media.importedModels == 2U && media.decodedTextures == 3U && media.decodedAudio == 3U,
+    Require(media.importedModels == 2U && media.decodedTextures == 4U && media.decodedAudio == 3U,
             "Media validation summary should account for every unique source asset.");
 
     AssetPackageSummary built;
     Require(BuildAssetPackage(registry, fixture.Package(), built, diagnostics),
             "Complete validated asset set should package successfully.");
-    Require(built.assetCount == 8U, "Package should contain all five registered source assets.");
+    Require(built.assetCount == 9U, "Package should contain every registered model, material, texture, and audio asset.");
 
     AssetPackageSummary verified;
     Require(ValidateAssetPackage(fixture.Package(), verified, diagnostics),

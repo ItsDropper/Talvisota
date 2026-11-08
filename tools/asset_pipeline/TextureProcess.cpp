@@ -11,12 +11,12 @@ int main(int argc, char** argv)
     if (argc == 2 && std::string_view(argv[1]) == "--help")
     {
         std::cout << "Talvisota texture processor (VantaEngine WIC + CPU mip pipeline)\n"
-                  << "Usage: talvisota_texture_process <source-image> <output.ttex> <srgb|linear>\n";
+                  << "Usage: talvisota_texture_process <source-image> <output.ttex> <srgb|linear|normal>\n";
         return 0;
     }
     if (argc != 4)
     {
-        std::cerr << "Usage: talvisota_texture_process <source-image> <output.ttex> <srgb|linear>\n";
+        std::cerr << "Usage: talvisota_texture_process <source-image> <output.ttex> <srgb|linear|normal>\n";
         return 2;
     }
     const std::filesystem::path sourcePath(argv[1]);
@@ -27,14 +27,20 @@ int main(int argc, char** argv)
         return 2;
     }
     vanta::assets::TextureColorSpace colorSpace;
+    bool normalMap = false;
     const std::string_view colorArgument(argv[3]);
     if (colorArgument == "srgb")
         colorSpace = vanta::assets::TextureColorSpace::Srgb;
     else if (colorArgument == "linear")
         colorSpace = vanta::assets::TextureColorSpace::Linear;
+    else if (colorArgument == "normal")
+    {
+        colorSpace = vanta::assets::TextureColorSpace::Linear;
+        normalMap = true;
+    }
     else
     {
-        std::cerr << "Colour space must be exactly 'srgb' or 'linear'.\n";
+        std::cerr << "Mode must be exactly 'srgb', 'linear', or 'normal'.\n";
         return 2;
     }
 
@@ -46,7 +52,10 @@ int main(int argc, char** argv)
     }
     std::vector<vanta::assets::TextureMip> mipChain;
     std::string error;
-    if (!vanta::assets::BuildTextureMipChain(source, colorSpace, mipChain, error) ||
+    const bool mipChainBuilt = normalMap
+        ? vanta::assets::BuildNormalMapMipChain(source, mipChain, error)
+        : vanta::assets::BuildTextureMipChain(source, colorSpace, mipChain, error);
+    if (!mipChainBuilt ||
         !vanta::assets::WriteProcessedTexture(outputPath, mipChain, colorSpace, error))
     {
         std::cerr << error << '\n';

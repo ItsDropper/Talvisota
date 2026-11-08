@@ -19,7 +19,7 @@ enables:
 
 ```text
 talvisota_asset_validate <manifest> <content-root>
-talvisota_texture_process <source-image> <output.ttex> <srgb|linear>
+talvisota_texture_process <source-image> <output.ttex> <srgb|linear|normal>
 talvisota_content_package <manifest> <content-root> <package-dir>
 talvisota_content_package --verify <package-dir>
 ```
@@ -38,7 +38,9 @@ checked. Validation is CPU-only and does not initialize D3D.
 
 The texture processor uses WIC decoding and deterministic CPU mip generation. The
 little-endian `TVTTEX01` output omits timestamps, absolute paths, and host-specific
-metadata. Use sRGB for colour maps and linear for normal/ORM/data maps.
+metadata. Use `srgb` for colour maps, `linear` for ORM/roughness/AO and other data
+maps, and `normal` for tangent-space normal maps. Normal mode normalizes source
+vectors, averages and renormalizes each mip level, and filters alpha linearly.
 
 ## Procedural environment PBR maps
 

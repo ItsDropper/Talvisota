@@ -22,7 +22,7 @@ The pinned VantaEngine revision supports Wavefront OBJ with multiple MTL sidecar
 
 ## Deterministic texture processing
 
-The `talvisota_texture_process <source> <output.ttex> <srgb|linear>` command is available with the optional engine adapter. It decodes the source through VantaEngine WIC, builds a full CPU mip chain, filters sRGB RGB channels in linear light, averages alpha and linear data channels without gamma conversion, and writes a deterministic little-endian `TVTTEX01` container. The output contains a version, dimensions, RGBA8 format, colour-space tag, mip count, and pixel bytes; it contains no timestamps, absolute paths, or host-endian metadata. The engine-backed validator reads `.ttex` files with the strict VantaEngine container reader, including dimension/mip-chain/size/trailing-byte validation.
+The `talvisota_texture_process <source> <output.ttex> <srgb|linear|normal>` command is available with the optional engine adapter. It decodes the source through VantaEngine WIC and writes a deterministic little-endian `TVTTEX01` container. `srgb` filters colour RGB in linear light; `linear` box-filters non-colour data without gamma conversion; `normal` is for tangent-space normal maps, normalizes decoded source vectors, averages unit vectors and renormalizes every mip, and filters alpha linearly. Normal maps are serialized with linear colour-space metadata. The container contains a version, dimensions, RGBA8 format, colour-space tag, mip count, and pixel bytes; it contains no timestamps, absolute paths, or host-endian metadata. The engine-backed validator reads `.ttex` files with the strict VantaEngine container reader, including dimension/mip-chain/size/trailing-byte validation.
 
 ## Typed PBR materials
 
