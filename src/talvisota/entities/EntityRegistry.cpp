@@ -12,6 +12,20 @@ bool IsFinitePosition(const std::array<float, 3>& position) noexcept
     return std::isfinite(position[0]) && std::isfinite(position[1]) &&
         std::isfinite(position[2]);
 }
+
+bool IsValidEntityKind(const EntityKind kind) noexcept
+{
+    switch (kind)
+    {
+    case EntityKind::Player:
+    case EntityKind::Infantry:
+    case EntityKind::Civilian:
+    case EntityKind::Vehicle:
+    case EntityKind::WorldObject:
+        return true;
+    }
+    return false;
+}
 } // namespace
 
 bool IsValidStableId(const std::string_view value) noexcept
@@ -34,15 +48,27 @@ bool EntityRegistry::Spawn(const EntityDefinition& definition, std::string& erro
     if (!IsValidStableId(definition.id) || !IsValidStableId(definition.factionId) ||
         (!definition.interactionTargetId.empty() &&
             !IsValidStableId(definition.interactionTargetId)) ||
-        !IsFinitePosition(definition.position))
+        !IsValidEntityKind(definition.kind) || !IsFinitePosition(definition.position))
     {
-        error = "Entity definition contains an invalid stable ID or non-finite position.";
+        error = "Entity definition contains an invalid ID, kind, or non-finite position.";
         return false;
     }
     if (entities_.contains(definition.id))
     {
         error = "Entity ID is already registered: " + definition.id;
         return false;
+    }
+    if (!definition.interactionTargetId.empty())
+    {
+        for (const auto& entry : entities_)
+        {
+            if (entry.second.interactionTargetId == definition.interactionTargetId)
+            {
+                error = "Interaction target ID is already registered: " +
+                    definition.interactionTargetId;
+                return false;
+            }
+        }
     }
 
     EntityState candidate;
@@ -51,7 +77,7 @@ bool EntityRegistry::Spawn(const EntityDefinition& definition, std::string& erro
     candidate.kind = definition.kind;
     candidate.position = definition.position;
     candidate.interactionTargetId = definition.interactionTargetId;
-    entities_.emplace(candidate.id, std::move(candidate));
+    entities_.emplace(definition.id, std::move(candidate));
     error.clear();
     return true;
 }

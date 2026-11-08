@@ -1,7 +1,6 @@
 #include "talvisota/gameplay/GameplaySimulation.hpp"
 
 #include <array>
-#include <cmath>
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -60,7 +59,11 @@ int main()
     Check(registry.Size() == 2U && registry.Find("entity.radio") != nullptr,
         "registry exposes stable IDs and count");
     Check(!registry.Spawn(definitions[1], error), "duplicate entity ID is rejected");
-    Check(registry.Size() == 2U, "duplicate spawn does not mutate registry");
+    auto duplicateTarget = definitions[2];
+    duplicateTarget.interactionTargetId = definitions[1].interactionTargetId;
+    Check(!registry.Spawn(duplicateTarget, error),
+        "duplicate mission interaction target ID is rejected");
+    Check(registry.Size() == 2U, "rejected spawns do not mutate registry");
     Check(!registry.SetPosition("entity.player",
         {std::numeric_limits<float>::quiet_NaN(), 0.0F, 0.0F}, error),
         "non-finite entity movement is rejected");
@@ -73,10 +76,37 @@ int main()
     Check(registry.Find("entity.radio") == nullptr, "despawn removes the entity");
     Check(!registry.Despawn("entity.missing", error), "unknown entity cannot be despawned");
 
-    // End-to-end deterministic interaction -> existing mission progression.
     const GameplayRules rules{};
+    const auto missionDefinition = MakeMission();
+
+    // Identical inputs produce identical state transitions.
+    SimulationState deterministicA;
+    SimulationState deterministicB;
+    Check(InitializeSimulation(missionDefinition, definitions, rules, deterministicA, error),
+        "first deterministic simulation initializes");
+    Check(InitializeSimulation(missionDefinition, definitions, rules, deterministicB, error),
+        "second deterministic simulation initializes");
+    const std::array<InteractionCommand, 1> deterministicCommand{{
+        {"command.determinism", "entity.player", "entity.radio"}
+    }};
+    std::vector<CommandResult> deterministicResultsA;
+    std::vector<CommandResult> deterministicResultsB;
+    Check(AdvanceSimulation(deterministicA, rules, 1.0 / 60.0,
+        deterministicCommand, deterministicResultsA, error),
+        "first deterministic simulation advances");
+    Check(AdvanceSimulation(deterministicB, rules, 1.0 / 60.0,
+        deterministicCommand, deterministicResultsB, error),
+        "second deterministic simulation advances");
+    Check(deterministicA.tickIndex == deterministicB.tickIndex &&
+        deterministicA.elapsedSeconds == deterministicB.elapsedSeconds &&
+        deterministicA.mission.completedObjectives == deterministicB.mission.completedObjectives &&
+        deterministicResultsA.size() == deterministicResultsB.size() &&
+        deterministicResultsA[0].outcome == deterministicResultsB[0].outcome,
+        "same ordered commands and timestep produce identical simulation results");
+
+    // End-to-end interaction -> existing mission progression.
     SimulationState state;
-    Check(InitializeSimulation(MakeMission(), definitions, rules, state, error),
+    Check(InitializeSimulation(missionDefinition, definitions, rules, state, error),
         "simulation initializes mission and entities atomically");
     Check(state.mission.status == game::MissionStatus::Active &&
         state.mission.objectives.front().status == game::ObjectiveStatus::Active,
@@ -131,8 +161,7 @@ int main()
     // A malformed command rolls back the entire tick and preserves caller output.
     const std::uint64_t tickBeforeInvalid = state.tickIndex;
     const double timeBeforeInvalid = state.elapsedSeconds;
-    const std::vector<CommandResult> preservedResults{{"preserved.result", CommandOutcome::Duplicate}};
-    results = preservedResults;
+    results = {{"preserved.result", CommandOutcome::Duplicate}};
     const std::array<InteractionCommand, 1> invalidCommand{{
         {"", "entity.player", "entity.radio"}
     }};
@@ -145,18 +174,18 @@ int main()
     Check(results.size() == 1U && results[0].commandId == "preserved.result",
         "failed tick leaves result output unchanged");
 
-    // Invalid timestep is rejected without advancing deterministic time.
     Check(!AdvanceSimulation(state, rules, 1.0, {}, results, error),
         "timestep larger than the configured maximum is rejected");
     Check(state.tickIndex == tickBeforeInvalid, "invalid timestep does not advance tick");
 
     SimulationState unchanged;
     unchanged.tickIndex = 77U;
-    Check(!InitializeSimulation(MakeMission(),
+    const game::MissionDefinition invalidMission;
+    Check(!InitializeSimulation(invalidMission,
         std::span<const entities::EntityDefinition>{}, rules, unchanged, error),
-        "empty entity set is valid only if mission itself is valid");
-    Check(unchanged.tickIndex == 0U,
-        "successful initialization publishes a fresh state");
+        "invalid mission definition rejects initialization");
+    Check(unchanged.tickIndex == 77U,
+        "failed initialization preserves the caller's prior state");
 
     if (failures != 0)
     {
