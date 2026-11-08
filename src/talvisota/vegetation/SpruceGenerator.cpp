@@ -225,7 +225,7 @@ TreeSkeleton GenerateSpruce(const SpeciesBuild& build) noexcept
                 spray.droop = Lerp(SpruceArchitecture::kSecondaryDroopMin,
                     SpruceArchitecture::kSecondaryDroopMax, random.Uniform01());
                 spray.order = 2;
-                spray.materialGroup = 4;
+                spray.materialGroup = 2;
                 spray.noiseScale = 0.30F;
                 spray.taperPower = 0.72F;
                 spray.bearingKind = 1;
@@ -256,7 +256,7 @@ TreeSkeleton GenerateSpruce(const SpeciesBuild& build) noexcept
                 tipChain.stepCount = 2;
                 tipChain.droop = 0.08F + 0.06F * random.Uniform01();
                 tipChain.order = 3;
-                tipChain.materialGroup = 4;
+                tipChain.materialGroup = 2;
                 tipChain.noiseScale = 0.25F;
                 tipChain.taperPower = 0.60F;
                 tipChain.bearingKind = 1;
@@ -290,7 +290,7 @@ TreeSkeleton GenerateSpruce(const SpeciesBuild& build) noexcept
         tip.stepCount = std::max(2, static_cast<int>(std::ceil(tip.length / 0.30F)));
         tip.droop = 0.02F + 0.03F * random.Uniform01();
         tip.order = 2;
-        tip.materialGroup = 4;
+        tip.materialGroup = 2;
         tip.noiseScale = 0.18F;
         tip.taperPower = 0.55F;
         tip.bearingKind = 1;
