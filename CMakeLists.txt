@@ -60,6 +60,7 @@ talvisota_apply_compiler_options(talvisota_application)
 
 add_library(talvisota_vegetation STATIC
     src/talvisota/vegetation/Skeleton.cpp
+    src/talvisota/vegetation/Mesh.cpp
     src/talvisota/vegetation/Species.cpp
     src/talvisota/vegetation/SpruceGenerator.cpp
     src/talvisota/vegetation/PineGenerator.cpp
