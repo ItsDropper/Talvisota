@@ -194,6 +194,8 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
             "Sakkola winter understory must retain all authored common-juniper clusters.");
     Require(region.id == "region.sakkola.church_village",
             "The first Karelian region should retain its stable Sakkola identity.");
+    Require(region.terrain.surfaceProfile == talvisota::world::TerrainSurfaceProfile::SnowDriftV1,
+            "Sakkola declares the shared renderer/gameplay snow surface profile.");
     Require(region.terrain.rows == 177U && region.terrain.columns == 177U &&
             std::abs(region.terrain.spacingX - 23.272727272727273F) < 0.001F && std::abs(region.terrain.spacingZ - 23.272727272727273F) < 0.001F,
             "Sakkola should provide a 4,096 metre terrain block with a 177x177 heightfield at approximately 23.2727 metre spacing.");
@@ -359,7 +361,7 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
             Require(talvisota::world::SampleTerrainHeight(region, sampleX, sampleZ,
                     sampledHeight, normal, error),
                     "Sakkola terrain model vertices should have matching heightfield samples.");
-            Require(std::abs(sampledHeight - y) <= 1.0e-4F &&
+            Require(std::abs(sampledHeight - talvisota::world::SampleTerrainDisplacement(region, sampleX, sampleZ) - y) <= 1.0e-4F &&
                     std::abs(x - sampleX) <= 0.001F &&
                     std::abs(z - sampleZ) <= 0.001F && normal[1] > 0.0F,
                     "Sakkola collision heightfield must match visual vertices and return upward normals.");

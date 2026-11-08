@@ -16,6 +16,49 @@ namespace talvisota::world
 {
 namespace
 {
+float TerrainHash(const int x, const int z) noexcept {
+    std::uint32_t value = 0x9e3779b9U ^
+        (static_cast<std::uint32_t>(x) * 0x85ebca6bU) ^
+        (static_cast<std::uint32_t>(z) * 0xc2b2ae35U);
+    value ^= value >> 16U; value *= 0x7feb352dU;
+    value ^= value >> 15U; value *= 0x846ca68bU;
+    value ^= value >> 16U;
+    return static_cast<float>(value & 0x00ffffffU) / 16777215.0F;
+}
+float TerrainValueNoise(const float x, const float z) noexcept {
+    const int x0 = static_cast<int>(std::floor(x)), z0 = static_cast<int>(std::floor(z));
+    const float fx = x - static_cast<float>(x0), fz = z - static_cast<float>(z0);
+    const float tx = fx * fx * (3.0F - 2.0F * fx), tz = fz * fz * (3.0F - 2.0F * fz);
+    const float a = TerrainHash(x0, z0), b = TerrainHash(x0 + 1, z0);
+    const float d = TerrainHash(x0, z0 + 1), e = TerrainHash(x0 + 1, z0 + 1);
+    return (a + (b-a)*tx) + ((d + (e-d)*tx) - (a + (b-a)*tx))*tz;
+}
+float TerrainFbm(const float x, const float z) noexcept {
+    float amplitude = 0.5F, total = 0.0F, normalization = 0.0F, frequency = 1.0F;
+    for (int octave = 0; octave < 4; ++octave) {
+        total += TerrainValueNoise(x * frequency, z * frequency) * amplitude;
+        normalization += amplitude; amplitude *= 0.5F; frequency *= 2.03F;
+    }
+    return total / normalization;
+}
+float SnowDriftDisplacement(const float x, const float z) noexcept {
+    // Multi-scale glacial moraine relief, wind-sculpted snow banks, and fine
+    // granular drift. Domain warping avoids the smooth, repeated noise look.
+    const float warpX = TerrainValueNoise(x*0.0045F+17.3F,z*0.0045F-8.1F)-0.5F;
+    const float warpZ = TerrainValueNoise(x*0.0045F-31.7F,z*0.0045F+22.9F)-0.5F;
+    // The source terrain grid is ~23 m between samples. These wavelengths are
+    // deliberately kept above its refined-mesh Nyquist limit: broad glacial
+    // undulations and moraine shoulders belong in geometry, finer snow crystals
+    // belong in the tiled PBR maps rather than aliased vertex displacement.
+    const float broad = TerrainFbm((x+warpX*68.0F)*0.0065F,(z+warpZ*68.0F)*0.0065F);
+    const float ridgeField = TerrainFbm((x+warpZ*24.0F)*0.014F-41.0F,(z+warpX*24.0F)*0.014F+23.0F);
+    const float ridges = 1.0F-std::abs(2.0F*ridgeField-1.0F);
+    const float drift = TerrainFbm((x+warpX*8.0F)*0.032F+9.1F,(z+warpZ*8.0F)*0.032F-13.7F);
+    const float granular = TerrainFbm(x*0.040F+4.7F,z*0.040F+18.2F);
+    return (broad-0.5F)*5.2F+(ridges-0.5F)*1.55F+
+        (drift-0.5F)*0.72F+(granular-0.5F)*0.20F;
+}
+
 constexpr std::string_view Header = "talvisota-region\t1";
 constexpr std::uintmax_t MaximumFileBytes = 64U * 1024U * 1024U;
 constexpr std::size_t MaximumRecords = 1000000U;
@@ -144,6 +187,11 @@ std::array<float, 16> BuildPlacementTransform(const WorldPlacement& placement) n
     };
 }
 
+float SampleTerrainDisplacement(const WorldRegion& region, const float x, const float z) noexcept
+{
+    return region.terrain.surfaceProfile == TerrainSurfaceProfile::SnowDriftV1 ? SnowDriftDisplacement(x, z) : 0.0F;
+}
+
 bool SampleTerrainHeight(const WorldRegion& region, float x, float z,
                           float& height, std::array<float, 3>& normal, std::string& error)
 {
@@ -187,12 +235,16 @@ bool SampleTerrainHeight(const WorldRegion& region, float x, float z,
     }
     const double sampled = (h00 * (1.0 - tx) + h10 * tx) * (1.0 - tz) +
                            (h01 * (1.0 - tx) + h11 * tx) * tz;
-    const double derivativeX = ((h10 - h00) * (1.0 - tz) + (h11 - h01) * tz) /
-                               terrain.spacingX;
-    const double derivativeZ = ((h01 - h00) * (1.0 - tx) + (h11 - h10) * tx) /
-                               terrain.spacingZ;
+    double derivativeX = ((h10 - h00) * (1.0 - tz) + (h11 - h01) * tz) / terrain.spacingX;
+    double derivativeZ = ((h01 - h00) * (1.0 - tx) + (h11 - h10) * tx) / terrain.spacingZ;
+    const float displacement = SampleTerrainDisplacement(region, x, z);
+    if (terrain.surfaceProfile == TerrainSurfaceProfile::SnowDriftV1) {
+        constexpr float step = 0.25F;
+        derivativeX += (SnowDriftDisplacement(x + step, z) - SnowDriftDisplacement(x - step, z)) / (2.0F * step);
+        derivativeZ += (SnowDriftDisplacement(x, z + step) - SnowDriftDisplacement(x, z - step)) / (2.0F * step);
+    }
     const double length = std::sqrt(derivativeX * derivativeX + 1.0 + derivativeZ * derivativeZ);
-    height = static_cast<float>(sampled);
+    height = static_cast<float>(sampled) + displacement;
     normal = {static_cast<float>(-derivativeX / length),
               static_cast<float>(1.0 / length),
               static_cast<float>(-derivativeZ / length)};
@@ -363,6 +415,7 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
     std::size_t records = 0;
     bool headerSeen = false;
     bool haveId = false, haveWorld = false, haveMin = false, haveMax = false, haveHeightfield = false;
+    bool haveTerrainSurface = false;
     std::vector<bool> heightRowsSeen;
     std::string line;
     while (std::getline(input, line))
@@ -419,6 +472,15 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
             if (seen) Add(diagnostics, path, lineNumber, std::string(fields[0]), "Duplicate bounds record.");
             if (!ParseVector(fields[1], target)) Add(diagnostics, path, lineNumber, std::string(fields[0]), "Expected three finite comma-separated metre values.");
             seen = true;
+        }
+        else if (fields[0] == "terrain_surface")
+        {
+            if (badCount(2U)) continue;
+            if (haveTerrainSurface) { Add(diagnostics, path, lineNumber, "terrain_surface", "Duplicate terrain surface profile."); continue; }
+            if (fields[1] == "none") candidate.terrain.surfaceProfile = TerrainSurfaceProfile::None;
+            else if (fields[1] == "snow_drift_v1") candidate.terrain.surfaceProfile = TerrainSurfaceProfile::SnowDriftV1;
+            else Add(diagnostics, path, lineNumber, "terrain_surface", "Expected none or snow_drift_v1.");
+            haveTerrainSurface = true;
         }
         else if (fields[0] == "heightfield")
         {
@@ -563,6 +625,8 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
     for (std::size_t axis = 0; axis < 3U; ++axis)
         if (candidate.boundsMin[axis] >= candidate.boundsMax[axis])
             Add(diagnostics, path, 0, "bounds", "Each region minimum must be less than its maximum.");
+    if (haveTerrainSurface && !haveHeightfield)
+        Add(diagnostics, path, 0, "terrain_surface", "Terrain surface profile requires a heightfield.");
     if (haveHeightfield)
     {
         if (std::find(heightRowsSeen.begin(), heightRowsSeen.end(), false) != heightRowsSeen.end())

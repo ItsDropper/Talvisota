@@ -48,6 +48,20 @@ int main()
     Check(player.grounded && player.position[1] == 0.0F,
         "spawn is grounded at terrain elevation");
 
+    auto snowRegion = MakeRegion();
+    snowRegion.terrain.surfaceProfile = talvisota::world::TerrainSurfaceProfile::SnowDriftV1;
+    PlayerState snowPlayer;
+    Check(InitializePlayer(snowRegion, config, {0.0F, 0.0F, 0.0F}, snowPlayer, error), "player initializes on displaced snow");
+    float snowHeight = 0.0F;
+    std::array<float, 3> snowNormal{};
+    Check(talvisota::world::SampleTerrainHeight(snowRegion, 0.0F, 0.0F, snowHeight, snowNormal, error), "displaced snow is sampleable");
+    Check(std::abs(snowPlayer.position[1] - snowHeight) < 1.0e-5F, "player spawn feet match the shared snow surface");
+    PlayerInput snowMove; snowMove.forward = 1.0F;
+    for (int frame = 0; frame < 30; ++frame)
+        Check(UpdatePlayer(snowRegion, config, snowMove, 0.016F, snowPlayer, error), "grounded traversal over snow succeeds");
+    Check(talvisota::world::SampleTerrainHeight(snowRegion, snowPlayer.position[0], snowPlayer.position[2], snowHeight, snowNormal, error) &&
+        std::abs(snowPlayer.position[1] - snowHeight) < 1.0e-5F, "player remains attached to displaced snow while moving");
+
     PlayerInput forward;
     forward.forward = 1.0F;
     Check(UpdatePlayer(region, config, forward, 0.5F, player, error),

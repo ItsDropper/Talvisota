@@ -13,6 +13,7 @@
 namespace talvisota::world
 {
 enum class PlacementCategory { Terrain, Vegetation, Rock, Structure, Prop };
+enum class TerrainSurfaceProfile { None, SnowDriftV1 };
 
 struct WorldPlacement final
 {
@@ -52,6 +53,7 @@ struct TerrainHeightfield final
     float originZ = 0.0F;
     float spacingX = 1.0F;
     float spacingZ = 1.0F;
+    TerrainSurfaceProfile surfaceProfile = TerrainSurfaceProfile::None;
     std::vector<float> elevations;
 };
 
@@ -77,6 +79,7 @@ struct WorldRegionDiagnostic final
 };
 
 [[nodiscard]] std::array<float, 16> BuildPlacementTransform(const WorldPlacement& placement) noexcept;
+[[nodiscard]] float SampleTerrainDisplacement(const WorldRegion& region, float x, float z) noexcept;
 [[nodiscard]] bool SampleTerrainHeight(const WorldRegion& region, float x, float z,
                                       float& height, std::array<float, 3>& normal,
                                       std::string& error);
