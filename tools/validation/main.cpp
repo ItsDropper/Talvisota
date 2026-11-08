@@ -71,6 +71,7 @@ int main(int argc, char** argv)
         }
 
         std::unordered_map<std::string, talvisota::content::WorldDefinition> worlds;
+        std::unordered_map<std::string, talvisota::world::WorldRegion> regions;
         for (const auto& asset : registry.Assets())
         {
             if (asset.kind != talvisota::content::AssetKind::Definition ||
@@ -163,6 +164,7 @@ int main(int argc, char** argv)
                         PrintDiagnostic(diagnostic.file, diagnostic.line, diagnostic.field, diagnostic.message);
                     return 1;
                 }
+                regions.emplace(asset.id, std::move(region));
                 ++regionCount;
                 continue;
             }
@@ -185,6 +187,37 @@ int main(int argc, char** argv)
                     for (const auto& diagnostic : definitionDiagnostics)
                         PrintDiagnostic(diagnostic.file, diagnostic.line, diagnostic.field, diagnostic.message);
                     return 1;
+                }
+                if (definition.kind == talvisota::content::AuthoredDefinitionKind::Mission)
+                {
+                    const auto region = regions.find(definition.regionId);
+                    if (region == regions.end())
+                    {
+                        PrintDiagnostic(contentRoot / asset.relativePath, 0U, "region_id",
+                                        "Mission region must be a validated dependency loaded before the mission.");
+                        return 1;
+                    }
+                    if (region->second.worldId != definition.worldId)
+                    {
+                        PrintDiagnostic(contentRoot / asset.relativePath, 0U, "region_id",
+                                        "Mission region belongs to a different world than world_id.");
+                        return 1;
+                    }
+                    for (const auto& objective : definition.objectives)
+                    {
+                        const auto placement = std::find_if(region->second.placements.begin(),
+                            region->second.placements.end(), [&](const auto& candidate)
+                            {
+                                return candidate.id == objective.interactionTargetId;
+                            });
+                        if (placement == region->second.placements.end())
+                        {
+                            PrintDiagnostic(contentRoot / asset.relativePath, 0U, "objective",
+                                "Interaction target is not a placement in the mission region: " +
+                                objective.interactionTargetId);
+                            return 1;
+                        }
+                    }
                 }
                 ++authoredDefinitionCount;
                 continue;
