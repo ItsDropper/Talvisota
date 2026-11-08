@@ -23,6 +23,7 @@
 #include <map>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <unordered_map>
 #include <system_error>
 #include <utility>
@@ -230,6 +231,117 @@ bool RefineSnowTerrain(RenderMesh& mesh, std::string& error) {
 
 struct SubmeshBinding { std::uint32_t meshIndex; std::uint32_t materialIndex; };
 
+
+struct StaticBatchStats final
+{
+    std::size_t sourceInstances = 0U;
+    std::size_t batchedInstances = 0U;
+    std::size_t outputInstances = 0U;
+    std::size_t transformedVertices = 0U;
+};
+
+StaticBatchStats BatchStaticSceneInstances(SceneSnapshot& scene)
+{
+    constexpr float CellSize = 128.0F;
+    constexpr std::size_t MaximumBatchVertices = 250000U;
+    using BatchKey = std::tuple<std::uint32_t, std::uint32_t, int, int>;
+    std::map<BatchKey, std::vector<std::size_t>> groups;
+    std::vector<bool> eligible(scene.instances.size(), false);
+
+    StaticBatchStats stats;
+    stats.sourceInstances = scene.instances.size();
+    for (std::size_t i = 0U; i < scene.instances.size(); ++i) {
+        const RenderInstance& instance = scene.instances[i];
+        if (instance.meshIndex >= scene.meshes.size() ||
+            instance.materialIndex >= scene.materials.size())
+            continue;
+        const RenderMesh& mesh = scene.meshes[instance.meshIndex];
+        const RenderMaterial& material = scene.materials[instance.materialIndex];
+        // Large deformable terrain and snow surfaces retain their own draw path.
+        // Static repeated props/vegetation/buildings are safe to bake into world space.
+        if (material.terrain || material.snowSurface || mesh.vertices.empty() ||
+            mesh.vertices.size() > MaximumBatchVertices)
+            continue;
+        const int cellX = static_cast<int>(std::floor(instance.world[12] / CellSize));
+        const int cellZ = static_cast<int>(std::floor(instance.world[14] / CellSize));
+        groups[{instance.meshIndex, instance.materialIndex, cellX, cellZ}].push_back(i);
+        eligible[i] = true;
+    }
+
+    std::vector<RenderInstance> output;
+    output.reserve(scene.instances.size());
+    for (std::size_t i = 0U; i < scene.instances.size(); ++i)
+        if (!eligible[i])
+            output.push_back(scene.instances[i]);
+
+    for (const auto& [key, members] : groups) {
+        if (members.size() < 2U) {
+            output.push_back(scene.instances[members.front()]);
+            continue;
+        }
+        const auto [meshIndex, materialIndex, cellX, cellZ] = key;
+        const RenderMesh& source = scene.meshes[meshIndex];
+        const std::size_t maxInstancesPerBatch =
+            std::max<std::size_t>(1U, MaximumBatchVertices / source.vertices.size());
+
+        for (std::size_t first = 0U; first < members.size(); first += maxInstancesPerBatch) {
+            const std::size_t count = std::min(maxInstancesPerBatch, members.size() - first);
+            RenderMesh batch;
+            batch.vertices.reserve(count * source.vertices.size());
+            batch.indices.reserve(count * source.indices.size());
+
+            for (std::size_t member = first; member < first + count; ++member) {
+                const RenderInstance& instance = scene.instances[members[member]];
+                const std::uint32_t vertexBase = static_cast<std::uint32_t>(batch.vertices.size());
+                const auto& world = instance.world;
+                for (const auto& vertex : source.vertices) {
+                    RenderVertex transformed = vertex;
+                    const float x = vertex.position[0];
+                    const float y = vertex.position[1];
+                    const float z = vertex.position[2];
+                    transformed.position = {
+                        world[0] * x + world[4] * y + world[8] * z + world[12],
+                        world[1] * x + world[5] * y + world[9] * z + world[13],
+                        world[2] * x + world[6] * y + world[10] * z + world[14]
+                    };
+                    const float nx = world[0] * vertex.normal[0] +
+                        world[4] * vertex.normal[1] + world[8] * vertex.normal[2];
+                    const float ny = world[1] * vertex.normal[0] +
+                        world[5] * vertex.normal[1] + world[9] * vertex.normal[2];
+                    const float nz = world[2] * vertex.normal[0] +
+                        world[6] * vertex.normal[1] + world[10] * vertex.normal[2];
+                    const float normalLength = std::sqrt(nx * nx + ny * ny + nz * nz);
+                    if (normalLength > 1.0e-8F) {
+                        transformed.normal = {nx / normalLength, ny / normalLength, nz / normalLength};
+                    } else {
+                        transformed.normal = {0.0F, 1.0F, 0.0F};
+                    }
+                    batch.vertices.push_back(transformed);
+                }
+                for (const std::uint32_t index : source.indices)
+                    batch.indices.push_back(vertexBase + index);
+                ++stats.batchedInstances;
+            }
+
+            const std::uint32_t batchMeshIndex = static_cast<std::uint32_t>(scene.meshes.size());
+            scene.meshes.push_back(std::move(batch));
+            RenderInstance combined;
+            combined.meshIndex = batchMeshIndex;
+            combined.materialIndex = materialIndex;
+            // Vertices are already transformed into world space; identity preserves
+            // the chunk-space bounds used by the renderer's frustum test.
+            output.push_back(combined);
+            stats.transformedVertices += count * source.vertices.size();
+        }
+        (void)cellX;
+        (void)cellZ;
+    }
+
+    scene.instances.swap(output);
+    stats.outputInstances = scene.instances.size();
+    return stats;
+}
+
 bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
     std::size_t& placementCount, std::size_t& drawCount, std::string& error) {
     talvisota::content::ContentRegistry registry;
@@ -382,6 +494,12 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
             scene.instances.push_back(instance);
         }
     }
+    const StaticBatchStats batchStats = BatchStaticSceneInstances(scene);
+    std::cout << "Static scene batching: " << batchStats.sourceInstances
+        << " source draws -> " << batchStats.outputInstances
+        << " chunk draws (" << batchStats.batchedInstances
+        << " source instances merged, " << batchStats.transformedVertices
+        << " vertices transformed).\\n";
     placementCount = region.placements.size();
     drawCount = scene.instances.size();
     if (placementCount == 0U || scene.meshes.empty() || scene.materials.empty() || scene.instances.empty()) {
@@ -442,47 +560,6 @@ bool SetCamera(SceneSnapshot& scene, const vanta::math::Vec3& eye,
     std::copy(std::begin(projection.elements), std::end(projection.elements), scene.camera.projection.begin());
     scene.camera.position = {eye.x, eye.y, eye.z};
     return true;
-}
-
-void CullCaptureInstances(SceneSnapshot& scene, const vanta::math::Vec3& eye,
-    const vanta::math::Vec3& target, const float aspect) {
-    const auto normalize=[](std::array<float,3> v) {
-        const float length=std::sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
-        if(length>1.0e-6F) for(float& value:v) value/=length;
-        return v;
-    };
-    const std::array<float,3> forward=normalize({target.x-eye.x,target.y-eye.y,target.z-eye.z});
-    const std::array<float,3> right=normalize({forward[2],0.0F,-forward[0]});
-    const std::array<float,3> up=normalize({
-        right[1]*forward[2]-right[2]*forward[1],
-        right[2]*forward[0]-right[0]*forward[2],
-        right[0]*forward[1]-right[1]*forward[0]});
-    constexpr float tangentHalfFov=0.57735026919F;
-    std::vector<float> meshRadii(scene.meshes.size(),0.0F);
-    for(std::size_t meshIndex=0;meshIndex<scene.meshes.size();++meshIndex)
-        for(const auto& vertex:scene.meshes[meshIndex].vertices)
-            meshRadii[meshIndex]=std::max(meshRadii[meshIndex],
-                std::sqrt(vertex.position[0]*vertex.position[0]+
-                    vertex.position[1]*vertex.position[1]+vertex.position[2]*vertex.position[2]));
-    std::size_t visibleCount=0;
-    for(auto& instance:scene.instances) {
-        if(instance.meshIndex>=meshRadii.size()) { instance.visible=false; continue; }
-        const auto& m=instance.world;
-        const std::array<float,3> delta{m[12]-eye.x,m[13]-eye.y,m[14]-eye.z};
-        const float depth=delta[0]*forward[0]+delta[1]*forward[1]+delta[2]*forward[2];
-        const float horizontal=std::abs(delta[0]*right[0]+delta[1]*right[1]+delta[2]*right[2]);
-        const float vertical=std::abs(delta[0]*up[0]+delta[1]*up[1]+delta[2]*up[2]);
-        const float scale=std::max({std::sqrt(m[0]*m[0]+m[1]*m[1]+m[2]*m[2]),
-            std::sqrt(m[4]*m[4]+m[5]*m[5]+m[6]*m[6]),
-            std::sqrt(m[8]*m[8]+m[9]*m[9]+m[10]*m[10])});
-        const float radius=meshRadii[instance.meshIndex]*scale;
-        instance.visible=depth+radius>=0.1F && depth-radius<=1200.0F &&
-            horizontal<=std::max(0.0F,depth)*tangentHalfFov*aspect+radius &&
-            vertical<=std::max(0.0F,depth)*tangentHalfFov+radius;
-        if(instance.visible) ++visibleCount;
-    }
-    std::cout<<"Capture frustum culling: "<<visibleCount<<" / "<<scene.instances.size()
-        <<" material instances visible.\n";
 }
 
 bool WriteBgraPng(const std::vector<std::uint8_t>& pixels, const UINT width,
@@ -673,8 +750,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 error = "Could not construct a valid Sakkola capture camera.";
                 break;
             }
-            CullCaptureInstances(scene, view.eye, view.target,
-                static_cast<float>(client.right-client.left)/static_cast<float>(client.bottom-client.top));
             for (int frame = 0; frame < framesPerView; ++frame) {
                 scene.camera.elapsedSeconds = static_cast<float>(frameNumber) / 60.0F;
                 scene.camera.frameNumber = frameNumber++;
@@ -745,8 +820,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         if (ownsCom) CoUninitialize();
         return 8;
     }
-    CullCaptureInstances(scene, cameraPosition, initialTarget,
-        static_cast<float>(width) / static_cast<float>(height));
     using Clock = std::chrono::steady_clock;
     auto previousFrame = Clock::now();
     const auto start = previousFrame;
@@ -816,8 +889,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 error = "Free camera view/projection update failed.";
                 break;
             }
-            CullCaptureInstances(scene, cameraPosition, cameraTarget,
-                static_cast<float>(w) / static_cast<float>(h));
         }
         scene.camera.elapsedSeconds = std::chrono::duration<float>(now - start).count();
         scene.camera.frameNumber = frameNumber++;
