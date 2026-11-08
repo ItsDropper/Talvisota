@@ -348,6 +348,16 @@ int main()
         selectedTarget.distanceMeters == 1.0F,
         "target query selects the active objective target and reports its distance");
 
+    SimulationState malformedMissionState = state;
+    malformedMissionState.mission.completedObjectives = 1U;
+    selectedTarget.entityId = "preserved.selection";
+    selectedTarget.distanceMeters = 9.0F;
+    Check(!FindNearestActiveObjectiveTarget(malformedMissionState, "entity.player",
+        rules.interactionRadiusMeters, selectedTarget, error) &&
+        selectedTarget.entityId == "preserved.selection" &&
+        selectedTarget.distanceMeters == 9.0F,
+        "interaction target query rejects inconsistent mission progression without mutating output");
+
     std::vector<CommandResult> results;
     const std::array<InteractionCommand, 1> outOfOrder{{
         {"command.telephone-first", "entity.player", "entity.telephone"}
