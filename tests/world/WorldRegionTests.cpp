@@ -319,8 +319,8 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
             Require(collision != region.collision.end(),
                     "Every grounded tree, fallen log, and stump must have its matching collision volume.");
             Require(std::abs((collision->center[1] - collision->halfExtents[1]) -
-                    placement.position[1]) <= 0.002F,
-                    "Grounded vegetation and deadwood collision bottoms must agree with their authored placement height.");
+                    (placement.position[1] + surfaceDisplacement)) <= 0.002F,
+                    "Grounded vegetation and deadwood collision bottoms must agree with their displaced terrain height.");
             if (tree && collision->halfExtents[1] * 2.0F >= 11.0F)
                 ++matureTreeCount;
         }
