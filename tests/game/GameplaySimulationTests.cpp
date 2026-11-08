@@ -111,8 +111,10 @@ void TestAuthoredWorldSimulation()
         return;
 
     const GameplayRules rules{};
+    std::array<float, 3> playerSpawn = well->position;
+    playerSpawn[0] += 10.0F;
     SimulationState state;
-    Check(InitializeSimulationFromAuthoredMission(authoredMission, region, well->position,
+    Check(InitializeSimulationFromAuthoredMission(authoredMission, region, playerSpawn,
         rules, state, error),
         "authored mission and loaded region initialize a complete gameplay simulation");
     Check(state.playerEntityId == "player.character.sakkola_infantryman" &&
@@ -135,14 +137,31 @@ void TestAuthoredWorldSimulation()
         churchEntity != nullptr && churchEntity->position == church->position,
         "mission entities use exact authored placement transforms from the loaded region");
 
+    Check(player != nullptr && player->position == playerSpawn,
+        "player entity starts at the supplied in-region spawn position");
+
     std::vector<CommandResult> results;
-    const std::array<InteractionCommand, 1> inspectWell{{
-        {"command.first-patrol.inspect-well", state.playerEntityId, "prop.well.farmstead"}
+    const std::array<InteractionCommand, 1> inspectWellOutOfRange{{
+        {"command.first-patrol.inspect-well-out-of-range",
+            state.playerEntityId, "prop.well.farmstead"}
     }};
-    Check(AdvanceSimulation(state, rules, 1.0 / 60.0, inspectWell, results, error) &&
+    Check(AdvanceSimulation(state, rules, 1.0 / 60.0,
+        inspectWellOutOfRange, results, error) &&
+        results.size() == 1U && results[0].outcome == CommandOutcome::OutOfRange &&
+        state.mission.completedObjectives == 0U,
+        "well interaction outside the configured radius cannot advance First Patrol");
+
+    Check(state.entities.SetPosition(state.playerEntityId, well->position, error),
+        "player simulation entity moves into range of the authored well placement");
+    const std::array<InteractionCommand, 1> inspectWellInRange{{
+        {"command.first-patrol.inspect-well-in-range",
+            state.playerEntityId, "prop.well.farmstead"}
+    }};
+    Check(AdvanceSimulation(state, rules, 1.0 / 60.0,
+        inspectWellInRange, results, error) &&
         results.size() == 1U && results[0].outcome == CommandOutcome::ObjectiveCompleted &&
         state.mission.completedObjectives == 1U,
-        "interacting with the real well placement completes the first authored objective");
+        "a new in-range command completes the first authored objective after the out-of-range attempt");
 
     Check(state.entities.SetPosition(state.playerEntityId, woodpile->position, error),
         "player simulation entity moves to the authored woodpile placement");
