@@ -387,7 +387,7 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
                 maxDrawDistance = 280.0F;
             } else switch (placement.category) {
             case talvisota::world::PlacementCategory::Vegetation:
-                maxDrawDistance = 360.0F;
+                maxDrawDistance = 280.0F;
                 break;
             case talvisota::world::PlacementCategory::Prop:
                 maxDrawDistance = 600.0F;
