@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <limits>
 #include <sstream>
 #include <stdexcept>
 #include <string>
