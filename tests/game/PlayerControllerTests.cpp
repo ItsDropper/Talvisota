@@ -95,6 +95,24 @@ int main()
         "standing update succeeds");
     Check(!player.crouched, "player returns to standing when overhead clearance is available");
 
+    auto lowCeilingRegion = MakeRegion();
+    PlayerState underCeiling;
+    Check(InitializePlayer(lowCeilingRegion, config, {0.0F, 0.0F, 0.0F}, underCeiling, error),
+        "player initializes before overhead obstacle is authored");
+    lowCeilingRegion.collision.push_back({"low-ceiling", {0.0F, 1.9F, 0.0F}, {2.0F, 0.3F, 2.0F}});
+    PlayerInput crouchUnderCeiling;
+    crouchUnderCeiling.crouch = true;
+    crouchUnderCeiling.forward = 1.0F;
+    Check(UpdatePlayer(lowCeilingRegion, config, crouchUnderCeiling, 0.1F, underCeiling, error),
+        "crouched movement under a low ceiling succeeds");
+    Check(underCeiling.crouched && underCeiling.horizontalVelocity[1] <= config.crouchSpeed + 0.001F,
+        "crouching reduces movement speed and fits beneath the ceiling");
+    crouchUnderCeiling.crouch = false;
+    Check(UpdatePlayer(lowCeilingRegion, config, crouchUnderCeiling, 0.016F, underCeiling, error),
+        "attempted stand-up under a low ceiling is handled");
+    Check(underCeiling.crouched,
+        "player remains crouched when standing clearance is unavailable");
+
     PlayerInput jump;
     jump.jumpPressed = true;
     Check(UpdatePlayer(region, config, jump, 0.016F, player, error),
