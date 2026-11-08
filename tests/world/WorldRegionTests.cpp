@@ -189,6 +189,13 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
             region.terrain.spacingX == 4.0F && region.terrain.spacingZ == 4.0F,
             "Sakkola should provide a 512 metre terrain block with a 4 metre collision heightfield.");
 
+    const auto terrainPlacement = std::find_if(region.placements.begin(), region.placements.end(),
+        [](const auto& item) { return item.id == "terrain.main"; });
+    Require(terrainPlacement != region.placements.end() &&
+            terrainPlacement->position == std::array<float, 3>{0.0F, 0.0F, 0.0F} &&
+            terrainPlacement->uniformScale == 1.0F,
+            "The Sakkola terrain mesh already contains world-space elevations and must not receive a second vertical offset.");
+
     const auto vegetation = std::count_if(region.placements.begin(), region.placements.end(),
         [](const auto& item) { return item.category == talvisota::world::PlacementCategory::Vegetation; });
     const auto structures = std::count_if(region.placements.begin(), region.placements.end(),
