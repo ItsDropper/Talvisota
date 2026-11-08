@@ -166,7 +166,6 @@ bool RefineSnowTerrain(RenderMesh& mesh, const talvisota::world::WorldRegion& re
 
 struct SubmeshBinding { std::uint32_t meshIndex; std::uint32_t materialIndex; };
 
-}
 } // namespace
 
 bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
