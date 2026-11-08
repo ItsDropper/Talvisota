@@ -123,6 +123,28 @@ The current crash diagnostic is a C++ terminate report. It is not an OS minidump
 
 The default executable still initializes core services and exits. The optional renderer adapter sample is a separate executable built only when `TALVISOTA_ENABLE_VANTA_ENGINE=ON`.
 
+## Run the Sakkola world locally
+
+On Windows x64, install CMake 3.25+, Git, and Visual Studio 2022 with the **Desktop development with C++** workload and a Windows 10/11 SDK. From the repository root, run:
+
+```powershell
+.\Run-Talvisota.ps1
+```
+
+The first run configures the pinned VantaEngine revision, builds the renderer and required generated environment textures, then opens the authored Sakkola church-village / Suvanto world. The build is stored in `build/local-game`; subsequent runs reuse it and rebuild only what changed. The default backend is D3D12. To use D3D11 instead:
+
+```powershell
+.\Run-Talvisota.ps1 -Backend D3D11
+```
+
+For a Debug build:
+
+```powershell
+.\Run-Talvisota.ps1 -Configuration Debug
+```
+
+Press **Esc** or close the window to exit. The current local runtime is a rendered world preview with a fixed camera, not yet the complete first-person gameplay loop. The `talvisota.exe` target remains the headless application shell; use this script to launch the actual Sakkola renderer.
+
 ## Optional VantaEngine renderer adapter
 
 The game-facing contract is deliberately independent of the engine:
@@ -142,7 +164,7 @@ ctest --test-dir build-msvc --output-on-failure -R Talvisota.Presentation.SceneR
 .\build-msvc\talvisota_renderer_sample.exe --backend=d3d11
 ```
 
-The adapter is opt-in because VantaEngine currently uses the Windows SDK and MSVC's WRL headers. The normal MinGW core build remains independent of that dependency. The sample renders a game-owned cube through either backend; it does not use the engine's procedural valley as its scene.
+The adapter is opt-in because VantaEngine currently uses the Windows SDK and MSVC's WRL headers. The normal MinGW core build remains independent of that dependency. The sample imports the authored Sakkola world definition and region, resolves the manifest assets and materials, builds the full placed environment scene, and renders it through either backend.
 
 Current adapter limitations are explicit: game materials support scalar base colour, roughness, and metallic values only; texture-backed materials and persistent per-mesh GPU caches are not implemented yet. The first backend path uploads submitted geometry per frame. D3D12 retains each frame's upload buffers until its fence completes; D3D11 uses dynamic write-discard buffers. Real-device smoke testing is still required before M2 can be closed.
 
