@@ -146,6 +146,8 @@ public:
                 material.metallicTexture = source.metallicTexture;
                 material.ambientOcclusionTexture = source.ambientOcclusionTexture;
                 material.packedMetallicRoughness = source.packedMetallicRoughness;
+            material.terrain = source.terrain;
+            material.snowSurface = source.snowSurface;
                 const auto handle = m_scene.CreateMaterial(std::move(material));
                 if (!handle.IsValid()) {
                     error = "VantaEngine rejected a game-owned material during scene translation.";
