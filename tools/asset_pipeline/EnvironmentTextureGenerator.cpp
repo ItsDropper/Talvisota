@@ -405,8 +405,8 @@ bool VerifyProceduralPreset(const std::string_view preset, const std::uint32_t s
             maximumHeight = std::max(maximumHeight, sample.height);
             minimumRoughness = std::min(minimumRoughness, sample.roughness);
             maximumRoughness = std::max(maximumRoughness, sample.roughness);
-            minimumAlbedo = std::min(minimumAlbedo, std::min({sample.red, sample.green, sample.blue}));
-            maximumAlbedo = std::max(maximumAlbedo, std::max({sample.red, sample.green, sample.blue}));
+            minimumAlbedo = std::min(minimumAlbedo, sample.red);
+            maximumAlbedo = std::max(maximumAlbedo, sample.red);
         }
     }
     if (maximumHeight - minimumHeight < 0.018F ||
