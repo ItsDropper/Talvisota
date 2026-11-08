@@ -546,7 +546,8 @@ std::uint32_t ReadU32(const std::array<char, 54>& header, const std::size_t offs
         (static_cast<std::uint32_t>(d) << 24U);
 }
 
-bool VerifyBmp(const std::filesystem::path& path, std::string& error)
+bool VerifyBmp(const std::filesystem::path& path, std::string& error,
+               const float minimumChannelStandardDeviation = 0.0F)
 {
     std::ifstream input(path, std::ios::binary);
     if (!input)
@@ -577,25 +578,48 @@ bool VerifyBmp(const std::filesystem::path& path, std::string& error)
 
     std::uint8_t minimum = 255U;
     std::uint8_t maximum = 0U;
+    std::array<std::uint64_t, 3> channelSums{};
+    std::array<std::uint64_t, 3> channelSquaredSums{};
     std::uint64_t bytesRead = 0U;
     std::array<char, 65536> buffer{};
     while (input)
     {
         input.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
         const std::streamsize count = input.gcount();
-        bytesRead += static_cast<std::uint64_t>(count);
         for (std::streamsize index = 0; index < count; ++index)
         {
             const auto value = static_cast<std::uint8_t>(buffer[static_cast<std::size_t>(index)]);
             minimum = std::min(minimum, value);
             maximum = std::max(maximum, value);
+            const std::size_t channel = static_cast<std::size_t>(
+                (bytesRead + static_cast<std::uint64_t>(index)) % 3U);
+            channelSums[channel] += value;
+            channelSquaredSums[channel] += static_cast<std::uint64_t>(value) * value;
         }
+        bytesRead += static_cast<std::uint64_t>(count);
     }
     if (!input.eof() || bytesRead != expectedImageBytes ||
         static_cast<unsigned int>(maximum) - static_cast<unsigned int>(minimum) < 8U)
     {
         error = "Generated texture has insufficient pixel variation or a read error: " + path.string();
         return false;
+    }
+
+    if (minimumChannelStandardDeviation > 0.0F)
+    {
+        constexpr double pixelCount = static_cast<double>(TextureSize) *
+            static_cast<double>(TextureSize);
+        for (std::size_t channel = 0; channel < channelSums.size(); ++channel)
+        {
+            const double mean = static_cast<double>(channelSums[channel]) / pixelCount;
+            const double meanSquare = static_cast<double>(channelSquaredSums[channel]) / pixelCount;
+            const double variance = std::max(0.0, meanSquare - mean * mean);
+            if (std::sqrt(variance) < static_cast<double>(minimumChannelStandardDeviation))
+            {
+                error = "Generated albedo channel has insufficient 8-bit variation: " + path.string();
+                return false;
+            }
+        }
     }
     return true;
 }
@@ -620,7 +644,10 @@ bool VerifyAll(const std::filesystem::path& directory, std::string& error)
         {
             const std::string filename = std::string(preset) + "-" +
                 std::string(channel) + ".bmp";
-            if (!VerifyBmp(directory / filename, error))
+            const float minimumAlbedoDeviation =
+                preset == "snow" || preset == "packed_snow" ? 1.5F : 0.0F;
+            if (!VerifyBmp(directory / filename, error,
+                    channel == "albedo" ? minimumAlbedoDeviation : 0.0F))
                 return false;
         }
     }
