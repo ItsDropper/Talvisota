@@ -523,7 +523,7 @@ void CullCaptureInstances(SceneSnapshot& scene, const std::vector<float>& meshRa
         if(instance.visible) ++visibleCount;
     }
     std::cout<<"Visibility culling: "<<visibleCount<<" / "<<scene.instances.size()
-        <<" instances visible (vegetation 360 m, props 600 m).\\n";
+        <<" instances visible (vegetation 360 m, props 600 m).\n";
 }
 
 bool WriteBgraPng(const std::vector<std::uint8_t>& pixels, const UINT width,
@@ -811,8 +811,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         }
         if (!running) break;
         const auto now = Clock::now();
+        const double frameDeltaMs =
+            std::chrono::duration<double, std::milli>(now - previousFrame).count();
         const float deltaSeconds = std::clamp(
-            std::chrono::duration<float>(now - previousFrame).count(), 0.0F, 0.1F);
+            static_cast<float>(frameDeltaMs * 0.001), 0.0F, 0.1F);
         previousFrame = now;
         const float lookStep = 1.45F * deltaSeconds;
         const float moveSpeed = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0 ? 48.0F : 14.0F;
@@ -873,7 +875,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         const auto renderStart = Clock::now();
         const bool renderSucceeded = renderer->Render(scene, error);
         const auto renderEnd = Clock::now();
-        accumulatedFrameMs += static_cast<double>(deltaSeconds) * 1000.0;
+        accumulatedFrameMs += frameDeltaMs;
         accumulatedRenderMs += std::chrono::duration<double, std::milli>(
             renderEnd - renderStart).count();
         ++profiledFrames;
