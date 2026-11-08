@@ -243,18 +243,24 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
     }
     else if (preset == "ice")
     {
+        // Fractures follow irregular noise contours rather than a repeated sine
+        // wave, avoiding the artificial parallel bands visible across the lake.
         const float fractureNoise = Fbm(u, v, 12, seed ^ 0x5be0cd19U, 4);
-        const float fractureLines = std::sin((u * 18.0F + v * 7.0F +
-            (broad - 0.5F) * 0.8F) * 2.0F * Pi);
-        const float fracture = Smooth((std::abs(fractureLines) - 0.91F) * 18.0F) *
-            Smooth((fractureNoise - 0.24F) * 2.2F);
+        const float branchNoise = Fbm(u, v, 36, seed ^ 0x9b05688cU, 3);
+        const float iceCloud = Fbm(u, v, 6, seed ^ 0x1f83d9abU, 4);
+        const float mainCracks = 1.0F - Smooth(
+            (std::abs(fractureNoise - 0.5F) - 0.006F) * 140.0F);
+        const float fineCracks = 1.0F - Smooth(
+            (std::abs(branchNoise - 0.5F) - 0.003F) * 220.0F);
+        const float fracture = std::clamp(std::max(mainCracks, fineCracks * 0.45F), 0.0F, 1.0F);
         const float frost = Smooth((medium - 0.42F) * 2.1F);
-        const float height = 0.50F + (fractureNoise - 0.5F) * 0.075F +
-            (fine - 0.5F) * 0.035F + fracture * 0.055F;
-        sample = {0.43F + broad * 0.10F + frost * 0.15F - fracture * 0.24F,
-                  0.57F + medium * 0.11F + frost * 0.16F - fracture * 0.22F,
-                  0.68F + fine * 0.10F + frost * 0.17F - fracture * 0.18F,
-                  height, 0.18F + frost * 0.34F + medium * 0.08F,
+        const float height = 0.50F + (iceCloud - 0.5F) * 0.065F +
+            (fractureNoise - 0.5F) * 0.025F + (fine - 0.5F) * 0.025F -
+            fracture * 0.025F;
+        sample = {0.43F + iceCloud * 0.10F + frost * 0.15F - fracture * 0.20F,
+                  0.57F + iceCloud * 0.11F + frost * 0.16F - fracture * 0.19F,
+                  0.68F + iceCloud * 0.12F + frost * 0.17F - fracture * 0.17F,
+                  height, 0.18F + frost * 0.34F + medium * 0.08F + fracture * 0.22F,
                   0.98F - fracture * 0.58F};
     }
     else
