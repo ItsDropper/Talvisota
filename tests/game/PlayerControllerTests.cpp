@@ -66,6 +66,17 @@ int main()
     Check(std::abs(diagonalDistance - config.walkSpeed * 0.1F) < 0.0001F,
         "diagonal movement is normalized to walking speed");
 
+    const auto beforeSprint = player.position;
+    PlayerInput sprint;
+    sprint.forward = 1.0F;
+    sprint.sprint = true;
+    Check(UpdatePlayer(region, config, sprint, 0.1F, player, error),
+        "sprint movement update succeeds");
+    const float sprintDistance = std::hypot(player.position[0] - beforeSprint[0],
+        player.position[2] - beforeSprint[2]);
+    Check(std::abs(sprintDistance - config.sprintSpeed * 0.1F) < 0.0001F,
+        "sprint uses the configured sprint speed");
+
     PlayerInput jump;
     jump.jumpPressed = true;
     Check(UpdatePlayer(region, config, jump, 0.016F, player, error),
@@ -79,6 +90,12 @@ int main()
         "look update succeeds");
     Check(std::abs(player.pitchRadians - config.maximumPitchRadians) < 0.0001F,
         "camera pitch is clamped before singularity");
+    for (int frame = 0; frame < 120 && !player.grounded; ++frame)
+        Check(UpdatePlayer(region, config, {}, 0.016F, player, error),
+            "airborne simulation step succeeds");
+    Check(player.grounded && std::abs(player.position[1]) < 0.0001F &&
+        player.verticalVelocity == 0.0F,
+        "jump arc lands on sampled terrain and clears vertical velocity");
 
     const auto camera = BuildPlayerCamera(player, config);
     Check(std::abs(camera.position[1] - (player.position[1] + config.eyeHeight)) < 0.0001F,
