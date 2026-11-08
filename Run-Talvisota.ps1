@@ -21,9 +21,11 @@ function Resolve-CMake {
         $candidates.Add($command.Source)
     }
 
+    $programFilesNative = [Environment]::GetFolderPath("ProgramFiles")
     $programFilesX86 = [Environment]::GetFolderPath("ProgramFilesX86")
     $programFiles = @(
         $env:ProgramFiles,
+        $programFilesNative,
         $programFilesX86,
         (Join-Path $env:LOCALAPPDATA "Programs")
     ) | Where-Object { $_ }
