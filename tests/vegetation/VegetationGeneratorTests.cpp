@@ -38,7 +38,15 @@ void Validate(const Species species, const std::uint64_t seed)
             assert(static_cast<std::size_t>(x.parentIndex) < a.segments.size());
     }
     const auto mesh = BuildTreeMesh(a, seed, 9);
+    const auto meshAgain = BuildTreeMesh(b, seed, 9);
     assert(!mesh.vertices.empty() && !mesh.indices.empty() && !mesh.sections.empty());
+    assert(mesh.vertices.size() == meshAgain.vertices.size());
+    assert(mesh.indices == meshAgain.indices);
+    for (std::size_t i = 0; i < mesh.vertices.size(); ++i)
+    {
+        assert(mesh.vertices[i].position == meshAgain.vertices[i].position);
+        assert(mesh.vertices[i].normal == meshAgain.vertices[i].normal);
+    }
     for (const auto& section : mesh.sections)
     {
         assert(section.indexCount > 0U && section.indexCount % 3U == 0U);
@@ -57,7 +65,14 @@ void Validate(const Species species, const std::uint64_t seed)
     if (species == Species::Birch)
         assert(snow.indices.empty());
     else
+    {
         assert(!snow.indices.empty() && snow.sections.front().materialGroup == kSnowMeshMaterialGroup);
+        for (const auto index : snow.indices)
+            assert(index < snow.vertices.size());
+        for (const auto& vertex : snow.vertices)
+            assert(std::isfinite(vertex.position[0]) && std::isfinite(vertex.position[1]) &&
+                std::isfinite(vertex.position[2]));
+    }
     const auto measurements = MeasureTrunk(a);
     assert(measurements.height == a.height);
     assert(measurements.buttRadius > measurements.tipRadius);
