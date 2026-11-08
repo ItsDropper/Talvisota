@@ -1,12 +1,12 @@
 talvisota-world	1
 id = world.sakkola
-name = Sakkola — Kirkonkylä and Suvanto north shore, winter 1939
+name = Sakkola — Kirkonkylä, Suvanto north shore and surrounding countryside, winter 1939
 unit = meter
 up_axis = y
 north_axis = +z
 handedness = right
-bounds_min = -256, -4, -256
-bounds_max = 256, 40, 256
+bounds_min = -2048, -4, -2048
+bounds_max = 2048, 40, 2048
 sea_level = 1.78
 terrain_model_id = model.terrain.sakkola
 sun_direction = -0.45,0.28,-0.85
