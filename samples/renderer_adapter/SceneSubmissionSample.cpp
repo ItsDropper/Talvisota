@@ -754,7 +754,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 const auto renderEnd = std::chrono::steady_clock::now();
                 renderTimesMs.push_back(std::chrono::duration<double, std::milli>(
                     renderEnd - renderStart).count());
-                Sleep(16);
+                if (!captureRequested) Sleep(16);
                 frameTimesMs.push_back(std::chrono::duration<double, std::milli>(
                     std::chrono::steady_clock::now() - frameStart).count());
             }
