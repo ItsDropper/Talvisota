@@ -1,6 +1,8 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <vector>
 
@@ -109,18 +111,6 @@ struct TreeSkeleton final
         segments.push_back(segment);
         return static_cast<std::int32_t>(segments.size() - 1);
     }
-};
-
-// Snow retention decision attributes for a shoot; evaluated when the branch
-// chain is built so the snow shell generator can be orientation/exposure
-// driven (branch angle, thickness, crown position, aspect) exactly as the
-// winter materials require.
-struct SnowCapture final
-{
-    float fitness = 0.0F;      // 0..1 accumulation suitability
-    float crownRatio = 0.0F;   // 0 at crown base, 1 at crown top
-    float directionality = 0.0F; // 0 isotropic, 1 fully wind/backside shielded
-    float carryingRadius = 0.0F;
 };
 
 // Grows one chain (the main axis of a branch) in small segments, returning the
