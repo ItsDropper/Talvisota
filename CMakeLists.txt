@@ -169,6 +169,22 @@ if(TALVISOTA_ENABLE_VANTA_ENGINE)
     )
     talvisota_apply_compiler_options(talvisota_renderer_adapter)
 
+    add_library(talvisota_sakkola_scene STATIC
+        src/talvisota/presentation/SakkolaSceneBuilder.cpp
+    )
+    add_library(Talvisota::SakkolaScene ALIAS talvisota_sakkola_scene)
+    target_compile_features(talvisota_sakkola_scene PUBLIC cxx_std_23)
+    target_include_directories(talvisota_sakkola_scene PUBLIC
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
+    )
+    target_link_libraries(talvisota_sakkola_scene PUBLIC
+        Talvisota::RendererContract
+        Talvisota::Content
+        Talvisota::World
+        VantaEngine::Runtime
+    )
+    talvisota_apply_compiler_options(talvisota_sakkola_scene)
+
     add_executable(talvisota_renderer_sample WIN32
         samples/renderer_adapter/SceneSubmissionSample.cpp
     )
@@ -176,6 +192,7 @@ if(TALVISOTA_ENABLE_VANTA_ENGINE)
     target_compile_definitions(talvisota_renderer_sample PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
     target_link_libraries(talvisota_renderer_sample PRIVATE
         Talvisota::RendererAdapter
+        Talvisota::SakkolaScene
         Talvisota::Content
         Talvisota::World
         Talvisota::Gameplay
@@ -204,6 +221,7 @@ if(TARGET talvisota_renderer_adapter)
     target_link_libraries(talvisota PRIVATE
         Talvisota::Application
         Talvisota::RendererAdapter
+        Talvisota::SakkolaScene
         Talvisota::Content
         Talvisota::World
         Talvisota::Gameplay
