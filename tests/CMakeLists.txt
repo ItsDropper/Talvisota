@@ -74,8 +74,6 @@ add_test(NAME Talvisota.Gameplay.PlayerController COMMAND talvisota_player_contr
 
 add_executable(talvisota_gameplay_simulation_tests
     game/GameplaySimulationTests.cpp
-    ../src/talvisota/entities/EntityRegistry.cpp
-    ../src/talvisota/gameplay/GameplaySimulation.cpp
 )
 target_link_libraries(talvisota_gameplay_simulation_tests PRIVATE Talvisota::Gameplay)
 target_compile_features(talvisota_gameplay_simulation_tests PRIVATE cxx_std_23)

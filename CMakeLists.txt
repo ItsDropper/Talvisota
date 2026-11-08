@@ -45,6 +45,8 @@ talvisota_apply_compiler_options(talvisota_world)
 add_library(talvisota_gameplay STATIC
     src/talvisota/game/PlayerController.cpp
     src/talvisota/game/MissionRuntime.cpp
+    src/talvisota/entities/EntityRegistry.cpp
+    src/talvisota/gameplay/GameplaySimulation.cpp
 )
 add_library(Talvisota::Gameplay ALIAS talvisota_gameplay)
 target_compile_features(talvisota_gameplay PUBLIC cxx_std_23)
