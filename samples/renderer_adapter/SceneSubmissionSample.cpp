@@ -7,7 +7,6 @@
 #include "vanta/assets/ObjLoader.hpp"
 #include "vanta/math/Math.hpp"
 #include <Windows.h>
-#include <windowsx.h>
 #include <shellapi.h>
 #include <dwmapi.h>
 #include <wincodec.h>
@@ -37,111 +36,31 @@ using talvisota::presentation::RenderMaterial;
 using talvisota::presentation::RenderMesh;
 using talvisota::presentation::SceneSnapshot;
 
-LONG rawMouseDeltaX=0, rawMouseDeltaY=0;
-HWND mainWindow=nullptr, frontendOverlay=nullptr;
-bool frontendEnabled=false;
-enum class FrontendState { MainMenu, Playing, Paused };
-FrontendState frontendState=FrontendState::MainMenu;
-void SetFrontendState(FrontendState state) {
-    frontendState=state;
-    if(frontendOverlay && IsWindow(frontendOverlay)) {
-        ShowWindow(frontendOverlay,state==FrontendState::Playing?SW_HIDE:SW_SHOW);
-        InvalidateRect(frontendOverlay,nullptr,FALSE);
+LONG rawMouseDeltaX = 0;
+LONG rawMouseDeltaY = 0;
+
+LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM wParam, LPARAM lParam) {
+    if (message == WM_CLOSE) { DestroyWindow(window); return 0; }
+    if (message == WM_DESTROY) { PostQuitMessage(0); return 0; }
+    if (message == WM_KILLFOCUS) { rawMouseDeltaX = 0; rawMouseDeltaY = 0; }
+    if (message == WM_SETCURSOR && LOWORD(lParam) == HTCLIENT) {
+        SetCursor(nullptr);
+        return TRUE;
     }
-    rawMouseDeltaX=0; rawMouseDeltaY=0;
-    if(state==FrontendState::Playing && mainWindow) SetFocus(mainWindow);
-}
-RECT MenuPanel(int w,int h) {
-    const int pw=std::min(520,std::max(340,w-40)), ph=frontendState==FrontendState::MainMenu?380:430;
-    return {(w-pw)/2,(h-ph)/2,(w+pw)/2,(h+ph)/2};
-}
-RECT MenuButton(int w,int h,int i) {
-    const RECT p=MenuPanel(w,h); const int bw=std::min(340,p.right-p.left-56);
-    const int top=p.top+(frontendState==FrontendState::MainMenu?184:198)+i*62;
-    return {(w-bw)/2,top,(w+bw)/2,top+48};
-}
-void PaintMenu(HWND hwnd) {
-    PAINTSTRUCT ps{}; HDC dc=BeginPaint(hwnd,&ps); RECT client{}; GetClientRect(hwnd,&client);
-    HBRUSH key=CreateSolidBrush(RGB(255,0,255)); FillRect(dc,&client,key); DeleteObject(key);
-    RECT p=MenuPanel(client.right,client.bottom); HBRUSH panel=CreateSolidBrush(RGB(13,22,34));
-    FillRect(dc,&p,panel); DeleteObject(panel);
-    HPEN edge=CreatePen(PS_SOLID,2,RGB(85,145,177)); HGDIOBJ op=SelectObject(dc,edge);
-    HGDIOBJ ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH)); Rectangle(dc,p.left,p.top,p.right,p.bottom);
-    SelectObject(dc,ob); SelectObject(dc,op); DeleteObject(edge); SetBkMode(dc,TRANSPARENT);
-    HFONT title=CreateFontW(38,0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,
-        CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
-    HFONT body=CreateFontW(16,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,
-        CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
-    HGDIOBJ old=SelectObject(dc,title); SetTextColor(dc,RGB(235,242,248));
-    RECT tr{p.left+20,p.top+30,p.right-20,p.top+90};
-    DrawTextW(dc,frontendState==FrontendState::MainMenu?L"TALVISOTA":L"PAUSED",-1,&tr,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    SelectObject(dc,body); SetTextColor(dc,RGB(155,179,196));
-    RECT sr{p.left+18,p.top+100,p.right-18,p.top+145};
-    DrawTextW(dc,frontendState==FrontendState::MainMenu?
-        L"THE WINTER WAR  |  KARELIAN ISTHMUS  |  1939":L"GAME PAUSED  -  PROGRESS PRESERVED",
-        -1,&sr,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    const int count=frontendState==FrontendState::MainMenu?2:3;
-    for(int i=0;i<count;++i) {
-        RECT b=MenuButton(client.right,client.bottom,i);
-        HBRUSH fill=CreateSolidBrush(i==0?RGB(35,105,145):RGB(30,43,57));
-        FillRect(dc,&b,fill); DeleteObject(fill);
-        HPEN pen=CreatePen(PS_SOLID,1,i==0?RGB(100,190,225):RGB(73,96,116));
-        op=SelectObject(dc,pen); ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
-        Rectangle(dc,b.left,b.top,b.right,b.bottom); SelectObject(dc,ob); SelectObject(dc,op); DeleteObject(pen);
-        SetTextColor(dc,RGB(240,245,249));
-        const wchar_t* label=frontendState==FrontendState::MainMenu?
-            (i==0?L"START GAME":L"QUIT"):(i==0?L"RESUME":i==1?L"MAIN MENU":L"QUIT");
-        DrawTextW(dc,label,-1,&b,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    }
-    SelectObject(dc,old); SetTextColor(dc,RGB(132,153,170));
-    RECT hint{p.left+12,p.bottom-42,p.right-12,p.bottom-12};
-    DrawTextW(dc,frontendState==FrontendState::MainMenu?
-        L"A HISTORICAL FIRST-PERSON EXPERIENCE":L"PRESS ESC TO RESUME",-1,&hint,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    DeleteObject(body); DeleteObject(title); EndPaint(hwnd,&ps);
-}
-LRESULT CALLBACK OverlayProcedure(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
-    if(msg==WM_ERASEBKGND) return 1;
-    if(msg==WM_PAINT) { PaintMenu(hwnd); return 0; }
-    if(msg==WM_SETCURSOR && LOWORD(lp)==HTCLIENT) { SetCursor(LoadCursorW(nullptr,IDC_ARROW)); return TRUE; }
-    if(msg==WM_LBUTTONUP) {
-        RECT c{}; GetClientRect(hwnd,&c); const int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
-        const int count=frontendState==FrontendState::MainMenu?2:3;
-        for(int i=0;i<count;++i) { RECT b=MenuButton(c.right,c.bottom,i);
-            if(x<b.left||x>=b.right||y<b.top||y>=b.bottom) continue;
-            if(frontendState==FrontendState::MainMenu) {
-                if(i==0) SetFrontendState(FrontendState::Playing); else if(mainWindow) DestroyWindow(mainWindow);
-            } else if(i==0) SetFrontendState(FrontendState::Playing);
-            else if(i==1) SetFrontendState(FrontendState::MainMenu);
-            else if(mainWindow) DestroyWindow(mainWindow);
-            return 0;
+    if (message == WM_INPUT) {
+        RAWINPUT input{};
+        UINT size = sizeof(input);
+        if (GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT,
+                &input, &size, sizeof(RAWINPUTHEADER)) == size &&
+            input.header.dwType == RIM_TYPEMOUSE &&
+            (input.data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE) == 0U) {
+            rawMouseDeltaX += input.data.mouse.lLastX;
+            rawMouseDeltaY += input.data.mouse.lLastY;
         }
-        return 0;
+        return DefWindowProcW(window, message, wParam, lParam);
     }
-    return DefWindowProcW(hwnd,msg,wp,lp);
-}
-LRESULT CALLBACK WindowProcedure(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
-    if(msg==WM_CLOSE) { DestroyWindow(hwnd); return 0; }
-    if(msg==WM_DESTROY) { PostQuitMessage(0); return 0; }
-    if(msg==WM_KILLFOCUS) { rawMouseDeltaX=0; rawMouseDeltaY=0; }
-    if(msg==WM_SETCURSOR && LOWORD(lp)==HTCLIENT) {
-        SetCursor(frontendState==FrontendState::Playing?nullptr:LoadCursorW(nullptr,IDC_ARROW)); return TRUE;
-    }
-    if(msg==WM_INPUT) {
-        RAWINPUT in{}; UINT size=sizeof(in);
-        if(GetRawInputData(reinterpret_cast<HRAWINPUT>(lp),RID_INPUT,&in,&size,sizeof(RAWINPUTHEADER))==size &&
-            in.header.dwType==RIM_TYPEMOUSE && (in.data.mouse.usFlags&MOUSE_MOVE_ABSOLUTE)==0U &&
-            frontendState==FrontendState::Playing) {
-            rawMouseDeltaX+=in.data.mouse.lLastX; rawMouseDeltaY+=in.data.mouse.lLastY;
-        }
-        return DefWindowProcW(hwnd,msg,wp,lp);
-    }
-    if(msg==WM_KEYDOWN && wp==VK_ESCAPE && (lp&(1LL<<30))==0) {
-        if(frontendEnabled && frontendState==FrontendState::Playing) SetFrontendState(FrontendState::Paused);
-        else if(frontendEnabled && frontendState==FrontendState::Paused) SetFrontendState(FrontendState::Playing);
-        else if(!frontendEnabled) DestroyWindow(hwnd);
-        return 0;
-    }
-    return DefWindowProcW(hwnd,msg,wp,lp);
+    if (message == WM_KEYDOWN && wParam == VK_ESCAPE) { DestroyWindow(window); return 0; }
+    return DefWindowProcW(window, message, wParam, lParam);
 }
 
 template<class Diagnostics>
@@ -836,12 +755,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     wc.lpfnWndProc = &WindowProcedure;
     wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
     wc.lpszClassName = className;
-    WNDCLASSEXW overlayClass{}; overlayClass.cbSize=sizeof(overlayClass); overlayClass.hInstance=instance;
-    overlayClass.lpfnWndProc=&OverlayProcedure; overlayClass.hCursor=LoadCursorW(nullptr,IDC_ARROW);
-    overlayClass.lpszClassName=L"TalvisotaFrontendOverlay";
-    if(RegisterClassExW(&overlayClass)==0 && GetLastError()!=ERROR_CLASS_ALREADY_EXISTS) {
-        if(ownsCom) CoUninitialize(); return 3;
-    }
     if (RegisterClassExW(&wc) == 0 && GetLastError() != ERROR_CLASS_ALREADY_EXISTS) {
         std::cerr << "Could not register Sakkola renderer window class.\n";
         if (ownsCom) CoUninitialize();
@@ -863,7 +776,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         if (ownsCom) CoUninitialize();
         return 5;
     }
-    mainWindow=window; frontendEnabled=!captureRequested; frontendState=FrontendState::MainMenu;
     RAWINPUTDEVICE mouseDevice{0x01U, 0x02U, 0U, window};
     const bool rawMouseAvailable = RegisterRawInputDevices(&mouseDevice, 1U, sizeof(mouseDevice)) != FALSE;
     if (!rawMouseAvailable)
@@ -883,17 +795,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         renderer.reset(); DestroyWindow(window);
         if (ownsCom) CoUninitialize();
         return 6;
-    }
-    if(frontendEnabled) {
-        frontendOverlay=CreateWindowExW(WS_EX_LAYERED,L"TalvisotaFrontendOverlay",L"",
-            WS_CHILD|WS_VISIBLE,0,0,client.right-client.left,client.bottom-client.top,
-            window,nullptr,instance,nullptr);
-        if(frontendOverlay==nullptr || !SetLayeredWindowAttributes(frontendOverlay,
-                RGB(255,0,255),0,LWA_COLORKEY)) {
-            error="Could not initialize the main menu/pause overlay.";
-            renderer.reset(); DestroyWindow(window); if(ownsCom) CoUninitialize(); return 6;
-        }
-        InvalidateRect(frontendOverlay,nullptr,FALSE);
     }
 
     std::uint64_t frameNumber = 0;
@@ -1021,7 +922,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         if (ownsCom) CoUninitialize();
         return 8;
     }
-    const talvisota::game::PlayerState initialPlayerState=playerState;
     auto playerCamera = talvisota::game::BuildPlayerCamera(playerState, playerConfig);
     vanta::math::Vec3 cameraPosition{playerCamera.position[0], playerCamera.position[1], playerCamera.position[2]};
     vanta::math::Vec3 cameraTarget{cameraPosition.x + playerCamera.forward[0] * 180.0F,
@@ -1042,9 +942,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     std::uint32_t profiledFrames = 0U;
     int oldWidth = client.right - client.left, oldHeight = client.bottom - client.top;
     MSG message{};
-    bool running=true, jumpWasDown=false;
-    FrontendState previousFrontendState=frontendState;
-    std::cout << "Sakkola: Start Game; WASD, mouse look, Space jump, Shift sprint, Ctrl crouch, ESC pause.\n";
+    bool running = true;
+    bool jumpWasDown = false;
+    std::cout << "First-person preview: WASD move, mouse/arrow keys look, Space jump, Shift sprint, Escape exits.\n";
     while (running) {
         while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE) != FALSE) {
             if (message.message == WM_QUIT) { running = false; break; }
@@ -1052,55 +952,39 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             DispatchMessageW(&message);
         }
         if (!running) break;
-        const auto now=Clock::now();
-        bool cameraChanged=false;
-        if(frontendState!=previousFrontendState) {
-            if(frontendState==FrontendState::MainMenu) {
-                playerState=initialPlayerState;
-                playerCamera=talvisota::game::BuildPlayerCamera(playerState,playerConfig);
-                cameraPosition={playerCamera.position[0],playerCamera.position[1],playerCamera.position[2]};
-                cameraTarget={cameraPosition.x+playerCamera.forward[0]*180.0F,
-                    cameraPosition.y+playerCamera.forward[1]*180.0F,cameraPosition.z+playerCamera.forward[2]*180.0F};
-                cameraChanged=true;
-            }
-            rawMouseDeltaX=0; rawMouseDeltaY=0; jumpWasDown=false;
-            previousFrame=now; previousFrontendState=frontendState;
-            InvalidateRect(frontendOverlay,nullptr,FALSE);
-        }
+        const auto now = Clock::now();
         const double frameDeltaMs =
             std::chrono::duration<double, std::milli>(now - previousFrame).count();
         const float deltaSeconds = std::clamp(
             static_cast<float>(frameDeltaMs * 0.001), 0.0F, 0.1F);
         previousFrame = now;
-        if(frontendState==FrontendState::Playing) {
-            talvisota::game::PlayerInput playerInput;
-            playerInput.forward=((GetAsyncKeyState('W')&0x8000)!=0?1.0F:0.0F)-
-                ((GetAsyncKeyState('S')&0x8000)!=0?1.0F:0.0F);
-            playerInput.right=((GetAsyncKeyState('D')&0x8000)!=0?1.0F:0.0F)-
-                ((GetAsyncKeyState('A')&0x8000)!=0?1.0F:0.0F);
-            playerInput.sprint=(GetAsyncKeyState(VK_SHIFT)&0x8000)!=0;
-            playerInput.crouch=(GetAsyncKeyState(VK_CONTROL)&0x8000)!=0;
-            const bool jumpDown=(GetAsyncKeyState(VK_SPACE)&0x8000)!=0;
-            playerInput.jumpPressed=jumpDown&&!jumpWasDown; jumpWasDown=jumpDown;
-            const float lookStep=1.45F*deltaSeconds;
-            constexpr float mouseRadiansPerCount=0.0025F;
-            const LONG mouseX=std::exchange(rawMouseDeltaX,0L), mouseY=std::exchange(rawMouseDeltaY,0L);
-            playerInput.lookYawRadians=static_cast<float>(mouseX)*mouseRadiansPerCount+
-                ((GetAsyncKeyState(VK_RIGHT)&0x8000)!=0?lookStep:0.0F)-
-                ((GetAsyncKeyState(VK_LEFT)&0x8000)!=0?lookStep:0.0F);
-            playerInput.lookPitchRadians=-static_cast<float>(mouseY)*mouseRadiansPerCount+
-                ((GetAsyncKeyState(VK_UP)&0x8000)!=0?lookStep:0.0F)-
-                ((GetAsyncKeyState(VK_DOWN)&0x8000)!=0?lookStep:0.0F);
-            const auto previousPosition=playerState.position;
-            const bool wasCrouched=playerState.crouched;
-            if(!talvisota::game::UpdatePlayer(gameRegion,playerConfig,playerInput,
-                    std::max(deltaSeconds,1.0F/1000.0F),playerState,error)) {
-                std::cerr<<"Player simulation failed: "<<error<<"\\n"; break;
-            }
-            cameraChanged=playerState.position!=previousPosition ||
-                playerInput.lookYawRadians!=0.0F || playerInput.lookPitchRadians!=0.0F ||
-                playerState.crouched!=wasCrouched;
-        } else { rawMouseDeltaX=0; rawMouseDeltaY=0; jumpWasDown=false; }
+        talvisota::game::PlayerInput playerInput;
+        playerInput.forward = ((GetAsyncKeyState('W') & 0x8000) != 0 ? 1.0F : 0.0F) -
+            ((GetAsyncKeyState('S') & 0x8000) != 0 ? 1.0F : 0.0F);
+        playerInput.right = ((GetAsyncKeyState('D') & 0x8000) != 0 ? 1.0F : 0.0F) -
+            ((GetAsyncKeyState('A') & 0x8000) != 0 ? 1.0F : 0.0F);
+        playerInput.sprint = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+        const bool jumpDown = (GetAsyncKeyState(VK_SPACE) & 0x8000) != 0;
+        playerInput.jumpPressed = jumpDown && !jumpWasDown;
+        jumpWasDown = jumpDown;
+        const float lookStep = 1.45F * deltaSeconds;
+        constexpr float mouseRadiansPerCount = 0.0025F;
+        const LONG mouseX = std::exchange(rawMouseDeltaX, 0L);
+        const LONG mouseY = std::exchange(rawMouseDeltaY, 0L);
+        playerInput.lookYawRadians = static_cast<float>(mouseX) * mouseRadiansPerCount +
+            ((GetAsyncKeyState(VK_RIGHT) & 0x8000) != 0 ? lookStep : 0.0F) -
+            ((GetAsyncKeyState(VK_LEFT) & 0x8000) != 0 ? lookStep : 0.0F);
+        playerInput.lookPitchRadians = -static_cast<float>(mouseY) * mouseRadiansPerCount +
+            ((GetAsyncKeyState(VK_UP) & 0x8000) != 0 ? lookStep : 0.0F) -
+            ((GetAsyncKeyState(VK_DOWN) & 0x8000) != 0 ? lookStep : 0.0F);
+        bool cameraChanged = !playerState.grounded || playerInput.forward != 0.0F ||
+            playerInput.right != 0.0F || playerInput.lookYawRadians != 0.0F ||
+            playerInput.lookPitchRadians != 0.0F || playerInput.jumpPressed;
+        if (!talvisota::game::UpdatePlayer(gameRegion, playerConfig, playerInput,
+                std::max(deltaSeconds, 1.0F / 1000.0F), playerState, error)) {
+            std::cerr << "Player simulation failed: " << error << "\n";
+            break;
+        }
         if (cameraChanged) {
             playerCamera = talvisota::game::BuildPlayerCamera(playerState, playerConfig);
             cameraPosition = {playerCamera.position[0], playerCamera.position[1], playerCamera.position[2]};
@@ -1112,7 +996,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         const int w = client.right - client.left, h = client.bottom - client.top;
         if (w <= 0 || h <= 0) { Sleep(16); continue; }
         if (w != oldWidth || h != oldHeight) {
-            if(frontendOverlay) SetWindowPos(frontendOverlay,nullptr,0,0,w,h,SWP_NOZORDER|SWP_NOACTIVATE);
             if (!renderer->Resize(w, h, error)) {
                 std::cerr << "Renderer resize failed: " << error << "\n";
                 break;
@@ -1152,7 +1035,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         }
         Sleep(1);
     }
-    renderer.reset(); frontendOverlay=nullptr; mainWindow=nullptr;
+    renderer.reset();
     if (IsWindow(window)) DestroyWindow(window);
     if (ownsCom) CoUninitialize();
     return error.empty() ? 0 : 9;
