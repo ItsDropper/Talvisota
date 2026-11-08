@@ -109,7 +109,7 @@ bool InitializeSimulationFromAuthoredMission(
         playerId, authoredMission.factionId, entities::EntityKind::Player, playerSpawn, {}
     });
 
-    for (const game::MissionObjectiveDefinition& objective : authoredMission.objectives)
+    for (const game::ObjectiveDefinition& objective : missionDefinition.objectives)
     {
         const world::WorldPlacement* targetPlacement = nullptr;
         for (const world::WorldPlacement& placement : region.placements)
