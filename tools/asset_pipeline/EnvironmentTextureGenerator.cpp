@@ -325,6 +325,53 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
     return sample;
 }
 
+bool VerifyProceduralPreset(const std::string_view preset, const std::uint32_t seed,
+                           std::string& error) noexcept
+{
+    if (preset != "snow" && preset != "ice")
+        return true;
+    constexpr float tolerance = 0.00015F;
+    float minimumHeight = 1.0F, maximumHeight = 0.0F;
+    float minimumRoughness = 1.0F, maximumRoughness = 0.0F;
+    const auto close = [](const Sample& a, const Sample& b) {
+        constexpr float limit = 0.00015F;
+        return std::abs(a.red-b.red)<limit && std::abs(a.green-b.green)<limit &&
+            std::abs(a.blue-b.blue)<limit && std::abs(a.height-b.height)<limit &&
+            std::abs(a.roughness-b.roughness)<limit && std::abs(a.occlusion-b.occlusion)<limit;
+    };
+    for (int i = 0; i <= 128; ++i)
+    {
+        const float t = static_cast<float>(i) / 128.0F;
+        if (!close(Evaluate(preset, 0.0F, t, seed), Evaluate(preset, 1.0F, t, seed)) ||
+            !close(Evaluate(preset, t, 0.0F, seed), Evaluate(preset, t, 1.0F, seed)))
+        {
+            error = std::string(preset) + " procedural PBR field is not seamless at its texture boundaries.";
+            return false;
+        }
+    }
+    for (int y = 0; y < 64; ++y)
+    {
+        for (int x = 0; x < 64; ++x)
+        {
+            const Sample sample = Evaluate(preset, static_cast<float>(x)/64.0F,
+                static_cast<float>(y)/64.0F, seed);
+            minimumHeight = std::min(minimumHeight, sample.height);
+            maximumHeight = std::max(maximumHeight, sample.height);
+            minimumRoughness = std::min(minimumRoughness, sample.roughness);
+            maximumRoughness = std::max(maximumRoughness, sample.roughness);
+        }
+    }
+    if (maximumHeight - minimumHeight < 0.018F ||
+        maximumRoughness - minimumRoughness < (preset == "ice" ? 0.16F : 0.045F))
+    {
+        error = std::string(preset) + " procedural PBR fields lack the required relief or roughness variation.";
+        return false;
+    }
+    (void)tolerance;
+    error.clear();
+    return true;
+}
+
 float LinearToSrgb(const float value) noexcept
 {
     const float clamped = std::clamp(value, 0.0F, 1.0F);
@@ -514,8 +561,13 @@ bool VerifyAll(const std::filesystem::path& directory, std::string& error)
     constexpr std::array<std::string_view, 4> channels = {
         "albedo", "normal", "roughness", "ao"
     };
-    for (const auto preset : presets)
+    for (std::size_t index = 0; index < presets.size(); ++index)
     {
+        const auto preset = presets[index];
+        const std::uint32_t seed = 0x53414b4bU +
+            static_cast<std::uint32_t>(index) * 0x9e3779b9U;
+        if (!VerifyProceduralPreset(preset, seed, error))
+            return false;
         for (const auto channel : channels)
         {
             const std::string filename = std::string(preset) + "-" +
@@ -647,7 +699,8 @@ int main(int argc, char** argv)
         const auto preset = presets[index];
         const std::uint32_t seed = 0x53414b4bU +
             static_cast<std::uint32_t>(index) * 0x9e3779b9U;
-        if (!GeneratePreset(outputDirectory, preset, seed, error))
+        if (!VerifyProceduralPreset(preset, seed, error) ||
+            !GeneratePreset(outputDirectory, preset, seed, error))
         {
             std::cerr << error << '\n';
             return 1;
