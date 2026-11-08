@@ -565,8 +565,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         return 3;
     }
 
-    const int width = captureDir.empty() ? 1280 : 1920;
-    const int height = captureDir.empty() ? 720 : 1080;
+    const int width = 1280;
+    const int height = 720;
     RECT bounds{0, 0, width, height};
     if (!AdjustWindowRect(&bounds, WS_OVERLAPPEDWINDOW, FALSE)) {
         if (ownsCom) CoUninitialize();
