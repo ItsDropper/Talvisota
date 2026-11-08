@@ -47,12 +47,21 @@ function Resolve-CMake {
     foreach ($path in ($candidates | Select-Object -Unique)) {
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { continue }
 
-        $versionOutput = & $path --version 2>$null
-        if ($LASTEXITCODE -ne 0 -or $versionOutput -notmatch "cmake version (\d+)\.(\d+)\.(\d+)") {
+        # cmake --version emits multiple lines. Convert the complete output to
+        # one string before matching; -notmatch on a string array would reject
+        # the non-matching copyright line even when the version line is valid.
+        $versionOutput = (& $path --version 2>$null | Out-String).Trim()
+        $versionMatch = [regex]::Match(
+            $versionOutput,
+            "(?m)^cmake version (\d+)\.(\d+)\.(\d+)"
+        )
+        if ($LASTEXITCODE -ne 0 -or -not $versionMatch.Success) {
             continue
         }
 
-        $version = [version]("$($Matches[1]).$($Matches[2]).$($Matches[3])")
+        $version = [version](
+            "$($versionMatch.Groups[1].Value).$($versionMatch.Groups[2].Value).$($versionMatch.Groups[3].Value)"
+        )
         if ($version -ge [version]"3.25.0") {
             return $path
         }
