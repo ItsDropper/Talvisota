@@ -294,8 +294,9 @@ def add_needle_pair(builder, origin, direction, rng):
         reference = Vector((0.0, 1.0, 0.0))
     side = axis.cross(reference).normalized()
     # Scots pine needles are short, stiff, slightly splayed and visibly round
-    # in cross-section. Use a tapered four-sided solid rather than a flat card:
-    # ribbons were disappearing edge-on in the crown renders.
+    # in cross-section. Use a tapered triangular solid rather than a flat card:
+    # ribbons were disappearing edge-on, while four-sided tubes spent too many
+    # triangles per needle to afford the denser shoot structure.
     length = rng.uniform(0.14, 0.18)
     for sign in (-1.0, 1.0):
         spread = side * sign * rng.uniform(0.20, 0.38)
