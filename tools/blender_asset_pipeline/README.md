@@ -58,6 +58,38 @@ photorealistic final asset, replace or augment them with licensed high-resolutio
 photographic/photogrammetric material captures and validate renders against
 reference photographs from multiple angles.
 
+
+## Photogrammetry ingestion (the photorealism path)
+
+For a genuinely photorealistic hero tree, use a real, licensed photogrammetry
+or multi-view reconstruction export as the source of truth. The scan-ingestion
+path preserves captured geometry and image textures; it does not synthesize a
+replacement mesh or invent texture detail.
+
+Accepted source formats are GLB/glTF, FBX and OBJ. The source must contain
+mesh geometry, UV coordinates, material assignments and at least one
+image-textured material. The default validation also rejects scans below
+1,000 triangles. The original source SHA-256, source size, scale, texture names
+and per-LOD triangle budgets are recorded in the manifest.
+
+    blender --background --python tools/blender_asset_pipeline/ingest_scanned_tree.py -- --source reference/scots_pine_scan.glb --output build/generated/scanned-pine --target-height 18
+
+This writes a provenance manifest, an editable `*_scanned_source.blend`, and
+four self-contained GLB LOD exports. LOD0 preserves the imported scan geometry;
+LOD1–LOD3 use configurable collapse-decimation ratios (default 0.60, 0.25,
+0.10). Use conservative ratios for needle-rich scans and inspect every LOD,
+because generic decimation can damage thin foliage and silhouette structure.
+
+Verify the exports with:
+
+    blender --background --python tools/blender_asset_pipeline/verify_scanned_tree.py -- build/generated/scanned-pine/scots_pine_scan.scanned-tree.json
+
+This ingestion route requires a genuine external scan. A procedural model,
+an untextured mesh, or a generated OBJ does not become photorealistic merely by
+passing the importer. The procedural Scots-pine generator remains useful for
+controlled structural variants and lower-cost background trees; use the scan
+path for close-up hero assets when the captured source quality supports it.
+
 ## Geometry and performance policy
 
 - Each tree LOD is consolidated into no more than three material-grouped mesh
