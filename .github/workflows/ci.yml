@@ -45,6 +45,18 @@ jobs:
         run: |
           blender --background --python tools/blender_asset_pipeline/verify_tree_outputs.py -- "$RUNNER_TEMP/generated-trees"
 
+      - name: Render multi-angle Scots pine geometry previews
+        run: |
+          blender --background --python tools/blender_asset_pipeline/render_tree_previews.py -- "$RUNNER_TEMP/generated-trees/scots_pine.blend" "$RUNNER_TEMP/tree-previews"
+
+      - name: Upload Scots pine geometry previews
+        uses: actions/upload-artifact@v4
+        with:
+          name: talvisota-scots-pine-geometry-previews
+          path: ${{ runner.temp }}/tree-previews/*.png
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Verify generated asset inventory
         shell: bash
         run: |
