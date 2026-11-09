@@ -55,8 +55,9 @@ class MeshBuilder:
         self.vertices = []
         self.faces = []
         self.face_uvs = []
+        self.face_material_indices = []
 
-    def tube(self, start, end, radius_start, radius_end, sides=5, bend=None):
+    def tube(self, start, end, radius_start, radius_end, sides=5, bend=None, material_index=0):
         """Append a tapered, capped tube between two points."""
         a, b = Vector(start), Vector(end)
         axis = (b - a).normalized()
@@ -73,6 +74,7 @@ class MeshBuilder:
                 self.vertices.append(tuple(point))
         self.faces.append(tuple(base + i for i in reversed(range(sides))))
         self.face_uvs.append([(0.5, 0.5)] * sides)
+        self.face_material_indices.append(material_index)
         v_scale = max(0.1, (b - a).length / max(radius_start + radius_end, 0.01))
         for side in range(sides):
             nxt = (side + 1) % sides
@@ -83,14 +85,20 @@ class MeshBuilder:
                 ((side + 1) / sides, v_scale),
                 (side / sides, v_scale),
             ])
+            self.face_material_indices.append(material_index)
         self.faces.append(tuple(base + sides + i for i in range(sides)))
         self.face_uvs.append([(0.5, 0.5)] * sides)
+        self.face_material_indices.append(material_index)
 
-    def path_tube(self, points, radii, sides=5):
+    def path_tube(self, points, radii, sides=5, material_indices=None):
         """Create one continuous tapered tube with parallel-transported frames."""
         centers = [Vector(point) for point in points]
         if len(centers) < 2 or len(centers) != len(radii):
             raise ValueError("path_tube requires matching point/radius arrays")
+        if material_indices is None:
+            material_indices = [0] * (len(centers) - 1)
+        if len(material_indices) != len(centers) - 1:
+            raise ValueError("path_tube material indices must match its segments")
         tangents = []
         for index in range(len(centers)):
             if index == 0:
@@ -131,6 +139,7 @@ class MeshBuilder:
         first = rings[0]
         self.faces.append(tuple(first[i] for i in reversed(range(sides))))
         self.face_uvs.append([(0.5, 0.5)] * sides)
+        self.face_material_indices.append(material_indices[0])
         for ring_index in range(len(rings) - 1):
             v0 = cumulative[ring_index] / uv_scale
             v1 = cumulative[ring_index + 1] / uv_scale
@@ -142,9 +151,11 @@ class MeshBuilder:
                     (side / sides, v0), ((side + 1) / sides, v0),
                     ((side + 1) / sides, v1), (side / sides, v1),
                 ])
+                self.face_material_indices.append(material_indices[ring_index])
         last = rings[-1]
         self.faces.append(tuple(last[i] for i in range(sides)))
         self.face_uvs.append([(0.5, 0.5)] * sides)
+        self.face_material_indices.append(material_indices[-1])
 
     def cone(self, start, end, radius, sides=4):
         self.tube(start, end, radius, 0.008, sides=sides)
@@ -152,9 +163,13 @@ class MeshBuilder:
     def make_object(self, name, material):
         mesh = bpy.data.meshes.new(name + "Mesh")
         mesh.from_pydata(self.vertices, [], self.faces)
-        mesh.materials.append(material)
+        material_list = list(material) if isinstance(material, (list, tuple)) else [material]
+        for slot in material_list:
+            mesh.materials.append(slot)
         uv_layer = mesh.uv_layers.new(name="UVMap")
-        for polygon, coordinates in zip(mesh.polygons, self.face_uvs):
+        for polygon, coordinates, material_index in zip(
+                mesh.polygons, self.face_uvs, self.face_material_indices):
+            polygon.material_index = material_index
             for loop_index, uv in zip(polygon.loop_indices, coordinates):
                 uv_layer.data[loop_index].uv = uv
             polygon.use_smooth = True
@@ -176,7 +191,7 @@ def load_map(texture_root, stem, color_space):
 
 
 def make_material(name, texture_root, albedo_name, normal_name, roughness_name,
-                  fallback_color, roughness_value):
+                  fallback_color, roughness_value, tint_color=None):
     material = bpy.data.materials.new(name)
     material.diffuse_color = (*fallback_color, 1.0)
     material.use_nodes = True
@@ -191,7 +206,17 @@ def make_material(name, texture_root, albedo_name, normal_name, roughness_name,
         node = nodes.new("ShaderNodeTexImage")
         node.image = albedo
         node.label = "Talvisota base colour (sRGB)"
-        links.new(node.outputs["Color"], principled.inputs["Base Color"])
+        if tint_color:
+            tint = nodes.new("ShaderNodeRGB")
+            tint.outputs[0].default_value = (*tint_color, 1.0)
+            multiply = nodes.new("ShaderNodeMixRGB")
+            multiply.blend_type = "MULTIPLY"
+            multiply.inputs[0].default_value = 1.0
+            links.new(node.outputs["Color"], multiply.inputs[1])
+            links.new(tint.outputs[0], multiply.inputs[2])
+            links.new(multiply.outputs["Color"], principled.inputs["Base Color"])
+        else:
+            links.new(node.outputs["Color"], principled.inputs["Base Color"])
 
     roughness = load_map(texture_root, roughness_name, "Non-Color")
     if roughness:
@@ -214,9 +239,14 @@ def make_material(name, texture_root, albedo_name, normal_name, roughness_name,
 
 def create_materials(texture_root):
     return {
-        "bark": make_material(
-            "Scots Pine | Bark", texture_root, "bark-albedo.bmp",
-            "bark-normal.bmp", "bark-roughness.bmp", (0.19, 0.105, 0.055), 0.88),
+        "bark_lower": make_material(
+            "Scots Pine | Lower grey-brown plated bark", texture_root, "bark-albedo.bmp",
+            "bark-normal.bmp", "bark-roughness.bmp", (0.24, 0.18, 0.12), 0.92,
+            tint_color=(0.76, 0.70, 0.62)),
+        "bark_upper": make_material(
+            "Scots Pine | Upper orange-yellow smooth bark", texture_root, "bark-albedo.bmp",
+            "bark-normal.bmp", "bark-roughness.bmp", (0.48, 0.27, 0.12), 0.76,
+            tint_color=(1.0, 0.72, 0.42)),
         "needles": make_material(
             "Scots Pine | Needles", texture_root, "pine_needles-albedo.bmp",
             "pine_needles-normal.bmp", "pine_needles-roughness.bmp",
@@ -227,9 +257,9 @@ def create_materials(texture_root):
     }
 
 
-def add_path(builder, points, radii, sides):
+def add_path(builder, points, radii, sides, material_indices=None):
     """Build one continuous, smoothly tapered branch or trunk section."""
-    builder.path_tube(points, radii, sides=sides)
+    builder.path_tube(points, radii, sides=sides, material_indices=material_indices)
 
 
 def add_needle_pair(builder, origin, direction, rng):
@@ -275,7 +305,9 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
         if t < 0.09:
             radius *= 1.0 + 0.34 * (1.0 - t / 0.09)
         trunk_radii.append(radius)
-    add_path(trunk, trunk_points, trunk_radii, max(8, sides + 2))
+    trunk_zones = [0 if (index + 0.5) / trunk_segments < 0.58 else 1
+                   for index in range(trunk_segments)]
+    add_path(trunk, trunk_points, trunk_radii, max(8, sides + 2), trunk_zones)
 
     # Irregular whorl spacing and azimuth prevent repeated geometric rings.
     crown_start, crown_end = 0.43, 0.94
@@ -312,7 +344,8 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                 primary_points.append(point)
             base_radius = height * (0.0105 * (1.0 - fraction * 0.40))
             add_path(trunk, primary_points,
-                     [base_radius * (1.0 - 0.91 * (i / 4.0)) for i in range(5)], sides)
+                     [base_radius * (1.0 - 0.91 * (i / 4.0)) for i in range(5)],
+                     sides, material_indices=[1] * 4)
 
             # Secondary limbs split from the scaffold at uneven intervals.
             for secondary_index in range(secondary_count):
@@ -335,7 +368,8 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                 ]
                 secondary_radius = base_radius * rng.uniform(0.20, 0.31)
                 add_path(trunk, secondary_points,
-                         [secondary_radius, secondary_radius * 0.48, 0.0025], max(4, sides - 1))
+                         [secondary_radius, secondary_radius * 0.48, 0.0025],
+                         max(4, sides - 1), material_indices=[1, 1])
 
                 # Fine twigs carry actual paired needle geometry at branch tips.
                 for twig_index in range(tertiary_count):
@@ -347,7 +381,8 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                                       Vector((0.0, 0.0, rng.uniform(0.25, 0.85)))).normalized()
                     twig_length = secondary_length * rng.uniform(0.17, 0.32)
                     twig_tip = twig_origin + twig_direction * twig_length
-                    trunk.tube(twig_origin, twig_tip, 0.0028, 0.0009, sides=4)
+                    trunk.tube(twig_origin, twig_tip, 0.0028, 0.0009,
+                               sides=4, material_index=1)
                     for cluster in range(needle_clusters):
                         cluster_t = 0.35 + 0.62 * (cluster / max(1, needle_clusters - 1))
                         cluster_origin = twig_origin.lerp(twig_tip, cluster_t)
@@ -364,7 +399,8 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                 snow.tube(snow_start, snow_end, height * 0.0022, 0.004,
                           sides=max(3, sides - 1))
 
-    trunk_obj = trunk.make_object("Trunk_Scaffold_And_Twigs_" + lod_name, materials["bark"])
+    trunk_obj = trunk.make_object("Trunk_Scaffold_And_Twigs_" + lod_name,
+                                   [materials["bark_lower"], materials["bark_upper"]])
     objects = [trunk_obj]
     if foliage.faces:
         objects.append(foliage.make_object("Paired_Pine_Needles_" + lod_name, materials["needles"]))
