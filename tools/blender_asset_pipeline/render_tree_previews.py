@@ -25,10 +25,12 @@ def main():
     # requires on headless Linux runners. It also exercises the actual PBR maps.
     scene.render.engine = "CYCLES"
     scene.cycles.device = "CPU"
-    scene.cycles.samples = 12
+    scene.cycles.samples = 64
     # Ubuntu's packaged Blender build may omit OpenImageDenoiser. Disable
     # denoising explicitly so CPU renders work in minimal headless CI images.
     scene.cycles.use_denoising = False
+    scene.view_settings.view_transform = "AgX"
+    scene.view_settings.look = "AgX - Medium High Contrast"
     scene.render.resolution_x = 768
     scene.render.resolution_y = 768
     scene.render.resolution_percentage = 100
