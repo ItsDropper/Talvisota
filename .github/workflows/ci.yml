@@ -27,6 +27,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends blender
 
+      - name: Generate source PBR maps
+        run: |
+          cmake -S . -B build-blender -DBUILD_TESTING=OFF
+          cmake --build build-blender --target talvisota_environment_textures --parallel
+
       - name: Generate deterministic Scots pine LODs
         run: |
           blender --background --python tools/blender_asset_pipeline/generate_tree.py -- --output "$RUNNER_TEMP/generated-trees" --texture-root assets/textures/environment --seed 1939
