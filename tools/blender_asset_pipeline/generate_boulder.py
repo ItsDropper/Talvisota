@@ -112,9 +112,16 @@ def build_lod(name, preset, rock, snow, seed):
             uv.data[loop_index].uv = coord
         center = polygon.center
         normal = polygon.normal
-        edge = 0.26 + 0.055 * math.sin(center.x * 7.3 + seed) * math.cos(center.y * 6.1)
-        # Snow accumulates only on upward-facing surfaces, with a broken wind-scoured edge.
-        polygon.material_index = 1 if normal.z > 0.32 and center.z > edge else 0
+        edge_noise = (
+            math.sin(center.x * 5.7 + seed * 0.13) *
+            math.cos(center.y * 6.9 - seed * 0.07) * 0.055 +
+            math.sin(center.x * 15.1 - center.y * 11.3 + seed) * 0.018
+        )
+        # A shallow snow cap: only nearly horizontal upper facets retain snow.
+        # The old 0.32 normal threshold coated most of the visible hemisphere,
+        # hiding the granite and producing a white ball instead of a boulder.
+        snowline = 1.34 + edge_noise
+        polygon.material_index = 1 if normal.z > 0.78 and center.z > snowline else 0
         polygon.use_smooth = True
     obj = bpy.data.objects.new("Finnish_Glacial_Boulder_" + name, mesh)
     bpy.context.collection.objects.link(obj)
