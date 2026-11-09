@@ -86,6 +86,66 @@ class MeshBuilder:
         self.faces.append(tuple(base + sides + i for i in range(sides)))
         self.face_uvs.append([(0.5, 0.5)] * sides)
 
+    def path_tube(self, points, radii, sides=5):
+        """Create one continuous tapered tube with parallel-transported frames."""
+        centers = [Vector(point) for point in points]
+        if len(centers) < 2 or len(centers) != len(radii):
+            raise ValueError("path_tube requires matching point/radius arrays")
+        tangents = []
+        for index in range(len(centers)):
+            if index == 0:
+                tangent = centers[1] - centers[0]
+            elif index == len(centers) - 1:
+                tangent = centers[-1] - centers[-2]
+            else:
+                tangent = centers[index + 1] - centers[index - 1]
+            if tangent.length < 1e-8:
+                raise ValueError("path_tube contains coincident control points")
+            tangents.append(tangent.normalized())
+
+        reference = Vector((0.0, 0.0, 1.0))
+        if abs(tangents[0].dot(reference)) > 0.92:
+            reference = Vector((1.0, 0.0, 0.0))
+        normal = tangents[0].cross(reference).normalized()
+        rings = []
+        cumulative = [0.0]
+        for index in range(1, len(centers)):
+            cumulative.append(cumulative[-1] + (centers[index] - centers[index - 1]).length)
+        uv_scale = max(radii[0] + radii[-1], 0.01)
+        for index, (center, radius, tangent) in enumerate(zip(centers, radii, tangents)):
+            if index:
+                normal = normal - tangent * normal.dot(tangent)
+                if normal.length < 1e-8:
+                    normal = tangent.cross(Vector((0.0, 1.0, 0.0)))
+                normal.normalize()
+            binormal = tangent.cross(normal).normalized()
+            ring = []
+            for side in range(sides):
+                angle = 2.0 * math.pi * side / sides
+                point = center + radius * (math.cos(angle) * normal +
+                                           math.sin(angle) * binormal)
+                ring.append(len(self.vertices))
+                self.vertices.append(tuple(point))
+            rings.append(ring)
+
+        first = rings[0]
+        self.faces.append(tuple(first[i] for i in reversed(range(sides))))
+        self.face_uvs.append([(0.5, 0.5)] * sides)
+        for ring_index in range(len(rings) - 1):
+            v0 = cumulative[ring_index] / uv_scale
+            v1 = cumulative[ring_index + 1] / uv_scale
+            for side in range(sides):
+                nxt = (side + 1) % sides
+                self.faces.append((rings[ring_index][side], rings[ring_index][nxt],
+                                   rings[ring_index + 1][nxt], rings[ring_index + 1][side]))
+                self.face_uvs.append([
+                    (side / sides, v0), ((side + 1) / sides, v0),
+                    ((side + 1) / sides, v1), (side / sides, v1),
+                ])
+        last = rings[-1]
+        self.faces.append(tuple(last[i] for i in range(sides)))
+        self.face_uvs.append([(0.5, 0.5)] * sides)
+
     def cone(self, start, end, radius, sides=4):
         self.tube(start, end, radius, 0.008, sides=sides)
 
@@ -168,10 +228,8 @@ def create_materials(texture_root):
 
 
 def add_path(builder, points, radii, sides):
-    """Build a tapered branch/trunk from connected, gently overlapping segments."""
-    for index in range(len(points) - 1):
-        builder.tube(points[index], points[index + 1], radii[index], radii[index + 1],
-                     sides=sides)
+    """Build one continuous, smoothly tapered branch or trunk section."""
+    builder.path_tube(points, radii, sides=sides)
 
 
 def add_needle_pair(builder, origin, direction, rng):
