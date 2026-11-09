@@ -25,6 +25,7 @@ from mathutils import Vector
 
 
 PIPELINE_VERSION = 1
+MATERIAL_MAP_STATUS = {}
 TREE_HEIGHT = 16.0
 TREE_RADIUS = 4.2
 # Tier/branch/spray counts are deliberately explicit so geometry budgets are
@@ -90,6 +91,7 @@ class MeshBuilder:
 
 def load_map(texture_root, stem, color_space):
     path = texture_root / stem
+    MATERIAL_MAP_STATUS[stem] = path.is_file()
     if not path.is_file():
         return None
     image = bpy.data.images.load(str(path.resolve()), check_existing=True)
@@ -247,6 +249,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
         obj.select_set(True)
         bpy.ops.object.mode_set(mode="EDIT")
         bpy.ops.mesh.select_all(action="SELECT")
+        bpy.ops.mesh.normals_make_consistent(inside=False)
         bpy.ops.uv.smart_project(island_margin=0.012)
         bpy.ops.object.mode_set(mode="OBJECT")
         obj.select_set(False)
@@ -260,6 +263,13 @@ def export_lod(objects, filepath):
     for obj in objects:
         obj.select_set(True)
     bpy.context.view_layer.objects.active = objects[0]
+    if not hasattr(bpy.ops.export_scene, "gltf"):
+        try:
+            bpy.ops.preferences.addon_enable(module="io_scene_gltf2")
+        except RuntimeError:
+            pass
+    if not hasattr(bpy.ops.export_scene, "gltf"):
+        raise RuntimeError("Blender glTF 2.0 exporter is not installed or enabled")
     bpy.ops.export_scene.gltf(
         filepath=str(filepath), export_format="GLB", use_selection=True,
         export_apply=True, export_texcoords=True, export_normals=True,
@@ -295,6 +305,7 @@ def main():
         },
         "runtime_note": "Select LOD by projected screen size/distance in Talvisota; files are separate because glTF core has no universal LOD selector.",
     }
+    manifest["material_map_status"] = MATERIAL_MAP_STATUS
     for lod_name in args.only_lods:
         preset = LOD_PRESETS[lod_name]
         collection = bpy.data.collections.new(lod_name)
