@@ -73,6 +73,28 @@ int main()
     Check(RegisterCombatant(state, registry, "actor.distant", "weapon.suomi_kp31",
         100.0F, 40U, error), "distant combatant receives a loadout");
 
+
+    Check(AddCombatantWeapon(state, registry, "actor.finn", "weapon.suomi_kp31",
+        30U, false, error), "player can carry a secondary weapon");
+    Check(state.combatants.at("actor.finn").storedWeapons.contains("weapon.suomi_kp31"),
+        "secondary weapon is stored with its own ammunition state");
+    Check(EquipCombatantWeapon(state, registry, "actor.finn", "weapon.suomi_kp31", error),
+        "player can equip a stored secondary weapon");
+    Check(state.combatants.at("actor.finn").weaponId == "weapon.suomi_kp31" &&
+        state.combatants.at("actor.finn").magazineRounds == 20U &&
+        state.combatants.at("actor.finn").reserveRounds == 30U,
+        "equipping restores the secondary weapon's magazine and reserve");
+    Check(EquipCombatantWeapon(state, registry, "actor.finn", "weapon.mosin_m27", error),
+        "player can switch back to the original weapon");
+    Check(state.combatants.at("actor.finn").weaponId == "weapon.mosin_m27" &&
+        state.combatants.at("actor.finn").magazineRounds == 5U &&
+        state.combatants.at("actor.finn").reserveRounds == 10U,
+        "switching preserves the original weapon ammunition independently");
+    const CombatSimulationState beforeInvalidEquip = state;
+    Check(!EquipCombatantWeapon(state, registry, "actor.finn", "weapon.unknown", error) &&
+        state.combatants.at("actor.finn").weaponId == beforeInvalidEquip.combatants.at("actor.finn").weaponId,
+        "unknown or unowned weapon switch is rejected atomically");
+
     const std::array<CombatCommand, 1> firstShot{{
         {"combat.shot.001", "actor.finn", "actor.enemy", CombatAction::Fire}
     }};
