@@ -56,6 +56,13 @@ def main():
             fail(lod_name + " has a mesh without UV coordinates")
         if any(len(obj.data.materials) == 0 for obj in meshes):
             fail(lod_name + " has a mesh without material assignments")
+        imported_material_names = {
+            material.name for obj in meshes for material in obj.data.materials if material
+        }
+        if not any("Lower grey-brown plated bark" in name for name in imported_material_names):
+            fail(lod_name + " lost the lower grey-brown bark material zone")
+        if not any("Upper orange-yellow smooth bark" in name for name in imported_material_names):
+            fail(lod_name + " lost the upper orange-yellow bark material zone")
         print("VERIFIED", lod_name, "meshes=", len(meshes),
               "triangles=", sum(len(p.vertices) - 2 for obj in meshes for p in obj.data.polygons))
     print("TALVISOTA_TREE_ASSET_VERIFY_OK")
