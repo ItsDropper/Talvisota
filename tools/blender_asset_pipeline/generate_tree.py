@@ -293,18 +293,24 @@ def add_needle_pair(builder, origin, direction, rng):
     if abs(axis.dot(reference)) > 0.94:
         reference = Vector((0.0, 1.0, 0.0))
     side = axis.cross(reference).normalized()
-    # Scots pine needles are short, stiff, slightly splayed and visibly round
-    # in cross-section. Use a tapered triangular solid rather than a flat card:
-    # ribbons were disappearing edge-on, while four-sided tubes spent too many
-    # triangles per needle to afford the denser shoot structure.
-    length = rng.uniform(0.14, 0.18)
+    # Build paired, visibly substantial needles as gently curved triangular
+    # tubes. Their enlarged game scale preserves a readable silhouette at
+    # gameplay distance; the paired fascicle and restrained splay retain pine
+    # character instead of producing a radial starburst.
+    length = rng.uniform(0.20, 0.24)
     for sign in (-1.0, 1.0):
-        spread = side * sign * rng.uniform(0.20, 0.38)
-        lift = Vector((0.0, 0.0, rng.uniform(0.08, 0.22)))
-        needle_axis = (axis * 0.76 + spread + lift).normalized()
-        tip = Vector(origin) + needle_axis * length
-        builder.tube(origin, tip, rng.uniform(0.0030, 0.0038),
-                     0.00085, sides=3, material_index=0)
+        spread = side * sign * rng.uniform(0.12, 0.24)
+        lift = Vector((0.0, 0.0, rng.uniform(0.06, 0.16)))
+        needle_axis = (axis * 0.88 + spread + lift).normalized()
+        start = Vector(origin)
+        tip = start + needle_axis * length
+        bend = side * sign * rng.uniform(0.004, 0.010)
+        middle = start.lerp(tip, 0.52) + bend + Vector((0.0, 0.0, rng.uniform(0.002, 0.008)))
+        base_radius = rng.uniform(0.0050, 0.0062)
+        builder.path_tube(
+            [start, middle, tip],
+            [base_radius, base_radius * 0.72, 0.0018],
+            sides=3, material_indices=[0, 0])
 
 
 def add_needle_spray(builder, origin, direction, rng, pairs=3):
@@ -427,7 +433,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                 # distributed along the secondary limbs. A pine branch is not a
                 # bare stick ending in a pom-pom: its outer framework is covered
                 # in overlapping sprays from branchlets all along its length.
-                branchlet_count = 6 + needle_clusters
+                branchlet_count = 7 + needle_clusters
                 for branchlet_index in range(branchlet_count):
                     branchlet_t = 0.10 + 0.80 * (
                         (branchlet_index + rng.uniform(0.18, 0.82)) / branchlet_count)
@@ -471,7 +477,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                     # Fascicles are spaced along the branchlet, not stacked at
                     # its endpoint. Adjacent branchlets overlap to form a
                     # continuous, irregular needle-bearing crown surface.
-                    sprays_per_branchlet = 4 + needle_clusters
+                    sprays_per_branchlet = 5 + needle_clusters
                     for spray_index in range(sprays_per_branchlet):
                         spray_t = 0.12 + 0.78 * (
                             (spray_index + rng.uniform(0.16, 0.84)) /
