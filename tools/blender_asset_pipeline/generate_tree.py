@@ -303,7 +303,7 @@ def add_needle_pair(builder, origin, direction, rng):
         needle_axis = (axis * 0.88 + spread + lift).normalized()
         start = Vector(origin)
         tip = start + needle_axis * length
-        base_half_width = rng.uniform(0.0100, 0.0140)
+        base_half_width = rng.uniform(0.0250, 0.0350)
         builder.needle_ribbon(start, tip, base_half_width)
 
 
@@ -597,7 +597,7 @@ def main():
             "lower_bole": {"material": "Scots Pine | Lower grey-brown plated bark", "height_fraction": [0.0, 0.58]},
             "upper_trunk_and_scaffold": {"material": "Scots Pine | Upper orange-yellow smooth bark", "height_fraction": [0.58, 1.0]},
         },
-        "geometry_note": "Mature Scots pine with substantial primary and secondary boughs. Foliage is carried by dense, overlapping needle sprays distributed along many lateral branchlets throughout each secondary limb, with sparse terminal leaders. Paired, curved tapered blade needles are 30-36 cm long and 20-28 mm wide at their bases as a deliberate game-readability exaggeration. LOD2 uses a reduced fascicle count to remain within its triangle budget. Deterministic structural asset, not a photogrammetry scan.",
+        "geometry_note": "Mature Scots pine with substantial primary and secondary boughs. Foliage is carried by dense, overlapping needle sprays distributed along many lateral branchlets throughout each secondary limb, with sparse terminal leaders. Paired, curved tapered blade needles are 30-36 cm long and 50-70 mm wide at their bases as a deliberate game-readability exaggeration. LOD2 uses a reduced fascicle count to remain within its triangle budget. Deterministic structural asset, not a photogrammetry scan.",
         "runtime_note": "Select LOD by projected screen size/distance in Talvisota; files are separate because glTF core has no universal LOD selector.",
     }
     manifest["material_map_status"] = MATERIAL_MAP_STATUS
