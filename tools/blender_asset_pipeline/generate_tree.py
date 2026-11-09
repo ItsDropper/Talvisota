@@ -463,6 +463,10 @@ def main():
             "snow": ["snow-albedo.bmp", "snow-normal.bmp", "snow-roughness.bmp"],
         },
         "growth_form": "mature_open_grown_broad_crowned_scots_pine",
+        "material_zones": {
+            "lower_bole": {"material": "Scots Pine | Lower grey-brown plated bark", "height_fraction": [0.0, 0.58]},
+            "upper_trunk_and_scaffold": {"material": "Scots Pine | Upper orange-yellow smooth bark", "height_fraction": [0.58, 1.0]},
+        },
         "geometry_note": "Scaffold limbs, secondary branches, tertiary twigs and paired 4-7 cm needle geometry are generated as a deterministic hierarchy; this is a structural asset, not a photogrammetry scan.",
         "runtime_note": "Select LOD by projected screen size/distance in Talvisota; files are separate because glTF core has no universal LOD selector.",
     }
