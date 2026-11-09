@@ -47,6 +47,7 @@ struct CombatantState final
     std::uint32_t reserveRounds = 0U;
     double nextShotAtSeconds = 0.0;
     double reloadCompletesAtSeconds = 0.0;
+    double nextRecoveryAtSeconds = 0.0;
 };
 
 struct CombatSimulationState final
@@ -59,7 +60,8 @@ struct CombatSimulationState final
 enum class CombatAction
 {
     Fire,
-    Reload
+    Reload,
+    Recover
 };
 
 struct CombatCommand final
@@ -82,6 +84,9 @@ enum class CombatOutcome
     Reloading,
     MagazineFull,
     NoReserveAmmo,
+    Recovered,
+    RecoveryCooldown,
+    AlreadyAtFullHealth,
     Duplicate,
     Ignored
 };
