@@ -24,7 +24,7 @@ import bpy
 from mathutils import Vector
 
 
-PIPELINE_VERSION = 10
+PIPELINE_VERSION = 11
 MATERIAL_MAP_STATUS = {}
 TREE_HEIGHT = 18.0
 TREE_RADIUS = 6.0
@@ -296,14 +296,14 @@ def add_needle_pair(builder, origin, direction, rng):
     # Scots pine needles are short, stiff, slightly splayed and visibly round
     # in cross-section. Use a tapered four-sided solid rather than a flat card:
     # ribbons were disappearing edge-on in the crown renders.
-    length = rng.uniform(0.085, 0.12)
+    length = rng.uniform(0.14, 0.18)
     for sign in (-1.0, 1.0):
         spread = side * sign * rng.uniform(0.20, 0.38)
         lift = Vector((0.0, 0.0, rng.uniform(0.08, 0.22)))
         needle_axis = (axis * 0.76 + spread + lift).normalized()
         tip = Vector(origin) + needle_axis * length
-        builder.tube(origin, tip, rng.uniform(0.0008, 0.00115),
-                     0.00035, sides=4, material_index=0)
+        builder.tube(origin, tip, rng.uniform(0.0030, 0.0038),
+                     0.00085, sides=3, material_index=0)
 
 
 def add_needle_spray(builder, origin, direction, rng, pairs=3):
@@ -426,7 +426,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                 # distributed along the secondary limbs. A pine branch is not a
                 # bare stick ending in a pom-pom: its outer framework is covered
                 # in overlapping sprays from branchlets all along its length.
-                branchlet_count = 5 + needle_clusters
+                branchlet_count = 6 + needle_clusters
                 for branchlet_index in range(branchlet_count):
                     branchlet_t = 0.10 + 0.80 * (
                         (branchlet_index + rng.uniform(0.18, 0.82)) / branchlet_count)
@@ -456,7 +456,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                         secondary_axis * rng.uniform(0.08, 0.30) +
                         Vector((0.0, 0.0, rng.uniform(0.16, 0.52)))
                     ).normalized()
-                    branchlet_length = secondary_length * rng.uniform(0.24, 0.38)
+                    branchlet_length = secondary_length * rng.uniform(0.28, 0.42)
                     branchlet_mid = (branchlet_origin +
                                      branchlet_direction * (branchlet_length * 0.56) +
                                      tangent * (branchlet_length * 0.10))
@@ -470,7 +470,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                     # Fascicles are spaced along the branchlet, not stacked at
                     # its endpoint. Adjacent branchlets overlap to form a
                     # continuous, irregular needle-bearing crown surface.
-                    sprays_per_branchlet = 3 + needle_clusters
+                    sprays_per_branchlet = 4 + needle_clusters
                     for spray_index in range(sprays_per_branchlet):
                         spray_t = 0.12 + 0.78 * (
                             (spray_index + rng.uniform(0.16, 0.84)) /
@@ -596,7 +596,7 @@ def main():
             "lower_bole": {"material": "Scots Pine | Lower grey-brown plated bark", "height_fraction": [0.0, 0.58]},
             "upper_trunk_and_scaffold": {"material": "Scots Pine | Upper orange-yellow smooth bark", "height_fraction": [0.58, 1.0]},
         },
-        "geometry_note": "Mature Scots pine with substantial primary and secondary boughs. Foliage is carried by dense, overlapping needle sprays distributed along many lateral branchlets throughout each secondary limb, with sparse terminal leaders. Paired solid needles are 16-22 cm long with 2.4-3.6 mm base diameter. Deterministic structural asset, not a photogrammetry scan.",
+        "geometry_note": "Mature Scots pine with substantial primary and secondary boughs. Foliage is carried by dense, overlapping needle sprays distributed along many lateral branchlets throughout each secondary limb, with sparse terminal leaders. Paired solid needles are 14-18 cm long with deliberately exaggerated 6.0-7.6 mm base diameter for close-range game readability. Deterministic structural asset, not a photogrammetry scan.",
         "runtime_note": "Select LOD by projected screen size/distance in Talvisota; files are separate because glTF core has no universal LOD selector.",
     }
     manifest["material_map_status"] = MATERIAL_MAP_STATUS
