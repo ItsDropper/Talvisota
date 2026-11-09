@@ -24,14 +24,14 @@ import bpy
 from mathutils import Vector
 
 
-PIPELINE_VERSION = 1
+PIPELINE_VERSION = 2
 MATERIAL_MAP_STATUS = {}
 TREE_HEIGHT = 18.0
 TREE_RADIUS = 6.0
 # Mature, open-grown Scots pine proportions. The lower bole remains visible;
 # crown width peaks below mid-height and contracts into an irregular upper crown.
 LOD_PRESETS = {
-    "LOD0": {"whorls": 11, "primary": 5, "secondary": 8, "tertiary": 8, "needle_clusters": 3, "sides": 6},
+    "LOD0": {"whorls": 11, "primary": 5, "secondary": 8, "tertiary": 8, "needle_clusters": 3, "sides": 5},
     "LOD1": {"whorls": 9, "primary": 4, "secondary": 6, "tertiary": 6, "needle_clusters": 2, "sides": 5},
     "LOD2": {"whorls": 6, "primary": 4, "secondary": 5, "tertiary": 5, "needle_clusters": 2, "sides": 4},
     "LOD3": {"whorls": 4, "primary": 3, "secondary": 4, "tertiary": 4, "needle_clusters": 1, "sides": 4},
