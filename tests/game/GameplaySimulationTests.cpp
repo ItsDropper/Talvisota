@@ -449,6 +449,70 @@ int main()
     Check(unchanged.tickIndex == 77U,
         "failed initialization preserves the caller's prior state");
 
+
+    // Combat defeats can complete authored actor-target objectives without
+    // routing the event through a world-object interaction.
+    {
+        const std::array<entities::EntityDefinition, 2> combatMissionEntities{{
+            {"actor.mission_player", "faction.finnish", entities::EntityKind::Player,
+                {0.0F, 0.0F, 0.0F}, {}},
+            {"actor.mission_target", "faction.soviet", entities::EntityKind::Infantry,
+                {10.0F, 0.0F, 0.0F}, "target.enemy-defeated"}
+        }};
+        const game::MissionDefinition combatMission{
+            "mission.combat-objective",
+            {{"objective.defeat-target", "target.enemy-defeated"}}
+        };
+        SimulationState combatMissionState;
+        Check(InitializeSimulation(combatMission, combatMissionEntities, rules,
+            combatMissionState, error), "combat objective mission initializes");
+        CombatSimulationState combatState;
+        Check(RegisterCombatant(combatState, combatMissionState.entities,
+            "actor.mission_player", "weapon.mosin_m27", 100.0F, 5U, error),
+            "mission player registers as a combatant");
+        Check(RegisterCombatant(combatState, combatMissionState.entities,
+            "actor.mission_target", "weapon.suomi_kp31", 60.0F, 5U, error),
+            "authored mission target registers as a combatant");
+        const std::array<CombatCommand, 1> defeatCommand{{
+            {"combat.mission.defeat-target", "actor.mission_player",
+                "actor.mission_target", CombatAction::Fire}
+        }};
+        std::vector<CombatResult> combatResults;
+        Check(AdvanceCombat(combatState, combatMissionState.entities, 0.05,
+            defeatCommand, combatResults, error) &&
+            combatResults.size() == 1U &&
+            combatResults[0].outcome == CombatOutcome::TargetDefeated,
+            "combat simulation reports a lethal mission-target event");
+        std::vector<CommandResult> missionResults;
+        Check(ApplyCombatMissionEvents(combatMissionState, combatState,
+            defeatCommand, combatResults, missionResults, error) &&
+            missionResults.size() == 1U &&
+            missionResults[0].outcome == CommandOutcome::MissionCompleted &&
+            combatMissionState.mission.status == game::MissionStatus::Completed,
+            "defeating the authored actor target completes its mission objective");
+        Check(ApplyCombatMissionEvents(combatMissionState, combatState,
+            defeatCommand, combatResults, missionResults, error) &&
+            missionResults.size() == 1U &&
+            missionResults[0].outcome == CommandOutcome::Duplicate &&
+            combatMissionState.mission.completedObjectives == 1U,
+            "replayed combat defeat cannot advance mission progression twice");
+
+        SimulationState preservedCombatMission;
+        Check(InitializeSimulation(combatMission, combatMissionEntities, rules,
+            preservedCombatMission, error), "second combat objective fixture initializes");
+        std::vector<CommandResult> preservedMissionResults{
+            {"preserved.mission.result", CommandOutcome::Ignored}};
+        const std::array<CombatResult, 1> mismatchedCombatResults{{
+            {"combat.other-command", CombatOutcome::TargetDefeated, 60.0F, 0.0F}
+        }};
+        Check(!ApplyCombatMissionEvents(preservedCombatMission, combatState,
+            defeatCommand, mismatchedCombatResults, preservedMissionResults, error) &&
+            preservedCombatMission.mission.completedObjectives == 0U &&
+            preservedMissionResults.size() == 1U &&
+            preservedMissionResults[0].commandId == "preserved.mission.result",
+            "mismatched combat event rejects atomically without changing mission state or output");
+    }
+
     if (failures != 0)
     {
         std::cerr << failures << " assertion(s) failed\n";
