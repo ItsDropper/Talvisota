@@ -1,10 +1,13 @@
 #include "talvisota/presentation/SceneRenderer.hpp"
+#include "talvisota/presentation/CaptureValidation.hpp"
 
+#include <algorithm>
 #include <cstdlib>
 #include <cstdint>
 #include <filesystem>
 #include <string>
 #include <limits>
+#include <vector>
 
 using namespace talvisota::presentation;
 
@@ -103,6 +106,57 @@ int main()
 
     Require(ValidateSceneSnapshot(scene, error));
     Require(error.empty());
+    // The original fixed sky coordinate landed on the church facade in the
+    // close village view. A broad top-quarter sample must tolerate that while
+    // still rejecting a warm frame or a BGRA/RGBA channel-order regression.
+    constexpr std::uint32_t captureWidth = 32U;
+    constexpr std::uint32_t captureHeight = 32U;
+    std::vector<std::uint8_t> skyFrame(captureWidth * captureHeight * 4U, 255U);
+    for (std::uint32_t y = 0U; y < captureHeight / 4U; ++y) {
+        for (std::uint32_t x = 0U; x < captureWidth; ++x) {
+            const std::size_t pixel = (static_cast<std::size_t>(y) * captureWidth + x) * 4U;
+            skyFrame[pixel] = 220U;
+            skyFrame[pixel + 1U] = 212U;
+            skyFrame[pixel + 2U] = 204U;
+        }
+    }
+    const std::size_t formerlySampledPixel =
+        (static_cast<std::size_t>(captureHeight / 8U) * captureWidth + captureWidth / 4U) * 4U;
+    skyFrame[formerlySampledPixel] = 38U;
+    skyFrame[formerlySampledPixel + 1U] = 54U;
+    skyFrame[formerlySampledPixel + 2U] = 78U;
+    PresentedSkyRegionStats skyStats;
+    Require(ValidatePresentedSkyRegion(skyFrame, captureWidth, captureHeight, skyStats, error));
+    Require(skyStats.sampledPixels == captureWidth * (captureHeight / 4U));
+    Require(skyStats.blueDominantSampleCount == skyStats.sampledPixels - 1U);
+    Require(skyStats.meanBlue > skyStats.meanRed);
+    Require(error.empty());
+
+    std::vector<std::uint8_t> warmFrame = skyFrame;
+    for (std::uint32_t y = 0U; y < captureHeight / 4U; ++y) {
+        for (std::uint32_t x = 0U; x < captureWidth; ++x) {
+            const std::size_t pixel = (static_cast<std::size_t>(y) * captureWidth + x) * 4U;
+            warmFrame[pixel] = 38U;
+            warmFrame[pixel + 1U] = 54U;
+            warmFrame[pixel + 2U] = 78U;
+        }
+    }
+    Require(!ValidatePresentedSkyRegion(warmFrame, captureWidth, captureHeight, skyStats, error));
+    Require(!error.empty());
+
+    std::vector<std::uint8_t> swappedChannels = skyFrame;
+    for (std::uint32_t y = 0U; y < captureHeight / 4U; ++y) {
+        for (std::uint32_t x = 0U; x < captureWidth; ++x) {
+            const std::size_t pixel = (static_cast<std::size_t>(y) * captureWidth + x) * 4U;
+            std::swap(swappedChannels[pixel], swappedChannels[pixel + 2U]);
+        }
+    }
+    Require(!ValidatePresentedSkyRegion(swappedChannels, captureWidth, captureHeight, skyStats, error));
+    Require(!error.empty());
+
+    Require(!ValidatePresentedSkyRegion(std::span<const std::uint8_t>{},
+        captureWidth, captureHeight, skyStats, error));
+    Require(!error.empty());
 
     SceneSnapshot invalidIndex = ValidScene();
     invalidIndex.meshes[0].indices[2] = 99U;

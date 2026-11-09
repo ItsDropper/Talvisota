@@ -57,3 +57,5 @@ The Windows MSVC renderer-adapter CI job renders five genuine D3D12 Sakkola view
 
 
 Screenshot CI uses one rendered frame per viewpoint and disables the sample's interactive 16 ms frame pacing while capture mode is active. This minimizes capture overhead; its single-frame timing is diagnostic only and is not a stable performance benchmark. Interactive renderer mode retains frame pacing.
+
+The capture validator checks a broad set of bright blue-dominant pixels across the upper quarter of each presented BGRA frame instead of assuming one fixed coordinate is unobstructed sky. This tolerates legitimate roof/tree occlusion while still rejecting a missing sky region or swapped framebuffer colour channels. It is a readback-integrity diagnostic, not a visual-quality acceptance test.
