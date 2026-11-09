@@ -24,17 +24,17 @@ import bpy
 from mathutils import Vector
 
 
-PIPELINE_VERSION = 3
+PIPELINE_VERSION = 4
 MATERIAL_MAP_STATUS = {}
 TREE_HEIGHT = 18.0
 TREE_RADIUS = 6.0
 # Mature, open-grown Scots pine proportions. The lower bole remains visible;
 # crown width peaks below mid-height and contracts into an irregular upper crown.
 LOD_PRESETS = {
-    "LOD0": {"whorls": 11, "primary": 5, "secondary": 8, "tertiary": 8, "needle_clusters": 3, "sides": 5},
-    "LOD1": {"whorls": 9, "primary": 4, "secondary": 6, "tertiary": 6, "needle_clusters": 2, "sides": 5},
-    "LOD2": {"whorls": 6, "primary": 4, "secondary": 5, "tertiary": 5, "needle_clusters": 2, "sides": 4},
-    "LOD3": {"whorls": 4, "primary": 3, "secondary": 4, "tertiary": 4, "needle_clusters": 1, "sides": 4},
+    "LOD0": {"whorls": 7, "primary": 3, "secondary": 4, "tertiary": 3, "needle_clusters": 3, "sides": 5},
+    "LOD1": {"whorls": 6, "primary": 3, "secondary": 3, "tertiary": 3, "needle_clusters": 2, "sides": 5},
+    "LOD2": {"whorls": 5, "primary": 3, "secondary": 3, "tertiary": 2, "needle_clusters": 2, "sides": 4},
+    "LOD3": {"whorls": 3, "primary": 2, "secondary": 2, "tertiary": 2, "needle_clusters": 1, "sides": 4},
 }
 
 
@@ -293,15 +293,17 @@ def add_needle_pair(builder, origin, direction, rng):
     if abs(axis.dot(reference)) > 0.94:
         reference = Vector((0.0, 1.0, 0.0))
     side = axis.cross(reference).normalized()
-    length = rng.uniform(0.105, 0.145)
+    # Scots pine needles are short, stiff, slightly splayed and visibly round
+    # in cross-section. Use a tapered four-sided solid rather than a flat card:
+    # ribbons were disappearing edge-on in the crown renders.
+    length = rng.uniform(0.065, 0.085)
     for sign in (-1.0, 1.0):
-        spread = side * sign * rng.uniform(0.18, 0.34)
-        lift = Vector((0.0, 0.0, rng.uniform(0.10, 0.28)))
+        spread = side * sign * rng.uniform(0.20, 0.38)
+        lift = Vector((0.0, 0.0, rng.uniform(0.08, 0.22)))
         needle_axis = (axis * 0.76 + spread + lift).normalized()
         tip = Vector(origin) + needle_axis * length
-        # A tapered two-sided blade preserves the fine needle silhouette at
-        # roughly one third the triangles of the former three-sided tube.
-        builder.needle_ribbon(origin, tip, rng.uniform(0.00055, 0.00085))
+        builder.tube(origin, tip, rng.uniform(0.00065, 0.00090),
+                     0.00016, sides=4, material_index=0)
 
 
 def add_needle_spray(builder, origin, direction, rng, pairs=3):
@@ -366,7 +368,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
         crown_profile = math.sin(math.pi * ((fraction - crown_start) /
                                              (crown_end - crown_start)) * 0.78)
         length_base = crown_radius * (0.46 + 0.54 * max(0.0, crown_profile)) * rng.uniform(0.94, 1.06)
-        count = max(3, primary_count + rng.choice((-2, -1, 0, 0, 1, 2)))
+        count = max(2, primary_count + rng.choice((-1, 0, 0, 1)))
         phase = whorl_index * 2.399963229728653 + rng.uniform(-0.34, 0.34)
         for branch_index in range(count):
             angle = phase + 2.0 * math.pi * (branch_index + rng.uniform(-0.13, 0.13)) / count + rng.uniform(-0.34, 0.34)
@@ -423,8 +425,8 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                 # Scots pine needles also emerge from short shoots along the
                 # secondary limb itself. These intermediate fascicles close
                 # the visual gaps between terminal twig clusters.
-                for shoot_index in range(3):
-                    shoot_t = 0.20 + 0.68 * ((shoot_index + rng.uniform(0.15, 0.85)) / 3.0)
+                for shoot_index in range(2):
+                    shoot_t = 0.24 + 0.56 * ((shoot_index + rng.uniform(0.15, 0.85)) / 2.0)
                     if shoot_t <= 0.48:
                         shoot_origin = secondary_points[0].lerp(
                             secondary_points[1], shoot_t / 0.48)
@@ -434,7 +436,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                     shoot_axis = (direction * rng.uniform(0.25, 0.58) +
                                   lateral * rng.uniform(-0.75, 0.75) +
                                   Vector((0.0, 0.0, rng.uniform(0.15, 0.72)))).normalized()
-                    add_needle_spray(foliage, shoot_origin, shoot_axis, rng, pairs=3)
+                    add_needle_spray(foliage, shoot_origin, shoot_axis, rng, pairs=2)
 
                 # Terminal shoots are distributed along the full secondary limb,
                 # not bunched near its attachment point. Each shoot carries
@@ -457,30 +459,8 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                                     [0.0110, 0.0062, 0.0028],
                                     sides=4, material_indices=[1, 1])
 
-                    # Each terminal shoot forks into short, visible branchlets.
-                    # This fourth woody tier fills the gaps between the long
-                    # scaffold limbs without turning the crown into a solid blob.
-                    twig_lateral = Vector((-twig_direction.y, twig_direction.x, 0.0))
-                    for branchlet_index, branchlet_t in enumerate((0.30, 0.68)):
-                        branchlet_origin = twig_origin.lerp(twig_tip, branchlet_t)
-                        branchlet_sign = -1.0 if branchlet_index == 0 else 1.0
-                        branchlet_direction = (
-                            twig_direction * rng.uniform(0.28, 0.48) +
-                            twig_lateral * branchlet_sign * rng.uniform(0.52, 0.88) +
-                            Vector((0.0, 0.0, rng.uniform(0.18, 0.48)))
-                        ).normalized()
-                        branchlet_length = twig_length * rng.uniform(0.34, 0.52)
-                        branchlet_mid = branchlet_origin + branchlet_direction * (branchlet_length * 0.55)
-                        branchlet_tip = branchlet_origin + branchlet_direction * branchlet_length
-                        trunk.path_tube(
-                            [branchlet_origin, branchlet_mid, branchlet_tip],
-                            [0.0065, 0.0038, 0.0018],
-                            sides=4, material_indices=[1, 1])
-                        add_needle_spray(
-                            foliage, branchlet_mid, branchlet_direction, rng, pairs=2)
-                        add_needle_spray(
-                            foliage, branchlet_tip, branchlet_direction, rng, pairs=2)
-
+                    # Keep the woody hierarchy restrained: terminal shoots carry
+                    # foliage without another layer of redundant branch forks.
                     # Keep sprays distributed over the shoot's actual length.
                     # The old loop sampled five points but divided by three,
                     # pushing the last sprays beyond the twig tip.
@@ -489,7 +469,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                         cluster_t = 0.16 + 0.76 * ((cluster + rng.uniform(0.12, 0.88)) /
                                                    cluster_count)
                         cluster_origin = twig_origin.lerp(twig_tip, cluster_t)
-                        add_needle_spray(foliage, cluster_origin, twig_direction, rng, pairs=4)
+                        add_needle_spray(foliage, cluster_origin, twig_direction, rng, pairs=5)
 
             # Sparse snow accents sit on upper scaffold sections only.
             if fraction > 0.56 and rng.random() < 0.38:
@@ -566,7 +546,7 @@ def main():
             "lower_bole": {"material": "Scots Pine | Lower grey-brown plated bark", "height_fraction": [0.0, 0.58]},
             "upper_trunk_and_scaffold": {"material": "Scots Pine | Upper orange-yellow smooth bark", "height_fraction": [0.58, 1.0]},
         },
-        "geometry_note": "Reworked mature branch hierarchy: long heavy primary boughs, substantially thicker and longer secondary limbs, visible woody tertiary branches and forked terminal branchlets support clustered paired 10-14.5 cm needle sprays. Branch tiers use continuous tapered geometry rather than thin wire-like twigs. Deterministic structural asset, not a photogrammetry scan.",
+        "geometry_note": "Restrained mature Scots pine structure with fewer widely spaced primary boughs, a reduced secondary/tertiary hierarchy and no redundant fourth woody tier. Foliage is built from dense paired, tapered solid 6.5-8.5 cm needles with 1.3-1.8 mm base diameter, not flat cards. Deterministic structural asset, not a photogrammetry scan.",
         "runtime_note": "Select LOD by projected screen size/distance in Talvisota; files are separate because glTF core has no universal LOD selector.",
     }
     manifest["material_map_status"] = MATERIAL_MAP_STATUS
