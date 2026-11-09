@@ -275,15 +275,67 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
     }
     else if (preset == "granite")
     {
-        const float cells = std::abs(medium - 0.5F);
-        const float fracture = Smooth((cells - 0.34F) * 16.0F);
-        const float mineral = (fine - 0.5F) * 0.12F + (grain - 0.5F) * 0.055F;
-        const float height = 0.50F + (broad - 0.5F) * 0.18F +
-            (medium - 0.5F) * 0.12F + (fine - 0.5F) * 0.05F - fracture * 0.045F;
-        sample = {0.36F + mineral - fracture * 0.075F,
-                  0.38F + mineral * 0.92F - fracture * 0.070F,
-                  0.40F + mineral * 1.08F - fracture * 0.062F,
-                  height, 0.76F + medium * 0.18F, 0.98F - fracture * 0.38F};
+        // Coarse crystalline granite: interlocking feldspar/quartz grains,
+        // dark biotite flecks, occasional quartz-rich seams and weathered
+        // mineral staining. All fields use integer-period tileable noise.
+        const float weathering = Fbm(u, v, 7, seed ^ 0x243f6a88U, 5);
+        const float mineralCloud = Fbm(u, v, 31, seed ^ 0x85a308d3U, 4);
+        const float grainField = Fbm(u, v, 176, seed ^ 0x13198a2eU, 3);
+        const float grainFine = Fbm(u, v, 384, seed ^ 0x03707344U, 2);
+        const float crystalMicro = Fbm(u, v, 768, seed ^ 0xa4093822U, 2);
+        const float fleckNoise = NoiseTile(u * 212.0F, v * 212.0F, 212,
+            seed ^ 0x299f31d0U);
+        const float fleckShape = NoiseTile(u * 212.0F + 13.7F,
+            v * 212.0F - 7.3F, 212, seed ^ 0x082efa98U);
+        const float biotite = Smooth((0.245F - fleckNoise) * 18.0F) *
+            Smooth((0.57F - fleckShape) * 8.0F);
+        const float quartzField = NoiseTile(u * 154.0F, v * 154.0F, 154,
+            seed ^ 0xec4e6c89U);
+        const float quartz = Smooth((quartzField - 0.765F) * 13.0F) *
+            Smooth((grainFine - 0.32F) * 4.0F);
+        const float feldsparField = NoiseTile(u * 118.0F, v * 118.0F, 118,
+            seed ^ 0x452821e6U);
+        const float feldspar = Smooth((feldsparField - 0.69F) * 8.5F);
+        const float micaSheen = Smooth((crystalMicro - 0.79F) * 12.0F) *
+            (1.0F - biotite * 0.8F);
+        const float fractureNetwork = VoronoiEdge(u, v, 43, seed ^ 0xbe5466cfU);
+        const float fracture = Smooth((0.027F - fractureNetwork) * 38.0F) *
+            Smooth((weathering - 0.19F) * 2.6F);
+        const float quartzVein = Smooth((0.018F - VoronoiEdge(
+            u + (mineralCloud - 0.5F) * 0.008F,
+            v + (weathering - 0.5F) * 0.008F, 19, seed ^ 0xc0ac29b7U)) * 32.0F);
+        const float patina = Smooth((weathering - 0.64F) * 5.0F) *
+            Smooth((0.58F - mineralCloud) * 3.0F);
+        const float grainRelief = (grainField - 0.5F) * 0.070F +
+            (grainFine - 0.5F) * 0.048F + (crystalMicro - 0.5F) * 0.026F;
+        const float height = 0.50F + (weathering - 0.5F) * 0.105F +
+            (mineralCloud - 0.5F) * 0.060F + grainRelief +
+            feldspar * 0.026F + quartz * 0.044F + biotite * 0.018F -
+            fracture * 0.075F + quartzVein * 0.032F;
+        const float neutral = (weathering - 0.5F) * 0.095F +
+            (mineralCloud - 0.5F) * 0.075F + grainRelief * 0.75F;
+        const float baseR = 0.405F + neutral;
+        const float baseG = 0.405F + neutral * 0.96F;
+        const float baseB = 0.390F + neutral * 0.90F;
+        const float feldsparR = 0.105F * feldspar;
+        const float feldsparG = 0.062F * feldspar;
+        const float feldsparB = 0.025F * feldspar;
+        const float quartzLift = 0.17F * quartz + 0.10F * quartzVein;
+        const float micaDark = 0.23F * biotite;
+        const float crackDark = 0.13F * fracture;
+        const float patinaShade = 0.055F * patina;
+        sample = {
+            baseR + feldsparR + quartzLift - micaDark - crackDark - patinaShade,
+            baseG + feldsparG + quartzLift * 0.98F - micaDark * 0.88F -
+                crackDark * 0.90F - patinaShade * 0.72F,
+            baseB + feldsparB + quartzLift * 0.94F - micaDark * 0.78F -
+                crackDark * 0.82F + patina * 0.018F,
+            height,
+            0.72F + grainField * 0.16F + grainFine * 0.075F +
+                biotite * 0.09F - quartz * 0.10F - quartzVein * 0.08F,
+            0.985F - fracture * 0.55F - biotite * 0.16F -
+                quartz * 0.11F - quartzVein * 0.15F
+        };
     }
     else if (preset == "snow")
     {
