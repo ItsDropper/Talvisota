@@ -35,7 +35,10 @@ def parse_args():
                         help="Optional target height in metres; 0 preserves source scale")
     parser.add_argument("--lod-ratios", nargs=3, type=float,
                         default=(0.60, 0.25, 0.10),
-                        help="Collapse-decimation ratios for LOD1, LOD2 and LOD3")
+                        help="Collapse-decimation ratios for bark/woody meshes")
+    parser.add_argument("--foliage-lod-ratios", nargs=3, type=float,
+                        default=(0.85, 0.65, 0.40),
+                        help="More conservative ratios for needle/leaf meshes to preserve silhouette")
     return parser.parse_args(sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else [])
 
 
@@ -64,16 +67,29 @@ def triangles(obj):
     return sum(max(0, len(poly.vertices) - 2) for poly in obj.data.polygons)
 
 
-def material_image_names(objects):
-    names = set()
+def material_image_details(objects):
+    images = {}
     for obj in objects:
         for material in obj.data.materials:
             if not material or not material.use_nodes:
                 continue
             for node in material.node_tree.nodes:
                 if node.type == "TEX_IMAGE" and node.image:
-                    names.add(node.image.name)
-    return sorted(names)
+                    image = node.image
+                    images[image.name] = {
+                        "width": int(image.size[0]),
+                        "height": int(image.size[1]),
+                        "channels": int(image.channels),
+                        "source": image.source,
+                    }
+    return dict(sorted(images.items()))
+
+
+def is_foliage_mesh(obj):
+    """Keep more source triangles on needle/leaf surfaces during LOD reduction."""
+    foliage_tokens = ("needle", "foliage", "leaf", "leaves")
+    material_names = [material.name.lower() for material in obj.data.materials if material]
+    return any(token in name for name in material_names for token in foliage_tokens)
 
 
 def export_glb(objects, filepath):
@@ -105,10 +121,12 @@ def main():
         raise SystemExit("Photogrammetry source does not exist: " + str(source))
     if args.target_height < 0:
         raise SystemExit("--target-height must be zero or positive")
-    if any(not 0.0 < ratio < 1.0 for ratio in args.lod_ratios):
+    if any(not 0.0 < ratio < 1.0 for ratio in (*args.lod_ratios, *args.foliage_lod_ratios)):
         raise SystemExit("Every LOD ratio must be strictly between 0 and 1")
     if list(args.lod_ratios) != sorted(args.lod_ratios, reverse=True):
         raise SystemExit("LOD ratios must decrease: LOD1 > LOD2 > LOD3")
+    if list(args.foliage_lod_ratios) != sorted(args.foliage_lod_ratios, reverse=True):
+        raise SystemExit("Foliage LOD ratios must decrease: LOD1 > LOD2 > LOD3")
 
     source_hash = sha256_file(source)
     args.output.mkdir(parents=True, exist_ok=True)
@@ -141,7 +159,8 @@ def main():
 
     missing_uv = [obj.name for obj in source_objects if len(obj.data.uv_layers) == 0]
     missing_material = [obj.name for obj in source_objects if len(obj.data.materials) == 0]
-    image_names = material_image_names(source_objects)
+    image_details = material_image_details(source_objects)
+    image_names = sorted(image_details)
     if missing_uv:
         raise SystemExit("Photogrammetry meshes missing UVs: " + ", ".join(missing_uv))
     if missing_material:
@@ -166,6 +185,13 @@ def main():
         except RuntimeError:
             unresolved_images.append(image.name)
 
+    if unresolved_images:
+        raise SystemExit("Photogrammetry textures could not be packed; refusing incomplete GLB exports: " +
+                         ", ".join(sorted(unresolved_images)))
+    if any(details["width"] < 1 or details["height"] < 1
+           for details in image_details.values()):
+        raise SystemExit("Photogrammetry source contains an image with invalid dimensions")
+
     original_triangles = sum(triangles(obj) for obj in source_objects)
     if original_triangles < 1000:
         raise SystemExit("Source scan has fewer than 1,000 triangles; expected detailed captured geometry")
@@ -183,14 +209,22 @@ def main():
         "source_meshes": len(source_objects),
         "source_triangles": original_triangles,
         "source_image_textures": image_names,
+        "source_image_details": image_details,
         "packed_images": sorted(packed_images),
         "unresolved_images": sorted(unresolved_images),
+        "lod_policy": {
+            "woody_mesh_ratios": {"LOD1": args.lod_ratios[0], "LOD2": args.lod_ratios[1], "LOD3": args.lod_ratios[2]},
+            "foliage_mesh_ratios": {"LOD1": args.foliage_lod_ratios[0], "LOD2": args.foliage_lod_ratios[1], "LOD3": args.foliage_lod_ratios[2]},
+            "foliage_detection": "material names containing needle, foliage, leaf or leaves",
+        },
         "lods": {},
     }
 
-    ratios = {"LOD0": 1.0, "LOD1": args.lod_ratios[0],
-              "LOD2": args.lod_ratios[1], "LOD3": args.lod_ratios[2]}
-    for lod_name, ratio in ratios.items():
+    ratios = {"LOD0": (1.0, 1.0),
+              "LOD1": (args.lod_ratios[0], args.foliage_lod_ratios[0]),
+              "LOD2": (args.lod_ratios[1], args.foliage_lod_ratios[1]),
+              "LOD3": (args.lod_ratios[2], args.foliage_lod_ratios[2])}
+    for lod_name, (woody_ratio, foliage_ratio) in ratios.items():
         collection = bpy.data.collections.new(lod_name)
         bpy.context.scene.collection.children.link(collection)
         duplicates = []
@@ -200,10 +234,11 @@ def main():
             duplicate.matrix_world = original.matrix_world.copy()
             collection.objects.link(duplicate)
             duplicates.append(duplicate)
-            if ratio < 1.0 and triangles(duplicate) > 32:
+            object_ratio = foliage_ratio if is_foliage_mesh(original) else woody_ratio
+            if object_ratio < 1.0 and triangles(duplicate) > 32:
                 modifier = duplicate.modifiers.new("Photogrammetry_LOD_Decimate", "DECIMATE")
                 modifier.decimate_type = "COLLAPSE"
-                modifier.ratio = ratio
+                modifier.ratio = object_ratio
                 modifier.use_collapse_triangulate = False
                 bpy.context.view_layer.objects.active = duplicate
                 duplicate.select_set(True)
@@ -216,7 +251,8 @@ def main():
             "file": filepath.name,
             "triangles": lod_triangles,
             "objects": len(duplicates),
-            "decimation_ratio": ratio,
+            "woody_decimation_ratio": woody_ratio,
+            "foliage_decimation_ratio": foliage_ratio,
         }
 
     bpy.ops.object.select_all(action="DESELECT")
