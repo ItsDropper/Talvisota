@@ -128,11 +128,12 @@ and normal data are marked Non-Color. Normal maps are connected through a
 Blender Normal Map node before GLB export. Missing optional maps fall back to
 named Principled BSDF material values; the manifest records source-map status.
 
-UVs are generated per material-grouped mesh with Smart UV Project. Geometry
-uses Blender's native Z-up authoring space; the glTF exporter performs the
-standard conversion to glTF's +Y-up, metre-based coordinate convention used by
-Talvisota. The exported manifest records Talvisota's +Y up, +X east, +Z north
-convention.
+UV coordinates are authored deterministically per tapered tube face in the
+mesh builder; no interactive UV-editor operator or viewport context is needed.
+Geometry uses Blender's native Z-up authoring space; the glTF exporter performs
+the standard conversion to glTF's +Y-up, metre-based coordinate convention
+used by Talvisota. The exported manifest records Talvisota's +Y up, +X east,
++Z north convention.
 
 ## Verify
 
