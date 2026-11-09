@@ -67,7 +67,7 @@ bool InitializeSimulationFromAuthoredMission(
     const GameplayRules& rules, SimulationState& output, std::string& error)
 {
     missions::MissionDefinition missionDefinition;
-    if (!game::BuildMissionDefinition(authoredMission, missionDefinition, error))
+    if (!missions::BuildMissionDefinition(authoredMission, missionDefinition, error))
         return false;
 
     if (region.id != authoredMission.regionId || region.worldId != authoredMission.worldId)
@@ -109,7 +109,7 @@ bool InitializeSimulationFromAuthoredMission(
         playerId, authoredMission.factionId, entities::EntityKind::Player, playerSpawn, {}
     });
 
-    for (const game::ObjectiveDefinition& objective : missionDefinition.objectives)
+    for (const missions::ObjectiveDefinition& objective : missionDefinition.objectives)
     {
         const world::WorldPlacement* targetPlacement = nullptr;
         for (const world::WorldPlacement& placement : region.placements)
@@ -183,23 +183,23 @@ bool FindActiveObjectiveTarget(const SimulationState& state,
     }
 
     // Reuse mission-state validation without changing the live simulation.
-    game::MissionState validatedMission = state.mission;
+    missions::MissionState validatedMission = state.mission;
     missions::InteractionResult ignoredResult = missions::InteractionResult::Ignored;
     if (!missions::ApplyMissionInteraction(validatedMission, {}, ignoredResult, error))
         return false;
 
     ActiveObjectiveTarget candidate;
-    if (state.mission.status != game::MissionStatus::Active)
+    if (state.mission.status != missions::MissionStatus::Active)
     {
         output = std::move(candidate);
         error.clear();
         return true;
     }
 
-    const game::ObjectiveState* activeObjective = nullptr;
-    for (const game::ObjectiveState& objective : state.mission.objectives)
+    const missions::ObjectiveState* activeObjective = nullptr;
+    for (const missions::ObjectiveState& objective : state.mission.objectives)
     {
-        if (objective.status != game::ObjectiveStatus::Active)
+        if (objective.status != missions::ObjectiveStatus::Active)
             continue;
         if (activeObjective != nullptr)
         {
@@ -298,23 +298,23 @@ bool FindNearestActiveObjectiveTarget(const SimulationState& state,
 
     // Validate the complete mission state before deriving a presentation target.
     // This keeps malformed progression from silently appearing as "no target".
-    game::MissionState validatedMission = state.mission;
+    missions::MissionState validatedMission = state.mission;
     missions::InteractionResult ignoredResult = missions::InteractionResult::Ignored;
     if (!missions::ApplyMissionInteraction(validatedMission, {}, ignoredResult, error))
         return false;
 
     InteractionTargetSelection candidate;
-    if (state.mission.status != game::MissionStatus::Active)
+    if (state.mission.status != missions::MissionStatus::Active)
     {
         output = std::move(candidate);
         error.clear();
         return true;
     }
 
-    const game::ObjectiveState* activeObjective = nullptr;
-    for (const game::ObjectiveState& objective : state.mission.objectives)
+    const missions::ObjectiveState* activeObjective = nullptr;
+    for (const missions::ObjectiveState& objective : state.mission.objectives)
     {
-        if (objective.status != game::ObjectiveStatus::Active)
+        if (objective.status != missions::ObjectiveStatus::Active)
             continue;
         if (activeObjective != nullptr)
         {
@@ -432,7 +432,7 @@ bool ApplyCombatMissionEvents(SimulationState& missionState,
             results.push_back({command.commandId, CommandOutcome::Ignored});
             continue;
         }
-        if (command.action != CombatAction::Fire ||
+        if (command.action != combat::CombatAction::Fire ||
             !entities::IsValidStableId(command.targetEntityId))
         {
             error = "Only a valid fire command can produce a defeated combat mission target.";
