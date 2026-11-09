@@ -269,14 +269,14 @@ def add_needle_pair(builder, origin, direction, rng):
     if abs(axis.dot(reference)) > 0.94:
         reference = Vector((0.0, 1.0, 0.0))
     side = axis.cross(reference).normalized()
-    length = rng.uniform(0.082, 0.125)
+    length = rng.uniform(0.090, 0.138)
     for sign in (-1.0, 1.0):
         spread = side * sign * rng.uniform(0.16, 0.34)
         lift = Vector((0.0, 0.0, rng.uniform(0.12, 0.32)))
         needle_axis = (axis * 0.72 + spread + lift).normalized()
         tip = Vector(origin) + needle_axis * length
         # Three-sided needles retain a tapered profile at a modest triangle cost.
-        builder.tube(origin, tip, 0.0032, 0.00085, sides=3)
+        builder.tube(origin, tip, 0.0035, 0.00095, sides=3)
 
 
 def add_needle_spray(builder, origin, direction, rng, pairs=3):
@@ -333,36 +333,41 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
     for whorl in range(whorls):
         t = whorl / max(1, whorls - 1)
         base = crown_start + (crown_end - crown_start) * t
-        whorl_heights.append(base + rng.uniform(-0.018, 0.018))
+        whorl_heights.append(base + rng.uniform(-0.030, 0.030))
     whorl_heights.sort()
 
     for whorl_index, fraction in enumerate(whorl_heights):
         z = height * fraction
         crown_profile = math.sin(math.pi * ((fraction - crown_start) /
                                              (crown_end - crown_start)) * 0.78)
-        length_base = crown_radius * (0.48 + 0.52 * max(0.0, crown_profile))
-        count = max(3, primary_count + rng.choice((-1, 0, 0, 1)))
+        length_base = crown_radius * (0.46 + 0.54 * max(0.0, crown_profile)) * rng.uniform(0.94, 1.06)
+        count = max(3, primary_count + rng.choice((-2, -1, 0, 0, 1, 2)))
         phase = whorl_index * 2.399963229728653 + rng.uniform(-0.34, 0.34)
         for branch_index in range(count):
-            angle = phase + 2.0 * math.pi * branch_index / count + rng.uniform(-0.22, 0.22)
+            angle = phase + 2.0 * math.pi * (branch_index + rng.uniform(-0.13, 0.13)) / count + rng.uniform(-0.34, 0.34)
             radial = Vector((math.cos(angle), math.sin(angle), 0.0))
-            length = length_base * rng.uniform(0.72, 1.18)
+            length = length_base * rng.uniform(0.62, 1.28)
             start = Vector((lean_x * fraction * fraction,
                             lean_y * fraction * fraction, z))
-            # Scaffold limbs droop under their own weight, then sweep outward.
+            # Mature Scots-pine scaffold limbs have individual droop, sweep and
+            # lifted tips; avoid the repeated flat shelves of a radial ring model.
+            branch_pitch = rng.uniform(-0.030, 0.055) * height
+            branch_sag = rng.uniform(0.018, 0.052) * height
+            tip_lift = rng.uniform(0.010, 0.038) * height
             primary_points = []
             for step in range(5):
                 t = step / 4.0
                 outward = length * t
-                vertical = height * (0.018 * t - 0.075 * t * (1.0 - t))
-                vertical -= height * max(0.0, fraction - 0.78) * 0.06 * t
+                vertical = (branch_pitch * t - branch_sag * math.sin(math.pi * t) +
+                            tip_lift * t * t * t)
+                vertical -= height * max(0.0, fraction - 0.78) * rng.uniform(0.025, 0.075) * t
                 point = start + radial * outward + Vector((0.0, 0.0, vertical))
                 point += Vector((math.sin(angle * 2.1) * 0.10 * t * t,
                                  math.cos(angle * 1.7) * 0.08 * t * t, 0.0))
                 primary_points.append(point)
-            base_radius = height * (0.0105 * (1.0 - fraction * 0.40))
+            base_radius = height * (0.0112 * (1.0 - fraction * 0.40))
             add_path(trunk, primary_points,
-                     [base_radius * (1.0 - 0.91 * (i / 4.0)) for i in range(5)],
+                     [base_radius * (1.0 - 0.89 * (i / 4.0)) for i in range(5)],
                      sides, material_indices=[1] * 4)
 
             # Secondary limbs split from the scaffold at uneven intervals and angles.
@@ -378,16 +383,16 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                 direction = (radial * rng.uniform(0.16, 0.52) +
                              lateral * sign * rng.uniform(0.42, 0.96) +
                              Vector((0.0, 0.0, rng.uniform(0.12, 0.62)))).normalized()
-                secondary_length = length * rng.uniform(0.30, 0.60) * (1.0 - 0.14 * t)
+                secondary_length = length * rng.uniform(0.32, 0.64) * (1.0 - 0.12 * t)
                 secondary_points = [
                     origin,
                     origin + direction * (secondary_length * 0.48) + tangent * (secondary_length * 0.10),
                     origin + direction * secondary_length +
                     Vector((0.0, 0.0, secondary_length * rng.uniform(-0.02, 0.18))),
                 ]
-                secondary_radius = base_radius * rng.uniform(0.24, 0.39)
+                secondary_radius = base_radius * rng.uniform(0.27, 0.42)
                 add_path(trunk, secondary_points,
-                         [secondary_radius, secondary_radius * 0.56, 0.0029],
+                         [secondary_radius, secondary_radius * 0.58, 0.0032],
                          max(4, sides - 1), material_indices=[1, 1])
 
                 # Scots pine needles also emerge from short shoots along the
@@ -404,7 +409,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                     shoot_axis = (direction * rng.uniform(0.25, 0.58) +
                                   lateral * rng.uniform(-0.75, 0.75) +
                                   Vector((0.0, 0.0, rng.uniform(0.15, 0.72)))).normalized()
-                    add_needle_spray(foliage, shoot_origin, shoot_axis, rng, pairs=3)
+                    add_needle_spray(foliage, shoot_origin, shoot_axis, rng, pairs=4)
 
                 # Terminal shoots are distributed along the full secondary limb,
                 # not bunched near its attachment point. Each shoot carries
@@ -424,7 +429,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                     twig_mid = twig_origin + twig_direction * (twig_length * 0.56) + tangent * (twig_length * 0.08)
                     twig_tip = twig_origin + twig_direction * twig_length
                     trunk.path_tube([twig_origin, twig_mid, twig_tip],
-                                    [0.0040, 0.0024, 0.0010],
+                                    [0.0044, 0.0027, 0.0012],
                                     sides=3, material_indices=[1, 1])
 
                     # Each terminal shoot forks into short, visible branchlets.
@@ -444,7 +449,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                         branchlet_tip = branchlet_origin + branchlet_direction * branchlet_length
                         trunk.path_tube(
                             [branchlet_origin, branchlet_mid, branchlet_tip],
-                            [0.0022, 0.00135, 0.00065],
+                            [0.0025, 0.00155, 0.00075],
                             sides=3, material_indices=[1, 1])
                         add_needle_spray(
                             foliage, branchlet_mid, branchlet_direction, rng, pairs=3)
@@ -455,7 +460,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                         cluster_t = 0.18 + 0.76 * ((cluster + rng.uniform(0.12, 0.88)) /
                                                    max(1, needle_clusters))
                         cluster_origin = twig_origin.lerp(twig_tip, cluster_t)
-                        add_needle_spray(foliage, cluster_origin, twig_direction, rng, pairs=4)
+                        add_needle_spray(foliage, cluster_origin, twig_direction, rng, pairs=5)
 
             # Sparse snow accents sit on upper scaffold sections only.
             if fraction > 0.56 and rng.random() < 0.38:
@@ -532,7 +537,7 @@ def main():
             "lower_bole": {"material": "Scots Pine | Lower grey-brown plated bark", "height_fraction": [0.0, 0.58]},
             "upper_trunk_and_scaffold": {"material": "Scots Pine | Upper orange-yellow smooth bark", "height_fraction": [0.58, 1.0]},
         },
-        "geometry_note": "Scaffold limbs, fuller and longer secondary branches, terminal shoots, forked fourth-tier branchlets and paired 8-12 cm needle sprays are generated as a deterministic hierarchy. This is a structural asset, not a photogrammetry scan.",
+        "geometry_note": "Irregular scaffold limbs with individually varied droop and lifted tips, thicker secondary/tertiary branchlets, forked terminal shoots and clustered paired 9-14 cm needle sprays form a deterministic Scots pine hierarchy. This is a structural asset, not a photogrammetry scan.",
         "runtime_note": "Select LOD by projected screen size/distance in Talvisota; files are separate because glTF core has no universal LOD selector.",
     }
     manifest["material_map_status"] = MATERIAL_MAP_STATUS
