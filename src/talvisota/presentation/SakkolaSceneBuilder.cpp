@@ -331,7 +331,14 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
         auto transform = talvisota::world::BuildPlacementTransform(placement);
         if (placement.modelAssetId != "model.terrain.sakkola" &&
             placement.modelAssetId != "model.environment.suvanto_ice") {
-            transform[13] += talvisota::world::SampleTerrainDisplacement(region, placement.position[0], placement.position[2]);
+            float groundedY = placement.position[1];
+            if (!talvisota::world::ResolveGroundedPlacementHeight(region,
+                    placement.position[0], placement.position[2], placement.position[1],
+                    groundedY, error)) {
+                error = "Could not ground placement " + placement.id + ": " + error;
+                return false;
+            }
+            transform[13] = groundedY;
         }
         for (const auto& binding : model->second) {
             RenderInstance instance;
