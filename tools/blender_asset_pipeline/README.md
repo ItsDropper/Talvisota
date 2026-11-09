@@ -51,8 +51,8 @@ conical nursery tree.
 - Fine terminal shoots are distributed along the full secondary limbs, not
   concentrated near branch attachments.
 - Each terminal shoot carries multiple radial fascicle sprays. Individual
-  paired needles are generated at 5–8 cm scale with tapered, three-sided
-  geometry; dense sprays overlap to form a continuous but irregular crown.
+  paired needles are generated at 10.5–14.5 cm scale as tapered, double-sided
+  blade strips; dense sprays overlap to form a continuous but irregular crown.
 - Primary branch lengths, azimuths, vertical positions, secondary splits and
   terminal-shoot directions vary independently. The crown should not resolve
   into evenly spaced horizontal whorl rings.
@@ -107,7 +107,9 @@ path for close-up hero assets when the captured source quality supports it.
 - LOD0/1/2/3 progressively reduce scaffold density, secondary/tertiary
   branching and needle sprays. Individual needles are tapered blade strips,
   not capped cylinders; this reduces foliage triangles while retaining their
-  paired silhouette. The verifier enforces budgets of 650k / 300k / 150k / 50k
+  paired silhouette. The LOD0 primary scaffold uses five-sided tubes rather
+  than six-sided tubes to keep its branch silhouette while meeting the close-up
+  geometry budget. The verifier enforces budgets of 650k / 300k / 150k / 50k
   triangles for LOD0 through LOD3. LOD0 is the close-up hero asset; use lower
   LODs for progressively smaller screen coverage.
 - The forest must instance individual tree assets at the scene/runtime layer;
