@@ -2,7 +2,6 @@
 #include "talvisota/content/ContentRegistry.hpp"
 
 #include <array>
-#include <array>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
