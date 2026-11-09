@@ -15,6 +15,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  blender-tree-assets:
+    name: Blender procedural tree assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install Blender
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends blender
+
+      - name: Generate deterministic Scots pine LODs
+        run: |
+          blender --background --python tools/blender_asset_pipeline/generate_tree.py -- --output "$RUNNER_TEMP/generated-trees" --texture-root assets/textures/environment --seed 1939
+
+      - name: Re-import and validate generated GLBs
+        run: |
+          blender --background --python tools/blender_asset_pipeline/verify_tree_outputs.py -- "$RUNNER_TEMP/generated-trees"
+
+      - name: Verify generated asset inventory
+        shell: bash
+        run: |
+          python3 - "$RUNNER_TEMP/generated-trees/scots_pine.asset.json" <<'PY'
+          import json, pathlib, sys
+          manifest = json.loads(pathlib.Path(sys.argv[1]).read_text())
+          assert manifest["species"] == "Pinus sylvestris"
+          assert set(manifest["lods"]) == {"LOD0", "LOD1", "LOD2", "LOD3"}
+          assert all(item["objects"] <= 3 for item in manifest["lods"].values())
+          print(json.dumps(manifest["lods"], indent=2))
+          PY
+
   windows:
     name: Windows x64 / ${{ matrix.configuration }}
     runs-on: windows-latest
