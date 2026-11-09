@@ -566,7 +566,7 @@ def main():
             "lower_bole": {"material": "Scots Pine | Lower grey-brown plated bark", "height_fraction": [0.0, 0.58]},
             "upper_trunk_and_scaffold": {"material": "Scots Pine | Upper orange-yellow smooth bark", "height_fraction": [0.58, 1.0]},
         },
-        "geometry_note": "Irregular scaffold limbs with individually varied droop and lifted tips, thicker secondary/tertiary branchlets, forked terminal shoots and clustered paired 9-14 cm needle sprays form a deterministic Scots pine hierarchy. This is a structural asset, not a photogrammetry scan.",
+        "geometry_note": "Irregular scaffold limbs with individually varied droop and lifted tips, thicker secondary/tertiary branchlets, forked terminal shoots and clustered paired 10-14.5 cm needle sprays form a deterministic Scots pine hierarchy. This is a structural asset, not a photogrammetry scan.",
         "runtime_note": "Select LOD by projected screen size/distance in Talvisota; files are separate because glTF core has no universal LOD selector.",
     }
     manifest["material_map_status"] = MATERIAL_MAP_STATUS
