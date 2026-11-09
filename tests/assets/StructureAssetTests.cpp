@@ -151,8 +151,8 @@ void TestChurchBelfrySilhouette()
             "Church body and window materials must remain present.");
     Require(count("tower_wood") >= 64U,
             "The belfry must retain its four-post frame and open timber louver courses.");
-    Require(count("roof_wood") >= 24U && count("roof_snow") >= 12U,
-            "The belfry must have a pitched timber roof, visible underside/eave fascia, and snow cap.");
+    Require(count("roof_wood") >= 32U && count("roof_snow") >= 16U,
+            "The nave and belfry must have pitched timber roofs, visible eaves, and snow coverage.");
 
     std::cout << "Verified Sakkola church geometry: " << mesh.positions << " positions, "
         << mesh.triangles << " triangles, " << mesh.materialTriangles.size()
