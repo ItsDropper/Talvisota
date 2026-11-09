@@ -11,11 +11,11 @@ namespace talvisota::gameplay
 namespace
 {
 constexpr std::array<WeaponDefinition, 3> Weapons{{
-    {"weapon.mosin_m27", "Mosin-Nagant M/27", WeaponArchetype::BoltActionRifle,
+    {"weapon.mosin_m27", "Mosin-Nagant M/27", "model.weapon.mosin_m27", WeaponArchetype::BoltActionRifle,
         5U, 68.0F, 180.0F, 1.05, 2.8},
-    {"weapon.suomi_kp31", "Suomi KP/-31", WeaponArchetype::SubmachineGun,
+    {"weapon.suomi_kp31", "Suomi KP/-31", "model.weapon.suomi_kp31", WeaponArchetype::SubmachineGun,
         20U, 24.0F, 58.0F, 0.12, 2.6},
-    {"weapon.lahti_saloranta_m26", "Lahti-Saloranta M/26",
+    {"weapon.lahti_saloranta_m26", "Lahti-Saloranta M/26", "model.weapon.lahti_saloranta_m26",
         WeaponArchetype::LightMachineGun, 20U, 31.0F, 105.0F, 0.16, 3.2}
 }};
 constexpr std::size_t MaximumCommandsPerStep = 4096U;
@@ -234,7 +234,7 @@ bool AdvanceCombat(CombatSimulationState& state,
         }
         if (candidate.elapsedSeconds < actor.nextShotAtSeconds)
         {
-            results.push_back({command.commandId, CombatOutcome::Ignored, 0.0F,
+            results.push_back({command.commandId, CombatOutcome::Cooldown, 0.0F,
                 targetCombatantIt->second.health});
             continue;
         }
