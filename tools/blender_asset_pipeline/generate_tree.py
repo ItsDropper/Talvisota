@@ -24,7 +24,7 @@ import bpy
 from mathutils import Vector
 
 
-PIPELINE_VERSION = 2
+PIPELINE_VERSION = 3
 MATERIAL_MAP_STATUS = {}
 TREE_HEIGHT = 18.0
 TREE_RADIUS = 6.0
@@ -408,16 +408,16 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                 direction = (radial * rng.uniform(0.16, 0.52) +
                              lateral * sign * rng.uniform(0.42, 0.96) +
                              Vector((0.0, 0.0, rng.uniform(0.12, 0.62)))).normalized()
-                secondary_length = length * rng.uniform(0.32, 0.64) * (1.0 - 0.12 * t)
+                secondary_length = length * rng.uniform(0.48, 0.78) * (1.0 - 0.12 * t)
                 secondary_points = [
                     origin,
                     origin + direction * (secondary_length * 0.48) + tangent * (secondary_length * 0.10),
                     origin + direction * secondary_length +
                     Vector((0.0, 0.0, secondary_length * rng.uniform(-0.02, 0.18))),
                 ]
-                secondary_radius = base_radius * rng.uniform(0.27, 0.42)
+                secondary_radius = base_radius * rng.uniform(0.34, 0.48)
                 add_path(trunk, secondary_points,
-                         [secondary_radius, secondary_radius * 0.58, 0.0032],
+                         [secondary_radius, secondary_radius * 0.66, 0.0105],
                          max(4, sides - 1), material_indices=[1, 1])
 
                 # Scots pine needles also emerge from short shoots along the
@@ -450,12 +450,12 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                     twig_direction = (direction * rng.uniform(0.18, 0.48) +
                                       lateral * rng.uniform(-0.92, 0.92) +
                                       Vector((0.0, 0.0, rng.uniform(0.24, 0.92)))).normalized()
-                    twig_length = secondary_length * rng.uniform(0.34, 0.62)
+                    twig_length = secondary_length * rng.uniform(0.42, 0.70)
                     twig_mid = twig_origin + twig_direction * (twig_length * 0.56) + tangent * (twig_length * 0.08)
                     twig_tip = twig_origin + twig_direction * twig_length
                     trunk.path_tube([twig_origin, twig_mid, twig_tip],
-                                    [0.0044, 0.0027, 0.0012],
-                                    sides=3, material_indices=[1, 1])
+                                    [0.0110, 0.0062, 0.0028],
+                                    sides=4, material_indices=[1, 1])
 
                     # Each terminal shoot forks into short, visible branchlets.
                     # This fourth woody tier fills the gaps between the long
@@ -474,8 +474,8 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                         branchlet_tip = branchlet_origin + branchlet_direction * branchlet_length
                         trunk.path_tube(
                             [branchlet_origin, branchlet_mid, branchlet_tip],
-                            [0.0025, 0.00155, 0.00075],
-                            sides=3, material_indices=[1, 1])
+                            [0.0065, 0.0038, 0.0018],
+                            sides=4, material_indices=[1, 1])
                         add_needle_spray(
                             foliage, branchlet_mid, branchlet_direction, rng, pairs=2)
                         add_needle_spray(
@@ -566,7 +566,7 @@ def main():
             "lower_bole": {"material": "Scots Pine | Lower grey-brown plated bark", "height_fraction": [0.0, 0.58]},
             "upper_trunk_and_scaffold": {"material": "Scots Pine | Upper orange-yellow smooth bark", "height_fraction": [0.58, 1.0]},
         },
-        "geometry_note": "Irregular scaffold limbs with individually varied droop and lifted tips, thicker secondary/tertiary branchlets, forked terminal shoots and clustered paired 10-14.5 cm needle sprays form a deterministic Scots pine hierarchy. This is a structural asset, not a photogrammetry scan.",
+        "geometry_note": "Reworked mature branch hierarchy: long heavy primary boughs, substantially thicker and longer secondary limbs, visible woody tertiary branches and forked terminal branchlets support clustered paired 10-14.5 cm needle sprays. Branch tiers use continuous tapered geometry rather than thin wire-like twigs. Deterministic structural asset, not a photogrammetry scan.",
         "runtime_note": "Select LOD by projected screen size/distance in Talvisota; files are separate because glTF core has no universal LOD selector.",
     }
     manifest["material_map_status"] = MATERIAL_MAP_STATUS
