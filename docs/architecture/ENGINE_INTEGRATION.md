@@ -19,7 +19,7 @@ Talvisota owns the game-side boundary:
 
 - `ISceneRenderer` and validated game-owned scene snapshots.
 - An optional `VantaSceneRenderer` adapter that translates snapshots to the public engine API without private backend headers.
-- An exact VantaEngine dependency pin: `99cc31088ef83a3d1e1a1494ecd4db0acc3bdcec`.
+- An exact VantaEngine dependency pin: `08af6bdf2f854e61de5e58d1869cc800ce8ae41a`.
 - A standalone Win32 renderer sample that exercises the game-owned adapter.
 
 ## CI and hardware verification
