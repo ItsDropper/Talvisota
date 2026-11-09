@@ -219,7 +219,7 @@ constexpr std::array<CaptureView, 5> Views = {{
     {L"05-farmstead.png", {0.0F, 24.0F, 35.0F}, {0.0F, 12.0F, 130.0F}}
 }};
 
-
+}
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     if (AttachConsole(ATTACH_PARENT_PROCESS)) {
