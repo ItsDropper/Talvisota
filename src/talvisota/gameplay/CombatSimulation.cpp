@@ -20,6 +20,8 @@ constexpr std::array<WeaponDefinition, 3> Weapons{{
 }};
 constexpr std::size_t MaximumCommandsPerStep = 4096U;
 constexpr std::size_t MaximumProcessedCommands = 65536U;
+constexpr float RecoveryAmount = 25.0F;
+constexpr double RecoveryCooldownSeconds = 10.0;
 
 bool IsFinitePositive(const float value) noexcept
 {
@@ -132,7 +134,9 @@ bool AdvanceCombat(CombatSimulationState& state,
             combatant.reserveRounds > 10000U ||
             !std::isfinite(combatant.nextShotAtSeconds) ||
             !std::isfinite(combatant.reloadCompletesAtSeconds) ||
-            combatant.nextShotAtSeconds < 0.0 || combatant.reloadCompletesAtSeconds < 0.0)
+            !std::isfinite(combatant.nextRecoveryAtSeconds) ||
+            combatant.nextShotAtSeconds < 0.0 || combatant.reloadCompletesAtSeconds < 0.0 ||
+            combatant.nextRecoveryAtSeconds < 0.0)
         {
             error = "Combat state contains a missing entity or invalid combatant record: " + entityId;
             return false;
@@ -156,8 +160,9 @@ bool AdvanceCombat(CombatSimulationState& state,
             !entities::IsValidStableId(command.actorEntityId) ||
             (command.action == CombatAction::Fire &&
                 !entities::IsValidStableId(command.targetEntityId)) ||
-            (command.action == CombatAction::Reload && !command.targetEntityId.empty()) ||
-            (command.action != CombatAction::Fire && command.action != CombatAction::Reload))
+            (command.action != CombatAction::Fire && !command.targetEntityId.empty()) ||
+            (command.action != CombatAction::Fire && command.action != CombatAction::Reload &&
+                command.action != CombatAction::Recover))
         {
             error = "Combat command contains an invalid ID or action.";
             return false;
@@ -186,6 +191,37 @@ bool AdvanceCombat(CombatSimulationState& state,
 
         CombatantState& actor = actorCombatantIt->second;
         const WeaponDefinition* const weapon = FindWeaponDefinition(actor.weaponId);
+        if (command.action == CombatAction::Recover)
+        {
+            if (actor.health >= actor.maximumHealth)
+            {
+                results.push_back({command.commandId, CombatOutcome::AlreadyAtFullHealth,
+                    0.0F, actor.health});
+            }
+            else if (candidate.elapsedSeconds < actor.nextRecoveryAtSeconds)
+            {
+                results.push_back({command.commandId, CombatOutcome::RecoveryCooldown,
+                    0.0F, actor.health});
+            }
+            else
+            {
+                if (candidate.elapsedSeconds >
+                    std::numeric_limits<double>::max() - RecoveryCooldownSeconds)
+                {
+                    error = "Combat recovery cooldown time is not representable.";
+                    return false;
+                }
+                const float recovered = std::min(RecoveryAmount,
+                    actor.maximumHealth - actor.health);
+                actor.health += recovered;
+                actor.nextRecoveryAtSeconds =
+                    candidate.elapsedSeconds + RecoveryCooldownSeconds;
+                results.push_back({command.commandId, CombatOutcome::Recovered,
+                    recovered, actor.health});
+            }
+            continue;
+        }
+
         if (command.action == CombatAction::Reload)
         {
             if (actor.reloadCompletesAtSeconds > candidate.elapsedSeconds)
