@@ -250,7 +250,7 @@ def create_materials(texture_root):
         "needles": make_material(
             "Scots Pine | Needles", texture_root, "pine_needles-albedo.bmp",
             "pine_needles-normal.bmp", "pine_needles-roughness.bmp",
-            (0.075, 0.19, 0.075), 0.82),
+            (0.11, 0.27, 0.075), 0.78),
         "snow": make_material(
             "Scots Pine | Snow", texture_root, "snow-albedo.bmp",
             "snow-normal.bmp", "snow-roughness.bmp", (0.78, 0.84, 0.9), 0.94),
@@ -269,14 +269,14 @@ def add_needle_pair(builder, origin, direction, rng):
     if abs(axis.dot(reference)) > 0.94:
         reference = Vector((0.0, 1.0, 0.0))
     side = axis.cross(reference).normalized()
-    length = rng.uniform(0.052, 0.082)
+    length = rng.uniform(0.082, 0.125)
     for sign in (-1.0, 1.0):
         spread = side * sign * rng.uniform(0.16, 0.34)
         lift = Vector((0.0, 0.0, rng.uniform(0.12, 0.32)))
         needle_axis = (axis * 0.72 + spread + lift).normalized()
         tip = Vector(origin) + needle_axis * length
         # Three-sided needles retain a tapered profile at a modest triangle cost.
-        builder.tube(origin, tip, 0.0022, 0.00055, sides=3)
+        builder.tube(origin, tip, 0.0032, 0.00085, sides=3)
 
 
 def add_needle_spray(builder, origin, direction, rng, pairs=3):
@@ -390,6 +390,22 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                          [secondary_radius, secondary_radius * 0.48, 0.0022],
                          max(4, sides - 1), material_indices=[1, 1])
 
+                # Scots pine needles also emerge from short shoots along the
+                # secondary limb itself. These intermediate fascicles close
+                # the visual gaps between terminal twig clusters.
+                for shoot_index in range(4):
+                    shoot_t = 0.20 + 0.68 * ((shoot_index + rng.uniform(0.15, 0.85)) / 4.0)
+                    if shoot_t <= 0.48:
+                        shoot_origin = secondary_points[0].lerp(
+                            secondary_points[1], shoot_t / 0.48)
+                    else:
+                        shoot_origin = secondary_points[1].lerp(
+                            secondary_points[2], (shoot_t - 0.48) / 0.52)
+                    shoot_axis = (direction * rng.uniform(0.25, 0.58) +
+                                  lateral * rng.uniform(-0.75, 0.75) +
+                                  Vector((0.0, 0.0, rng.uniform(0.15, 0.72)))).normalized()
+                    add_needle_spray(foliage, shoot_origin, shoot_axis, rng, pairs=3)
+
                 # Terminal shoots are distributed along the full secondary limb,
                 # not bunched near its attachment point. Each shoot carries
                 # several dense fascicle sprays so the crown reads as foliage.
@@ -410,11 +426,11 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                     trunk.path_tube([twig_origin, twig_mid, twig_tip],
                                     [0.0028, 0.0017, 0.00065],
                                     sides=3, material_indices=[1, 1])
-                    for cluster in range(needle_clusters):
+                    for cluster in range(needle_clusters + 2):
                         cluster_t = 0.18 + 0.76 * ((cluster + rng.uniform(0.12, 0.88)) /
                                                    max(1, needle_clusters))
                         cluster_origin = twig_origin.lerp(twig_tip, cluster_t)
-                        add_needle_spray(foliage, cluster_origin, twig_direction, rng, pairs=3)
+                        add_needle_spray(foliage, cluster_origin, twig_direction, rng, pairs=4)
 
             # Sparse snow accents sit on upper scaffold sections only.
             if fraction > 0.56 and rng.random() < 0.38:
@@ -491,7 +507,7 @@ def main():
             "lower_bole": {"material": "Scots Pine | Lower grey-brown plated bark", "height_fraction": [0.0, 0.58]},
             "upper_trunk_and_scaffold": {"material": "Scots Pine | Upper orange-yellow smooth bark", "height_fraction": [0.58, 1.0]},
         },
-        "geometry_note": "Scaffold limbs, secondary branches, terminal shoots and dense radial sprays of individually modelled paired 5-8 cm needles are generated as a deterministic hierarchy; this is a structural asset, not a photogrammetry scan.",
+        "geometry_note": "Scaffold limbs, secondary branches, terminal shoots and dense radial sprays of individually modelled paired 8-12 cm needles are generated as a deterministic hierarchy; intermediate fascicles also fill secondary-shoot gaps. This is a structural asset, not a photogrammetry scan.",
         "runtime_note": "Select LOD by projected screen size/distance in Talvisota; files are separate because glTF core has no universal LOD selector.",
     }
     manifest["material_map_status"] = MATERIAL_MAP_STATUS
