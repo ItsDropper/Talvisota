@@ -74,6 +74,59 @@ jobs:
           print(json.dumps(manifest["lods"], indent=2))
           PY
 
+  blender-boulder-assets:
+    name: Blender granite boulder assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install Blender and Python dependency tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends blender python3-pip
+
+      - name: Install NumPy and Pillow for Blender's Python 3.12
+        run: |
+          python3 -m pip install --disable-pip-version-check --target "$RUNNER_TEMP/blender-python" --python-version 3.12 --only-binary=:all: numpy==1.26.4 pillow
+          echo "PYTHONPATH=$RUNNER_TEMP/blender-python" >> "$GITHUB_ENV"
+
+      - name: Generate source PBR maps
+        run: |
+          cmake -S . -B build-blender -DBUILD_TESTING=OFF
+          cmake --build build-blender --target talvisota_environment_textures --parallel
+
+      - name: Generate granite boulder LODs
+        run: |
+          blender --background --python tools/blender_asset_pipeline/generate_boulder.py -- --output "$RUNNER_TEMP/generated-boulder" --texture-root assets/textures/environment --seed 1939
+
+      - name: Re-import and validate boulder GLBs
+        run: |
+          blender --background --python tools/blender_asset_pipeline/verify_boulder_outputs.py -- "$RUNNER_TEMP/generated-boulder"
+
+      - name: Render multi-angle granite boulder previews
+        run: |
+          blender --background --python tools/blender_asset_pipeline/render_boulder_previews.py -- "$RUNNER_TEMP/generated-boulder/granite_boulder.blend" "$RUNNER_TEMP/boulder-previews"
+
+      - name: Upload granite boulder review renders
+        uses: actions/upload-artifact@v4
+        with:
+          name: talvisota-granite-boulder-previews
+          path: ${{ runner.temp }}/boulder-previews/*.png
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Verify generated boulder inventory
+        run: |
+          python3 - "$RUNNER_TEMP/generated-boulder/granite_boulder.asset.json" <<'PY'
+          import json, pathlib, sys
+          manifest = json.loads(pathlib.Path(sys.argv[1]).read_text())
+          assert manifest["asset"] == "model.environment.boulder"
+          assert set(manifest["lods"]) == {"LOD0", "LOD1", "LOD2", "LOD3"}
+          assert all(item["objects"] == 1 for item in manifest["lods"].values())
+          print(json.dumps(manifest["lods"], indent=2))
+          PY
+
   windows:
     name: Windows x64 / ${{ matrix.configuration }}
     runs-on: windows-latest
