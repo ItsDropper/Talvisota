@@ -81,6 +81,7 @@ def material_image_details(objects):
                         "height": int(image.size[1]),
                         "channels": int(image.channels),
                         "source": image.source,
+                        "color_space": image.colorspace_settings.name,
                     }
     return dict(sorted(images.items()))
 
@@ -192,6 +193,43 @@ def main():
            for details in image_details.values()):
         raise SystemExit("Photogrammetry source contains an image with invalid dimensions")
 
+    for name, details in image_details.items():
+        details["packed"] = name in packed_images
+        details["resolution_class"] = (
+            "4k+" if max(details["width"], details["height"]) >= 4096 else
+            "2k+" if max(details["width"], details["height"]) >= 2048 else
+            "sub-2k"
+        )
+
+    source_mesh_details = []
+    for obj in source_objects:
+        dimensions = obj.dimensions
+        uv_layer = obj.data.uv_layers.active
+        degenerate_uv_faces = 0
+        if uv_layer:
+            for polygon in obj.data.polygons:
+                loops = list(polygon.loop_indices)
+                if len(loops) < 3:
+                    degenerate_uv_faces += 1
+                    continue
+                coords = [uv_layer.data[index].uv for index in loops]
+                area_twice = sum(
+                    coords[index].x * coords[(index + 1) % len(coords)].y -
+                    coords[(index + 1) % len(coords)].x * coords[index].y
+                    for index in range(len(coords))
+                )
+                if abs(area_twice) <= 1.0e-12:
+                    degenerate_uv_faces += 1
+        source_mesh_details.append({
+            "name": obj.name,
+            "vertices": len(obj.data.vertices),
+            "triangles": triangles(obj),
+            "materials": [material.name for material in obj.data.materials if material],
+            "uv_layers": len(obj.data.uv_layers),
+            "degenerate_uv_faces": degenerate_uv_faces,
+            "dimensions_metres": [float(dimensions.x), float(dimensions.y), float(dimensions.z)],
+        })
+
     original_triangles = sum(triangles(obj) for obj in source_objects)
     if original_triangles < 1000:
         raise SystemExit("Source scan has fewer than 1,000 triangles; expected detailed captured geometry")
@@ -207,7 +245,15 @@ def main():
         "applied_scale": scale_factor,
         "provenance": "externally supplied photogrammetry/reconstruction source; geometry and materials are not procedurally synthesized",
         "source_meshes": len(source_objects),
+        "source_mesh_details": source_mesh_details,
         "source_triangles": original_triangles,
+        "source_texture_resolution": {
+            "minimum_max_dimension": min(max(item["width"], item["height"]) for item in image_details.values()),
+            "maximum_max_dimension": max(max(item["width"], item["height"]) for item in image_details.values()),
+            "sub_2k_images": sorted(name for name, item in image_details.items()
+                                    if max(item["width"], item["height"]) < 2048),
+            "hero_target": "At least 4K source textures recommended for close-up hero use; source resolution is reported, never upscaled or fabricated.",
+        },
         "source_image_textures": image_names,
         "source_image_details": image_details,
         "packed_images": sorted(packed_images),
