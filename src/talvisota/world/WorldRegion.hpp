@@ -92,6 +92,9 @@ struct WorldRegionDiagnostic final
 
 [[nodiscard]] std::array<float, 16> BuildPlacementTransform(const WorldPlacement& placement) noexcept;
 [[nodiscard]] float SampleTerrainDisplacement(const WorldRegion& region, float x, float z) noexcept;
+[[nodiscard]] bool SampleTerrainGroundHeight(const WorldRegion& region, float x, float z,
+                                           float& height, std::array<float, 3>& normal,
+                                           std::string& error);
 [[nodiscard]] bool SampleTerrainHeight(const WorldRegion& region, float x, float z,
                                       float& height, std::array<float, 3>& normal,
                                       std::string& error);
