@@ -354,6 +354,32 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
             "Snow-drift displacement must not deform the frozen lake.");
     Require(talvisota::world::SampleTerrainDisplacement(region, 0.0F, -200.0F) > 0.01F,
             "Snow-drift displacement must remain active on the north shore.");
+
+    // The expanded terrain mesh's longest refined edge is approximately 16.45 m.
+    // Adjacent vertex displacement must remain bounded at that sampling interval;
+    // this catches high-frequency FBM octaves that alias across the final triangles.
+    constexpr std::array<float, 7> displacementProbeX{
+        -1700.0F, -1200.0F, -600.0F, 0.0F, 600.0F, 1200.0F, 1700.0F};
+    constexpr std::array<float, 7> displacementProbeZ{
+        -200.0F, 0.0F, 300.0F, 700.0F, 1100.0F, 1500.0F, 1900.0F};
+    constexpr float refinedTerrainEdge = 16.45F;
+    constexpr float maximumAdjacentDisplacementDelta = 0.35F;
+    for (const float x : displacementProbeX)
+    {
+        for (const float z : displacementProbeZ)
+        {
+            const float displacement = talvisota::world::SampleTerrainDisplacement(region, x, z);
+            const float adjacentX = talvisota::world::SampleTerrainDisplacement(
+                region, x + refinedTerrainEdge, z);
+            const float adjacentZ = talvisota::world::SampleTerrainDisplacement(
+                region, x, z + refinedTerrainEdge);
+            Require(std::abs(adjacentX - displacement) <= maximumAdjacentDisplacementDelta &&
+                    std::abs(adjacentZ - displacement) <= maximumAdjacentDisplacementDelta,
+                    "Snow displacement must be band-limited for the refined terrain mesh; "
+                    "adjacent 16.45 m samples cannot jump by more than 0.35 m.");
+        }
+    }
+
     float lakeHeight = 0.0F;
     std::array<float, 3> lakeNormal{};
     std::string lakeError;
