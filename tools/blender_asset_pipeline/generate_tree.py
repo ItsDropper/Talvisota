@@ -24,7 +24,7 @@ import bpy
 from mathutils import Vector
 
 
-PIPELINE_VERSION = 4
+PIPELINE_VERSION = 5
 MATERIAL_MAP_STATUS = {}
 TREE_HEIGHT = 18.0
 TREE_RADIUS = 6.0
@@ -452,11 +452,15 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                     twig_direction = (direction * rng.uniform(0.18, 0.48) +
                                       lateral * rng.uniform(-0.92, 0.92) +
                                       Vector((0.0, 0.0, rng.uniform(0.24, 0.92)))).normalized()
-                    twig_length = secondary_length * rng.uniform(0.42, 0.70)
+                    # Terminal pine shoots are short, fine, foliage-bearing twigs. The previous
+                    # 0.42-0.70x-secondary scaling made metre-long bare sticks;
+                    # real Scots pine needle fascicles sit densely along short shoots.
+                    twig_length = min(0.42, secondary_length * rng.uniform(0.14, 0.24))
+                    twig_length = max(0.22, twig_length)
                     twig_mid = twig_origin + twig_direction * (twig_length * 0.56) + tangent * (twig_length * 0.08)
                     twig_tip = twig_origin + twig_direction * twig_length
                     trunk.path_tube([twig_origin, twig_mid, twig_tip],
-                                    [0.0110, 0.0062, 0.0028],
+                                    [0.0048, 0.0027, 0.0011],
                                     sides=4, material_indices=[1, 1])
 
                     # Keep the woody hierarchy restrained: terminal shoots carry
@@ -464,12 +468,15 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                     # Keep sprays distributed over the shoot's actual length.
                     # The old loop sampled five points but divided by three,
                     # pushing the last sprays beyond the twig tip.
-                    cluster_count = needle_clusters + 1
+                    # Closely spaced fascicle sprays overlap along each short shoot,
+                    # producing a continuous pine-needle silhouette rather than
+                    # a few isolated star-shaped spikes.
+                    cluster_count = max(8, min(12, round(twig_length / 0.035)))
                     for cluster in range(cluster_count):
                         cluster_t = 0.16 + 0.76 * ((cluster + rng.uniform(0.12, 0.88)) /
                                                    cluster_count)
                         cluster_origin = twig_origin.lerp(twig_tip, cluster_t)
-                        add_needle_spray(foliage, cluster_origin, twig_direction, rng, pairs=5)
+                        add_needle_spray(foliage, cluster_origin, twig_direction, rng, pairs=8)
 
             # Sparse snow accents sit on upper scaffold sections only.
             if fraction > 0.56 and rng.random() < 0.38:
@@ -546,7 +553,7 @@ def main():
             "lower_bole": {"material": "Scots Pine | Lower grey-brown plated bark", "height_fraction": [0.0, 0.58]},
             "upper_trunk_and_scaffold": {"material": "Scots Pine | Upper orange-yellow smooth bark", "height_fraction": [0.58, 1.0]},
         },
-        "geometry_note": "Restrained mature Scots pine structure with fewer widely spaced primary boughs, a reduced secondary/tertiary hierarchy and no redundant fourth woody tier. Foliage is built from dense paired, tapered solid 6.5-8.5 cm needles with 1.3-1.8 mm base diameter, not flat cards. Deterministic structural asset, not a photogrammetry scan.",
+        "geometry_note": "Restrained mature Scots pine structure with fewer widely spaced primary boughs, a reduced secondary/tertiary hierarchy and no redundant fourth woody tier. Foliage is built from dense, overlapping paired 6.5-8.5 cm solid needles (1.3-1.8 mm base diameter) distributed along short 22-42 cm terminal shoots; long bare terminal sticks are deliberately avoided. Deterministic structural asset, not a photogrammetry scan.",
         "runtime_note": "Select LOD by projected screen size/distance in Talvisota; files are separate because glTF core has no universal LOD selector.",
     }
     manifest["material_map_status"] = MATERIAL_MAP_STATUS
