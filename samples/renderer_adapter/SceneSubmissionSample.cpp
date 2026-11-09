@@ -86,24 +86,6 @@ bool SetCamera(SceneSnapshot& scene, const vanta::math::Vec3& eye,
     return true;
 }
 
-bool ResolveCaptureView(const talvisota::world::WorldRegion& region,
-    const CaptureView& authored, CaptureView& resolved, std::string& error) {
-    resolved = authored;
-    float eyeGround = 0.0F;
-    float targetGround = 0.0F;
-    std::array<float,3> normal{};
-    if(!talvisota::world::SampleTerrainHeight(region,authored.eye.x,authored.eye.z,
-            eyeGround,normal,error))
-        return false;
-    if(!talvisota::world::SampleTerrainHeight(region,authored.target.x,authored.target.z,
-            targetGround,normal,error))
-        return false;
-    resolved.eye.y=std::max(authored.eye.y,eyeGround+1.7F);
-    resolved.target.y=std::max(authored.target.y,targetGround+0.25F);
-    error.clear();
-    return true;
-}
-
 bool FindPlayerSpawn(const talvisota::world::WorldRegion& region,
     const talvisota::game::PlayerConfig& config,
     talvisota::game::PlayerState& player, std::string& error) {
@@ -236,6 +218,26 @@ constexpr std::array<CaptureView, 5> Views = {{
     {L"04-karelian-forest.png", {160.0F, 20.0F, -170.0F}, {160.0F, 10.0F, -25.0F}},
     {L"05-farmstead.png", {0.0F, 24.0F, 35.0F}, {0.0F, 12.0F, 130.0F}}
 }};
+
+
+bool ResolveCaptureView(const talvisota::world::WorldRegion& region,
+    const CaptureView& authored, CaptureView& resolved, std::string& error) {
+    resolved = authored;
+    float eyeGround = 0.0F;
+    float targetGround = 0.0F;
+    std::array<float,3> normal{};
+    if(!talvisota::world::SampleTerrainHeight(region,authored.eye.x,authored.eye.z,
+            eyeGround,normal,error))
+        return false;
+    if(!talvisota::world::SampleTerrainHeight(region,authored.target.x,authored.target.z,
+            targetGround,normal,error))
+        return false;
+    resolved.eye.y=std::max(authored.eye.y,eyeGround+1.7F);
+    resolved.target.y=std::max(authored.target.y,targetGround+0.25F);
+    error.clear();
+    return true;
+}
+
 }
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
