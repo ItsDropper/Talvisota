@@ -54,7 +54,7 @@ const WeaponDefinition* FindWeaponDefinition(const std::string_view weaponId) no
 }
 
 bool RegisterCombatant(CombatSimulationState& state,
-    const entities::EntityRegistry& entities, const std::string_view entityId,
+    const entities::EntityRegistry& entityRegistry, const std::string_view entityId,
     const std::string_view weaponId, const float maximumHealth,
     const std::uint32_t reserveRounds, std::string& error)
 {
@@ -65,7 +65,7 @@ bool RegisterCombatant(CombatSimulationState& state,
         error = "Combatant registration contains an invalid ID or health value.";
         return false;
     }
-    const entities::EntityState* const entity = entities.Find(entityId);
+    const entities::EntityState* const entity = entityRegistry.Find(entityId);
     if (entity == nullptr || !entity->active ||
         entity->kind == entities::EntityKind::WorldObject ||
         entity->factionId.empty())
@@ -98,7 +98,7 @@ bool RegisterCombatant(CombatSimulationState& state,
 }
 
 bool AdvanceCombat(CombatSimulationState& state,
-    const entities::EntityRegistry& entities, const double deltaSeconds,
+    const entities::EntityRegistry& entityRegistry, const double deltaSeconds,
     const std::span<const CombatCommand> commands, std::vector<CombatResult>& output,
     std::string& error)
 {
@@ -119,15 +119,18 @@ bool AdvanceCombat(CombatSimulationState& state,
 
     for (auto& [entityId, combatant] : candidate.combatants)
     {
-        const entities::EntityState* const entity = entities.Find(entityId);
-        if (entity == nullptr || !entity->active ||
+        const entities::EntityState* const entity = entityRegistry.Find(entityId);
+        const WeaponDefinition* const registeredWeapon = FindWeaponDefinition(combatant.weaponId);
+        if (combatant.entityId != entityId || !entities::IsValidStableId(entityId) ||
+            entity == nullptr || !entity->active ||
             !std::isfinite(combatant.health) || !std::isfinite(combatant.maximumHealth) ||
             combatant.maximumHealth <= 0.0F || combatant.health < 0.0F ||
-            combatant.health > combatant.maximumHealth ||
+            combatant.health > combatant.maximumHealth || registeredWeapon == nullptr ||
+            combatant.magazineRounds > registeredWeapon->magazineCapacity ||
+            combatant.reserveRounds > 10000U ||
             !std::isfinite(combatant.nextShotAtSeconds) ||
             !std::isfinite(combatant.reloadCompletesAtSeconds) ||
-            combatant.nextShotAtSeconds < 0.0 || combatant.reloadCompletesAtSeconds < 0.0 ||
-            FindWeaponDefinition(combatant.weaponId) == nullptr)
+            combatant.nextShotAtSeconds < 0.0 || combatant.reloadCompletesAtSeconds < 0.0)
         {
             error = "Combat state contains a missing entity or invalid combatant record: " + entityId;
             return false;
@@ -136,7 +139,7 @@ bool AdvanceCombat(CombatSimulationState& state,
         if (combatant.reloadCompletesAtSeconds > 0.0 &&
             candidate.elapsedSeconds >= combatant.reloadCompletesAtSeconds)
         {
-            const WeaponDefinition* const weapon = FindWeaponDefinition(combatant.weaponId);
+            const WeaponDefinition* const weapon = registeredWeapon;
             const std::uint32_t missing = weapon->magazineCapacity - combatant.magazineRounds;
             const std::uint32_t transferred = std::min(missing, combatant.reserveRounds);
             combatant.magazineRounds += transferred;
@@ -170,7 +173,7 @@ bool AdvanceCombat(CombatSimulationState& state,
         candidate.processedCommandIds.insert(command.commandId);
 
         auto actorCombatantIt = candidate.combatants.find(command.actorEntityId);
-        const entities::EntityState* const actorEntity = entities.Find(command.actorEntityId);
+        const entities::EntityState* const actorEntity = entityRegistry.Find(command.actorEntityId);
         if (actorCombatantIt == candidate.combatants.end() || actorEntity == nullptr ||
             !actorEntity->active || actorCombatantIt->second.health <= 0.0F)
         {
@@ -190,6 +193,11 @@ bool AdvanceCombat(CombatSimulationState& state,
                 results.push_back({command.commandId, CombatOutcome::NoReserveAmmo, 0.0F, 0.0F});
             else
             {
+                if (candidate.elapsedSeconds > std::numeric_limits<double>::max() - weapon->reloadSeconds)
+                {
+                    error = "Combat reload completion time is not representable.";
+                    return false;
+                }
                 actor.reloadCompletesAtSeconds = candidate.elapsedSeconds + weapon->reloadSeconds;
                 results.push_back({command.commandId, CombatOutcome::ReloadStarted, 0.0F, 0.0F});
             }
@@ -197,7 +205,7 @@ bool AdvanceCombat(CombatSimulationState& state,
         }
 
         const auto targetCombatantIt = candidate.combatants.find(command.targetEntityId);
-        const entities::EntityState* const targetEntity = entities.Find(command.targetEntityId);
+        const entities::EntityState* const targetEntity = entityRegistry.Find(command.targetEntityId);
         if (targetCombatantIt == candidate.combatants.end() || targetEntity == nullptr ||
             !targetEntity->active || targetCombatantIt->second.health <= 0.0F)
         {
@@ -237,6 +245,11 @@ bool AdvanceCombat(CombatSimulationState& state,
         }
 
         --actor.magazineRounds;
+        if (candidate.elapsedSeconds > std::numeric_limits<double>::max() - weapon->secondsBetweenShots)
+        {
+            error = "Combat fire cooldown time is not representable.";
+            return false;
+        }
         actor.nextShotAtSeconds = candidate.elapsedSeconds + weapon->secondsBetweenShots;
         CombatantState& target = targetCombatantIt->second;
         const float damage = std::min(weapon->damage, target.health);
