@@ -26,7 +26,9 @@ def main():
     scene.render.engine = "CYCLES"
     scene.cycles.device = "CPU"
     scene.cycles.samples = 12
-    scene.cycles.use_denoising = True
+    # Ubuntu's packaged Blender build may omit OpenImageDenoiser. Disable
+    # denoising explicitly so CPU renders work in minimal headless CI images.
+    scene.cycles.use_denoising = False
     scene.render.resolution_x = 768
     scene.render.resolution_y = 768
     scene.render.resolution_percentage = 100
@@ -71,6 +73,7 @@ def main():
         "oblique": Vector((24.0, -30.0, 12.0)),
         "opposite": Vector((-26.0, -28.0, 11.0)),
         "side": Vector((30.0, 22.0, 12.0)),
+        "front": Vector((0.0, -38.0, 11.0)),
     }
     for name, position in views.items():
         camera.location = position
@@ -78,6 +81,28 @@ def main():
         scene.render.filepath = str(output_dir / ("scots_pine_" + name + ".png"))
         bpy.ops.render.render(write_still=True)
         print("TREE_PREVIEW_RENDERED", name, scene.render.filepath)
+
+    # Save a compact contact sheet as a single review screenshot as well as
+    # the individual full-resolution camera captures.
+    from PIL import Image, ImageOps, ImageDraw
+    captures = [Image.open(output_dir / ("scots_pine_" + name + ".png")).convert("RGB")
+                for name in ("oblique", "opposite", "side", "front")]
+    thumb_width = 480
+    thumbs = []
+    for name, image in zip(("OBLIQUE", "OPPOSITE", "SIDE", "FRONT"), captures):
+        height = round(image.height * thumb_width / image.width)
+        thumb = image.resize((thumb_width, height), Image.Resampling.LANCZOS)
+        panel = Image.new("RGB", (thumb_width, height + 42), (24, 27, 31))
+        panel.paste(thumb, (0, 42))
+        ImageDraw.Draw(panel).text((14, 13), name, fill=(235, 240, 245))
+        thumbs.append(panel)
+    sheet = Image.new("RGB", (thumb_width * 2, thumbs[0].height * 2), (18, 20, 24))
+    sheet.paste(thumbs[0], (0, 0))
+    sheet.paste(thumbs[1], (thumb_width, 0))
+    sheet.paste(thumbs[2], (0, thumbs[0].height))
+    sheet.paste(thumbs[3], (thumb_width, thumbs[0].height))
+    sheet.save(output_dir / "scots_pine_review_contact_sheet.png", optimize=True)
+    print("TREE_PREVIEW_CONTACT_SHEET", output_dir / "scots_pine_review_contact_sheet.png")
 
 
 if __name__ == "__main__":
