@@ -91,20 +91,20 @@ target_compile_features(talvisota_gameplay_simulation_tests PRIVATE cxx_std_23)
 talvisota_apply_compiler_options(talvisota_gameplay_simulation_tests)
 add_test(NAME Talvisota.Gameplay.Simulation COMMAND talvisota_gameplay_simulation_tests)
 
-add_executable(talvisota_combat_simulation_tests game/CombatSimulationTests.cpp)
-target_link_libraries(talvisota_combat_simulation_tests PRIVATE Talvisota::Gameplay)
+add_executable(talvisota_combat_simulation_tests combat/CombatSimulationTests.cpp)
+target_link_libraries(talvisota_combat_simulation_tests PRIVATE Talvisota::Combat Talvisota::Content)
 target_compile_definitions(talvisota_combat_simulation_tests PRIVATE
     TALVISOTA_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\"
 )
 target_compile_features(talvisota_combat_simulation_tests PRIVATE cxx_std_23)
 talvisota_apply_compiler_options(talvisota_combat_simulation_tests)
-add_test(NAME Talvisota.Gameplay.CombatSimulation COMMAND talvisota_combat_simulation_tests)
+add_test(NAME Talvisota.Combat.Simulation COMMAND talvisota_combat_simulation_tests)
 
-add_executable(talvisota_mission_runtime_tests game/MissionRuntimeTests.cpp)
-target_link_libraries(talvisota_mission_runtime_tests PRIVATE Talvisota::Gameplay)
+add_executable(talvisota_mission_runtime_tests missions/MissionRuntimeTests.cpp)
+target_link_libraries(talvisota_mission_runtime_tests PRIVATE Talvisota::Missions)
 target_compile_features(talvisota_mission_runtime_tests PRIVATE cxx_std_23)
 talvisota_apply_compiler_options(talvisota_mission_runtime_tests)
-add_test(NAME Talvisota.Gameplay.MissionRuntime COMMAND talvisota_mission_runtime_tests)
+add_test(NAME Talvisota.Missions.Runtime COMMAND talvisota_mission_runtime_tests)
 
 add_executable(talvisota_world_tests world/WorldRegionTests.cpp)
 target_link_libraries(talvisota_world_tests PRIVATE Talvisota::World)

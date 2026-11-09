@@ -1,4 +1,4 @@
-#include "talvisota/gameplay/CombatSimulation.hpp"
+#include "talvisota/combat/CombatSimulation.hpp"
 #include "talvisota/content/ContentRegistry.hpp"
 
 #include <array>
@@ -25,7 +25,7 @@ void Check(const bool condition, const std::string_view message)
 int main()
 {
     using namespace talvisota;
-    using namespace talvisota::gameplay;
+    using namespace talvisota::combat;
 
     const auto catalog = Finnish1939WeaponCatalog();
     Check(catalog.size() == 3U, "catalog exposes three Finnish 1939-era infantry weapon archetypes");

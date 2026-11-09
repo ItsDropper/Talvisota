@@ -41,7 +41,7 @@ std::array<talvisota::entities::EntityDefinition, 3> MakeEntities()
     }};
 }
 
-talvisota::game::MissionDefinition MakeMission()
+talvisota::missions::MissionDefinition MakeMission()
 {
     return {
         "mission.first-patrol",
@@ -59,6 +59,7 @@ void TestAuthoredWorldSimulation()
     using namespace talvisota;
     using namespace talvisota::content;
     using namespace talvisota::gameplay;
+    using namespace talvisota::combat;
     using namespace talvisota::world;
 
     const std::filesystem::path sourceRoot{TALVISOTA_SOURCE_DIR};
@@ -230,7 +231,7 @@ void TestAuthoredWorldSimulation()
     }};
     Check(AdvanceSimulation(state, rules, 1.0 / 60.0, reportChurch, results, error) &&
         results.size() == 1U && results[0].outcome == CommandOutcome::MissionCompleted &&
-        state.mission.status == game::MissionStatus::Completed,
+        state.mission.status == missions::MissionStatus::Completed,
         "interacting with the real church placement completes First Patrol");
 
     Check(FindActiveObjectiveTarget(state, state.playerEntityId, waypoint, error) &&
@@ -337,8 +338,8 @@ int main()
     SimulationState state;
     Check(InitializeSimulation(missionDefinition, definitions, rules, state, error),
         "simulation initializes mission and entities atomically");
-    Check(state.mission.status == game::MissionStatus::Active &&
-        state.mission.objectives.front().status == game::ObjectiveStatus::Active,
+    Check(state.mission.status == missions::MissionStatus::Active &&
+        state.mission.objectives.front().status == missions::ObjectiveStatus::Active,
         "simulation starts the first mission objective");
 
     InteractionTargetSelection selectedTarget;
@@ -376,7 +377,7 @@ int main()
     Check(results.size() == 1U &&
         results[0].outcome == CommandOutcome::ObjectiveCompleted &&
         state.mission.completedObjectives == 1U &&
-        state.mission.objectives[1].status == game::ObjectiveStatus::Active,
+        state.mission.objectives[1].status == missions::ObjectiveStatus::Active,
         "interaction activates the next authored objective");
 
     Check(FindNearestActiveObjectiveTarget(state, "entity.player",
@@ -417,7 +418,7 @@ int main()
         secondObjectiveInRange, results, error),
         "second in-range interaction advances the mission");
     Check(results[0].outcome == CommandOutcome::MissionCompleted &&
-        state.mission.status == game::MissionStatus::Completed,
+        state.mission.status == missions::MissionStatus::Completed,
         "final interaction completes the mission");
 
     // A malformed command rolls back the entire tick and preserves caller output.
@@ -431,7 +432,7 @@ int main()
         "malformed command rejects the tick");
     Check(state.tickIndex == tickBeforeInvalid &&
         state.elapsedSeconds == timeBeforeInvalid &&
-        state.mission.status == game::MissionStatus::Completed,
+        state.mission.status == missions::MissionStatus::Completed,
         "failed tick leaves simulation state unchanged");
     Check(results.size() == 1U && results[0].commandId == "preserved.result",
         "failed tick leaves result output unchanged");
@@ -442,7 +443,7 @@ int main()
 
     SimulationState unchanged;
     unchanged.tickIndex = 77U;
-    const game::MissionDefinition invalidMission;
+    const missions::MissionDefinition invalidMission;
     Check(!InitializeSimulation(invalidMission,
         std::span<const entities::EntityDefinition>{}, rules, unchanged, error),
         "invalid mission definition rejects initialization");
@@ -459,7 +460,7 @@ int main()
             {"actor.mission_target", "faction.soviet", entities::EntityKind::Infantry,
                 {10.0F, 0.0F, 0.0F}, "target.enemy-defeated"}
         }};
-        const game::MissionDefinition combatMission{
+        const missions::MissionDefinition combatMission{
             "mission.combat-objective",
             {{"objective.defeat-target", "target.enemy-defeated"}}
         };
@@ -488,7 +489,7 @@ int main()
             defeatCommand, combatResults, missionResults, error) &&
             missionResults.size() == 1U &&
             missionResults[0].outcome == CommandOutcome::MissionCompleted &&
-            combatMissionState.mission.status == game::MissionStatus::Completed,
+            combatMissionState.mission.status == missions::MissionStatus::Completed,
             "defeating the authored actor target completes its mission objective");
         Check(ApplyCombatMissionEvents(combatMissionState, combatState,
             defeatCommand, combatResults, missionResults, error) &&

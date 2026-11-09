@@ -1,4 +1,4 @@
-#include "talvisota/gameplay/CombatSimulation.hpp"
+#include "talvisota/combat/CombatSimulation.hpp"
 
 #include <algorithm>
 #include <array>
@@ -6,7 +6,7 @@
 #include <limits>
 #include <utility>
 
-namespace talvisota::gameplay
+namespace talvisota::combat
 {
 namespace
 {
@@ -415,4 +415,4 @@ bool AdvanceCombat(CombatSimulationState& state,
     error.clear();
     return true;
 }
-} // namespace talvisota::gameplay
+} // namespace talvisota::combat

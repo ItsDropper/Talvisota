@@ -42,17 +42,39 @@ target_include_directories(talvisota_world PUBLIC "$<BUILD_INTERFACE:${CMAKE_CUR
 target_link_libraries(talvisota_world PUBLIC Talvisota::Content)
 talvisota_apply_compiler_options(talvisota_world)
 
+add_library(talvisota_entities STATIC src/talvisota/entities/EntityRegistry.cpp)
+add_library(Talvisota::Entities ALIAS talvisota_entities)
+target_compile_features(talvisota_entities PUBLIC cxx_std_23)
+target_include_directories(talvisota_entities PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>")
+talvisota_apply_compiler_options(talvisota_entities)
+
+add_library(talvisota_combat STATIC src/talvisota/combat/CombatSimulation.cpp)
+add_library(Talvisota::Combat ALIAS talvisota_combat)
+target_compile_features(talvisota_combat PUBLIC cxx_std_23)
+target_include_directories(talvisota_combat PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>")
+target_link_libraries(talvisota_combat PUBLIC Talvisota::Entities)
+talvisota_apply_compiler_options(talvisota_combat)
+
+add_library(talvisota_missions STATIC src/talvisota/missions/MissionRuntime.cpp)
+add_library(Talvisota::Missions ALIAS talvisota_missions)
+target_compile_features(talvisota_missions PUBLIC cxx_std_23)
+target_include_directories(talvisota_missions PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>")
+target_link_libraries(talvisota_missions PUBLIC Talvisota::Content)
+talvisota_apply_compiler_options(talvisota_missions)
+
 add_library(talvisota_gameplay STATIC
     src/talvisota/game/PlayerController.cpp
-    src/talvisota/game/MissionRuntime.cpp
-    src/talvisota/entities/EntityRegistry.cpp
     src/talvisota/gameplay/GameplaySimulation.cpp
-    src/talvisota/gameplay/CombatSimulation.cpp
 )
 add_library(Talvisota::Gameplay ALIAS talvisota_gameplay)
 target_compile_features(talvisota_gameplay PUBLIC cxx_std_23)
 target_include_directories(talvisota_gameplay PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>")
-target_link_libraries(talvisota_gameplay PUBLIC Talvisota::World)
+target_link_libraries(talvisota_gameplay PUBLIC
+    Talvisota::World
+    Talvisota::Entities
+    Talvisota::Combat
+    Talvisota::Missions
+)
 talvisota_apply_compiler_options(talvisota_gameplay)
 
 add_library(talvisota_platform STATIC
@@ -108,7 +130,7 @@ if(TALVISOTA_ENABLE_VANTA_ENGINE)
     endif()
 
     include(FetchContent)
-    set(TALVISOTA_VANTA_ENGINE_REVISION "62104337c04d8facfcf5d6faad232dba23272c5e")
+    set(TALVISOTA_VANTA_ENGINE_REVISION "bdbe0980d01c153893f8d59def0cb60726bbe367")
     set(_talvisota_build_testing "${BUILD_TESTING}")
     set(BUILD_TESTING OFF)
     FetchContent_Declare(vantaengine

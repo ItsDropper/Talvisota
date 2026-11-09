@@ -1,8 +1,8 @@
 #pragma once
 
 #include "talvisota/entities/EntityRegistry.hpp"
-#include "talvisota/gameplay/CombatSimulation.hpp"
-#include "talvisota/game/MissionRuntime.hpp"
+#include "talvisota/combat/CombatSimulation.hpp"
+#include "talvisota/missions/MissionRuntime.hpp"
 
 #include <array>
 #include <cstddef>
@@ -66,7 +66,7 @@ struct SimulationState final
     entities::EntityRegistry entities;
     // Set by authored-mission initialization; empty for generic test/simulation fixtures.
     std::string playerEntityId;
-    game::MissionState mission;
+    missions::MissionState mission;
     std::uint64_t tickIndex = 0U;
     double elapsedSeconds = 0.0;
     // A bounded replay guard: command IDs are consumed once for this simulation.
@@ -78,7 +78,7 @@ struct SimulationState final
 
 // Creates the entity registry and starts the supplied mission atomically. Output is
 // unchanged if any entity or mission definition is invalid.
-[[nodiscard]] bool InitializeSimulation(const game::MissionDefinition& mission,
+[[nodiscard]] bool InitializeSimulation(const missions::MissionDefinition& mission,
     std::span<const entities::EntityDefinition> entityDefinitions,
     const GameplayRules& rules, SimulationState& output, std::string& error);
 
@@ -108,9 +108,9 @@ struct SimulationState final
 // Commands and results must be the corresponding outputs from one AdvanceCombat call.
 // The mission state and output remain unchanged on malformed or inconsistent input.
 [[nodiscard]] bool ApplyCombatMissionEvents(SimulationState& missionState,
-    const CombatSimulationState& combatState,
-    std::span<const CombatCommand> commands,
-    std::span<const CombatResult> combatResults,
+    const combat::CombatSimulationState& combatState,
+    std::span<const combat::CombatCommand> commands,
+    std::span<const combat::CombatResult> combatResults,
     std::vector<CommandResult>& outputResults, std::string& error);
 
 // Advances exactly one deterministic simulation tick. Commands are processed in

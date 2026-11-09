@@ -1,6 +1,6 @@
 #include "talvisota/gameplay/GameplaySimulation.hpp"
 
-#include "talvisota/game/MissionContentAdapter.hpp"
+#include "talvisota/missions/MissionContentAdapter.hpp"
 #include "talvisota/world/WorldRegion.hpp"
 
 #include <algorithm>
@@ -41,19 +41,19 @@ bool ValidateGameplayRules(const GameplayRules& rules, std::string& error)
     return true;
 }
 
-bool InitializeSimulation(const game::MissionDefinition& mission,
+bool InitializeSimulation(const missions::MissionDefinition& mission,
     const std::span<const entities::EntityDefinition> entityDefinitions,
     const GameplayRules& rules, SimulationState& output, std::string& error)
 {
     if (!ValidateGameplayRules(rules, error)) return false;
 
     SimulationState candidate;
-    if (!game::InitializeMission(mission, candidate.mission, error)) return false;
+    if (!missions::InitializeMission(mission, candidate.mission, error)) return false;
     for (const entities::EntityDefinition& definition : entityDefinitions)
     {
         if (!candidate.entities.Spawn(definition, error)) return false;
     }
-    if (!game::StartMission(candidate.mission, error)) return false;
+    if (!missions::StartMission(candidate.mission, error)) return false;
 
     output = std::move(candidate);
     error.clear();
@@ -66,7 +66,7 @@ bool InitializeSimulationFromAuthoredMission(
     const std::array<float, 3>& playerSpawn,
     const GameplayRules& rules, SimulationState& output, std::string& error)
 {
-    game::MissionDefinition missionDefinition;
+    missions::MissionDefinition missionDefinition;
     if (!game::BuildMissionDefinition(authoredMission, missionDefinition, error))
         return false;
 
@@ -184,8 +184,8 @@ bool FindActiveObjectiveTarget(const SimulationState& state,
 
     // Reuse mission-state validation without changing the live simulation.
     game::MissionState validatedMission = state.mission;
-    game::InteractionResult ignoredResult = game::InteractionResult::Ignored;
-    if (!game::ApplyMissionInteraction(validatedMission, {}, ignoredResult, error))
+    missions::InteractionResult ignoredResult = missions::InteractionResult::Ignored;
+    if (!missions::ApplyMissionInteraction(validatedMission, {}, ignoredResult, error))
         return false;
 
     ActiveObjectiveTarget candidate;
@@ -299,8 +299,8 @@ bool FindNearestActiveObjectiveTarget(const SimulationState& state,
     // Validate the complete mission state before deriving a presentation target.
     // This keeps malformed progression from silently appearing as "no target".
     game::MissionState validatedMission = state.mission;
-    game::InteractionResult ignoredResult = game::InteractionResult::Ignored;
-    if (!game::ApplyMissionInteraction(validatedMission, {}, ignoredResult, error))
+    missions::InteractionResult ignoredResult = missions::InteractionResult::Ignored;
+    if (!missions::ApplyMissionInteraction(validatedMission, {}, ignoredResult, error))
         return false;
 
     InteractionTargetSelection candidate;
@@ -383,9 +383,9 @@ bool FindNearestActiveObjectiveTarget(const SimulationState& state,
 
 
 bool ApplyCombatMissionEvents(SimulationState& missionState,
-    const CombatSimulationState& combatState,
-    const std::span<const CombatCommand> commands,
-    const std::span<const CombatResult> combatResults,
+    const combat::CombatSimulationState& combatState,
+    const std::span<const combat::CombatCommand> commands,
+    const std::span<const combat::CombatResult> combatResults,
     std::vector<CommandResult>& outputResults, std::string& error)
 {
     if (commands.size() != combatResults.size() || commands.size() > 4096U ||
@@ -396,16 +396,16 @@ bool ApplyCombatMissionEvents(SimulationState& missionState,
     }
 
     SimulationState candidate = missionState;
-    game::InteractionResult validationResult = game::InteractionResult::Ignored;
-    if (!game::ApplyMissionInteraction(candidate.mission, {}, validationResult, error))
+    missions::InteractionResult validationResult = missions::InteractionResult::Ignored;
+    if (!missions::ApplyMissionInteraction(candidate.mission, {}, validationResult, error))
         return false;
 
     std::vector<CommandResult> results;
     results.reserve(commands.size());
     for (std::size_t index = 0U; index < commands.size(); ++index)
     {
-        const CombatCommand& command = commands[index];
-        const CombatResult& combatResult = combatResults[index];
+        const combat::CombatCommand& command = commands[index];
+        const combat::CombatResult& combatResult = combatResults[index];
         if (!entities::IsValidStableId(command.commandId) ||
             !entities::IsValidStableId(command.actorEntityId) ||
             combatResult.commandId != command.commandId)
@@ -415,7 +415,7 @@ bool ApplyCombatMissionEvents(SimulationState& missionState,
         }
 
         if (candidate.processedCommandIds.contains(command.commandId) ||
-            combatResult.outcome == CombatOutcome::Duplicate)
+            combatResult.outcome == combat::CombatOutcome::Duplicate)
         {
             results.push_back({command.commandId, CommandOutcome::Duplicate});
             continue;
@@ -427,7 +427,7 @@ bool ApplyCombatMissionEvents(SimulationState& missionState,
         }
         candidate.processedCommandIds.insert(command.commandId);
 
-        if (combatResult.outcome != CombatOutcome::TargetDefeated)
+        if (combatResult.outcome != combat::CombatOutcome::TargetDefeated)
         {
             results.push_back({command.commandId, CommandOutcome::Ignored});
             continue;
@@ -464,20 +464,20 @@ bool ApplyCombatMissionEvents(SimulationState& missionState,
             return false;
         }
 
-        game::InteractionResult missionResult = game::InteractionResult::Ignored;
-        if (!game::ApplyMissionInteraction(candidate.mission,
+        missions::InteractionResult missionResult = missions::InteractionResult::Ignored;
+        if (!missions::ApplyMissionInteraction(candidate.mission,
                 target->interactionTargetId, missionResult, error))
             return false;
 
         switch (missionResult)
         {
-        case game::InteractionResult::Ignored:
+        case missions::InteractionResult::Ignored:
             results.push_back({command.commandId, CommandOutcome::Ignored});
             break;
-        case game::InteractionResult::ObjectiveCompleted:
+        case missions::InteractionResult::ObjectiveCompleted:
             results.push_back({command.commandId, CommandOutcome::ObjectiveCompleted});
             break;
-        case game::InteractionResult::MissionCompleted:
+        case missions::InteractionResult::MissionCompleted:
             results.push_back({command.commandId, CommandOutcome::MissionCompleted});
             break;
         }
@@ -517,8 +517,8 @@ bool AdvanceSimulation(SimulationState& state, const GameplayRules& rules,
     results.reserve(commands.size());
 
     // Validate the mission state even on a tick with no interaction commands.
-    game::InteractionResult missionResult = game::InteractionResult::Ignored;
-    if (!game::ApplyMissionInteraction(candidate.mission, {}, missionResult, error))
+    missions::InteractionResult missionResult = missions::InteractionResult::Ignored;
+    if (!missions::ApplyMissionInteraction(candidate.mission, {}, missionResult, error))
         return false;
 
     for (const InteractionCommand& command : commands)
@@ -559,19 +559,19 @@ bool AdvanceSimulation(SimulationState& state, const GameplayRules& rules,
             continue;
         }
 
-        if (!game::ApplyMissionInteraction(candidate.mission, target->interactionTargetId,
+        if (!missions::ApplyMissionInteraction(candidate.mission, target->interactionTargetId,
                 missionResult, error))
             return false;
 
         switch (missionResult)
         {
-        case game::InteractionResult::Ignored:
+        case missions::InteractionResult::Ignored:
             results.push_back({command.commandId, CommandOutcome::Ignored});
             break;
-        case game::InteractionResult::ObjectiveCompleted:
+        case missions::InteractionResult::ObjectiveCompleted:
             results.push_back({command.commandId, CommandOutcome::ObjectiveCompleted});
             break;
-        case game::InteractionResult::MissionCompleted:
+        case missions::InteractionResult::MissionCompleted:
             results.push_back({command.commandId, CommandOutcome::MissionCompleted});
             break;
         }

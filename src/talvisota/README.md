@@ -15,4 +15,6 @@ Dependencies point toward core contracts. Domain rules must not depend on graphi
 - content/: manifest validation and authored-data loading.
 - platform/: OS-facing services.
 
+Entities, combat, and missions are separate build targets. Gameplay composes those domain modules; it does not own their implementations. Compatibility headers remain in the former include locations while downstream consumers migrate.
+
 Only add code when a module has a concrete contract and tests.

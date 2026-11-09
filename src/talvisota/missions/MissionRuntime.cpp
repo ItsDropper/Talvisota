@@ -1,10 +1,10 @@
-#include "talvisota/game/MissionRuntime.hpp"
+#include "talvisota/missions/MissionRuntime.hpp"
 
 #include <algorithm>
 #include <unordered_set>
 #include <utility>
 
-namespace talvisota::game
+namespace talvisota::missions
 {
 namespace
 {
@@ -215,4 +215,4 @@ bool RestartMission(MissionState& state, std::string& error)
     error.clear();
     return true;
 }
-} // namespace talvisota::game
+} // namespace talvisota::missions

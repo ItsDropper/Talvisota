@@ -1,7 +1,7 @@
 #include "talvisota/content/AuthoredDefinition.hpp"
 #include "talvisota/content/ContentRegistry.hpp"
-#include "talvisota/game/MissionContentAdapter.hpp"
-#include "talvisota/game/MissionRuntime.hpp"
+#include "talvisota/missions/MissionContentAdapter.hpp"
+#include "talvisota/missions/MissionRuntime.hpp"
 
 #include <chrono>
 #include <cstdlib>
@@ -24,7 +24,7 @@ void Check(const bool condition, const std::string_view message)
     }
 }
 
-talvisota::game::MissionDefinition MakeMission()
+talvisota::missions::MissionDefinition MakeMission()
 {
     return {
         "mission.first-patrol",
@@ -74,7 +74,7 @@ void TestManifestParserToMissionAdapter()
 {
     std::string error;
     using namespace talvisota::content;
-    using namespace talvisota::game;
+    using namespace talvisota::missions;
 
     TemporaryContent content;
     content.Write("content/worlds/sakkola.tworld", "talvisota-world\t1\nid = world.sakkola\n");
@@ -165,7 +165,7 @@ void TestManifestParserToMissionAdapter()
 int main()
 {
     TestManifestParserToMissionAdapter();
-    using namespace talvisota::game;
+    using namespace talvisota::missions;
     std::string error;
     MissionState mission;
 
