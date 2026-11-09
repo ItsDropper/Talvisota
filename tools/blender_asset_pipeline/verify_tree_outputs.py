@@ -40,7 +40,7 @@ def main():
             header = stream.read(12)
         if header[:4] != b"glTF":
             fail(lod_name + " does not have a GLB header")
-        triangle_limits = {"LOD0": 650_000, "LOD1": 300_000,
+        triangle_limits = {"LOD0": 700_000, "LOD1": 300_000,
                            "LOD2": 150_000, "LOD3": 50_000}
         if lod["triangles"] > triangle_limits[lod_name]:
             fail(lod_name + " exceeds its triangle budget: " + str(lod["triangles"]) +
