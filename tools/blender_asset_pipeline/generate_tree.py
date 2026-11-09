@@ -275,6 +275,8 @@ def export_lod(objects, filepath):
         export_apply=True, export_texcoords=True, export_normals=True,
         export_materials="EXPORT", export_image_format="AUTO",
     )
+    if not filepath.is_file() or filepath.stat().st_size < 128:
+        raise RuntimeError("glTF exporter did not produce a valid GLB: " + str(filepath))
     bpy.ops.object.select_all(action="DESELECT")
 
 
