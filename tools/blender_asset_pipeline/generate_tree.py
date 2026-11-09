@@ -24,7 +24,7 @@ import bpy
 from mathutils import Vector
 
 
-PIPELINE_VERSION = 11
+PIPELINE_VERSION = 12
 MATERIAL_MAP_STATUS = {}
 TREE_HEIGHT = 18.0
 TREE_RADIUS = 6.0
@@ -33,7 +33,7 @@ TREE_RADIUS = 6.0
 LOD_PRESETS = {
     "LOD0": {"whorls": 7, "primary": 3, "secondary": 4, "tertiary": 3, "needle_clusters": 3, "sides": 5},
     "LOD1": {"whorls": 6, "primary": 3, "secondary": 3, "tertiary": 3, "needle_clusters": 2, "sides": 5},
-    "LOD2": {"whorls": 5, "primary": 3, "secondary": 3, "tertiary": 2, "needle_clusters": 2, "sides": 4},
+    "LOD2": {"whorls": 5, "primary": 3, "secondary": 3, "tertiary": 2, "needle_clusters": 1, "sides": 4},
     "LOD3": {"whorls": 3, "primary": 2, "secondary": 2, "tertiary": 2, "needle_clusters": 1, "sides": 4},
 }
 
@@ -287,16 +287,15 @@ def add_path(builder, points, radii, sides, material_indices=None):
 
 
 def add_needle_pair(builder, origin, direction, rng):
-    """Create one visible, individually modelled Scots-pine needle fascicle."""
+    """Create one paired Scots-pine fascicle using efficient tapered blade geometry."""
     axis = Vector(direction).normalized()
     reference = Vector((0.0, 0.0, 1.0))
     if abs(axis.dot(reference)) > 0.94:
         reference = Vector((0.0, 1.0, 0.0))
     side = axis.cross(reference).normalized()
-    # Build paired, visibly substantial needles as gently curved triangular
-    # tubes. Their enlarged game scale preserves a readable silhouette at
-    # gameplay distance; the paired fascicle and restrained splay retain pine
-    # character instead of producing a radial starburst.
+    # A needle is a gently curved, tapered two-sided blade. This preserves a
+    # readable 10-14 mm game-scale diameter without the eight triangles per
+    # needle required by a three-ring triangular tube.
     length = rng.uniform(0.20, 0.24)
     for sign in (-1.0, 1.0):
         spread = side * sign * rng.uniform(0.12, 0.24)
@@ -304,13 +303,8 @@ def add_needle_pair(builder, origin, direction, rng):
         needle_axis = (axis * 0.88 + spread + lift).normalized()
         start = Vector(origin)
         tip = start + needle_axis * length
-        bend = side * sign * rng.uniform(0.004, 0.010)
-        middle = start.lerp(tip, 0.52) + bend + Vector((0.0, 0.0, rng.uniform(0.002, 0.008)))
-        base_radius = rng.uniform(0.0050, 0.0062)
-        builder.path_tube(
-            [start, middle, tip],
-            [base_radius, base_radius * 0.72, 0.0018],
-            sides=3, material_indices=[0, 0])
+        base_half_width = rng.uniform(0.0050, 0.0068)
+        builder.needle_ribbon(start, tip, base_half_width)
 
 
 def add_needle_spray(builder, origin, direction, rng, pairs=3):
@@ -603,7 +597,7 @@ def main():
             "lower_bole": {"material": "Scots Pine | Lower grey-brown plated bark", "height_fraction": [0.0, 0.58]},
             "upper_trunk_and_scaffold": {"material": "Scots Pine | Upper orange-yellow smooth bark", "height_fraction": [0.58, 1.0]},
         },
-        "geometry_note": "Mature Scots pine with substantial primary and secondary boughs. Foliage is carried by dense, overlapping needle sprays distributed along many lateral branchlets throughout each secondary limb, with sparse terminal leaders. Paired solid needles are 14-18 cm long with deliberately exaggerated 6.0-7.6 mm base diameter for close-range game readability. Deterministic structural asset, not a photogrammetry scan.",
+        "geometry_note": "Mature Scots pine with substantial primary and secondary boughs. Foliage is carried by dense, overlapping needle sprays distributed along many lateral branchlets throughout each secondary limb, with sparse terminal leaders. Paired, curved tapered blade needles are 20-24 cm long and 10-13.6 mm wide at their bases as a deliberate game-readability exaggeration. LOD2 uses a reduced fascicle count to remain within its triangle budget. Deterministic structural asset, not a photogrammetry scan.",
         "runtime_note": "Select LOD by projected screen size/distance in Talvisota; files are separate because glTF core has no universal LOD selector.",
     }
     manifest["material_map_status"] = MATERIAL_MAP_STATUS
