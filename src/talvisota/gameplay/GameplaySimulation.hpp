@@ -1,8 +1,8 @@
 #pragma once
 
 #include "talvisota/entities/EntityRegistry.hpp"
-#include "talvisota/combat/CombatSimulation.hpp"
-#include "talvisota/missions/MissionRuntime.hpp"
+#include "talvisota/gameplay/CombatSimulation.hpp"
+#include "talvisota/game/MissionRuntime.hpp"
 
 #include <array>
 #include <cstddef>
