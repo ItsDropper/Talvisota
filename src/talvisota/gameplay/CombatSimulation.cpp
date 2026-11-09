@@ -217,7 +217,7 @@ bool AdvanceCombat(CombatSimulationState& state,
                 actor.nextRecoveryAtSeconds =
                     candidate.elapsedSeconds + RecoveryCooldownSeconds;
                 results.push_back({command.commandId, CombatOutcome::Recovered,
-                    recovered, actor.health});
+                    0.0F, actor.health, recovered});
             }
             continue;
         }
