@@ -289,13 +289,13 @@ constexpr std::array<CaptureView, 5> Views = {{
     {L"01-sakkola-overview.png", {8.0F, 50.0F, -205.0F}, {0.0F, 8.0F, 100.0F}},
     // Center the south-side approach on the church. The former x=-48 camera was
     // practically against farmhouse.west and looked through its foreground wall.
-    {L"02-church-village.png", {0.0F, 18.0F, 112.0F}, {0.0F, 9.5F, 178.0F}},
+    {L"02-church-village.png", {100.0F, 16.0F, 100.0F}, {0.0F, 12.0F, 178.0F}},
     // Look across a broad stretch of the north shore, not directly at sauna.shore.
-    {L"03-suvanto-shoreline.png", {0.0F, 6.0F, -130.0F}, {0.0F, 1.82F, -256.0F}},
+    {L"03-suvanto-shoreline.png", {150.0F, 6.0F, -130.0F}, {-150.0F, 1.82F, -256.0F}},
     {L"04-karelian-forest.png", {82.0F, 11.0F, -205.0F}, {175.0F, 4.0F, -62.0F}},
     // Keep the +Z entrance in view, but lower the camera to show the facade below
     // the roofline instead of looking down onto the roof from 20 m.
-    {L"05-farmstead.png", {-70.0F, 12.0F, 180.0F}, {-45.0F, 9.0F, 123.0F}}
+    {L"05-farmstead.png", {-108.0F, 12.0F, 76.0F}, {-57.0F, 9.0F, 129.0F}}
 }};
 }
 
