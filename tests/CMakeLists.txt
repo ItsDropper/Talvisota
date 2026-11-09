@@ -94,7 +94,7 @@ add_test(NAME Talvisota.Gameplay.Simulation COMMAND talvisota_gameplay_simulatio
 add_executable(talvisota_combat_simulation_tests game/CombatSimulationTests.cpp)
 target_link_libraries(talvisota_combat_simulation_tests PRIVATE Talvisota::Gameplay)
 target_compile_definitions(talvisota_combat_simulation_tests PRIVATE
-    TALVISOTA_SOURCE_DIR=\\"${PROJECT_SOURCE_DIR}\\"
+    TALVISOTA_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\"
 )
 target_compile_features(talvisota_combat_simulation_tests PRIVATE cxx_std_23)
 talvisota_apply_compiler_options(talvisota_combat_simulation_tests)
