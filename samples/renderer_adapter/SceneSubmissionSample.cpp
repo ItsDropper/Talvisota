@@ -417,8 +417,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 error = "Presented framebuffer has invalid BGRA dimensions or byte count.";
                 break;
             }
-            const std::size_t skyPixel = (static_cast<std::size_t>(framebufferHeight / 8U) *
-                framebufferWidth + framebufferWidth / 4U) * 4U;
+            // Sample near the top-centre, where all five fixed cameras retain clear sky.
+            // The previous quarter-width / one-eighth-height point landed on the
+            // church roof in the village view and falsely reported a channel-order bug.
+            const std::size_t skyPixel = (static_cast<std::size_t>(framebufferHeight / 32U) *
+                framebufferWidth + framebufferWidth / 2U) * 4U;
             if (!WriteBgraPng(framebuffer, framebufferWidth, framebufferHeight,
                     output / view.file, error))
                 break;
