@@ -285,11 +285,20 @@ bool WriteBgraPng(const std::vector<std::uint8_t>& pixels, const UINT width,
 
 struct CaptureView { const wchar_t* file; vanta::math::Vec3 eye; vanta::math::Vec3 target; };
 constexpr std::array<CaptureView, 5> Views = {{
-    {L"01-sakkola-overview.png", {8.0F, 105.0F, -420.0F}, {0.0F, 8.0F, 110.0F}},
-    {L"02-church-village.png", {-48.0F, 17.0F, 112.0F}, {0.0F, 9.5F, 178.0F}},
-    {L"03-suvanto-shoreline.png", {-85.0F, 11.0F, -205.0F}, {-85.0F, 2.0F, -720.0F}},
+    // Keep the overview inside the 280 m vegetation visibility envelope. The previous
+    // 105 m-high camera was 400–600 m from every authored forest stand, so almost the
+    // entire forest was culled and the capture showed an empty snow plane.
+    {L"01-sakkola-overview.png", {8.0F, 50.0F, -205.0F}, {0.0F, 8.0F, 100.0F}},
+    // Approach the church from its north/front side. The previous camera stood 15 m
+    // from farmhouse.west and looked through its roof and wall toward the church.
+    {L"02-church-village.png", {0.0F, 25.0F, 245.0F}, {0.0F, 10.0F, 178.0F}},
+    // Frame the actual shore/ice boundary. The previous shallow sightline aimed 515 m
+    // across the lake, passing roughly 9 m above the near edge at z=-256.
+    {L"03-suvanto-shoreline.png", {-85.0F, 6.0F, -130.0F}, {-85.0F, 1.82F, -256.0F}},
     {L"04-karelian-forest.png", {82.0F, 11.0F, -205.0F}, {175.0F, 4.0F, -62.0F}},
-    {L"05-farmstead.png", {-108.0F, 17.0F, 76.0F}, {-57.0F, 8.0F, 129.0F}}
+    // View the farmhouse from its +Z entrance side so the door, well and woodpile
+    // are not hidden behind the rear wall.
+    {L"05-farmstead.png", {-70.0F, 20.0F, 180.0F}, {-45.0F, 9.0F, 123.0F}}
 }};
 }
 
