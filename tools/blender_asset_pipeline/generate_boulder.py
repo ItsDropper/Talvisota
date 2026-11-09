@@ -120,7 +120,7 @@ def build_lod(name, preset, rock, snow, seed):
         # A small, irregular snow cap: exposed granite must dominate the visible
         # surface, and the rock keeps its fractured planar facets.
         snowline = 1.50 + edge_noise * 1.15
-        polygon.material_index = 1 if normal.z > 0.90 and center.z > snowline else 0
+        polygon.material_index = 1 if normal.z > 0.65 and center.z > snowline else 0
         polygon.use_smooth = polygon.material_index == 1
 
     # Coarse icosphere LODs can have no face whose normal/height clears the

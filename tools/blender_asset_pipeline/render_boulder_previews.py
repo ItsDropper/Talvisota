@@ -29,16 +29,18 @@ def main():
     scene.render.resolution_y = 768
     scene.render.image_settings.file_format = "PNG"
     ground_mat = bpy.data.materials.new("Boulder preview ground")
-    ground_mat.diffuse_color = (0.22, 0.24, 0.25, 1.0)
+    ground_mat.diffuse_color = (0.13, 0.15, 0.17, 1.0)
+    ground_mat.use_nodes = True
+    ground_mat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.13, 0.15, 0.17, 1.0)
     bpy.ops.mesh.primitive_plane_add(size=12.0, location=(0.0, 0.0, -0.015))
     bpy.context.object.data.materials.append(ground_mat)
     scene.world.use_nodes = True
-    scene.world.node_tree.nodes["Background"].inputs["Color"].default_value = (0.12, 0.14, 0.17, 1.0)
-    scene.world.node_tree.nodes["Background"].inputs["Strength"].default_value = 0.45
+    scene.world.node_tree.nodes["Background"].inputs["Color"].default_value = (0.10, 0.12, 0.15, 1.0)
+    scene.world.node_tree.nodes["Background"].inputs["Strength"].default_value = 0.25
     for name, location, energy, size in (
-        ("Key", (4.0, -5.0, 6.0), 1800.0, 4.0),
-        ("Fill", (-4.0, -2.0, 3.5), 900.0, 3.0),
-        ("Rim", (1.0, 4.0, 5.0), 1400.0, 3.0),
+        ("Key", (4.0, -5.0, 6.0), 520.0, 4.0),
+        ("Fill", (-4.0, -2.0, 3.5), 260.0, 3.0),
+        ("Rim", (1.0, 4.0, 5.0), 360.0, 3.0),
     ):
         data = bpy.data.lights.new(name, "AREA")
         data.energy = energy
