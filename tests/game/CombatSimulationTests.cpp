@@ -101,6 +101,14 @@ int main()
         state.combatants.at("actor.ally").health == 100.0F,
         "same-faction damage is blocked");
 
+    const std::array<CombatCommand, 1> fullHealthRecovery{{
+        {"combat.recover.full", "actor.ally", {}, CombatAction::Recover}
+    }};
+    Check(AdvanceCombat(state, registry, 0.05, fullHealthRecovery, results, error) &&
+        results[0].outcome == CombatOutcome::AlreadyAtFullHealth &&
+        state.combatants.at("actor.ally").health == 100.0F,
+        "recovery does not waste its cooldown at full health");
+
     const std::array<CombatCommand, 1> distantShot{{
         {"combat.shot.004", "actor.finn", "actor.distant", CombatAction::Fire}
     }};
