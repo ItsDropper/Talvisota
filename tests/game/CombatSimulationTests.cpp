@@ -108,6 +108,15 @@ int main()
         results[0].outcome == CombatOutcome::AlreadyAtFullHealth &&
         state.combatants.at("actor.ally").health == 100.0F,
         "recovery does not waste its cooldown at full health");
+    state.combatants.at("actor.ally").health = 90.0F;
+    const std::array<CombatCommand, 1> partialRecovery{{
+        {"combat.recover.partial", "actor.ally", {}, CombatAction::Recover}
+    }};
+    Check(AdvanceCombat(state, registry, 0.05, partialRecovery, results, error) &&
+        results[0].outcome == CombatOutcome::Recovered &&
+        results[0].healthRestored == 10.0F &&
+        results[0].targetHealthRemaining == 100.0F,
+        "recovery clamps restored health to the combatant maximum");
 
     const std::array<CombatCommand, 1> distantShot{{
         {"combat.shot.004", "actor.finn", "actor.distant", CombatAction::Fire}
