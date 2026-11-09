@@ -31,10 +31,10 @@ TREE_RADIUS = 6.0
 # Mature, open-grown Scots pine proportions. The lower bole remains visible;
 # crown width peaks below mid-height and contracts into an irregular upper crown.
 LOD_PRESETS = {
-    "LOD0": {"whorls": 11, "primary": 5, "secondary": 6, "tertiary": 6, "needle_clusters": 3, "sides": 6},
-    "LOD1": {"whorls": 9, "primary": 4, "secondary": 5, "tertiary": 5, "needle_clusters": 2, "sides": 5},
-    "LOD2": {"whorls": 6, "primary": 4, "secondary": 4, "tertiary": 4, "needle_clusters": 2, "sides": 4},
-    "LOD3": {"whorls": 4, "primary": 3, "secondary": 3, "tertiary": 3, "needle_clusters": 1, "sides": 4},
+    "LOD0": {"whorls": 11, "primary": 5, "secondary": 8, "tertiary": 8, "needle_clusters": 3, "sides": 6},
+    "LOD1": {"whorls": 9, "primary": 4, "secondary": 6, "tertiary": 6, "needle_clusters": 2, "sides": 5},
+    "LOD2": {"whorls": 6, "primary": 4, "secondary": 5, "tertiary": 5, "needle_clusters": 2, "sides": 4},
+    "LOD3": {"whorls": 4, "primary": 3, "secondary": 4, "tertiary": 4, "needle_clusters": 1, "sides": 4},
 }
 
 
@@ -378,16 +378,16 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                 direction = (radial * rng.uniform(0.16, 0.52) +
                              lateral * sign * rng.uniform(0.42, 0.96) +
                              Vector((0.0, 0.0, rng.uniform(0.12, 0.62)))).normalized()
-                secondary_length = length * rng.uniform(0.24, 0.52) * (1.0 - 0.18 * t)
+                secondary_length = length * rng.uniform(0.30, 0.60) * (1.0 - 0.14 * t)
                 secondary_points = [
                     origin,
                     origin + direction * (secondary_length * 0.48) + tangent * (secondary_length * 0.10),
                     origin + direction * secondary_length +
                     Vector((0.0, 0.0, secondary_length * rng.uniform(-0.02, 0.18))),
                 ]
-                secondary_radius = base_radius * rng.uniform(0.22, 0.36)
+                secondary_radius = base_radius * rng.uniform(0.24, 0.39)
                 add_path(trunk, secondary_points,
-                         [secondary_radius, secondary_radius * 0.52, 0.0025],
+                         [secondary_radius, secondary_radius * 0.56, 0.0029],
                          max(4, sides - 1), material_indices=[1, 1])
 
                 # Scots pine needles also emerge from short shoots along the
@@ -420,12 +420,37 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                     twig_direction = (direction * rng.uniform(0.18, 0.48) +
                                       lateral * rng.uniform(-0.92, 0.92) +
                                       Vector((0.0, 0.0, rng.uniform(0.24, 0.92)))).normalized()
-                    twig_length = secondary_length * rng.uniform(0.26, 0.48)
+                    twig_length = secondary_length * rng.uniform(0.34, 0.62)
                     twig_mid = twig_origin + twig_direction * (twig_length * 0.56) + tangent * (twig_length * 0.08)
                     twig_tip = twig_origin + twig_direction * twig_length
                     trunk.path_tube([twig_origin, twig_mid, twig_tip],
-                                    [0.0031, 0.0019, 0.00075],
+                                    [0.0040, 0.0024, 0.0010],
                                     sides=3, material_indices=[1, 1])
+
+                    # Each terminal shoot forks into short, visible branchlets.
+                    # This fourth woody tier fills the gaps between the long
+                    # scaffold limbs without turning the crown into a solid blob.
+                    twig_lateral = Vector((-twig_direction.y, twig_direction.x, 0.0))
+                    for branchlet_index, branchlet_t in enumerate((0.30, 0.68)):
+                        branchlet_origin = twig_origin.lerp(twig_tip, branchlet_t)
+                        branchlet_sign = -1.0 if branchlet_index == 0 else 1.0
+                        branchlet_direction = (
+                            twig_direction * rng.uniform(0.28, 0.48) +
+                            twig_lateral * branchlet_sign * rng.uniform(0.52, 0.88) +
+                            Vector((0.0, 0.0, rng.uniform(0.18, 0.48)))
+                        ).normalized()
+                        branchlet_length = twig_length * rng.uniform(0.34, 0.52)
+                        branchlet_mid = branchlet_origin + branchlet_direction * (branchlet_length * 0.55)
+                        branchlet_tip = branchlet_origin + branchlet_direction * branchlet_length
+                        trunk.path_tube(
+                            [branchlet_origin, branchlet_mid, branchlet_tip],
+                            [0.0022, 0.00135, 0.00065],
+                            sides=3, material_indices=[1, 1])
+                        add_needle_spray(
+                            foliage, branchlet_mid, branchlet_direction, rng, pairs=3)
+                        add_needle_spray(
+                            foliage, branchlet_tip, branchlet_direction, rng, pairs=3)
+
                     for cluster in range(needle_clusters + 2):
                         cluster_t = 0.18 + 0.76 * ((cluster + rng.uniform(0.12, 0.88)) /
                                                    max(1, needle_clusters))
@@ -507,7 +532,7 @@ def main():
             "lower_bole": {"material": "Scots Pine | Lower grey-brown plated bark", "height_fraction": [0.0, 0.58]},
             "upper_trunk_and_scaffold": {"material": "Scots Pine | Upper orange-yellow smooth bark", "height_fraction": [0.58, 1.0]},
         },
-        "geometry_note": "Scaffold limbs, slightly fuller secondary branches, longer terminal shoots and dense radial sprays of individually modelled paired 8-12 cm needles are generated as a deterministic hierarchy; intermediate fascicles also fill secondary-shoot gaps. This is a structural asset, not a photogrammetry scan.",
+        "geometry_note": "Scaffold limbs, fuller and longer secondary branches, terminal shoots, forked fourth-tier branchlets and paired 8-12 cm needle sprays are generated as a deterministic hierarchy. This is a structural asset, not a photogrammetry scan.",
         "runtime_note": "Select LOD by projected screen size/distance in Talvisota; files are separate because glTF core has no universal LOD selector.",
     }
     manifest["material_map_status"] = MATERIAL_MAP_STATUS
