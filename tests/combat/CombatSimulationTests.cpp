@@ -1,4 +1,5 @@
 #include "talvisota/combat/CombatSimulation.hpp"
+#include "talvisota/gameplay/CombatSimulation.hpp"
 #include "talvisota/content/ContentRegistry.hpp"
 
 #include <array>
@@ -7,7 +8,13 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <vector>
+
+static_assert(std::is_same_v<talvisota::gameplay::CombatSimulationState,
+    talvisota::combat::CombatSimulationState>);
+static_assert(std::is_same_v<decltype(&talvisota::gameplay::AdvanceCombat),
+    decltype(&talvisota::combat::AdvanceCombat)>);
 
 namespace
 {

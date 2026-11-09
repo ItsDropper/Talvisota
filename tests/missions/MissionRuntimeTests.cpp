@@ -2,6 +2,8 @@
 #include "talvisota/content/ContentRegistry.hpp"
 #include "talvisota/missions/MissionContentAdapter.hpp"
 #include "talvisota/missions/MissionRuntime.hpp"
+#include "talvisota/game/MissionRuntime.hpp"
+#include "talvisota/game/MissionContentAdapter.hpp"
 
 #include <chrono>
 #include <cstdlib>
@@ -10,7 +12,13 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <stdexcept>
+
+static_assert(std::is_same_v<talvisota::game::MissionState,
+    talvisota::missions::MissionState>);
+static_assert(std::is_same_v<decltype(&talvisota::game::BuildMissionDefinition),
+    decltype(&talvisota::missions::BuildMissionDefinition)>);
 
 namespace
 {
