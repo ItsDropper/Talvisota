@@ -364,11 +364,15 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
         -200.0F, 0.0F, 300.0F, 700.0F, 1100.0F, 1500.0F, 1900.0F};
     constexpr float refinedTerrainEdge = 16.45F;
     constexpr float maximumAdjacentDisplacementDelta = 0.35F;
+    float minimumLandRelief = std::numeric_limits<float>::max();
+    float maximumLandRelief = std::numeric_limits<float>::lowest();
     for (const float x : displacementProbeX)
     {
         for (const float z : displacementProbeZ)
         {
             const float displacement = talvisota::world::SampleTerrainDisplacement(region, x, z);
+            minimumLandRelief = std::min(minimumLandRelief, displacement);
+            maximumLandRelief = std::max(maximumLandRelief, displacement);
             const float adjacentX = talvisota::world::SampleTerrainDisplacement(
                 region, x + refinedTerrainEdge, z);
             const float adjacentZ = talvisota::world::SampleTerrainDisplacement(
@@ -379,6 +383,8 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
                     "adjacent 16.45 m samples cannot jump by more than 0.35 m.");
         }
     }
+    Require(maximumLandRelief - minimumLandRelief > 8.0F,
+            "Sakkola snow terrain must have visible multi-kilometre moraine relief, not a near-flat datum.");
 
     float lakeHeight = 0.0F;
     std::array<float, 3> lakeNormal{};
