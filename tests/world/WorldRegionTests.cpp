@@ -570,6 +570,14 @@ void TestLoadsComposedRegionAndIndependentSpatialData()
     Require(std::abs(terrainHeight - 0.5F) < 1.0e-6F &&
             terrainNormal[0] < 0.0F && terrainNormal[1] > 0.99F,
             "Bilinear interpolation and gradient normals must follow the sampled terrain slope.");
+    float groundedY = 0.0F;
+    std::string groundingError;
+    Require(talvisota::world::ResolveGroundedPlacementHeight(region, 0.0F, 0.0F,
+            -3.0F, groundedY, groundingError) && std::abs(groundedY - 1.02F) < 1.0e-5F,
+            "Grounded placements below the sampled terrain must be lifted just above the surface.");
+    Require(talvisota::world::ResolveGroundedPlacementHeight(region, 0.0F, 0.0F,
+            3.0F, groundedY, groundingError) && std::abs(groundedY - 3.02F) < 1.0e-5F,
+            "Grounded placements already above terrain must preserve their authored elevation.");
     const auto transform = talvisota::world::BuildPlacementTransform(region.placements[1]);
     Require(transform[12] == 4.0F && transform[13] == 0.0F && transform[14] == 3.0F,
             "Placement transforms should preserve world-space translation.");
