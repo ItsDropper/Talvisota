@@ -37,6 +37,12 @@ struct WeaponDefinition final
 [[nodiscard]] std::span<const WeaponDefinition> Finnish1939WeaponCatalog() noexcept;
 [[nodiscard]] const WeaponDefinition* FindWeaponDefinition(std::string_view weaponId) noexcept;
 
+struct WeaponAmmoState final
+{
+    std::uint32_t magazineRounds = 0U;
+    std::uint32_t reserveRounds = 0U;
+};
+
 struct CombatantState final
 {
     std::string entityId;
@@ -48,6 +54,9 @@ struct CombatantState final
     double nextShotAtSeconds = 0.0;
     double reloadCompletesAtSeconds = 0.0;
     double nextRecoveryAtSeconds = 0.0;
+    // Ammo for weapons carried but not currently equipped. The active weapon's
+    // ammo remains in magazineRounds/reserveRounds for cheap HUD access.
+    std::map<std::string, WeaponAmmoState, std::less<>> storedWeapons;
 };
 
 struct CombatSimulationState final
@@ -104,6 +113,18 @@ struct CombatResult final
     const entities::EntityRegistry& entityRegistry, std::string_view entityId,
     std::string_view weaponId, float maximumHealth, std::uint32_t reserveRounds,
     std::string& error);
+
+// Adds a weapon to an existing combatant. If equipImmediately is true, the current
+// weapon and its ammunition are stowed and the new weapon becomes active.
+[[nodiscard]] bool AddCombatantWeapon(CombatSimulationState& state,
+    const entities::EntityRegistry& entityRegistry, std::string_view entityId,
+    std::string_view weaponId, std::uint32_t reserveRounds,
+    bool equipImmediately, std::string& error);
+
+// Switches to a previously stored weapon, preserving ammunition for both weapons.
+[[nodiscard]] bool EquipCombatantWeapon(CombatSimulationState& state,
+    const entities::EntityRegistry& entityRegistry, std::string_view entityId,
+    std::string_view weaponId, std::string& error);
 
 // Commands are applied in caller order after advancing the combat clock.
 // Invalid input rejects the whole batch without changing state or output.
