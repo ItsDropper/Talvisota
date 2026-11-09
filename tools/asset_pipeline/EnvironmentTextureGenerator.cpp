@@ -332,7 +332,8 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
                 crackDark * 0.82F + patina * 0.018F,
             height,
             0.72F + grainField * 0.16F + grainFine * 0.075F +
-                biotite * 0.09F - quartz * 0.10F - quartzVein * 0.08F,
+                biotite * 0.09F - quartz * 0.10F - quartzVein * 0.08F -
+                micaSheen * 0.11F,
             0.985F - fracture * 0.55F - biotite * 0.16F -
                 quartz * 0.11F - quartzVein * 0.15F
         };
