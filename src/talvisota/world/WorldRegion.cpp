@@ -280,6 +280,24 @@ bool SampleTerrainHeight(const WorldRegion& region, float x, float z,
     return true;
 }
 
+bool ResolveGroundedPlacementHeight(const WorldRegion& region, const float x, const float z,
+    const float authoredY, float& resolvedY, std::string& error)
+{
+    if (!std::isfinite(authoredY))
+    {
+        error = "Grounded placement Y must be finite.";
+        return false;
+    }
+    float terrainHeight = 0.0F;
+    std::array<float, 3> normal{};
+    if (!SampleTerrainHeight(region, x, z, terrainHeight, normal, error))
+        return false;
+    const float displacedAuthoredY = authoredY + SampleTerrainDisplacement(region, x, z);
+    resolvedY = std::max(displacedAuthoredY, terrainHeight + 0.02F);
+    error.clear();
+    return true;
+}
+
 bool QueryCollision(const WorldRegion& region, const std::array<float, 3>& queryMin,
                     const std::array<float, 3>& queryMax, bool& intersects,
                     std::string& error)
