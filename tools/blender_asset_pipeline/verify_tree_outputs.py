@@ -68,8 +68,25 @@ def main():
             fail(lod_name + " lost the lower grey-brown bark material zone")
         if not any("Upper orange-yellow smooth bark" in name for name in imported_material_names):
             fail(lod_name + " lost the upper orange-yellow bark material zone")
+        needle_materials = {
+            index for obj in meshes for index, material in enumerate(obj.data.materials)
+            if material and "Needles" in material.name
+        }
+        if not needle_materials:
+            fail(lod_name + " lost the Scots pine needle material")
+        needle_triangles = sum(
+            len(polygon.vertices) - 2
+            for obj in meshes for polygon in obj.data.polygons
+            if polygon.material_index in needle_materials
+        )
+        minimum_needle_triangles = {"LOD0": 200_000, "LOD1": 90_000,
+                                    "LOD2": 65_000, "LOD3": 8_000}[lod_name]
+        if needle_triangles < minimum_needle_triangles:
+            fail(lod_name + " needle geometry is under-dense: " +
+                 str(needle_triangles) + " < " + str(minimum_needle_triangles))
         print("VERIFIED", lod_name, "meshes=", len(meshes),
-              "triangles=", sum(len(p.vertices) - 2 for obj in meshes for p in obj.data.polygons))
+              "triangles=", sum(len(p.vertices) - 2 for obj in meshes for p in obj.data.polygons),
+              "needle_triangles=", needle_triangles)
     print("TALVISOTA_TREE_ASSET_VERIFY_OK")
 
 
