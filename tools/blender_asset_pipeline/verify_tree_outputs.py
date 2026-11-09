@@ -68,16 +68,18 @@ def main():
             fail(lod_name + " lost the lower grey-brown bark material zone")
         if not any("Upper orange-yellow smooth bark" in name for name in imported_material_names):
             fail(lod_name + " lost the upper orange-yellow bark material zone")
-        needle_materials = {
-            index for obj in meshes for index, material in enumerate(obj.data.materials)
-            if material and "Needles" in material.name
-        }
-        if not needle_materials:
+        has_needle_material = any(
+            material and "Needles" in material.name
+            for obj in meshes for material in obj.data.materials
+        )
+        if not has_needle_material:
             fail(lod_name + " lost the Scots pine needle material")
         needle_triangles = sum(
             len(polygon.vertices) - 2
             for obj in meshes for polygon in obj.data.polygons
-            if polygon.material_index in needle_materials
+            if polygon.material_index < len(obj.data.materials)
+            and obj.data.materials[polygon.material_index]
+            and "Needles" in obj.data.materials[polygon.material_index].name
         )
         minimum_needle_triangles = {"LOD0": 200_000, "LOD1": 90_000,
                                     "LOD2": 65_000, "LOD3": 8_000}[lod_name]
