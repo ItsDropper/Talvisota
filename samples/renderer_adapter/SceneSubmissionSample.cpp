@@ -211,12 +211,15 @@ bool WriteBgraPng(const std::vector<std::uint8_t>& pixels, const UINT width,
 }
 
 struct CaptureView { const wchar_t* file; vanta::math::Vec3 eye; vanta::math::Vec3 target; };
+// Keep these as grounded scene-review viewpoints rather than aerial shots.
+// Each view is positioned against a concrete landmark in the authored region:
+// the central village, church, Suvanto shore, forest stand, and west farmhouse.
 constexpr std::array<CaptureView, 5> Views = {{
-    {L"01-sakkola-overview.png", {8.0F, 58.0F, -80.0F}, {0.0F, 9.0F, 140.0F}},
-    {L"02-church-village.png", {-28.0F, 16.0F, 135.0F}, {0.0F, 16.0F, 178.0F}},
-    {L"03-suvanto-shoreline.png", {-85.0F, 10.0F, -240.0F}, {-85.0F, 5.0F, -150.0F}},
-    {L"04-karelian-forest.png", {160.0F, 20.0F, -170.0F}, {160.0F, 10.0F, -25.0F}},
-    {L"05-farmstead.png", {0.0F, 24.0F, 35.0F}, {0.0F, 12.0F, 130.0F}}
+    {L"01-sakkola-overview.png", {-95.0F, 21.0F, 20.0F}, {0.0F, 8.0F, 160.0F}},
+    {L"02-church-village.png", {-28.0F, 13.0F, 145.0F}, {0.0F, 14.0F, 178.0F}},
+    {L"03-suvanto-shoreline.png", {-85.0F, 7.0F, -205.0F}, {-85.0F, 4.0F, -150.0F}},
+    {L"04-karelian-forest.png", {160.0F, 11.0F, -115.0F}, {160.0F, 8.0F, -25.0F}},
+    {L"05-farmstead.png", {-75.0F, 11.0F, 92.0F}, {-43.0F, 10.0F, 123.0F}}
 }};
  
 bool ResolveCaptureView(const talvisota::world::WorldRegion& region,
