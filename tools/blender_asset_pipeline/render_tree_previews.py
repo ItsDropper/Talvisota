@@ -21,17 +21,12 @@ def main():
     for collection in bpy.data.collections:
         collection.hide_render = collection.name != "LOD0"
 
-    # Workbench rendering is intentionally used for deterministic CI shape
-    # inspection without depending on a GPU or pretending this is a PBR beauty render.
-    scene.render.engine = "BLENDER_WORKBENCH"
-    shading = scene.display.shading
-    shading.light = "STUDIO"
-    shading.color_type = "MATERIAL"
-    shading.show_shadows = True
-    shading.show_cavity = True
-    shading.cavity_type = "BOTH"
-    shading.curvature_ridge_factor = 1.35
-    shading.curvature_valley_factor = 1.0
+    # Cycles CPU rendering avoids the OpenGL/EGL dependency that Workbench
+    # requires on headless Linux runners. It also exercises the actual PBR maps.
+    scene.render.engine = "CYCLES"
+    scene.cycles.device = "CPU"
+    scene.cycles.samples = 12
+    scene.cycles.use_denoising = True
     scene.render.resolution_x = 768
     scene.render.resolution_y = 768
     scene.render.resolution_percentage = 100
@@ -45,6 +40,25 @@ def main():
     ground = bpy.context.object
     ground.name = "PreviewGround"
     ground.data.materials.append(ground_material)
+
+    scene.world.use_nodes = True
+    background = scene.world.node_tree.nodes.get("Background")
+    background.inputs["Color"].default_value = (0.10, 0.12, 0.14, 1.0)
+    background.inputs["Strength"].default_value = 0.35
+
+    def add_area_light(name, location, energy, size):
+        light_data = bpy.data.lights.new(name, type="AREA")
+        light_data.energy = energy
+        light_data.shape = "DISK"
+        light_data.size = size
+        light = bpy.data.objects.new(name, light_data)
+        scene.collection.objects.link(light)
+        light.location = location
+        light.rotation_euler = (Vector((0.0, 0.0, 8.0)) - light.location).to_track_quat("-Z", "Y").to_euler()
+
+    add_area_light("KeyLight", (14.0, -18.0, 24.0), 4200.0, 12.0)
+    add_area_light("FillLight", (-14.0, -8.0, 13.0), 1800.0, 10.0)
+    add_area_light("RimLight", (2.0, 16.0, 20.0), 3000.0, 9.0)
 
     camera_data = bpy.data.cameras.new("TreePreviewCamera")
     camera = bpy.data.objects.new("TreePreviewCamera", camera_data)
