@@ -287,11 +287,12 @@ struct CaptureView { const wchar_t* file; vanta::math::Vec3 eye; vanta::math::Ve
 constexpr std::array<CaptureView, 5> Views = {{
     // Keep the overview inside the 280 m vegetation visibility envelope.
     {L"01-sakkola-overview.png", {8.0F, 50.0F, -205.0F}, {0.0F, 8.0F, 100.0F}},
-    // Center the south-side approach on the church. The former x=-48 camera was
-    // practically against farmhouse.west and looked through its foreground wall.
-    {L"02-church-village.png", {0.0F, 50.0F, 100.0F}, {0.0F, 17.0F, 178.0F}},
-    // Look across a broad stretch of the north shore, not directly at sauna.shore.
-    {L"03-suvanto-shoreline.png", {0.0F, 18.0F, -50.0F}, {0.0F, 1.82F, -256.0F}},
+    // Approach from the east at human height, clear of the trees and farm buildings
+    // between the central clearing and the church.
+    {L"02-church-village.png", {80.0F, 15.0F, 145.0F}, {0.0F, 12.0F, 178.0F}},
+    // View the lake edge from the east side of the central clearing, clear of the
+    // dead pine and the close reed cluster on the centerline.
+    {L"03-suvanto-shoreline.png", {80.0F, 18.0F, -50.0F}, {80.0F, 1.82F, -256.0F}},
     {L"04-karelian-forest.png", {82.0F, 11.0F, -205.0F}, {175.0F, 4.0F, -62.0F}},
     // Keep the +Z entrance in view, but lower the camera to show the facade below
     // the roofline instead of looking down onto the roof from 20 m.

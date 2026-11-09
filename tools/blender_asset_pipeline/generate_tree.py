@@ -24,7 +24,7 @@ import bpy
 from mathutils import Vector
 
 
-PIPELINE_VERSION = 12
+PIPELINE_VERSION = 13
 MATERIAL_MAP_STATUS = {}
 TREE_HEIGHT = 18.0
 TREE_RADIUS = 6.0
@@ -294,16 +294,16 @@ def add_needle_pair(builder, origin, direction, rng):
         reference = Vector((0.0, 1.0, 0.0))
     side = axis.cross(reference).normalized()
     # A needle is a gently curved, tapered two-sided blade. This preserves a
-    # readable 10-14 mm game-scale diameter without the eight triangles per
+    # readable 20-28 mm game-scale diameter without the eight triangles per
     # needle required by a three-ring triangular tube.
-    length = rng.uniform(0.20, 0.24)
+    length = rng.uniform(0.30, 0.36)
     for sign in (-1.0, 1.0):
-        spread = side * sign * rng.uniform(0.12, 0.24)
-        lift = Vector((0.0, 0.0, rng.uniform(0.06, 0.16)))
+        spread = side * sign * rng.uniform(0.16, 0.28)
+        lift = Vector((0.0, 0.0, rng.uniform(0.08, 0.18)))
         needle_axis = (axis * 0.88 + spread + lift).normalized()
         start = Vector(origin)
         tip = start + needle_axis * length
-        base_half_width = rng.uniform(0.0050, 0.0068)
+        base_half_width = rng.uniform(0.0100, 0.0140)
         builder.needle_ribbon(start, tip, base_half_width)
 
 
@@ -484,7 +484,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                         ).normalized()
                         add_needle_spray(
                             foliage, spray_origin, spray_axis, rng,
-                            pairs=max(2, needle_clusters + 1))
+                            pairs=max(4, needle_clusters * 2 + 2))
 
                 # Retain a smaller number of terminal leaders to break up the
                 # silhouette; they supplement the distributed foliage rather
@@ -520,7 +520,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                         spray_origin = twig_origin.lerp(twig_tip, spray_t)
                         add_needle_spray(
                             foliage, spray_origin, twig_direction, rng,
-                            pairs=max(2, needle_clusters + 1))
+                            pairs=max(4, needle_clusters * 2 + 2))
 
             # Sparse snow accents sit on upper scaffold sections only.
             if fraction > 0.56 and rng.random() < 0.38:
@@ -597,7 +597,7 @@ def main():
             "lower_bole": {"material": "Scots Pine | Lower grey-brown plated bark", "height_fraction": [0.0, 0.58]},
             "upper_trunk_and_scaffold": {"material": "Scots Pine | Upper orange-yellow smooth bark", "height_fraction": [0.58, 1.0]},
         },
-        "geometry_note": "Mature Scots pine with substantial primary and secondary boughs. Foliage is carried by dense, overlapping needle sprays distributed along many lateral branchlets throughout each secondary limb, with sparse terminal leaders. Paired, curved tapered blade needles are 20-24 cm long and 10-13.6 mm wide at their bases as a deliberate game-readability exaggeration. LOD2 uses a reduced fascicle count to remain within its triangle budget. Deterministic structural asset, not a photogrammetry scan.",
+        "geometry_note": "Mature Scots pine with substantial primary and secondary boughs. Foliage is carried by dense, overlapping needle sprays distributed along many lateral branchlets throughout each secondary limb, with sparse terminal leaders. Paired, curved tapered blade needles are 30-36 cm long and 20-28 mm wide at their bases as a deliberate game-readability exaggeration. LOD2 uses a reduced fascicle count to remain within its triangle budget. Deterministic structural asset, not a photogrammetry scan.",
         "runtime_note": "Select LOD by projected screen size/distance in Talvisota; files are separate because glTF core has no universal LOD selector.",
     }
     manifest["material_map_status"] = MATERIAL_MAP_STATUS

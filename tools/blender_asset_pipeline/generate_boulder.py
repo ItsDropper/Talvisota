@@ -73,7 +73,7 @@ def shape_point(direction, seed):
     broad = math.sin(x * 4.1 + y * 2.7 + seed * 0.013) * math.cos(z * 3.8 - y * 2.1)
     medium = math.sin(x * 12.7 + z * 10.3 + seed * 0.071) * math.sin(y * 13.1 - z * 8.4)
     fine = math.sin(x * 31.0 + y * 23.0 + z * 27.0 + seed * 0.19)
-    radial = 1.0 + broad * 0.075 + medium * 0.026 + fine * 0.008
+    radial = 1.0 + broad * 0.11 + medium * 0.04 + fine * 0.014
     px = x * 1.22 * radial
     py = y * 0.96 * radial
     pz = 0.82 + z * 0.91 * radial
@@ -114,15 +114,14 @@ def build_lod(name, preset, rock, snow, seed):
         normal = polygon.normal
         edge_noise = (
             math.sin(center.x * 5.7 + seed * 0.13) *
-            math.cos(center.y * 6.9 - seed * 0.07) * 0.055 +
-            math.sin(center.x * 15.1 - center.y * 11.3 + seed) * 0.018
+            math.cos(center.y * 6.9 - seed * 0.07) * 0.075 +
+            math.sin(center.x * 15.1 - center.y * 11.3 + seed) * 0.028
         )
-        # A shallow snow cap: only nearly horizontal upper facets retain snow.
-        # The old 0.32 normal threshold coated most of the visible hemisphere,
-        # hiding the granite and producing a white ball instead of a boulder.
-        snowline = 1.34 + edge_noise
-        polygon.material_index = 1 if normal.z > 0.78 and center.z > snowline else 0
-        polygon.use_smooth = True
+        # A small, irregular snow cap: exposed granite must dominate the visible
+        # surface, and the rock keeps its fractured planar facets.
+        snowline = 1.50 + edge_noise * 1.15
+        polygon.material_index = 1 if normal.z > 0.90 and center.z > snowline else 0
+        polygon.use_smooth = polygon.material_index == 1
     obj = bpy.data.objects.new("Finnish_Glacial_Boulder_" + name, mesh)
     bpy.context.collection.objects.link(obj)
     return obj, len(mesh.polygons)
