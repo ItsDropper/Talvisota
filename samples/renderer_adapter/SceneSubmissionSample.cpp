@@ -31,6 +31,20 @@ using Microsoft::WRL::ComPtr;
 using talvisota::presentation::SceneSnapshot;
 using talvisota::presentation::BuildSakkolaScene;
 
+class ScopedStreamRedirect {
+public:
+    ScopedStreamRedirect(std::ostream& stream, std::streambuf* destination)
+        : stream_(stream), original_(stream.rdbuf(destination)) {}
+    ~ScopedStreamRedirect() { stream_.rdbuf(original_); }
+
+    ScopedStreamRedirect(const ScopedStreamRedirect&) = delete;
+    ScopedStreamRedirect& operator=(const ScopedStreamRedirect&) = delete;
+
+private:
+    std::ostream& stream_;
+    std::streambuf* original_;
+};
+
 LONG rawMouseDeltaX = 0;
 LONG rawMouseDeltaY = 0;
 
@@ -272,6 +286,13 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     }
     std::cout << "Sakkola renderer backend: " << (useD3D11 ? "D3D11" : "D3D12")
         << "; capture mode: " << (captureRequested ? "enabled" : "disabled") << ".\n";
+
+    // Engine logging uses stdout/stderr. Preserve those diagnostics in the
+    // capture artifact, including the DXGI adapter selected by the D3D12 backend.
+    ScopedStreamRedirect captureStdout(std::cout,
+        captureRequested ? captureLog.rdbuf() : std::cout.rdbuf());
+    ScopedStreamRedirect captureStderr(std::cerr,
+        captureRequested ? captureLog.rdbuf() : std::cerr.rdbuf());
 
     SceneSnapshot scene;
     talvisota::world::WorldRegion gameRegion;
