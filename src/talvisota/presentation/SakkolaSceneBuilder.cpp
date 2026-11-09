@@ -329,8 +329,15 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
             ++importedModelCount;
         }
         auto transform = talvisota::world::BuildPlacementTransform(placement);
-        if (placement.modelAssetId != "model.terrain.sakkola" &&
-            placement.modelAssetId != "model.environment.suvanto_ice") {
+        // These meshes are authored in world coordinates, not placement-local
+        // coordinates. Applying the placement's sampled ground elevation would
+        // translate the entire road network vertically (the roads placement is
+        // intentionally at the world origin).
+        const bool worldSpaceGeometry =
+            placement.modelAssetId == "model.terrain.sakkola" ||
+            placement.modelAssetId == "model.environment.suvanto_ice" ||
+            placement.modelAssetId == "model.environment.sakkola_roads";
+        if (!worldSpaceGeometry) {
             float groundedY = placement.position[1];
             if (!talvisota::world::ResolveGroundedPlacementHeight(region,
                     placement.position[0], placement.position[2], placement.position[1],
