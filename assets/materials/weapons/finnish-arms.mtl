@@ -1,0 +1,15 @@
+# Flat, muted game materials for the stylized Finnish 1939 equipment silhouettes.
+newmtl wood
+Kd 0.24 0.17 0.10
+Ka 0.06 0.05 0.04
+Ks 0.08 0.08 0.08
+Ns 12
+Pr 0.82
+Pm 0.0
+newmtl metal
+Kd 0.16 0.18 0.19
+Ka 0.04 0.05 0.05
+Ks 0.22 0.22 0.22
+Ns 28
+Pr 0.62
+Pm 0.0
