@@ -170,9 +170,11 @@ or alter the content catalog.
 
 The shared Central Finland and Sakkola boulder has a deterministic Blender
 source pipeline at `generate_boulder.py`. It builds a flattened, irregular
-glacially abraded granite form from an icosphere, assigns a wind-scoured snow
-cap only to upward-facing surfaces, packs the registered granite and snow PBR
-maps, and exports four independent GLB LODs plus an editable Blender source.
+glacially abraded granite form from an icosphere and exports four independent
+GLB LODs plus an editable Blender source. Granite PBR maps use tileable,
+multi-scale crystalline fields for feldspar/quartz grains, dark biotite flecks,
+mineral seams, weathering and micro-relief. Snow is restricted to nearly
+horizontal upper facets so it cannot hide the stone body.
 
 Run:
 
