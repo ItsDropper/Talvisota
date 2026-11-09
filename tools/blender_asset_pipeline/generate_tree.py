@@ -31,10 +31,10 @@ TREE_RADIUS = 6.0
 # Mature, open-grown Scots pine proportions. The lower bole remains visible;
 # crown width peaks below mid-height and contracts into an irregular upper crown.
 LOD_PRESETS = {
-    "LOD0": {"whorls": 10, "primary": 5, "secondary": 4, "tertiary": 3, "needle_clusters": 3, "sides": 6},
-    "LOD1": {"whorls": 8, "primary": 4, "secondary": 3, "tertiary": 2, "needle_clusters": 2, "sides": 5},
-    "LOD2": {"whorls": 5, "primary": 4, "secondary": 2, "tertiary": 1, "needle_clusters": 1, "sides": 4},
-    "LOD3": {"whorls": 3, "primary": 3, "secondary": 1, "tertiary": 1, "needle_clusters": 2, "sides": 4},
+    "LOD0": {"whorls": 11, "primary": 5, "secondary": 5, "tertiary": 5, "needle_clusters": 3, "sides": 6},
+    "LOD1": {"whorls": 9, "primary": 4, "secondary": 4, "tertiary": 4, "needle_clusters": 2, "sides": 5},
+    "LOD2": {"whorls": 6, "primary": 4, "secondary": 3, "tertiary": 3, "needle_clusters": 2, "sides": 4},
+    "LOD3": {"whorls": 4, "primary": 3, "secondary": 2, "tertiary": 2, "needle_clusters": 1, "sides": 4},
 }
 
 
@@ -263,19 +263,37 @@ def add_path(builder, points, radii, sides, material_indices=None):
 
 
 def add_needle_pair(builder, origin, direction, rng):
-    """Create two individually modelled Scots-pine needles (normally 4–7 cm)."""
+    """Create one visible, individually modelled Scots-pine needle fascicle."""
     axis = Vector(direction).normalized()
     reference = Vector((0.0, 0.0, 1.0))
     if abs(axis.dot(reference)) > 0.94:
         reference = Vector((0.0, 1.0, 0.0))
     side = axis.cross(reference).normalized()
-    length = rng.uniform(0.042, 0.068)
+    length = rng.uniform(0.052, 0.082)
     for sign in (-1.0, 1.0):
-        spread = side * sign * rng.uniform(0.12, 0.24)
-        lift = Vector((0.0, 0.0, rng.uniform(0.08, 0.24)))
-        needle_axis = (axis + spread + lift).normalized()
+        spread = side * sign * rng.uniform(0.16, 0.34)
+        lift = Vector((0.0, 0.0, rng.uniform(0.12, 0.32)))
+        needle_axis = (axis * 0.72 + spread + lift).normalized()
         tip = Vector(origin) + needle_axis * length
-        builder.tube(origin, tip, 0.00145, 0.00025, sides=4)
+        # Three-sided needles retain a tapered profile at a modest triangle cost.
+        builder.tube(origin, tip, 0.0022, 0.00055, sides=3)
+
+
+def add_needle_spray(builder, origin, direction, rng, pairs=3):
+    """Build a compact radial spray of paired needles around a terminal shoot."""
+    axis = Vector(direction).normalized()
+    reference = Vector((0.0, 0.0, 1.0))
+    if abs(axis.dot(reference)) > 0.94:
+        reference = Vector((0.0, 1.0, 0.0))
+    side = axis.cross(reference).normalized()
+    up = axis.cross(side).normalized()
+    for index in range(pairs):
+        angle = (2.399963229728653 * index) + rng.uniform(-0.55, 0.55)
+        radial = side * math.cos(angle) + up * math.sin(angle)
+        spray_axis = (axis * rng.uniform(0.30, 0.62) +
+                      radial * rng.uniform(0.55, 1.0) +
+                      Vector((0.0, 0.0, rng.uniform(0.08, 0.38)))).normalized()
+        add_needle_pair(builder, origin, spray_axis, rng)
 
 
 def build_tree(lod_name, preset, materials, height, crown_radius, seed):
@@ -347,50 +365,56 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                      [base_radius * (1.0 - 0.91 * (i / 4.0)) for i in range(5)],
                      sides, material_indices=[1] * 4)
 
-            # Secondary limbs split from the scaffold at uneven intervals.
+            # Secondary limbs split from the scaffold at uneven intervals and angles.
             for secondary_index in range(secondary_count):
-                t = rng.uniform(0.24, 0.91)
+                t = rng.uniform(0.18, 0.96)
                 segment = min(3, int(t * 4))
                 local_t = t * 4 - segment
                 origin = primary_points[segment].lerp(primary_points[segment + 1], local_t)
-                sign = -1.0 if secondary_index % 2 else 1.0
+                sign = rng.choice((-1.0, 1.0))
                 tangent = (primary_points[min(4, segment + 1)] -
                            primary_points[max(0, segment)]).normalized()
                 lateral = Vector((-radial.y, radial.x, 0.0))
-                direction = (radial * rng.uniform(0.20, 0.48) +
-                             lateral * sign * rng.uniform(0.45, 0.85) +
-                             Vector((0.0, 0.0, rng.uniform(0.18, 0.52)))).normalized()
-                secondary_length = length * rng.uniform(0.20, 0.43) * (1.0 - 0.24 * t)
+                direction = (radial * rng.uniform(0.16, 0.52) +
+                             lateral * sign * rng.uniform(0.42, 0.96) +
+                             Vector((0.0, 0.0, rng.uniform(0.12, 0.62)))).normalized()
+                secondary_length = length * rng.uniform(0.22, 0.48) * (1.0 - 0.20 * t)
                 secondary_points = [
                     origin,
                     origin + direction * (secondary_length * 0.48) + tangent * (secondary_length * 0.10),
-                    origin + direction * secondary_length + Vector((0.0, 0.0, secondary_length * 0.10)),
+                    origin + direction * secondary_length +
+                    Vector((0.0, 0.0, secondary_length * rng.uniform(-0.02, 0.18))),
                 ]
-                secondary_radius = base_radius * rng.uniform(0.20, 0.31)
+                secondary_radius = base_radius * rng.uniform(0.19, 0.32)
                 add_path(trunk, secondary_points,
-                         [secondary_radius, secondary_radius * 0.48, 0.0025],
+                         [secondary_radius, secondary_radius * 0.48, 0.0022],
                          max(4, sides - 1), material_indices=[1, 1])
 
-                # Fine twigs carry actual paired needle geometry at branch tips.
+                # Terminal shoots are distributed along the full secondary limb,
+                # not bunched near its attachment point. Each shoot carries
+                # several dense fascicle sprays so the crown reads as foliage.
                 for twig_index in range(tertiary_count):
-                    twig_t = 0.38 + 0.58 * ((twig_index + rng.random() * 0.35) /
+                    twig_t = 0.24 + 0.70 * ((twig_index + rng.uniform(0.12, 0.88)) /
                                              max(1, tertiary_count))
-                    twig_origin = secondary_points[0].lerp(secondary_points[1], min(1.0, twig_t))
-                    twig_direction = (direction * 0.36 +
-                                      lateral * rng.uniform(-0.75, 0.75) +
-                                      Vector((0.0, 0.0, rng.uniform(0.25, 0.85)))).normalized()
-                    twig_length = secondary_length * rng.uniform(0.17, 0.32)
+                    if twig_t <= 0.48:
+                        twig_origin = secondary_points[0].lerp(secondary_points[1], twig_t / 0.48)
+                    else:
+                        twig_origin = secondary_points[1].lerp(
+                            secondary_points[2], (twig_t - 0.48) / 0.52)
+                    twig_direction = (direction * rng.uniform(0.18, 0.48) +
+                                      lateral * rng.uniform(-0.92, 0.92) +
+                                      Vector((0.0, 0.0, rng.uniform(0.24, 0.92)))).normalized()
+                    twig_length = secondary_length * rng.uniform(0.22, 0.42)
+                    twig_mid = twig_origin + twig_direction * (twig_length * 0.56) + tangent * (twig_length * 0.08)
                     twig_tip = twig_origin + twig_direction * twig_length
-                    trunk.tube(twig_origin, twig_tip, 0.0028, 0.0009,
-                               sides=4, material_index=1)
+                    trunk.path_tube([twig_origin, twig_mid, twig_tip],
+                                    [0.0028, 0.0017, 0.00065],
+                                    sides=3, material_indices=[1, 1])
                     for cluster in range(needle_clusters):
-                        cluster_t = 0.35 + 0.62 * (cluster / max(1, needle_clusters - 1))
+                        cluster_t = 0.18 + 0.76 * ((cluster + rng.uniform(0.12, 0.88)) /
+                                                   max(1, needle_clusters))
                         cluster_origin = twig_origin.lerp(twig_tip, cluster_t)
-                        for _ in range(2):
-                            needle_direction = (twig_direction +
-                                                lateral * rng.uniform(-0.55, 0.55) +
-                                                Vector((0.0, 0.0, rng.uniform(-0.15, 0.42))))
-                            add_needle_pair(foliage, cluster_origin, needle_direction, rng)
+                        add_needle_spray(foliage, cluster_origin, twig_direction, rng, pairs=3)
 
             # Sparse snow accents sit on upper scaffold sections only.
             if fraction > 0.56 and rng.random() < 0.38:
@@ -467,7 +491,7 @@ def main():
             "lower_bole": {"material": "Scots Pine | Lower grey-brown plated bark", "height_fraction": [0.0, 0.58]},
             "upper_trunk_and_scaffold": {"material": "Scots Pine | Upper orange-yellow smooth bark", "height_fraction": [0.58, 1.0]},
         },
-        "geometry_note": "Scaffold limbs, secondary branches, tertiary twigs and paired 4-7 cm needle geometry are generated as a deterministic hierarchy; this is a structural asset, not a photogrammetry scan.",
+        "geometry_note": "Scaffold limbs, secondary branches, terminal shoots and dense radial sprays of individually modelled paired 5-8 cm needles are generated as a deterministic hierarchy; this is a structural asset, not a photogrammetry scan.",
         "runtime_note": "Select LOD by projected screen size/distance in Talvisota; files are separate because glTF core has no universal LOD selector.",
     }
     manifest["material_map_status"] = MATERIAL_MAP_STATUS
