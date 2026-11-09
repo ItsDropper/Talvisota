@@ -1,6 +1,6 @@
 # Stylized, low-detail game silhouette for Suomi KP/-31.
 # Normalized art-space units; intentionally not a dimensional or mechanical replica.
-mtllib finnish-arms.mtl
+mtllib ../../materials/weapons/finnish-arms.mtl
 o compact_stock
 usemtl wood
 v -0.7200 -0.1200 -0.0950
