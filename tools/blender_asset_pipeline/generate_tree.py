@@ -26,15 +26,15 @@ from mathutils import Vector
 
 PIPELINE_VERSION = 1
 MATERIAL_MAP_STATUS = {}
-TREE_HEIGHT = 16.0
-TREE_RADIUS = 4.2
-# Tier/branch/spray counts are deliberately explicit so geometry budgets are
-# deterministic and can be compared in CI.
+TREE_HEIGHT = 18.0
+TREE_RADIUS = 6.0
+# Mature, open-grown Scots pine proportions. The lower bole remains visible;
+# crown width peaks below mid-height and contracts into an irregular upper crown.
 LOD_PRESETS = {
-    "LOD0": {"tiers": 10, "branches": 8, "segments": 5, "sprays": 7, "sides": 6},
-    "LOD1": {"tiers": 7, "branches": 6, "segments": 3, "sprays": 4, "sides": 5},
-    "LOD2": {"tiers": 4, "branches": 5, "segments": 2, "sprays": 2, "sides": 4},
-    "LOD3": {"tiers": 2, "branches": 4, "segments": 1, "sprays": 1, "sides": 4},
+    "LOD0": {"whorls": 10, "primary": 5, "secondary": 4, "tertiary": 3, "needle_clusters": 3, "sides": 6},
+    "LOD1": {"whorls": 8, "primary": 4, "secondary": 3, "tertiary": 2, "needle_clusters": 2, "sides": 5},
+    "LOD2": {"whorls": 5, "primary": 4, "secondary": 2, "tertiary": 1, "needle_clusters": 1, "sides": 4},
+    "LOD3": {"whorls": 3, "primary": 3, "secondary": 1, "tertiary": 0, "needle_clusters": 0, "sides": 4},
 }
 
 
@@ -152,28 +152,27 @@ def create_materials(texture_root):
     }
 
 
-def add_spray(builder, origin, direction, length, rng, sides):
-    direction = Vector(direction).normalized()
-    start = Vector(origin)
-    # A spray is a small tapered bough; four asymmetric side shoots keep the
-    # silhouette irregular instead of producing repeated geometric stars.
-    tip = start + direction * length
-    builder.tube(start, tip, length * 0.095, 0.006, sides=sides)
-    axis = direction.cross(Vector((0, 0, 1)))
-    if axis.length < 0.1:
-        axis = direction.cross(Vector((0, 1, 0)))
-    axis.normalize()
-    other = direction.cross(axis).normalized()
-    for index in range(4):
-        t = 0.24 + index * 0.16
-        center = start.lerp(tip, t)
-        side = axis if index % 2 == 0 else other
-        sign = -1.0 if index % 3 == 0 else 1.0
-        shoot = (direction * 0.48 + side * sign * 0.78 +
-                 Vector((0, 0, 0.12 + rng.random() * 0.16))).normalized()
-        shoot_length = length * (0.34 - index * 0.035)
-        builder.tube(center, center + shoot * shoot_length,
-                     shoot_length * 0.12, 0.003, sides=sides)
+def add_path(builder, points, radii, sides):
+    """Build a tapered branch/trunk from connected, gently overlapping segments."""
+    for index in range(len(points) - 1):
+        builder.tube(points[index], points[index + 1], radii[index], radii[index + 1],
+                     sides=sides)
+
+
+def add_needle_pair(builder, origin, direction, rng):
+    """Create two individually modelled Scots-pine needles (normally 4–7 cm)."""
+    axis = Vector(direction).normalized()
+    reference = Vector((0.0, 0.0, 1.0))
+    if abs(axis.dot(reference)) > 0.94:
+        reference = Vector((0.0, 1.0, 0.0))
+    side = axis.cross(reference).normalized()
+    length = rng.uniform(0.042, 0.068)
+    for sign in (-1.0, 1.0):
+        spread = side * sign * rng.uniform(0.12, 0.24)
+        lift = Vector((0.0, 0.0, rng.uniform(0.08, 0.24)))
+        needle_axis = (axis + spread + lift).normalized()
+        tip = Vector(origin) + needle_axis * length
+        builder.tube(origin, tip, 0.00145, 0.00025, sides=4)
 
 
 def build_tree(lod_name, preset, materials, height, crown_radius, seed):
@@ -181,69 +180,123 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
     trunk = MeshBuilder()
     foliage = MeshBuilder()
     snow = MeshBuilder()
-    tiers = preset["tiers"]
-    branches = preset["branches"]
-    segments = preset["segments"]
-    sprays = preset["sprays"]
+    whorls = preset["whorls"]
+    primary_count = preset["primary"]
+    secondary_count = preset["secondary"]
+    tertiary_count = preset["tertiary"]
+    needle_clusters = preset["needle_clusters"]
     sides = preset["sides"]
 
-    # Tapered, slightly wandering trunk. Small deterministic lean prevents a
-    # mathematically perfect vertical silhouette.
-    trunk_base = (0.0, 0.0, 0.0)
-    trunk_top = (0.12, -0.04, height)
-    trunk.tube(trunk_base, trunk_top, height * 0.022, height * 0.005,
-               sides=max(6, sides + 2))
+    # Mature pine: a substantial clear lower bole, with a broad crown above it.
+    trunk_points = []
+    trunk_radii = []
+    trunk_segments = max(12, whorls + 5)
+    lean_x, lean_y = rng.uniform(-0.22, 0.22), rng.uniform(-0.18, 0.18)
+    for index in range(trunk_segments + 1):
+        t = index / trunk_segments
+        trunk_points.append(Vector((lean_x * t * t + 0.035 * math.sin(t * 5.2),
+                                    lean_y * t * t + 0.025 * math.sin(t * 3.7),
+                                    height * t)))
+        # Flared root collar, strong lower bole, then progressive taper.
+        radius = height * (0.018 * (1.0 - t) ** 1.28 + 0.0024)
+        if t < 0.09:
+            radius *= 1.0 + 0.34 * (1.0 - t / 0.09)
+        trunk_radii.append(radius)
+    add_path(trunk, trunk_points, trunk_radii, max(8, sides + 2))
 
-    for tier in range(tiers):
-        fraction = 0.19 + 0.77 * (tier / max(1, tiers - 1))
+    # Irregular whorl spacing and azimuth prevent repeated geometric rings.
+    crown_start, crown_end = 0.43, 0.94
+    whorl_heights = []
+    for whorl in range(whorls):
+        t = whorl / max(1, whorls - 1)
+        base = crown_start + (crown_end - crown_start) * t
+        whorl_heights.append(base + rng.uniform(-0.018, 0.018))
+    whorl_heights.sort()
+
+    for whorl_index, fraction in enumerate(whorl_heights):
         z = height * fraction
-        normalized = (1.0 - fraction)
-        # Scots pine has a broad, irregular lower crown and a narrower top.
-        tier_radius = crown_radius * (0.20 + 0.80 * math.sqrt(normalized))
-        phase = (tier % 2) * (math.pi / branches) + rng.uniform(-0.10, 0.10)
-        for branch_index in range(branches):
-            angle = phase + 2.0 * math.pi * branch_index / branches
-            jitter = rng.uniform(0.82, 1.16)
-            length = tier_radius * jitter
-            direction = Vector((math.cos(angle), math.sin(angle),
-                                0.20 + 0.30 * fraction)).normalized()
-            start = Vector((0.0, 0.0, z))
-            previous = start
-            for segment in range(segments):
-                t = (segment + 1) / segments
-                point = start + direction * (length * t)
-                point.z += (t * t) * (0.38 + 0.55 * fraction)
-                radius = max(0.012, height * 0.0065 * (1.0 - t) * (1.0 - fraction * 0.35))
-                trunk.tube(previous, point, radius, max(0.006, radius * 0.62),
-                           sides=sides)
-                previous = point
-            if sprays:
-                for spray_index in range(sprays):
-                    t = 0.22 + 0.72 * (spray_index / max(1, sprays - 1))
-                    origin = start + direction * (length * t)
-                    origin.z += (t * t) * (0.38 + 0.55 * fraction)
-                    lateral = Vector((-math.sin(angle), math.cos(angle), 0.0))
-                    spray_direction = (direction * 0.42 +
-                                       Vector((0.0, 0.0, 0.52)) +
-                                       lateral * rng.uniform(-0.38, 0.38))
-                    spray_length = max(0.12, length * (0.18 if fraction < 0.45 else 0.13))
-                    add_spray(foliage, origin, spray_direction, spray_length, rng, sides)
-            # Snow accumulation is sparse and concentrated on upper surfaces.
-            if fraction > 0.42 and tier % 2 == 0 and rng.random() < 0.34:
-                snow_start = start + direction * (length * 0.58)
-                snow_start.z += 0.28
-                snow_end = snow_start + direction * (length * 0.12) + Vector((0, 0, 0.08))
-                snow.tube(snow_start, snow_end, max(0.018, height * 0.0018),
-                          0.006, sides=max(3, sides - 1))
+        crown_profile = math.sin(math.pi * ((fraction - crown_start) /
+                                             (crown_end - crown_start)) * 0.78)
+        length_base = crown_radius * (0.48 + 0.52 * max(0.0, crown_profile))
+        count = max(3, primary_count + rng.choice((-1, 0, 0, 1)))
+        phase = whorl_index * 2.399963229728653 + rng.uniform(-0.34, 0.34)
+        for branch_index in range(count):
+            angle = phase + 2.0 * math.pi * branch_index / count + rng.uniform(-0.22, 0.22)
+            radial = Vector((math.cos(angle), math.sin(angle), 0.0))
+            length = length_base * rng.uniform(0.72, 1.18)
+            start = Vector((lean_x * fraction * fraction,
+                            lean_y * fraction * fraction, z))
+            # Scaffold limbs droop under their own weight, then sweep outward.
+            primary_points = []
+            for step in range(5):
+                t = step / 4.0
+                outward = length * t
+                vertical = height * (0.018 * t - 0.075 * t * (1.0 - t))
+                vertical -= height * max(0.0, fraction - 0.78) * 0.06 * t
+                point = start + radial * outward + Vector((0.0, 0.0, vertical))
+                point += Vector((math.sin(angle * 2.1) * 0.10 * t * t,
+                                 math.cos(angle * 1.7) * 0.08 * t * t, 0.0))
+                primary_points.append(point)
+            base_radius = height * (0.0105 * (1.0 - fraction * 0.40))
+            add_path(trunk, primary_points,
+                     [base_radius * (1.0 - 0.91 * (i / 4.0)) for i in range(5)], sides)
 
-    trunk_obj = trunk.make_object("Trunk_Branches_" + lod_name, materials["bark"])
-    foliage_obj = foliage.make_object("Needle_Sprays_" + lod_name, materials["needles"])
+            # Secondary limbs split from the scaffold at uneven intervals.
+            for secondary_index in range(secondary_count):
+                t = rng.uniform(0.24, 0.91)
+                segment = min(3, int(t * 4))
+                local_t = t * 4 - segment
+                origin = primary_points[segment].lerp(primary_points[segment + 1], local_t)
+                sign = -1.0 if secondary_index % 2 else 1.0
+                tangent = (primary_points[min(4, segment + 1)] -
+                           primary_points[max(0, segment)]).normalized()
+                lateral = Vector((-radial.y, radial.x, 0.0))
+                direction = (radial * rng.uniform(0.20, 0.48) +
+                             lateral * sign * rng.uniform(0.45, 0.85) +
+                             Vector((0.0, 0.0, rng.uniform(0.18, 0.52)))).normalized()
+                secondary_length = length * rng.uniform(0.20, 0.43) * (1.0 - 0.24 * t)
+                secondary_points = [
+                    origin,
+                    origin + direction * (secondary_length * 0.48) + tangent * (secondary_length * 0.10),
+                    origin + direction * secondary_length + Vector((0.0, 0.0, secondary_length * 0.10)),
+                ]
+                secondary_radius = base_radius * rng.uniform(0.20, 0.31)
+                add_path(trunk, secondary_points,
+                         [secondary_radius, secondary_radius * 0.48, 0.0025], max(4, sides - 1))
+
+                # Fine twigs carry actual paired needle geometry at branch tips.
+                for twig_index in range(tertiary_count):
+                    twig_t = 0.38 + 0.58 * ((twig_index + rng.random() * 0.35) /
+                                             max(1, tertiary_count))
+                    twig_origin = secondary_points[0].lerp(secondary_points[1], min(1.0, twig_t))
+                    twig_direction = (direction * 0.36 +
+                                      lateral * rng.uniform(-0.75, 0.75) +
+                                      Vector((0.0, 0.0, rng.uniform(0.25, 0.85)))).normalized()
+                    twig_length = secondary_length * rng.uniform(0.17, 0.32)
+                    twig_tip = twig_origin + twig_direction * twig_length
+                    trunk.tube(twig_origin, twig_tip, 0.0028, 0.0009, sides=4)
+                    for cluster in range(needle_clusters):
+                        cluster_t = 0.35 + 0.62 * (cluster / max(1, needle_clusters - 1))
+                        cluster_origin = twig_origin.lerp(twig_tip, cluster_t)
+                        for _ in range(2):
+                            needle_direction = (twig_direction +
+                                                lateral * rng.uniform(-0.55, 0.55) +
+                                                Vector((0.0, 0.0, rng.uniform(-0.15, 0.42))))
+                            add_needle_pair(foliage, cluster_origin, needle_direction, rng)
+
+            # Sparse snow accents sit on upper scaffold sections only.
+            if fraction > 0.56 and rng.random() < 0.38:
+                snow_start = primary_points[2]
+                snow_end = primary_points[3].lerp(primary_points[4], 0.35)
+                snow.tube(snow_start, snow_end, height * 0.0022, 0.004,
+                          sides=max(3, sides - 1))
+
+    trunk_obj = trunk.make_object("Trunk_Scaffold_And_Twigs_" + lod_name, materials["bark"])
+    foliage_obj = foliage.make_object("Paired_Pine_Needles_" + lod_name, materials["needles"])
     objects = [trunk_obj, foliage_obj]
     if snow.faces:
-        objects.append(snow.make_object("Snow_Accents_" + lod_name, materials["snow"]))
+        objects.append(snow.make_object("Snow_Load_" + lod_name, materials["snow"]))
 
-    # Join geometry by material to minimize object/submesh count. This is
-    # intentionally per-LOD, not one world-sized combined forest mesh.
     for obj in objects:
         bpy.context.view_layer.objects.active = obj
         obj.select_set(True)
@@ -292,7 +345,7 @@ def main():
     manifest = {
         "schema": "talvisota.tree-asset.v1",
         "pipeline_version": PIPELINE_VERSION,
-        "asset": "scots_pine",
+        "asset": "scots_pine_mature_open_crown",
         "species": "Pinus sylvestris",
         "seed": args.seed,
         "units": "metres",
@@ -305,6 +358,8 @@ def main():
                         "pine_needles-roughness.bmp"],
             "snow": ["snow-albedo.bmp", "snow-normal.bmp", "snow-roughness.bmp"],
         },
+        "growth_form": "mature_open_grown_broad_crowned_scots_pine",
+        "geometry_note": "Scaffold limbs, secondary branches, tertiary twigs and paired 4-7 cm needle geometry are generated as a deterministic hierarchy; this is a structural asset, not a photogrammetry scan.",
         "runtime_note": "Select LOD by projected screen size/distance in Talvisota; files are separate because glTF core has no universal LOD selector.",
     }
     manifest["material_map_status"] = MATERIAL_MAP_STATUS
