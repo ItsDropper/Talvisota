@@ -39,6 +39,10 @@ The target is a mature, broad-crowned, open-grown Scots pine—not a symmetric
 conical nursery tree.
 
 - A tapered, slightly wandering trunk establishes the clear lower bole.
+- The lower bole and upper trunk/scaffold use separate material slots: grey-brown
+  plated bark below, orange-yellow smoother bark above. Both currently reuse
+  the available bark source maps with distinct colour treatment; final close-up
+  fidelity still depends on scanned bark imagery and calibrated material data.
 - Irregularly spaced and rotated whorls establish the major scaffold limbs.
 - Scaffold limbs are long, thick, tapered and slightly drooping; their lengths
   peak in the lower-middle crown and shorten toward the top.
