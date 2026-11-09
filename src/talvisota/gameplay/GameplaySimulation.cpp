@@ -381,6 +381,111 @@ bool FindNearestActiveObjectiveTarget(const SimulationState& state,
     return true;
 }
 
+
+bool ApplyCombatMissionEvents(SimulationState& missionState,
+    const CombatSimulationState& combatState,
+    const std::span<const CombatCommand> commands,
+    const std::span<const CombatResult> combatResults,
+    std::vector<CommandResult>& outputResults, std::string& error)
+{
+    if (commands.size() != combatResults.size() || commands.size() > 4096U ||
+        missionState.processedCommandIds.size() > MaximumProcessedCommands)
+    {
+        error = "Combat mission event batch has mismatched results or exceeds its configured limit.";
+        return false;
+    }
+
+    SimulationState candidate = missionState;
+    game::InteractionResult validationResult = game::InteractionResult::Ignored;
+    if (!game::ApplyMissionInteraction(candidate.mission, {}, validationResult, error))
+        return false;
+
+    std::vector<CommandResult> results;
+    results.reserve(commands.size());
+    for (std::size_t index = 0U; index < commands.size(); ++index)
+    {
+        const CombatCommand& command = commands[index];
+        const CombatResult& combatResult = combatResults[index];
+        if (!entities::IsValidStableId(command.commandId) ||
+            !entities::IsValidStableId(command.actorEntityId) ||
+            combatResult.commandId != command.commandId)
+        {
+            error = "Combat mission event does not match its originating stable command ID.";
+            return false;
+        }
+
+        if (candidate.processedCommandIds.contains(command.commandId) ||
+            combatResult.outcome == CombatOutcome::Duplicate)
+        {
+            results.push_back({command.commandId, CommandOutcome::Duplicate});
+            continue;
+        }
+        if (candidate.processedCommandIds.size() >= MaximumProcessedCommands)
+        {
+            error = "Mission combat-event replay guard reached its configured capacity.";
+            return false;
+        }
+        candidate.processedCommandIds.insert(command.commandId);
+
+        if (combatResult.outcome != CombatOutcome::TargetDefeated)
+        {
+            results.push_back({command.commandId, CommandOutcome::Ignored});
+            continue;
+        }
+        if (command.action != CombatAction::Fire ||
+            !entities::IsValidStableId(command.targetEntityId))
+        {
+            error = "Only a valid fire command can produce a defeated combat mission target.";
+            return false;
+        }
+
+        const auto defeated = combatState.combatants.find(command.targetEntityId);
+        if (defeated == combatState.combatants.end() || defeated->second.health != 0.0F)
+        {
+            error = "Combat defeat result does not match a defeated combatant in the supplied state.";
+            return false;
+        }
+
+        const entities::EntityState* const target =
+            candidate.entities.Find(command.targetEntityId);
+        if (target == nullptr || !target->active ||
+            target->kind == entities::EntityKind::WorldObject ||
+            target->interactionTargetId.empty())
+        {
+            results.push_back({command.commandId, CommandOutcome::Ignored});
+            continue;
+        }
+        if (!entities::IsValidStableId(target->interactionTargetId))
+        {
+            error = "Defeated mission target contains an invalid interaction-target ID.";
+            return false;
+        }
+
+        game::InteractionResult missionResult = game::InteractionResult::Ignored;
+        if (!game::ApplyMissionInteraction(candidate.mission,
+                target->interactionTargetId, missionResult, error))
+            return false;
+
+        switch (missionResult)
+        {
+        case game::InteractionResult::Ignored:
+            results.push_back({command.commandId, CommandOutcome::Ignored});
+            break;
+        case game::InteractionResult::ObjectiveCompleted:
+            results.push_back({command.commandId, CommandOutcome::ObjectiveCompleted});
+            break;
+        case game::InteractionResult::MissionCompleted:
+            results.push_back({command.commandId, CommandOutcome::MissionCompleted});
+            break;
+        }
+    }
+
+    missionState = std::move(candidate);
+    outputResults = std::move(results);
+    error.clear();
+    return true;
+}
+
 bool AdvanceSimulation(SimulationState& state, const GameplayRules& rules,
     const double deltaSeconds, const std::span<const InteractionCommand> commands,
     std::vector<CommandResult>& outputResults, std::string& error)
