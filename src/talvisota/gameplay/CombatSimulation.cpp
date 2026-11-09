@@ -63,7 +63,9 @@ bool RegisterCombatant(CombatSimulationState& state,
     const entities::EntityState* const entity = entityRegistry.Find(entityId);
     if (entity == nullptr || !entity->active ||
         entity->kind == entities::EntityKind::WorldObject ||
-        entity->factionId.empty())
+        !entities::IsValidStableId(entity->factionId) ||
+        !std::isfinite(entity->position[0]) || !std::isfinite(entity->position[1]) ||
+        !std::isfinite(entity->position[2]))
     {
         error = "Combatants must reference an active faction-aligned actor entity.";
         return false;
@@ -87,7 +89,8 @@ bool RegisterCombatant(CombatSimulationState& state,
     candidate.maximumHealth = maximumHealth;
     candidate.magazineRounds = weapon->magazineCapacity;
     candidate.reserveRounds = reserveRounds;
-    state.combatants.emplace(candidate.entityId, std::move(candidate));
+    const std::string stableEntityId = candidate.entityId;
+    state.combatants.emplace(stableEntityId, std::move(candidate));
     error.clear();
     return true;
 }
@@ -118,6 +121,10 @@ bool AdvanceCombat(CombatSimulationState& state,
         const WeaponDefinition* const registeredWeapon = FindWeaponDefinition(combatant.weaponId);
         if (combatant.entityId != entityId || !entities::IsValidStableId(entityId) ||
             entity == nullptr || !entity->active ||
+            entity->kind == entities::EntityKind::WorldObject ||
+            !entities::IsValidStableId(entity->factionId) ||
+            !std::isfinite(entity->position[0]) || !std::isfinite(entity->position[1]) ||
+            !std::isfinite(entity->position[2]) ||
             !std::isfinite(combatant.health) || !std::isfinite(combatant.maximumHealth) ||
             combatant.maximumHealth <= 0.0F || combatant.health < 0.0F ||
             combatant.health > combatant.maximumHealth || registeredWeapon == nullptr ||
@@ -149,6 +156,7 @@ bool AdvanceCombat(CombatSimulationState& state,
             !entities::IsValidStableId(command.actorEntityId) ||
             (command.action == CombatAction::Fire &&
                 !entities::IsValidStableId(command.targetEntityId)) ||
+            (command.action == CombatAction::Reload && !command.targetEntityId.empty()) ||
             (command.action != CombatAction::Fire && command.action != CombatAction::Reload))
         {
             error = "Combat command contains an invalid ID or action.";
