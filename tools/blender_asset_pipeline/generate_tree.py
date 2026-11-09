@@ -24,7 +24,7 @@ import bpy
 from mathutils import Vector
 
 
-PIPELINE_VERSION = 5
+PIPELINE_VERSION = 6
 MATERIAL_MAP_STATUS = {}
 TREE_HEIGHT = 18.0
 TREE_RADIUS = 6.0
@@ -471,12 +471,12 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                     # Closely spaced fascicle sprays overlap along each short shoot,
                     # producing a continuous pine-needle silhouette rather than
                     # a few isolated star-shaped spikes.
-                    cluster_count = max(8, min(12, round(twig_length / 0.035)))
+                    cluster_count = max(4, needle_clusters * 3 + 3)
                     for cluster in range(cluster_count):
                         cluster_t = 0.16 + 0.76 * ((cluster + rng.uniform(0.12, 0.88)) /
                                                    cluster_count)
                         cluster_origin = twig_origin.lerp(twig_tip, cluster_t)
-                        add_needle_spray(foliage, cluster_origin, twig_direction, rng, pairs=8)
+                        add_needle_spray(foliage, cluster_origin, twig_direction, rng, pairs=max(4, needle_clusters * 2 + 2))
 
             # Sparse snow accents sit on upper scaffold sections only.
             if fraction > 0.56 and rng.random() < 0.38:
