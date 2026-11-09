@@ -164,3 +164,26 @@ photorealism. Talvisota's engine-backed asset validator and content packager
 remain the integration gates once generated files are registered in the
 content manifest. This generator does not silently replace shipped OBJ assets
 or alter the content catalog.
+
+
+## Granite glacial boulder
+
+The shared Central Finland and Sakkola boulder has a deterministic Blender
+source pipeline at `generate_boulder.py`. It builds a flattened, irregular
+glacially abraded granite form from an icosphere, assigns a wind-scoured snow
+cap only to upward-facing surfaces, packs the registered granite and snow PBR
+maps, and exports four independent GLB LODs plus an editable Blender source.
+
+Run:
+
+    blender --background --python tools/blender_asset_pipeline/generate_boulder.py -- --output build/generated/boulder --texture-root assets/textures/environment --seed 1939
+    blender --background --python tools/blender_asset_pipeline/verify_boulder_outputs.py -- build/generated/boulder
+    blender --background --python tools/blender_asset_pipeline/render_boulder_previews.py -- build/generated/boulder/granite_boulder.blend build/boulder-previews
+
+The generated geometry is deliberately a reusable shared asset, not a scene-wide
+mesh. Each LOD is one material-grouped mesh object, with budgets of 30k / 8k /
+2k / 500 triangles. Keep collision geometry separate and simple; do not use
+the render mesh as a physics collider. The generator does not replace the
+shipped OBJ or change the content catalog: import validation, in-game
+appearance, collision alignment, and runtime LOD selection remain integration
+gates before promotion.
