@@ -24,7 +24,7 @@ import bpy
 from mathutils import Vector
 
 
-PIPELINE_VERSION = 7
+PIPELINE_VERSION = 8
 MATERIAL_MAP_STATUS = {}
 TREE_HEIGHT = 18.0
 TREE_RADIUS = 6.0
@@ -422,61 +422,93 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                          [secondary_radius, secondary_radius * 0.66, secondary_radius * 0.30],
                          max(4, sides - 1), material_indices=[1, 1])
 
-                # Scots pine needles also emerge from short shoots along the
-                # secondary limb itself. These intermediate fascicles close
-                # the visual gaps between terminal twig clusters.
-                for shoot_index in range(3):
-                    shoot_t = 0.16 + 0.68 * ((shoot_index + rng.uniform(0.15, 0.85)) / 3.0)
-                    if shoot_t <= 0.48:
-                        shoot_origin = secondary_points[0].lerp(
-                            secondary_points[1], shoot_t / 0.48)
+                # Scots pine foliage is carried by many short lateral shoots
+                # distributed along the secondary limbs. A pine branch is not a
+                # bare stick ending in a pom-pom: its outer framework is covered
+                # in overlapping sprays from branchlets all along its length.
+                branchlet_count = 4 + needle_clusters
+                for branchlet_index in range(branchlet_count):
+                    branchlet_t = 0.10 + 0.80 * (
+                        (branchlet_index + rng.uniform(0.18, 0.82)) / branchlet_count)
+                    if branchlet_t <= 0.48:
+                        branchlet_origin = secondary_points[0].lerp(
+                            secondary_points[1], branchlet_t / 0.48)
                     else:
-                        shoot_origin = secondary_points[1].lerp(
-                            secondary_points[2], (shoot_t - 0.48) / 0.52)
-                    shoot_axis = (direction * rng.uniform(0.25, 0.58) +
-                                  lateral * rng.uniform(-0.75, 0.75) +
-                                  Vector((0.0, 0.0, rng.uniform(0.15, 0.72)))).normalized()
-                    add_needle_spray(foliage, shoot_origin, shoot_axis, rng, pairs=3)
+                        branchlet_origin = secondary_points[1].lerp(
+                            secondary_points[2], (branchlet_t - 0.48) / 0.52)
 
-                # Terminal shoots are distributed along the full secondary limb,
-                # not bunched near its attachment point. Each shoot carries
-                # several dense fascicle sprays so the crown reads as foliage.
+                    # Alternate branchlets around the limb, with a slight
+                    # upward bias and varied outward angles like real pine sprays.
+                    side_sign = -1.0 if branchlet_index % 2 else 1.0
+                    branchlet_direction = (
+                        lateral * side_sign * rng.uniform(0.48, 0.92) +
+                        direction * rng.uniform(0.12, 0.42) +
+                        Vector((0.0, 0.0, rng.uniform(0.22, 0.72)))
+                    ).normalized()
+                    branchlet_length = secondary_length * rng.uniform(0.20, 0.34)
+                    branchlet_mid = (branchlet_origin +
+                                     branchlet_direction * (branchlet_length * 0.56) +
+                                     tangent * (branchlet_length * 0.10))
+                    branchlet_tip = branchlet_origin + branchlet_direction * branchlet_length
+                    branchlet_radius = secondary_radius * rng.uniform(0.24, 0.34)
+                    trunk.path_tube(
+                        [branchlet_origin, branchlet_mid, branchlet_tip],
+                        [branchlet_radius, branchlet_radius * 0.58, 0.0018],
+                        sides=4, material_indices=[1, 1])
+
+                    # Fascicles are spaced along the branchlet, not stacked at
+                    # its endpoint. Adjacent branchlets overlap to form a
+                    # continuous, irregular needle-bearing crown surface.
+                    sprays_per_branchlet = 3 + needle_clusters
+                    for spray_index in range(sprays_per_branchlet):
+                        spray_t = 0.12 + 0.78 * (
+                            (spray_index + rng.uniform(0.16, 0.84)) /
+                            sprays_per_branchlet)
+                        spray_origin = branchlet_origin.lerp(branchlet_tip, spray_t)
+                        spray_axis = (
+                            branchlet_direction * rng.uniform(0.28, 0.58) +
+                            lateral * rng.uniform(-0.52, 0.52) +
+                            Vector((0.0, 0.0, rng.uniform(0.12, 0.48)))
+                        ).normalized()
+                        add_needle_spray(
+                            foliage, spray_origin, spray_axis, rng,
+                            pairs=max(2, needle_clusters + 1))
+
+                # Retain a smaller number of terminal leaders to break up the
+                # silhouette; they supplement the distributed foliage rather
+                # than carrying nearly the entire needle count.
                 for twig_index in range(tertiary_count):
-                    twig_t = 0.24 + 0.70 * ((twig_index + rng.uniform(0.12, 0.88)) /
-                                             max(1, tertiary_count))
+                    twig_t = 0.24 + 0.70 * (
+                        (twig_index + rng.uniform(0.12, 0.88)) /
+                        max(1, tertiary_count))
                     if twig_t <= 0.48:
-                        twig_origin = secondary_points[0].lerp(secondary_points[1], twig_t / 0.48)
+                        twig_origin = secondary_points[0].lerp(
+                            secondary_points[1], twig_t / 0.48)
                     else:
                         twig_origin = secondary_points[1].lerp(
                             secondary_points[2], (twig_t - 0.48) / 0.52)
-                    twig_direction = (direction * rng.uniform(0.18, 0.48) +
-                                      lateral * rng.uniform(-0.92, 0.92) +
-                                      Vector((0.0, 0.0, rng.uniform(0.24, 0.92)))).normalized()
-                    # Terminal pine shoots are short, fine, foliage-bearing twigs. The previous
-                    # 0.42-0.70x-secondary scaling made metre-long bare sticks;
-                    # real Scots pine needle fascicles sit densely along short shoots.
+                    twig_direction = (
+                        direction * rng.uniform(0.18, 0.48) +
+                        lateral * rng.uniform(-0.92, 0.92) +
+                        Vector((0.0, 0.0, rng.uniform(0.24, 0.92)))
+                    ).normalized()
                     twig_length = min(0.72, secondary_length * rng.uniform(0.30, 0.46))
                     twig_length = max(0.36, twig_length)
-                    twig_mid = twig_origin + twig_direction * (twig_length * 0.56) + tangent * (twig_length * 0.08)
+                    twig_mid = (twig_origin +
+                                twig_direction * (twig_length * 0.56) +
+                                tangent * (twig_length * 0.08))
                     twig_tip = twig_origin + twig_direction * twig_length
-                    trunk.path_tube([twig_origin, twig_mid, twig_tip],
-                                    [0.0075, 0.0048, 0.0020],
-                                    sides=4, material_indices=[1, 1])
-
-                    # Keep the woody hierarchy restrained: terminal shoots carry
-                    # foliage without another layer of redundant branch forks.
-                    # Keep sprays distributed over the shoot's actual length.
-                    # The old loop sampled five points but divided by three,
-                    # pushing the last sprays beyond the twig tip.
-                    # Closely spaced fascicle sprays overlap along each short shoot,
-                    # producing a continuous pine-needle silhouette rather than
-                    # a few isolated star-shaped spikes.
-                    cluster_count = max(4, needle_clusters * 3 + 3)
-                    for cluster in range(cluster_count):
-                        cluster_t = 0.16 + 0.76 * ((cluster + rng.uniform(0.12, 0.88)) /
-                                                   cluster_count)
-                        cluster_origin = twig_origin.lerp(twig_tip, cluster_t)
-                        add_needle_spray(foliage, cluster_origin, twig_direction, rng, pairs=max(4, needle_clusters * 2 + 2))
+                    trunk.path_tube(
+                        [twig_origin, twig_mid, twig_tip],
+                        [0.0075, 0.0048, 0.0020],
+                        sides=4, material_indices=[1, 1])
+                    for spray_index in range(3):
+                        spray_t = 0.20 + 0.68 * (
+                            (spray_index + rng.uniform(0.15, 0.85)) / 3.0)
+                        spray_origin = twig_origin.lerp(twig_tip, spray_t)
+                        add_needle_spray(
+                            foliage, spray_origin, twig_direction, rng,
+                            pairs=max(2, needle_clusters + 1))
 
             # Sparse snow accents sit on upper scaffold sections only.
             if fraction > 0.56 and rng.random() < 0.38:
@@ -553,7 +585,7 @@ def main():
             "lower_bole": {"material": "Scots Pine | Lower grey-brown plated bark", "height_fraction": [0.0, 0.58]},
             "upper_trunk_and_scaffold": {"material": "Scots Pine | Upper orange-yellow smooth bark", "height_fraction": [0.58, 1.0]},
         },
-        "geometry_note": "Mature Scots pine with longer, substantially thicker primary and secondary boughs, extended terminal shoots and dense overlapping paired solid needles. Needles are 16-22 cm long with 2.4-3.6 mm base diameter, distributed across 36-72 cm terminal shoots and intermediate secondary sprays. Deterministic structural asset, not a photogrammetry scan.",
+        "geometry_note": "Mature Scots pine with substantial primary and secondary boughs. Foliage is carried by dense, overlapping needle sprays distributed along many lateral branchlets throughout each secondary limb, with sparse terminal leaders. Paired solid needles are 16-22 cm long with 2.4-3.6 mm base diameter. Deterministic structural asset, not a photogrammetry scan.",
         "runtime_note": "Select LOD by projected screen size/distance in Talvisota; files are separate because glTF core has no universal LOD selector.",
     }
     manifest["material_map_status"] = MATERIAL_MAP_STATUS
