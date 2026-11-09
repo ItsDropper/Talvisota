@@ -157,6 +157,30 @@ class MeshBuilder:
         self.face_uvs.append([(0.5, 0.5)] * sides)
         self.face_material_indices.append(material_indices[-1])
 
+    def needle_ribbon(self, start, end, half_width, material_index=0):
+        """Append a tapered, double-sided flat blade for one pine needle."""
+        a, b = Vector(start), Vector(end)
+        axis = (b - a).normalized()
+        reference = Vector((0.0, 0.0, 1.0))
+        if abs(axis.dot(reference)) > 0.92:
+            reference = Vector((1.0, 0.0, 0.0))
+        side = axis.cross(reference).normalized()
+        midpoint = a.lerp(b, 0.58) + Vector((0.0, 0.0, (b - a).length * 0.018))
+        base = len(self.vertices)
+        self.vertices.extend((
+            tuple(a - side * half_width * 0.72),
+            tuple(a + side * half_width * 0.72),
+            tuple(midpoint - side * half_width),
+            tuple(midpoint + side * half_width),
+            tuple(b),
+        ))
+        self.faces.append((base, base + 1, base + 3, base + 2))
+        self.face_uvs.append([(0.0, 0.0), (1.0, 0.0), (1.0, 0.58), (0.0, 0.58)])
+        self.face_material_indices.append(material_index)
+        self.faces.append((base + 2, base + 3, base + 4))
+        self.face_uvs.append([(0.0, 0.58), (1.0, 0.58), (0.5, 1.0)])
+        self.face_material_indices.append(material_index)
+
     def cone(self, start, end, radius, sides=4):
         self.tube(start, end, radius, 0.008, sides=sides)
 
@@ -250,7 +274,7 @@ def create_materials(texture_root):
         "needles": make_material(
             "Scots Pine | Needles", texture_root, "pine_needles-albedo.bmp",
             "pine_needles-normal.bmp", "pine_needles-roughness.bmp",
-            (0.11, 0.27, 0.075), 0.78),
+            (0.16, 0.34, 0.10), 0.82, tint_color=(1.08, 1.10, 1.0)),
         "snow": make_material(
             "Scots Pine | Snow", texture_root, "snow-albedo.bmp",
             "snow-normal.bmp", "snow-roughness.bmp", (0.78, 0.84, 0.9), 0.94),
@@ -269,14 +293,15 @@ def add_needle_pair(builder, origin, direction, rng):
     if abs(axis.dot(reference)) > 0.94:
         reference = Vector((0.0, 1.0, 0.0))
     side = axis.cross(reference).normalized()
-    length = rng.uniform(0.090, 0.138)
+    length = rng.uniform(0.105, 0.145)
     for sign in (-1.0, 1.0):
-        spread = side * sign * rng.uniform(0.16, 0.34)
-        lift = Vector((0.0, 0.0, rng.uniform(0.12, 0.32)))
-        needle_axis = (axis * 0.72 + spread + lift).normalized()
+        spread = side * sign * rng.uniform(0.18, 0.34)
+        lift = Vector((0.0, 0.0, rng.uniform(0.10, 0.28)))
+        needle_axis = (axis * 0.76 + spread + lift).normalized()
         tip = Vector(origin) + needle_axis * length
-        # Three-sided needles retain a tapered profile at a modest triangle cost.
-        builder.tube(origin, tip, 0.0035, 0.00095, sides=3)
+        # A tapered two-sided blade preserves the fine needle silhouette at
+        # roughly one third the triangles of the former three-sided tube.
+        builder.needle_ribbon(origin, tip, rng.uniform(0.00055, 0.00085))
 
 
 def add_needle_spray(builder, origin, direction, rng, pairs=3):
@@ -398,8 +423,8 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                 # Scots pine needles also emerge from short shoots along the
                 # secondary limb itself. These intermediate fascicles close
                 # the visual gaps between terminal twig clusters.
-                for shoot_index in range(4):
-                    shoot_t = 0.20 + 0.68 * ((shoot_index + rng.uniform(0.15, 0.85)) / 4.0)
+                for shoot_index in range(3):
+                    shoot_t = 0.20 + 0.68 * ((shoot_index + rng.uniform(0.15, 0.85)) / 3.0)
                     if shoot_t <= 0.48:
                         shoot_origin = secondary_points[0].lerp(
                             secondary_points[1], shoot_t / 0.48)
@@ -409,7 +434,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                     shoot_axis = (direction * rng.uniform(0.25, 0.58) +
                                   lateral * rng.uniform(-0.75, 0.75) +
                                   Vector((0.0, 0.0, rng.uniform(0.15, 0.72)))).normalized()
-                    add_needle_spray(foliage, shoot_origin, shoot_axis, rng, pairs=4)
+                    add_needle_spray(foliage, shoot_origin, shoot_axis, rng, pairs=3)
 
                 # Terminal shoots are distributed along the full secondary limb,
                 # not bunched near its attachment point. Each shoot carries
@@ -452,15 +477,19 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                             [0.0025, 0.00155, 0.00075],
                             sides=3, material_indices=[1, 1])
                         add_needle_spray(
-                            foliage, branchlet_mid, branchlet_direction, rng, pairs=3)
+                            foliage, branchlet_mid, branchlet_direction, rng, pairs=2)
                         add_needle_spray(
-                            foliage, branchlet_tip, branchlet_direction, rng, pairs=3)
+                            foliage, branchlet_tip, branchlet_direction, rng, pairs=2)
 
-                    for cluster in range(needle_clusters + 2):
-                        cluster_t = 0.18 + 0.76 * ((cluster + rng.uniform(0.12, 0.88)) /
-                                                   max(1, needle_clusters))
+                    # Keep sprays distributed over the shoot's actual length.
+                    # The old loop sampled five points but divided by three,
+                    # pushing the last sprays beyond the twig tip.
+                    cluster_count = needle_clusters + 1
+                    for cluster in range(cluster_count):
+                        cluster_t = 0.16 + 0.76 * ((cluster + rng.uniform(0.12, 0.88)) /
+                                                   cluster_count)
                         cluster_origin = twig_origin.lerp(twig_tip, cluster_t)
-                        add_needle_spray(foliage, cluster_origin, twig_direction, rng, pairs=5)
+                        add_needle_spray(foliage, cluster_origin, twig_direction, rng, pairs=4)
 
             # Sparse snow accents sit on upper scaffold sections only.
             if fraction > 0.56 and rng.random() < 0.38:
