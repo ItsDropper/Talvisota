@@ -31,6 +31,14 @@ def main():
     if any(int(details.get("width", 0)) < 1 or int(details.get("height", 0)) < 1
            for details in image_details.values()):
         fail("source texture inventory contains invalid dimensions")
+    if any(not details.get("packed", False) for details in image_details.values()):
+        fail("source texture metadata reports an unpacked image")
+    mesh_details = manifest.get("source_mesh_details", [])
+    if len(mesh_details) != int(manifest.get("source_meshes", 0)):
+        fail("source mesh quality inventory is incomplete")
+    if any(int(mesh.get("triangles", 0)) <= 0 or int(mesh.get("uv_layers", 0)) <= 0
+           for mesh in mesh_details):
+        fail("source mesh quality inventory contains empty geometry or missing UVs")
     if not set(manifest["source_image_textures"]).issubset(set(manifest.get("packed_images", []))):
         fail("not every source texture was packed for portable GLB export")
     if not hasattr(bpy.ops.import_scene, "gltf"):
@@ -41,6 +49,11 @@ def main():
     if not hasattr(bpy.ops.import_scene, "gltf"):
         fail("Blender glTF importer is unavailable")
 
+    resolution = manifest.get("source_texture_resolution", {})
+    print("SCAN_SOURCE_QUALITY", "textures=", len(image_details),
+          "sub_2k=", len(resolution.get("sub_2k_images", [])),
+          "source_meshes=", len(mesh_details),
+          "degenerate_uv_faces=", sum(int(mesh.get("degenerate_uv_faces", 0)) for mesh in mesh_details))
     previous_triangles = None
     for lod_name in ("LOD0", "LOD1", "LOD2", "LOD3"):
         lod = manifest.get("lods", {}).get(lod_name)
