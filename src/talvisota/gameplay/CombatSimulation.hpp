@@ -24,6 +24,7 @@ struct WeaponDefinition final
 {
     std::string_view id;
     std::string_view displayName;
+    std::string_view modelAssetId;
     WeaponArchetype archetype = WeaponArchetype::BoltActionRifle;
     std::uint32_t magazineCapacity = 0U;
     float damage = 0.0F;
@@ -76,6 +77,7 @@ enum class CombatOutcome
     OutOfRange,
     FriendlyTarget,
     EmptyMagazine,
+    Cooldown,
     ReloadStarted,
     Reloading,
     MagazineFull,
