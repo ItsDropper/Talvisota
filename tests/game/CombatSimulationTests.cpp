@@ -118,13 +118,27 @@ int main()
     Check(state.combatants.at("actor.finn").magazineRounds == 4U,
         "ammunition is not transferred before reload completion");
 
+    const std::array<CombatCommand, 1> incomingOne{{
+        {"combat.incoming.001", "actor.enemy", "actor.finn", CombatAction::Fire}
+    }};
+    Check(AdvanceCombat(state, registry, 0.25, incomingOne, results, error) &&
+        results[0].outcome == CombatOutcome::Fired &&
+        state.combatants.at("actor.finn").health == 76.0F,
+        "opposing combatant can reduce player health");
+    const std::array<CombatCommand, 1> incomingTwo{{
+        {"combat.incoming.002", "actor.enemy", "actor.finn", CombatAction::Fire}
+    }};
+    Check(AdvanceCombat(state, registry, 0.25, incomingTwo, results, error) &&
+        results[0].outcome == CombatOutcome::Fired &&
+        state.combatants.at("actor.finn").health == 52.0F,
+        "subsequent valid hit reduces health again");
     const std::array<CombatCommand, 1> recover{{
         {"combat.recover.001", "actor.finn", {}, CombatAction::Recover}
     }};
     Check(AdvanceCombat(state, registry, 0.25, recover, results, error) &&
         results[0].outcome == CombatOutcome::Recovered &&
         results[0].damageApplied == 25.0F &&
-        results[0].targetHealthRemaining == 57.0F,
+        results[0].targetHealthRemaining == 77.0F,
         "abstract recovery ability restores a bounded amount of health");
     const std::array<CombatCommand, 1> recoverAgain{{
         {"combat.recover.002", "actor.finn", {}, CombatAction::Recover}
