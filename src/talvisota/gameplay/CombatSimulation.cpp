@@ -26,11 +26,6 @@ bool IsFinitePositive(const float value) noexcept
     return std::isfinite(value) && value > 0.0F;
 }
 
-bool IsFinitePositive(const double value) noexcept
-{
-    return std::isfinite(value) && value > 0.0;
-}
-
 double DistanceBetween(const entities::EntityState& first,
     const entities::EntityState& second) noexcept
 {
