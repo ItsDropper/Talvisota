@@ -32,15 +32,19 @@ def main():
     shading.cavity_type = "BOTH"
     shading.curvature_ridge_factor = 1.35
     shading.curvature_valley_factor = 1.0
-    shading.show_floor = True
-    shading.show_axis_x = False
-    shading.show_axis_y = False
     scene.render.resolution_x = 768
     scene.render.resolution_y = 768
     scene.render.resolution_percentage = 100
     scene.render.image_settings.file_format = "PNG"
     scene.render.film_transparent = False
     scene.render.filepath = str(output_dir / "scots_pine_oblique.png")
+
+    ground_material = bpy.data.materials.new("Preview Ground")
+    ground_material.diffuse_color = (0.14, 0.16, 0.14, 1.0)
+    bpy.ops.mesh.primitive_plane_add(size=60.0, location=(0.0, 0.0, -0.025))
+    ground = bpy.context.object
+    ground.name = "PreviewGround"
+    ground.data.materials.append(ground_material)
 
     camera_data = bpy.data.cameras.new("TreePreviewCamera")
     camera = bpy.data.objects.new("TreePreviewCamera", camera_data)
