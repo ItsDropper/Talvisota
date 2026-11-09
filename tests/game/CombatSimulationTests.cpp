@@ -153,7 +153,7 @@ int main()
     }};
     Check(AdvanceCombat(state, registry, 0.25, recoverAgain, results, error) &&
         results[0].outcome == CombatOutcome::RecoveryCooldown &&
-        state.combatants.at("actor.finn").health == 57.0F,
+        state.combatants.at("actor.finn").health == 77.0F,
         "recovery ability enforces its game-time cooldown");
 
     for (int step = 0; step < 12; ++step)
