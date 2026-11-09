@@ -145,8 +145,9 @@ int main()
     }};
     Check(AdvanceCombat(state, registry, 0.25, recover, results, error) &&
         results[0].outcome == CombatOutcome::Recovered &&
-        results[0].damageApplied == 25.0F &&
-        results[0].targetHealthRemaining == 77.0F,
+        results[0].damageApplied == 0.0F &&
+        results[0].targetHealthRemaining == 77.0F &&
+        results[0].healthRestored == 25.0F,
         "abstract recovery ability restores a bounded amount of health");
     const std::array<CombatCommand, 1> recoverAgain{{
         {"combat.recover.002", "actor.finn", {}, CombatAction::Recover}
