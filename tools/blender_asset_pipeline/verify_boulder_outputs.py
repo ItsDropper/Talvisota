@@ -51,11 +51,17 @@ def main():
         names = {material.name for material in mesh.materials if material}
         if not any("Granite" in name for name in names) or not any("Snow" in name for name in names):
             fail(name + " lost granite or snow material")
-        if not any(poly.material_index == 1 for poly in mesh.polygons):
+        snow_faces = sum(poly.material_index == 1 for poly in mesh.polygons)
+        granite_faces = sum(poly.material_index == 0 for poly in mesh.polygons)
+        if snow_faces == 0:
             fail(name + " has no snow-cap faces")
-        if not any(poly.material_index == 0 for poly in mesh.polygons):
+        if granite_faces == 0:
             fail(name + " has no exposed granite faces")
-        print("VERIFIED", name, "triangles=", len(mesh.polygons), "materials=", sorted(names))
+        if snow_faces / len(mesh.polygons) > 0.25:
+            fail(name + " snow cap covers more than 25% of the mesh")
+        print("VERIFIED", name, "triangles=", len(mesh.polygons),
+              "snow_faces=", snow_faces, "granite_faces=", granite_faces,
+              "materials=", sorted(names))
     print("TALVISOTA_BOULDER_ASSET_VERIFY_OK")
 
 

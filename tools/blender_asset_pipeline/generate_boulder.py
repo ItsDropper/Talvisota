@@ -122,6 +122,24 @@ def build_lod(name, preset, rock, snow, seed):
         snowline = 1.50 + edge_noise * 1.15
         polygon.material_index = 1 if normal.z > 0.90 and center.z > snowline else 0
         polygon.use_smooth = polygon.material_index == 1
+
+    # Coarse icosphere LODs can have no face whose normal/height clears the
+    # detailed-mesh snow threshold. Preserve a small, physically plausible cap
+    # by assigning only the uppermost upward-facing facet when that happens.
+    if not any(polygon.material_index == 1 for polygon in mesh.polygons):
+        candidates = [
+            polygon for polygon in mesh.polygons
+            if polygon.normal.z > 0.15
+        ]
+        if not candidates:
+            candidates = list(mesh.polygons)
+        cap_face = max(
+            candidates,
+            key=lambda polygon: polygon.center.z + polygon.normal.z * 0.25,
+        )
+        cap_face.material_index = 1
+        cap_face.use_smooth = True
+
     obj = bpy.data.objects.new("Finnish_Glacial_Boulder_" + name, mesh)
     bpy.context.collection.objects.link(obj)
     return obj, len(mesh.polygons)
