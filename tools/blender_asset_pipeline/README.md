@@ -120,7 +120,7 @@ path for close-up hero assets when the captured source quality supports it.
   not capped cylinders; this reduces foliage triangles while retaining their
   paired silhouette. The LOD0 primary scaffold uses five-sided tubes rather
   than six-sided tubes to keep its branch silhouette while meeting the close-up
-  geometry budget. The verifier enforces budgets of 650k / 300k / 150k / 50k
+  geometry budget. The verifier enforces budgets of 700k / 300k / 150k / 50k
   triangles for LOD0 through LOD3. LOD0 is the close-up hero asset; use lower
   LODs for progressively smaller screen coverage.
 - The forest must instance individual tree assets at the scene/runtime layer;
