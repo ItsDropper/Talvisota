@@ -18,6 +18,14 @@ import bpy
 from mathutils import Matrix
 
 
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(8 * 1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, required=True,
@@ -102,7 +110,7 @@ def main():
     if list(args.lod_ratios) != sorted(args.lod_ratios, reverse=True):
         raise SystemExit("LOD ratios must decrease: LOD1 > LOD2 > LOD3")
 
-    source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
+    source_hash = sha256_file(source)
     args.output.mkdir(parents=True, exist_ok=True)
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.object.delete(use_global=False)
