@@ -754,10 +754,16 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
                 [&collisionId](const CollisionBox& box) { return box.id == collisionId; });
             if (collision != candidate.collision.end())
             {
-                const float displacement = SampleTerrainDisplacement(candidate,
-                    placement.position[0], placement.position[2]);
-                collision->center[1] = placement.position[1] + displacement +
-                                       collision->halfExtents[1];
+                float groundedY = placement.position[1];
+                std::string groundingError;
+                if (!ResolveGroundedPlacementHeight(candidate, placement.position[0],
+                        placement.position[2], placement.position[1], groundedY, groundingError))
+                {
+                    Add(diagnostics, path, 0, "collision.grounding",
+                        "Could not align collision volume with the sampled terrain: " + groundingError);
+                    continue;
+                }
+                collision->center[1] = groundedY + collision->halfExtents[1];
             }
         }
     }
