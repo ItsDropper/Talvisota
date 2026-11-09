@@ -181,8 +181,8 @@ Run:
     blender --background --python tools/blender_asset_pipeline/render_boulder_previews.py -- build/generated/boulder/granite_boulder.blend build/boulder-previews
 
 The generated geometry is deliberately a reusable shared asset, not a scene-wide
-mesh. Each LOD is one material-grouped mesh object, with budgets of 30k / 8k /
-2k / 500 triangles. Keep collision geometry separate and simple; do not use
+mesh. Each LOD is one material-grouped mesh object, with budgets of 6k / 2k /
+500 / 150 triangles. Keep collision geometry separate and simple; do not use
 the render mesh as a physics collider. The generator does not replace the
 shipped OBJ or change the content catalog: import validation, in-game
 appearance, collision alignment, and runtime LOD selection remain integration
