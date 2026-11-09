@@ -34,6 +34,8 @@ namespace {
 using Microsoft::WRL::ComPtr;
 using talvisota::presentation::SceneSnapshot;
 using talvisota::presentation::BuildSakkolaScene;
+using talvisota::presentation::PresentedSkyRegionStats;
+using talvisota::presentation::ValidatePresentedSkyRegion;
 
 LONG rawMouseDeltaX=0, rawMouseDeltaY=0;
 HWND mainWindow=nullptr, frontendOverlay=nullptr;
