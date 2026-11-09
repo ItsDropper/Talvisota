@@ -208,30 +208,22 @@ float SampleTerrainDisplacement(const WorldRegion& region, const float x, const 
     return region.terrain.surfaceProfile == TerrainSurfaceProfile::SnowDriftV1 ? SnowDriftDisplacement(x, z) : 0.0F;
 }
 
-bool SampleTerrainHeight(const WorldRegion& region, float x, float z,
-                          float& height, std::array<float, 3>& normal, std::string& error)
+bool SampleTerrainGroundHeight(const WorldRegion& region, float x, float z,
+                                float& height, std::array<float, 3>& normal, std::string& error)
 {
     if (!std::isfinite(x) || !std::isfinite(z))
     {
         error = "Terrain sample position must contain finite X/Z coordinates.";
         return false;
     }
-    if (const auto* water = FindWaterSurfaceAt(region, x, z))
-    {
-        height = water->elevation;
-        normal = {0.0F, 1.0F, 0.0F};
-        error.clear();
-        return true;
-    }
     const auto& terrain = region.terrain;
     if (terrain.rows < 2U || terrain.columns < 2U ||
         terrain.elevations.size() != terrain.rows * terrain.columns ||
         !std::isfinite(terrain.originX) || !std::isfinite(terrain.originZ) ||
         !std::isfinite(terrain.spacingX) || !std::isfinite(terrain.spacingZ) ||
-        terrain.spacingX <= 0.0F || terrain.spacingZ <= 0.0F ||
-        !std::isfinite(x) || !std::isfinite(z))
+        terrain.spacingX <= 0.0F || terrain.spacingZ <= 0.0F)
     {
-        error = "Terrain heightfield is absent, malformed, or queried with non-finite coordinates.";
+        error = "Terrain heightfield is absent or malformed.";
         return false;
     }
     const double gridX = (static_cast<double>(x) - terrain.originX) / terrain.spacingX;
@@ -265,11 +257,15 @@ bool SampleTerrainHeight(const WorldRegion& region, float x, float z,
                            (h01 * (1.0 - tx) + h11 * tx) * tz;
     double derivativeX = ((h10 - h00) * (1.0 - tz) + (h11 - h01) * tz) / terrain.spacingX;
     double derivativeZ = ((h01 - h00) * (1.0 - tx) + (h11 - h10) * tx) / terrain.spacingZ;
+    const bool overWater = FindWaterSurfaceAt(region, x, z) != nullptr;
     const float displacement = SampleTerrainDisplacement(region, x, z);
-    if (terrain.surfaceProfile == TerrainSurfaceProfile::SnowDriftV1) {
+    if (terrain.surfaceProfile == TerrainSurfaceProfile::SnowDriftV1 && !overWater)
+    {
         constexpr float step = 0.25F;
-        derivativeX += (SnowDriftDisplacement(x + step, z) - SnowDriftDisplacement(x - step, z)) / (2.0F * step);
-        derivativeZ += (SnowDriftDisplacement(x, z + step) - SnowDriftDisplacement(x, z - step)) / (2.0F * step);
+        derivativeX += (SnowDriftDisplacement(x + step, z) -
+                        SnowDriftDisplacement(x - step, z)) / (2.0F * step);
+        derivativeZ += (SnowDriftDisplacement(x, z + step) -
+                        SnowDriftDisplacement(x, z - step)) / (2.0F * step);
     }
     const double length = std::sqrt(derivativeX * derivativeX + 1.0 + derivativeZ * derivativeZ);
     height = static_cast<float>(sampled) + displacement;
@@ -278,6 +274,24 @@ bool SampleTerrainHeight(const WorldRegion& region, float x, float z,
               static_cast<float>(-derivativeZ / length)};
     error.clear();
     return true;
+}
+
+bool SampleTerrainHeight(const WorldRegion& region, const float x, const float z,
+                         float& height, std::array<float, 3>& normal, std::string& error)
+{
+    if (!std::isfinite(x) || !std::isfinite(z))
+    {
+        error = "Terrain sample position must contain finite X/Z coordinates.";
+        return false;
+    }
+    if (const auto* water = FindWaterSurfaceAt(region, x, z))
+    {
+        height = water->elevation;
+        normal = {0.0F, 1.0F, 0.0F};
+        error.clear();
+        return true;
+    }
+    return SampleTerrainGroundHeight(region, x, z, height, normal, error);
 }
 
 bool ResolveGroundedPlacementHeight(const WorldRegion& region, const float x, const float z,
