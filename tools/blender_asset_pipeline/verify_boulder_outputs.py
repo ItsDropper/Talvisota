@@ -19,7 +19,7 @@ def main():
     if manifest.get("schema") != "talvisota.boulder-asset.v1":
         fail("unexpected manifest schema")
     previous = None
-    budgets = {"LOD0": 30_000, "LOD1": 8_000, "LOD2": 2_000, "LOD3": 500}
+    budgets = {"LOD0": 6_000, "LOD1": 2_000, "LOD2": 500, "LOD3": 150}
     for name in ("LOD0", "LOD1", "LOD2", "LOD3"):
         lod = manifest.get("lods", {}).get(name)
         if not lod:
