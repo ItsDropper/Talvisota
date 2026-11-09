@@ -95,6 +95,8 @@ struct WorldRegionDiagnostic final
 [[nodiscard]] bool SampleTerrainHeight(const WorldRegion& region, float x, float z,
                                       float& height, std::array<float, 3>& normal,
                                       std::string& error);
+[[nodiscard]] bool ResolveGroundedPlacementHeight(const WorldRegion& region,
+    float x, float z, float authoredY, float& resolvedY, std::string& error);
 [[nodiscard]] bool QueryCollision(const WorldRegion& region,
                                   const std::array<float, 3>& queryMin,
                                   const std::array<float, 3>& queryMax,
