@@ -74,10 +74,14 @@ def main():
         "opposite": Vector((-26.0, -28.0, 11.0)),
         "side": Vector((30.0, 22.0, 12.0)),
         "front": Vector((0.0, -38.0, 11.0)),
+        # A tighter fifth capture checks whether needle sprays fill the crown.
+        "crown": Vector((13.0, -17.0, 15.0)),
     }
     for name, position in views.items():
         camera.location = position
-        camera.rotation_euler = (target - position).to_track_quat("-Z", "Y").to_euler()
+        view_target = Vector((0.0, 0.0, 12.8)) if name == "crown" else target
+        camera_data.ortho_scale = 10.5 if name == "crown" else 22.5
+        camera.rotation_euler = (view_target - position).to_track_quat("-Z", "Y").to_euler()
         scene.render.filepath = str(output_dir / ("scots_pine_" + name + ".png"))
         bpy.ops.render.render(write_still=True)
         print("TREE_PREVIEW_RENDERED", name, scene.render.filepath)
@@ -85,22 +89,24 @@ def main():
     # Save a compact contact sheet as a single review screenshot as well as
     # the individual full-resolution camera captures.
     from PIL import Image, ImageOps, ImageDraw
+    view_names = ("oblique", "opposite", "side", "front", "crown")
     captures = [Image.open(output_dir / ("scots_pine_" + name + ".png")).convert("RGB")
-                for name in ("oblique", "opposite", "side", "front")]
+                for name in view_names]
     thumb_width = 480
     thumbs = []
-    for name, image in zip(("OBLIQUE", "OPPOSITE", "SIDE", "FRONT"), captures):
+    for name, image in zip(("OBLIQUE", "OPPOSITE", "SIDE", "FRONT", "CROWN DETAIL"), captures):
         height = round(image.height * thumb_width / image.width)
         thumb = image.resize((thumb_width, height), Image.Resampling.LANCZOS)
         panel = Image.new("RGB", (thumb_width, height + 42), (24, 27, 31))
         panel.paste(thumb, (0, 42))
         ImageDraw.Draw(panel).text((14, 13), name, fill=(235, 240, 245))
         thumbs.append(panel)
-    sheet = Image.new("RGB", (thumb_width * 2, thumbs[0].height * 2), (18, 20, 24))
-    sheet.paste(thumbs[0], (0, 0))
-    sheet.paste(thumbs[1], (thumb_width, 0))
-    sheet.paste(thumbs[2], (0, thumbs[0].height))
-    sheet.paste(thumbs[3], (thumb_width, thumbs[0].height))
+    columns = 2
+    rows = (len(thumbs) + columns - 1) // columns
+    sheet = Image.new("RGB", (thumb_width * columns, thumbs[0].height * rows), (18, 20, 24))
+    for index, panel in enumerate(thumbs):
+        sheet.paste(panel, ((index % columns) * thumb_width,
+                            (index // columns) * thumbs[0].height))
     sheet.save(output_dir / "scots_pine_review_contact_sheet.png", optimize=True)
     print("TREE_PREVIEW_CONTACT_SHEET", output_dir / "scots_pine_review_contact_sheet.png")
 
