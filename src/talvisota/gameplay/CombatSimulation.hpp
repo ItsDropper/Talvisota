@@ -97,6 +97,7 @@ struct CombatResult final
     CombatOutcome outcome = CombatOutcome::Ignored;
     float damageApplied = 0.0F;
     float targetHealthRemaining = 0.0F;
+    float healthRestored = 0.0F;
 };
 
 [[nodiscard]] bool RegisterCombatant(CombatSimulationState& state,
