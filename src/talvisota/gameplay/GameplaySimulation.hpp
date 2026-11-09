@@ -1,6 +1,7 @@
 #pragma once
 
 #include "talvisota/entities/EntityRegistry.hpp"
+#include "talvisota/gameplay/CombatSimulation.hpp"
 #include "talvisota/game/MissionRuntime.hpp"
 
 #include <array>
@@ -102,6 +103,15 @@ struct SimulationState final
 // or malformed active targets are errors; output is unchanged on error.
 [[nodiscard]] bool FindActiveObjectiveTarget(const SimulationState& state,
     std::string_view actorEntityId, ActiveObjectiveTarget& output, std::string& error);
+
+// Applies defeated combat-target events to matching active mission objectives.
+// Commands and results must be the corresponding outputs from one AdvanceCombat call.
+// The mission state and output remain unchanged on malformed or inconsistent input.
+[[nodiscard]] bool ApplyCombatMissionEvents(SimulationState& missionState,
+    const CombatSimulationState& combatState,
+    std::span<const CombatCommand> commands,
+    std::span<const CombatResult> combatResults,
+    std::vector<CommandResult>& outputResults, std::string& error);
 
 // Advances exactly one deterministic simulation tick. Commands are processed in
 // caller-provided order. The state and result vector are unchanged on validation failure.
