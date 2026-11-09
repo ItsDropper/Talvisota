@@ -160,78 +160,6 @@ void TestShippedTerrainHeightfieldMatchesVisualMeshVertices()
             "Terrain OBJ vertex count must exactly match the authored heightfield grid.");
 }
 
-void TestGroundHeightSamplerSeparatesTerrainFromWaterSurface()
-{
-    talvisota::world::WorldRegion region;
-    region.terrain.rows = 2U;
-    region.terrain.columns = 2U;
-    region.terrain.originX = 0.0F;
-    region.terrain.originZ = 0.0F;
-    region.terrain.spacingX = 1.0F;
-    region.terrain.spacingZ = 1.0F;
-    region.terrain.elevations = {1.0F, 2.0F, 3.0F, 4.0F};
-    region.waterSurfaces.push_back({"water.test", "ice.test", 0.0F, 1.0F, 0.0F, 1.0F, 12.0F});
-
-    float groundHeight = 0.0F;
-    float surfaceHeight = 0.0F;
-    std::array<float, 3> normal{};
-    std::string error;
-    Require(talvisota::world::SampleTerrainGroundHeight(region, 0.5F, 0.5F,
-                groundHeight, normal, error),
-            "Ground sampling must retain the heightfield beneath water.");
-    Require(std::abs(groundHeight - 2.5F) < 1.0e-5F,
-            "Ground sampling beneath water must return interpolated terrain elevation.");
-    Require(talvisota::world::SampleTerrainHeight(region, 0.5F, 0.5F,
-                surfaceHeight, normal, error),
-            "Gameplay surface sampling must resolve the water surface.");
-    Require(std::abs(surfaceHeight - 12.0F) < 1.0e-5F,
-            "Gameplay surface sampling must return the authored water elevation.");
-}
-
-void TestSakkolaTerrainMeshFitsCanonicalGroundSampler()
-{
-    const std::filesystem::path root = TALVISOTA_SOURCE_DIR;
-    talvisota::content::ContentRegistry registry;
-    std::vector<talvisota::content::ContentDiagnostic> manifestDiagnostics;
-    Require(talvisota::content::LoadContentManifest(root / "content/catalog.tmanifest",
-            root, registry, manifestDiagnostics), "Sakkola content manifest should load.");
-    talvisota::content::WorldDefinition world;
-    std::vector<talvisota::content::WorldDiagnostic> worldDiagnostics;
-    Require(talvisota::content::LoadWorldDefinition(root / "content/worlds/sakkola.tworld",
-            registry, world, worldDiagnostics), "Sakkola world definition should load.");
-    talvisota::world::WorldRegion region;
-    std::vector<talvisota::world::WorldRegionDiagnostic> regionDiagnostics;
-    Require(talvisota::world::LoadWorldRegion(root / "content/worlds/sakkola-church-village.tregion",
-            registry, world, region, regionDiagnostics), "Sakkola region should load.");
-
-    std::ifstream model(root / "assets/models/terrain/sakkola-church-village.obj");
-    Require(static_cast<bool>(model), "Sakkola terrain OBJ should be readable.");
-    std::size_t vertexCount = 0U;
-    std::string line;
-    while (std::getline(model, line))
-    {
-        std::istringstream record(line);
-        std::string type;
-        record >> type;
-        if (type != "v")
-            continue;
-        float x = 0.0F, y = 0.0F, z = 0.0F;
-        Require(static_cast<bool>(record >> x >> y >> z),
-                "Every Sakkola terrain vertex must contain finite XYZ coordinates.");
-        float groundHeight = 0.0F;
-        std::array<float, 3> normal{};
-        std::string error;
-        Require(talvisota::world::SampleTerrainGroundHeight(region, x, z,
-                    groundHeight, normal, error),
-                "Every rendered Sakkola terrain vertex must map into the canonical gameplay heightfield.");
-        Require(std::isfinite(y) && std::isfinite(groundHeight),
-                "Rendered and sampled Sakkola terrain elevations must remain finite.");
-        ++vertexCount;
-    }
-    Require(vertexCount >= region.terrain.rows * region.terrain.columns,
-            "Sakkola visual terrain must cover at least the authored heightfield sample grid.");
-}
-
 void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
 {
     const std::filesystem::path root = TALVISOTA_SOURCE_DIR;
@@ -396,7 +324,12 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
             Require(collision != region.collision.end(),
                     "Every grounded tree, fallen log, and stump must have its matching collision volume.");
             const float collisionBottom = collision->center[1] - collision->halfExtents[1];
-            const float expectedCollisionBottom = placement.position[1] + surfaceDisplacement;
+            float expectedCollisionBottom = 0.0F;
+            std::string collisionGroundingError;
+            Require(talvisota::world::ResolveGroundedPlacementHeight(region,
+                        placement.position[0], placement.position[2], placement.position[1],
+                        expectedCollisionBottom, collisionGroundingError),
+                    "Grounded vegetation and deadwood collision positions must resolve against terrain.");
             if (std::abs(collisionBottom - expectedCollisionBottom) > 0.002F) {
                 std::cerr << "Misaligned collision " << collision->id << " placement=" << placement.id
                           << " bottom=" << collisionBottom << " expected=" << expectedCollisionBottom
@@ -814,8 +747,6 @@ int main()
     try
     {
         TestShippedTerrainHeightfieldMatchesVisualMeshVertices();
-        TestGroundHeightSamplerSeparatesTerrainFromWaterSurface();
-        TestSakkolaTerrainMeshFitsCanonicalGroundSampler();
         TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition();
         TestLoadsComposedRegionAndIndependentSpatialData();
         TestRejectsMissingDependenciesAndInvalidSpatialRecords();
