@@ -18,7 +18,17 @@ def main():
     manifest = json.loads((root / "scots_pine.asset.json").read_text(encoding="utf-8"))
     if manifest.get("schema") != "talvisota.tree-asset.v1":
         fail("unexpected manifest schema")
+    if not hasattr(bpy.ops.import_scene, "gltf"):
+        try:
+            bpy.ops.preferences.addon_enable(module="io_scene_gltf2")
+        except RuntimeError:
+            pass
+    if not hasattr(bpy.ops.import_scene, "gltf"):
+        fail("Blender glTF 2.0 importer is not installed or enabled")
     previous_triangles = None
+    missing_maps = [name for name, found in manifest.get("material_map_status", {}).items() if not found]
+    if missing_maps:
+        fail("missing PBR source maps: " + ", ".join(missing_maps))
     for lod_name in ("LOD0", "LOD1", "LOD2", "LOD3"):
         lod = manifest["lods"].get(lod_name)
         if not lod:
