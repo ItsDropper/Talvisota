@@ -29,7 +29,7 @@ jobs:
 
       - name: Install NumPy for Blender's Python 3.12
         run: |
-          python3 -m pip install --disable-pip-version-check --target "$RUNNER_TEMP/blender-python" --python-version 3.12 --only-binary=:all: numpy==1.26.4
+          python3 -m pip install --disable-pip-version-check --target "$RUNNER_TEMP/blender-python" --python-version 3.12 --only-binary=:all: numpy==1.26.4 pillow
           echo "PYTHONPATH=$RUNNER_TEMP/blender-python" >> "$GITHUB_ENV"
 
       - name: Generate source PBR maps
