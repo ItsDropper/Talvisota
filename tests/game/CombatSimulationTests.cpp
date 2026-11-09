@@ -28,11 +28,14 @@ int main()
 
     const auto catalog = Finnish1939WeaponCatalog();
     Check(catalog.size() == 3U, "catalog exposes three Finnish 1939-era infantry weapon archetypes");
-    Check(FindWeaponDefinition("weapon.mosin_m27") != nullptr,
+    Check(FindWeaponDefinition("weapon.mosin_m27") != nullptr &&
+        FindWeaponDefinition("weapon.mosin_m27")->modelAssetId == "model.weapon.mosin_m27",
         "catalog resolves the Mosin-Nagant M/27 rifle");
-    Check(FindWeaponDefinition("weapon.suomi_kp31") != nullptr,
+    Check(FindWeaponDefinition("weapon.suomi_kp31") != nullptr &&
+        FindWeaponDefinition("weapon.suomi_kp31")->modelAssetId == "model.weapon.suomi_kp31",
         "catalog resolves the Suomi KP/-31 submachine gun");
-    Check(FindWeaponDefinition("weapon.lahti_saloranta_m26") != nullptr,
+    Check(FindWeaponDefinition("weapon.lahti_saloranta_m26") != nullptr &&
+        FindWeaponDefinition("weapon.lahti_saloranta_m26")->modelAssetId == "model.weapon.lahti_saloranta_m26",
         "catalog resolves the Lahti-Saloranta M/26 light machine gun");
     Check(FindWeaponDefinition("weapon.unknown") == nullptr,
         "unknown weapon IDs are rejected");
@@ -74,7 +77,7 @@ int main()
         {"combat.shot.002", "actor.finn", "actor.enemy", CombatAction::Fire}
     }};
     Check(AdvanceCombat(state, registry, 0.05, rapidShot, results, error) &&
-        results[0].outcome == CombatOutcome::Ignored &&
+        results[0].outcome == CombatOutcome::Cooldown &&
         state.combatants.at("actor.enemy").health == 32.0F,
         "fire-rate gate prevents a second shot before the configured cooldown");
 
