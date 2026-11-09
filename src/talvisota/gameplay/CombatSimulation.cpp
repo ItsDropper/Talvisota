@@ -97,6 +97,105 @@ bool RegisterCombatant(CombatSimulationState& state,
     return true;
 }
 
+
+bool AddCombatantWeapon(CombatSimulationState& state,
+    const entities::EntityRegistry& entityRegistry, const std::string_view entityId,
+    const std::string_view weaponId, const std::uint32_t reserveRounds,
+    const bool equipImmediately, std::string& error)
+{
+    if (!entities::IsValidStableId(entityId) || !entities::IsValidStableId(weaponId) ||
+        reserveRounds > 10000U)
+    {
+        error = "Weapon inventory request contains an invalid ID or reserve ammunition value.";
+        return false;
+    }
+    const entities::EntityState* const entity = entityRegistry.Find(entityId);
+    const WeaponDefinition* const weapon = FindWeaponDefinition(weaponId);
+    const auto found = state.combatants.find(entityId);
+    if (entity == nullptr || !entity->active ||
+        entity->kind == entities::EntityKind::WorldObject ||
+        !entities::IsValidStableId(entity->factionId) || weapon == nullptr ||
+        found == state.combatants.end())
+    {
+        error = "Weapon inventory request requires a registered active combatant and known weapon.";
+        return false;
+    }
+    if (found->second.weaponId == weaponId ||
+        found->second.storedWeapons.contains(weaponId))
+    {
+        error = "Combatant already carries the requested weapon.";
+        return false;
+    }
+
+    CombatSimulationState candidate = state;
+    CombatantState& combatant = candidate.combatants.at(std::string(entityId));
+    if (equipImmediately)
+    {
+        combatant.storedWeapons.emplace(combatant.weaponId,
+            WeaponAmmoState{combatant.magazineRounds, combatant.reserveRounds});
+        combatant.weaponId = weapon->id;
+        combatant.magazineRounds = weapon->magazineCapacity;
+        combatant.reserveRounds = reserveRounds;
+        combatant.reloadCompletesAtSeconds = 0.0;
+        combatant.nextShotAtSeconds = candidate.elapsedSeconds;
+    }
+    else
+    {
+        combatant.storedWeapons.emplace(weapon->id,
+            WeaponAmmoState{weapon->magazineCapacity, reserveRounds});
+    }
+    state = std::move(candidate);
+    error.clear();
+    return true;
+}
+
+bool EquipCombatantWeapon(CombatSimulationState& state,
+    const entities::EntityRegistry& entityRegistry, const std::string_view entityId,
+    const std::string_view weaponId, std::string& error)
+{
+    if (!entities::IsValidStableId(entityId) || !entities::IsValidStableId(weaponId))
+    {
+        error = "Weapon switch request contains an invalid entity or weapon ID.";
+        return false;
+    }
+    const entities::EntityState* const entity = entityRegistry.Find(entityId);
+    const auto found = state.combatants.find(entityId);
+    if (entity == nullptr || !entity->active ||
+        entity->kind == entities::EntityKind::WorldObject ||
+        found == state.combatants.end())
+    {
+        error = "Weapon switch requires a registered active combatant.";
+        return false;
+    }
+    if (found->second.weaponId == weaponId)
+    {
+        error.clear();
+        return true;
+    }
+    if (FindWeaponDefinition(weaponId) == nullptr ||
+        !found->second.storedWeapons.contains(weaponId))
+    {
+        error = "Combatant does not carry the requested weapon.";
+        return false;
+    }
+
+    CombatSimulationState candidate = state;
+    CombatantState& combatant = candidate.combatants.at(std::string(entityId));
+    const auto selected = combatant.storedWeapons.find(weaponId);
+    const WeaponAmmoState selectedAmmo = selected->second;
+    combatant.storedWeapons.erase(selected);
+    combatant.storedWeapons.emplace(combatant.weaponId,
+        WeaponAmmoState{combatant.magazineRounds, combatant.reserveRounds});
+    combatant.weaponId = weaponId;
+    combatant.magazineRounds = selectedAmmo.magazineRounds;
+    combatant.reserveRounds = selectedAmmo.reserveRounds;
+    combatant.reloadCompletesAtSeconds = 0.0;
+    combatant.nextShotAtSeconds = candidate.elapsedSeconds;
+    state = std::move(candidate);
+    error.clear();
+    return true;
+}
+
 bool AdvanceCombat(CombatSimulationState& state,
     const entities::EntityRegistry& entityRegistry, const double deltaSeconds,
     const std::span<const CombatCommand> commands, std::vector<CombatResult>& output,
@@ -136,10 +235,23 @@ bool AdvanceCombat(CombatSimulationState& state,
             !std::isfinite(combatant.reloadCompletesAtSeconds) ||
             !std::isfinite(combatant.nextRecoveryAtSeconds) ||
             combatant.nextShotAtSeconds < 0.0 || combatant.reloadCompletesAtSeconds < 0.0 ||
-            combatant.nextRecoveryAtSeconds < 0.0)
+            combatant.nextRecoveryAtSeconds < 0.0 ||
+            combatant.storedWeapons.contains(combatant.weaponId))
         {
             error = "Combat state contains a missing entity or invalid combatant record: " + entityId;
             return false;
+        }
+        for (const auto& [storedWeaponId, ammo] : combatant.storedWeapons)
+        {
+            const WeaponDefinition* const storedWeapon = FindWeaponDefinition(storedWeaponId);
+            if (storedWeapon == nullptr ||
+                !entities::IsValidStableId(storedWeaponId) ||
+                ammo.magazineRounds > storedWeapon->magazineCapacity ||
+                ammo.reserveRounds > 10000U)
+            {
+                error = "Combat state contains an invalid stored weapon record: " + entityId;
+                return false;
+            }
         }
 
         if (combatant.reloadCompletesAtSeconds > 0.0 &&
