@@ -105,9 +105,11 @@ path for close-up hero assets when the captured source quality supports it.
   objects. This avoids per-twig draw calls while retaining separate material
   surfaces.
 - LOD0/1/2/3 progressively reduce scaffold density, secondary/tertiary
-  branching, terminal needle sprays and radial sides. The manifest records
-  vertices and triangles. LOD0 is the close-up hero asset; use lower LODs for
-  progressively smaller screen coverage.
+  branching and needle sprays. Individual needles are tapered blade strips,
+  not capped cylinders; this reduces foliage triangles while retaining their
+  paired silhouette. The verifier enforces budgets of 650k / 300k / 150k / 50k
+  triangles for LOD0 through LOD3. LOD0 is the close-up hero asset; use lower
+  LODs for progressively smaller screen coverage.
 - The forest must instance individual tree assets at the scene/runtime layer;
   do not merge the entire forest into one world-sized mesh, which destroys
   useful frustum/occlusion-culling granularity.
