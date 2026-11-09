@@ -51,8 +51,11 @@ conical nursery tree.
 - Fine terminal shoots are distributed along the full secondary limbs, not
   concentrated near branch attachments.
 - Each terminal shoot carries multiple radial fascicle sprays. Individual
-  paired needles are generated at 10.5–14.5 cm scale as tapered, double-sided
-  blade strips; dense sprays overlap to form a continuous but irregular crown.
+  paired needles are generated at 20–24 cm length and 10–13.6 mm base width as
+  curved, tapered ribbon blades. This is a deliberate game-readability
+  exaggeration, not botanical scale; real Scots pine needles are much shorter.
+  Dense sprays overlap to form a continuous but irregular crown. LOD2 uses a
+  reduced fascicle count to stay within its triangle budget.
 - Primary branch lengths, azimuths, vertical positions, secondary splits and
   terminal-shoot directions vary independently. The crown should not resolve
   into evenly spaced horizontal whorl rings.
