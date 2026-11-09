@@ -11,10 +11,10 @@ import bpy
 from mathutils import Vector
 
 PRESETS = {
-    "LOD0": {"subdivisions": 5, "budget": 30_000},
-    "LOD1": {"subdivisions": 4, "budget": 8_000},
-    "LOD2": {"subdivisions": 3, "budget": 2_000},
-    "LOD3": {"subdivisions": 2, "budget": 500},
+    "LOD0": {"subdivisions": 4, "budget": 6_000},
+    "LOD1": {"subdivisions": 3, "budget": 2_000},
+    "LOD2": {"subdivisions": 2, "budget": 500},
+    "LOD3": {"subdivisions": 1, "budget": 150},
 }
 
 
