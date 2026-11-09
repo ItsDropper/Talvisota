@@ -31,7 +31,7 @@ def main():
     if any(int(details.get("width", 0)) < 1 or int(details.get("height", 0)) < 1
            for details in image_details.values()):
         fail("source texture inventory contains invalid dimensions")
-    if len(manifest.get("packed_images", [])) != len(manifest["source_image_textures"]):
+    if not set(manifest["source_image_textures"]).issubset(set(manifest.get("packed_images", []))):
         fail("not every source texture was packed for portable GLB export")
     if not hasattr(bpy.ops.import_scene, "gltf"):
         try:
