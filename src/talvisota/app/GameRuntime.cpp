@@ -158,6 +158,18 @@ bool SetCamera(SceneSnapshot& scene, const vanta::math::Vec3& eye,
     return true;
 }
 
+bool KeepCameraAboveTerrain(const talvisota::world::WorldRegion& region,
+    vanta::math::Vec3& position, const float clearance, std::string& error) {
+    float groundHeight = 0.0F;
+    std::array<float, 3> groundNormal{};
+    if (!talvisota::world::SampleTerrainHeight(region, position.x, position.z,
+            groundHeight, groundNormal, error))
+        return false;
+    position.y = std::max(position.y, groundHeight + clearance);
+    error.clear();
+    return true;
+}
+
 bool FindPlayerSpawn(const talvisota::world::WorldRegion& region,
     const talvisota::game::PlayerConfig& config,
     talvisota::game::PlayerState& player, std::string& error) {
@@ -479,12 +491,19 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         for (const auto& view : Views) {
             if (!error.empty()) break;
             GetClientRect(window, &client);
-            if (!SetCamera(scene, view.eye, view.target, client.right - client.left, client.bottom - client.top)) {
+            auto eye = view.eye;
+            auto target = view.target;
+            if (!KeepCameraAboveTerrain(gameRegion, eye, 1.7F, error) ||
+                !KeepCameraAboveTerrain(gameRegion, target, 0.35F, error)) {
+                error = "Could not place Sakkola capture camera above the terrain: " + error;
+                break;
+            }
+            if (!SetCamera(scene, eye, target, client.right - client.left, client.bottom - client.top)) {
                 error = "Could not construct a valid Sakkola capture camera.";
                 break;
             }
             const std::size_t visibleInstanceCount = CullCaptureInstances(scene,
-                meshCullRadii, instanceMaxDrawDistances, view.eye, view.target,
+                meshCullRadii, instanceMaxDrawDistances, eye, target,
                 static_cast<float>(client.right-client.left)/static_cast<float>(client.bottom-client.top));
             std::vector<double> warmFrameTimesMs;
             std::vector<double> warmRenderTimesMs;
@@ -584,9 +603,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 break;
             }
             capturedFrameHashes.push_back(frameHash);
-            std::cout << "Viewpoint " << std::filesystem::path(view.file).string() << ": eye=(" << view.eye.x << ","
-                << view.eye.y << "," << view.eye.z << ") target=(" << view.target.x << ","
-                << view.target.y << "," << view.target.z << "), frame=" << frameNumber
+            std::cout << "Viewpoint " << std::filesystem::path(view.file).string() << ": eye=(" << eye.x << ","
+                << eye.y << "," << eye.z << ") target=(" << target.x << ","
+                << target.y << "," << target.z << "), frame=" << frameNumber
                 << ", framebuffer=" << framebufferWidth << "x" << framebufferHeight
                 << ", FNV1a=0x" << std::hex << frameHash << std::dec << "\n";
 
@@ -614,6 +633,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     const talvisota::game::PlayerState initialPlayerState=playerState;
     auto playerCamera = talvisota::game::BuildPlayerCamera(playerState, playerConfig);
     vanta::math::Vec3 cameraPosition{playerCamera.position[0], playerCamera.position[1], playerCamera.position[2]};
+    if (!KeepCameraAboveTerrain(gameRegion, cameraPosition, playerConfig.eyeHeight, error)) {
+        renderer.reset(); DestroyWindow(window);
+        if (ownsCom) CoUninitialize();
+        return 8;
+    }
     vanta::math::Vec3 cameraTarget{cameraPosition.x + playerCamera.forward[0] * 180.0F,
         cameraPosition.y + playerCamera.forward[1] * 180.0F,
         cameraPosition.z + playerCamera.forward[2] * 180.0F};
@@ -694,6 +718,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         if (cameraChanged) {
             playerCamera = talvisota::game::BuildPlayerCamera(playerState, playerConfig);
             cameraPosition = {playerCamera.position[0], playerCamera.position[1], playerCamera.position[2]};
+            if (!KeepCameraAboveTerrain(gameRegion, cameraPosition,
+                    playerState.crouched ? playerConfig.crouchedEyeHeight : playerConfig.eyeHeight, error)) {
+                std::cerr << "Player camera terrain sampling failed: " << error << "\\n";
+                break;
+            }
             cameraTarget = {cameraPosition.x + playerCamera.forward[0] * 180.0F,
                 cameraPosition.y + playerCamera.forward[1] * 180.0F,
                 cameraPosition.z + playerCamera.forward[2] * 180.0F};
