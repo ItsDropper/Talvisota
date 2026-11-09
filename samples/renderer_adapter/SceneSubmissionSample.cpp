@@ -218,6 +218,24 @@ constexpr std::array<CaptureView, 5> Views = {{
     {L"04-karelian-forest.png", {160.0F, 20.0F, -170.0F}, {160.0F, 10.0F, -25.0F}},
     {L"05-farmstead.png", {0.0F, 24.0F, 35.0F}, {0.0F, 12.0F, 130.0F}}
 }};
+ 
+bool ResolveCaptureView(const talvisota::world::WorldRegion& region,
+    const CaptureView& authored, CaptureView& resolved, std::string& error) {
+    resolved = authored;
+    float eyeSurface = 0.0F;
+    float targetSurface = 0.0F;
+    std::array<float,3> normal{};
+    if(!talvisota::world::SampleTerrainHeight(region,authored.eye.x,authored.eye.z,
+            eyeSurface,normal,error))
+        return false;
+    if(!talvisota::world::SampleTerrainHeight(region,authored.target.x,authored.target.z,
+            targetSurface,normal,error))
+        return false;
+    resolved.eye.y=std::max(authored.eye.y,eyeSurface+1.7F);
+    resolved.target.y=std::max(authored.target.y,targetSurface+0.25F);
+    error.clear();
+    return true;
+}
 
 }
 
@@ -375,13 +393,18 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             error = "Could not create screenshot output directory: " + directoryError.message();
         for (const auto& view : Views) {
             if (!error.empty()) break;
+            CaptureView resolvedView{};
+            if (!ResolveCaptureView(gameRegion, view, resolvedView, error)) {
+                error = "Could not place Sakkola sample capture camera above the sampled world surface: " + error;
+                break;
+            }
             GetClientRect(window, &client);
-            if (!SetCamera(scene, view.eye, view.target, client.right - client.left, client.bottom - client.top)) {
+            if (!SetCamera(scene, resolvedView.eye, resolvedView.target, client.right - client.left, client.bottom - client.top)) {
                 error = "Could not construct a valid Sakkola capture camera.";
                 break;
             }
             CullCaptureInstances(scene, meshCullRadii, instanceMaxDrawDistances,
-                view.eye, view.target,
+                resolvedView.eye, resolvedView.target,
                 static_cast<float>(client.right-client.left)/static_cast<float>(client.bottom-client.top));
             std::vector<double> frameTimesMs;
             std::vector<double> renderTimesMs;
@@ -467,9 +490,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 break;
             }
             capturedFrameHashes.push_back(frameHash);
-            std::cout << "Viewpoint " << std::filesystem::path(view.file).string() << ": eye=(" << view.eye.x << ","
-                << view.eye.y << "," << view.eye.z << ") target=(" << view.target.x << ","
-                << view.target.y << "," << view.target.z << "), frame=" << frameNumber
+            std::cout << "Viewpoint " << std::filesystem::path(view.file).string() << ": eye=(" << resolvedView.eye.x << ","
+                << resolvedView.eye.y << "," << resolvedView.eye.z << ") target=(" << resolvedView.target.x << ","
+                << resolvedView.target.y << "," << resolvedView.target.z << "), frame=" << frameNumber
                 << ", framebuffer=" << framebufferWidth << "x" << framebufferHeight
                 << ", FNV1a=0x" << std::hex << frameHash << std::dec << "\n";
 
