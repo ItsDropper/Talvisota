@@ -1,6 +1,7 @@
 #include "talvisota/gameplay/CombatSimulation.hpp"
 
 #include <array>
+#include <array>
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -120,6 +121,39 @@ int main()
     Check(AdvanceCombat(state, registry, 0.05, firstShot, results, error) &&
         results[0].outcome == CombatOutcome::Duplicate,
         "replayed combat command cannot apply damage twice");
+
+    entities::EntityRegistry automaticRegistry;
+    Check(automaticRegistry.Spawn({"actor.auto", "faction.finnish",
+        entities::EntityKind::Player, {0.0F, 0.0F, 0.0F}, {}}, error),
+        "automatic-weapon actor is registered");
+    Check(automaticRegistry.Spawn({"actor.auto_target", "faction.soviet",
+        entities::EntityKind::Infantry, {10.0F, 0.0F, 0.0F}, {}}, error),
+        "automatic-weapon target is registered");
+    CombatSimulationState automaticState;
+    Check(RegisterCombatant(automaticState, automaticRegistry, "actor.auto",
+        "weapon.suomi_kp31", 100.0F, 0U, error),
+        "Suomi game loadout initializes with a full magazine");
+    Check(RegisterCombatant(automaticState, automaticRegistry, "actor.auto_target",
+        "weapon.mosin_m27", 10000.0F, 0U, error),
+        "automatic-weapon target receives a test health pool");
+    for (int shot = 0; shot < 20; ++shot)
+    {
+        const std::string commandId = "combat.auto." + std::to_string(shot);
+        const std::array<CombatCommand, 1> automaticShot{{
+            {commandId, "actor.auto", "actor.auto_target", CombatAction::Fire}
+        }};
+        Check(AdvanceCombat(automaticState, automaticRegistry, 0.12,
+            automaticShot, results, error) &&
+            results[0].outcome == CombatOutcome::Fired,
+            "automatic archetype fires on each elapsed game cooldown");
+    }
+    const std::array<CombatCommand, 1> emptyShot{{
+        {"combat.auto.empty", "actor.auto", "actor.auto_target", CombatAction::Fire}
+    }};
+    Check(AdvanceCombat(automaticState, automaticRegistry, 0.12, emptyShot, results, error) &&
+        results[0].outcome == CombatOutcome::EmptyMagazine &&
+        automaticState.combatants.at("actor.auto").magazineRounds == 0U,
+        "empty magazine blocks further firing");
 
     CombatSimulationState unchanged = state;
     results = {{"preserved.result", CombatOutcome::Fired, 1.0F, 1.0F}};
