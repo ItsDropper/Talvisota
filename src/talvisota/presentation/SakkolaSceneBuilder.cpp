@@ -141,8 +141,32 @@ bool RefineSnowTerrain(RenderMesh& mesh, const talvisota::world::WorldRegion& re
         }
         mesh.vertices.swap(vertices); mesh.indices.swap(indices);
     }
-    for(auto& vertex:mesh.vertices)
-        vertex.position[1]+=talvisota::world::SampleTerrainDisplacement(region,vertex.position[0],vertex.position[2]);
+    float maximumBaseHeightCorrection=0.0F;
+    float maximumSurfaceCorrection=0.0F;
+    for(auto& vertex:mesh.vertices) {
+        float sampledGroundHeight=0.0F;
+        std::array<float,3> sampledNormal{};
+        std::string sampleError;
+        if(!talvisota::world::SampleTerrainGroundHeight(region,vertex.position[0],vertex.position[2],
+                sampledGroundHeight,sampledNormal,sampleError)) {
+            error="Could not reconcile rendered terrain vertex with the gameplay heightfield: "+sampleError;
+            return false;
+        }
+        const float displacement=talvisota::world::SampleTerrainDisplacement(
+            region,vertex.position[0],vertex.position[2]);
+        const float authoredBaseHeight=sampledGroundHeight-displacement;
+        maximumBaseHeightCorrection=std::max(maximumBaseHeightCorrection,
+            std::abs(authoredBaseHeight-vertex.position[1]));
+        maximumSurfaceCorrection=std::max(maximumSurfaceCorrection,
+            std::abs(sampledGroundHeight-vertex.position[1]));
+        // The region heightfield is the canonical ground surface for collision,
+        // player movement and placement. Rebuild visual terrain Y from that same
+        // sampler instead of independently offsetting whatever Y the OBJ contains.
+        vertex.position[1]=sampledGroundHeight;
+    }
+    std::cout<<"Terrain/heightfield reconciliation: vertices="<<mesh.vertices.size()
+        <<", maxBaseCorrection="<<maximumBaseHeightCorrection
+        <<" m, maxSurfaceCorrection="<<maximumSurfaceCorrection<<" m.\n";
     std::vector<std::array<float,3>> normals(mesh.vertices.size(),{0.0F,0.0F,0.0F});
     for(std::size_t i=0;i<mesh.indices.size();i+=3U) {
         const auto ia=mesh.indices[i],ib=mesh.indices[i+1U],ic=mesh.indices[i+2U];
