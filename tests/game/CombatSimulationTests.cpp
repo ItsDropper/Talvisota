@@ -1,8 +1,10 @@
 #include "talvisota/gameplay/CombatSimulation.hpp"
+#include "talvisota/content/ContentRegistry.hpp"
 
 #include <array>
 #include <array>
 #include <cstdlib>
+#include <filesystem>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -39,6 +41,17 @@ int main()
         "catalog resolves the Lahti-Saloranta M/26 light machine gun");
     Check(FindWeaponDefinition("weapon.unknown") == nullptr,
         "unknown weapon IDs are rejected");
+
+    const std::filesystem::path sourceRoot{TALVISOTA_SOURCE_DIR};
+    content::ContentRegistry contentRegistry;
+    std::vector<content::ContentDiagnostic> contentDiagnostics;
+    Check(content::LoadContentManifest(sourceRoot / "content/catalog.tmanifest",
+        sourceRoot, contentRegistry, contentDiagnostics),
+        "shipped content manifest resolves the weapon model catalog");
+    Check(contentRegistry.Find("model.weapon.mosin_m27") != nullptr &&
+        contentRegistry.Find("model.weapon.suomi_kp31") != nullptr &&
+        contentRegistry.Find("model.weapon.lahti_saloranta_m26") != nullptr,
+        "all Finnish 1939 weapon models are registered content assets");
 
     entities::EntityRegistry registry;
     std::string error;
