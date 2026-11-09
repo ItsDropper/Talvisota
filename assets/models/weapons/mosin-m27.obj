@@ -1,6 +1,6 @@
 # Stylized, low-detail game silhouette for Mosin-Nagant M/27.
 # Normalized art-space units; intentionally not a dimensional or mechanical replica.
-mtllib finnish-arms.mtl
+mtllib ../../materials/weapons/finnish-arms.mtl
 o stock
 usemtl wood
 v -0.9200 -0.1300 -0.1000
