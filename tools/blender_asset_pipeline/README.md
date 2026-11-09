@@ -48,9 +48,14 @@ conical nursery tree.
   peak in the lower-middle crown and shorten toward the top.
 - Secondary branches split from the scaffold at non-uniform positions and
   angles.
-- Fine terminal twigs carry explicit paired needle geometry. Individual
-  needles are generated at 4–7 cm scale, rather than representing the whole
-  crown with green blobs.
+- Fine terminal shoots are distributed along the full secondary limbs, not
+  concentrated near branch attachments.
+- Each terminal shoot carries multiple radial fascicle sprays. Individual
+  paired needles are generated at 5–8 cm scale with tapered, three-sided
+  geometry; dense sprays overlap to form a continuous but irregular crown.
+- Primary branch lengths, azimuths, vertical positions, secondary splits and
+  terminal-shoot directions vary independently. The crown should not resolve
+  into evenly spaced horizontal whorl rings.
 - Snow accents are separate geometry and are currently a sparse structural
   approximation, not a validated snow-load simulation.
 
@@ -99,9 +104,10 @@ path for close-up hero assets when the captured source quality supports it.
 - Each tree LOD is consolidated into no more than three material-grouped mesh
   objects. This avoids per-twig draw calls while retaining separate material
   surfaces.
-- LOD0/1/2/3 progressively reduce whorls, scaffold limbs, secondary/tertiary
-  branches, needle clusters and radial sides. The manifest records vertices
-  and triangles.
+- LOD0/1/2/3 progressively reduce scaffold density, secondary/tertiary
+  branching, terminal needle sprays and radial sides. The manifest records
+  vertices and triangles. LOD0 is the close-up hero asset; use lower LODs for
+  progressively smaller screen coverage.
 - The forest must instance individual tree assets at the scene/runtime layer;
   do not merge the entire forest into one world-sized mesh, which destroys
   useful frustum/occlusion-culling granularity.
