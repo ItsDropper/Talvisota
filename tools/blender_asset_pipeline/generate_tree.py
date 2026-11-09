@@ -34,7 +34,7 @@ LOD_PRESETS = {
     "LOD0": {"whorls": 10, "primary": 5, "secondary": 4, "tertiary": 3, "needle_clusters": 3, "sides": 6},
     "LOD1": {"whorls": 8, "primary": 4, "secondary": 3, "tertiary": 2, "needle_clusters": 2, "sides": 5},
     "LOD2": {"whorls": 5, "primary": 4, "secondary": 2, "tertiary": 1, "needle_clusters": 1, "sides": 4},
-    "LOD3": {"whorls": 3, "primary": 3, "secondary": 1, "tertiary": 0, "needle_clusters": 0, "sides": 4},
+    "LOD3": {"whorls": 3, "primary": 3, "secondary": 1, "tertiary": 1, "needle_clusters": 2, "sides": 4},
 }
 
 
@@ -365,8 +365,9 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                           sides=max(3, sides - 1))
 
     trunk_obj = trunk.make_object("Trunk_Scaffold_And_Twigs_" + lod_name, materials["bark"])
-    foliage_obj = foliage.make_object("Paired_Pine_Needles_" + lod_name, materials["needles"])
-    objects = [trunk_obj, foliage_obj]
+    objects = [trunk_obj]
+    if foliage.faces:
+        objects.append(foliage.make_object("Paired_Pine_Needles_" + lod_name, materials["needles"]))
     if snow.faces:
         objects.append(snow.make_object("Snow_Load_" + lod_name, materials["snow"]))
 
