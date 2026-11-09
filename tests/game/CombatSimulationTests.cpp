@@ -118,6 +118,22 @@ int main()
     Check(state.combatants.at("actor.finn").magazineRounds == 4U,
         "ammunition is not transferred before reload completion");
 
+    const std::array<CombatCommand, 1> recover{{
+        {"combat.recover.001", "actor.finn", {}, CombatAction::Recover}
+    }};
+    Check(AdvanceCombat(state, registry, 0.25, recover, results, error) &&
+        results[0].outcome == CombatOutcome::Recovered &&
+        results[0].damageApplied == 25.0F &&
+        results[0].targetHealthRemaining == 57.0F,
+        "abstract recovery ability restores a bounded amount of health");
+    const std::array<CombatCommand, 1> recoverAgain{{
+        {"combat.recover.002", "actor.finn", {}, CombatAction::Recover}
+    }};
+    Check(AdvanceCombat(state, registry, 0.25, recoverAgain, results, error) &&
+        results[0].outcome == CombatOutcome::RecoveryCooldown &&
+        state.combatants.at("actor.finn").health == 57.0F,
+        "recovery ability enforces its game-time cooldown");
+
     for (int step = 0; step < 12; ++step)
         Check(AdvanceCombat(state, registry, 0.25, {}, results, error),
             "combat clock advances while reload is pending");
