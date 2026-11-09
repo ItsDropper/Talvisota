@@ -1,6 +1,6 @@
 # Stylized, low-detail game silhouette for Lahti-Saloranta M/26.
 # Normalized art-space units; intentionally not a dimensional or mechanical replica.
-mtllib finnish-arms.mtl
+mtllib ../../materials/weapons/finnish-arms.mtl
 o support_stock
 usemtl wood
 v -0.8800 -0.1300 -0.1050
