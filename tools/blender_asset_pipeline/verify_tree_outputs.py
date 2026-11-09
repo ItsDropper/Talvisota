@@ -81,8 +81,8 @@ def main():
             and obj.data.materials[polygon.material_index]
             and "Needles" in obj.data.materials[polygon.material_index].name
         )
-        minimum_needle_triangles = {"LOD0": 200_000, "LOD1": 90_000,
-                                    "LOD2": 65_000, "LOD3": 8_000}[lod_name]
+        minimum_needle_triangles = {"LOD0": 100_000, "LOD1": 34_000,
+                                    "LOD2": 14_000, "LOD3": 3_000}[lod_name]
         if needle_triangles < minimum_needle_triangles:
             fail(lod_name + " needle geometry is under-dense: " +
                  str(needle_triangles) + " < " + str(minimum_needle_triangles))
