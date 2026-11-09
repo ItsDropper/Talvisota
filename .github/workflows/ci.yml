@@ -22,10 +22,15 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Install Blender
+      - name: Install Blender and Python dependency tooling
         run: |
           sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends blender
+          sudo apt-get install --yes --no-install-recommends blender python3-pip
+
+      - name: Install NumPy for Blender's bundled Python 3.11
+        run: |
+          python3 -m pip install --disable-pip-version-check --target "$RUNNER_TEMP/blender-python" --python-version 3.11 --only-binary=:all: numpy==1.26.4
+          echo "PYTHONPATH=$RUNNER_TEMP/blender-python" >> "$GITHUB_ENV"
 
       - name: Generate source PBR maps
         run: |
