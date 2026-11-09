@@ -10,3 +10,9 @@ The engine-backed `talvisota_asset_validate` command imports registered models w
 ## Initial Central Finland environment set
 
 `environment/spruce.obj` is an original metre-scale Norway spruce with separate bark, needle, and snow material groups, 13,320 positions, 13,320 cylindrical UV coordinates, and 19,992 triangles. `environment/boulder.obj` is an original displaced, irregular snow-capped granite boulder with rock and snow material groups, 2,562 positions, spherical UV coordinates, and 5,120 triangles. Its deterministic multi-frequency displacement adds broad silhouette breakup and smaller surface irregularity. Both use registered MTL sidecars and stable IDs in `content/catalog.tmanifest`. UVs establish a usable texture-coordinate basis, but these meshes still do not have authored normal maps, texture-backed PBR materials, or renderer-verified shading; they are higher-detail source geometry, not finished photorealistic production assets.
+
+The shared granite boulder now also has an editable Blender authoring pipeline
+under `tools/blender_asset_pipeline/generate_boulder.py`. It exports four
+independent GLB LODs with granite and upward-facing wind-packed snow materials.
+The source OBJ remains the shipped model until the generated asset passes
+in-game material, placement, collision and runtime-LOD integration review.
