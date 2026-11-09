@@ -78,8 +78,12 @@ replacement mesh or invent texture detail.
 Accepted source formats are GLB/glTF, FBX and OBJ. The source must contain
 mesh geometry, UV coordinates, material assignments and at least one
 image-textured material. The default validation also rejects scans below
-1,000 triangles. The original source SHA-256, source size, scale, texture names
-and per-LOD triangle budgets are recorded in the manifest.
+1,000 triangles. The original source SHA-256, source size, scale, per-mesh vertex/triangle
+counts, UV-layer presence and degenerate-UV-face counts, texture names,
+texture dimensions/channel counts/color spaces/packing state, and per-LOD
+triangle budgets are recorded in the manifest. Texture resolution is reported
+as supplied: 4K or larger maps are recommended for close-up hero trees; the
+pipeline never upscales a low-resolution scan and pretends it contains detail.
 
     blender --background --python tools/blender_asset_pipeline/ingest_scanned_tree.py -- --source reference/scots_pine_scan.glb --output build/generated/scanned-pine --target-height 18
 
