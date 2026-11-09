@@ -93,7 +93,7 @@ struct CombatResult final
 };
 
 [[nodiscard]] bool RegisterCombatant(CombatSimulationState& state,
-    const entities::EntityRegistry& entities, std::string_view entityId,
+    const entities::EntityRegistry& entityRegistry, std::string_view entityId,
     std::string_view weaponId, float maximumHealth, std::uint32_t reserveRounds,
     std::string& error);
 
