@@ -286,13 +286,11 @@ bool WriteBgraPng(const std::vector<std::uint8_t>& pixels, const UINT width,
 struct CaptureView { const wchar_t* file; vanta::math::Vec3 eye; vanta::math::Vec3 target; };
 constexpr std::array<CaptureView, 5> Views = {{
     // Keep the overview inside the 280 m vegetation visibility envelope.
-    {L"01-sakkola-overview.png", {0.0F, 38.0F, 30.0F}, {0.0F, 9.0F, 190.0F}},
-    // Approach from the east at human height, clear of the trees and farm buildings
-    // between the central clearing and the church.
-    {L"02-church-village.png", {0.0F, 14.0F, 225.0F}, {0.0F, 9.0F, 178.0F}},
-    // View the lake edge from the east side of the central clearing, clear of the
-    // dead pine and the close reed cluster on the centerline.
-    {L"03-suvanto-shoreline.png", {0.0F, 7.0F, -480.0F}, {0.0F, 4.0F, -220.0F}},
+    {L"01-sakkola-overview.png", {0.0F, 35.0F, 30.0F}, {0.0F, 20.0F, 190.0F}},
+    // North approach, with both eye and target above the authored church-site terrain.
+    {L"02-church-village.png", {0.0F, 22.0F, 225.0F}, {0.0F, 17.0F, 178.0F}},
+    // Stand on the ice and look directly across the north-shore boundary at close range.
+    {L"03-suvanto-shoreline.png", {0.0F, 7.0F, -380.0F}, {0.0F, 7.0F, -245.0F}},
     {L"04-karelian-forest.png", {82.0F, 11.0F, -205.0F}, {175.0F, 4.0F, -62.0F}},
     // Keep the +Z entrance in view, but lower the camera to show the facade below
     // the roofline instead of looking down onto the roof from 20 m.

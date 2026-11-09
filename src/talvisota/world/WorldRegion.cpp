@@ -42,25 +42,24 @@ float TerrainFbm(const float x, const float z) noexcept {
     return total / normalization;
 }
 float SnowDriftDisplacement(const float x, const float z) noexcept {
-    // The authored heightfield is a constant snow datum. Build the missing
-    // Karelian landform here: broad moraine rises, lower ridges, wind drift,
-    // then sub-metre granular detail. The macro octave is low-frequency so
-    // its larger amplitude stays inside the refined mesh's slope budget.
-    const float macroWarpX = TerrainValueNoise(x*0.00045F+17.3F,z*0.00045F-8.1F)-0.5F;
-    const float macroWarpZ = TerrainValueNoise(x*0.00045F-31.7F,z*0.00045F+22.9F)-0.5F;
-    const float macro = TerrainFbm((x+macroWarpX*120.0F)*0.00045F,
-                                   (z+macroWarpZ*120.0F)*0.00045F);
-    const float warpX = TerrainValueNoise(x*0.0008F+17.3F,z*0.0008F-8.1F)-0.5F;
-    const float warpZ = TerrainValueNoise(x*0.0008F-31.7F,z*0.0008F+22.9F)-0.5F;
-    const float broad = TerrainFbm((x+warpX*68.0F)*0.0008F,(z+warpZ*68.0F)*0.0008F);
-    const float ridgeField = TerrainFbm((x+warpZ*24.0F)*0.0008F-41.0F,
-                                        (z+warpX*24.0F)*0.0008F+23.0F);
+    // Multi-scale glacial moraine relief, wind-sculpted snow banks, and fine
+    // granular drift. Domain warping avoids the smooth, repeated noise look.
+    // Keep the domain warp itself below the terrain mesh's representable band.
+    // The four-octave FBM multiplies its input frequency by 2.03 per octave;
+    // 0.0018 * 2.03^3 = 0.0151 cycles/m, below the ~0.0304 cycles/m
+    // conservative Nyquist limit of the refined mesh's 16.45 m longest edge.
+    const float warpX = TerrainValueNoise(x*0.0012F+17.3F,z*0.0012F-8.1F)-0.5F;
+    const float warpZ = TerrainValueNoise(x*0.0012F-31.7F,z*0.0012F+22.9F)-0.5F;
+    // Preserve broad glacial relief and wind-shaped moraine shoulders in geometry.
+    // Frequencies above this band belong in tiled PBR detail, not vertex displacement:
+    // the terrain importer expands triangle corners, limiting safe refinement.
+    const float broad = TerrainFbm((x+warpX*68.0F)*0.0012F,(z+warpZ*68.0F)*0.0012F);
+    const float ridgeField = TerrainFbm((x+warpZ*24.0F)*0.0015F-41.0F,(z+warpX*24.0F)*0.0015F+23.0F);
     const float ridges = 1.0F-std::abs(2.0F*ridgeField-1.0F);
-    const float drift = TerrainFbm((x+warpX*8.0F)*0.0018F+9.1F,
-                                   (z+warpZ*8.0F)*0.0018F-13.7F);
+    const float drift = TerrainFbm((x+warpX*8.0F)*0.0018F+9.1F,(z+warpZ*8.0F)*0.0018F-13.7F);
     const float granular = TerrainFbm(x*0.0018F+4.7F,z*0.0018F+18.2F);
-    return (macro-0.5F)*18.0F+(broad-0.5F)*5.0F+
-        (ridges-0.5F)*2.5F+(drift-0.5F)*0.72F+(granular-0.5F)*0.20F;
+    return (broad-0.5F)*5.2F+(ridges-0.5F)*1.55F+
+        (drift-0.5F)*0.72F+(granular-0.5F)*0.20F;
 }
 
 constexpr std::string_view Header = "talvisota-region\t1";

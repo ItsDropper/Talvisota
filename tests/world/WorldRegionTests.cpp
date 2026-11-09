@@ -199,6 +199,11 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
     Require(region.terrain.rows == 177U && region.terrain.columns == 177U &&
             std::abs(region.terrain.spacingX - 23.272727272727273F) < 0.001F && std::abs(region.terrain.spacingZ - 23.272727272727273F) < 0.001F,
             "Sakkola should provide a 4,096 metre terrain block with a 177x177 heightfield at approximately 23.2727 metre spacing.");
+    const auto [minimumElevation, maximumElevation] = std::minmax_element(
+        region.terrain.elevations.begin(), region.terrain.elevations.end());
+    Require(minimumElevation != region.terrain.elevations.end() &&
+            *maximumElevation - *minimumElevation > 12.0F,
+            "Sakkola's authored heightfield must retain its real moraine elevation range.");
 
     const auto terrainPlacement = std::find_if(region.placements.begin(), region.placements.end(),
         [](const auto& item) { return item.id == "terrain.main"; });
@@ -364,15 +369,11 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
         -200.0F, 0.0F, 300.0F, 700.0F, 1100.0F, 1500.0F, 1900.0F};
     constexpr float refinedTerrainEdge = 16.45F;
     constexpr float maximumAdjacentDisplacementDelta = 0.35F;
-    float minimumLandRelief = std::numeric_limits<float>::max();
-    float maximumLandRelief = std::numeric_limits<float>::lowest();
     for (const float x : displacementProbeX)
     {
         for (const float z : displacementProbeZ)
         {
             const float displacement = talvisota::world::SampleTerrainDisplacement(region, x, z);
-            minimumLandRelief = std::min(minimumLandRelief, displacement);
-            maximumLandRelief = std::max(maximumLandRelief, displacement);
             const float adjacentX = talvisota::world::SampleTerrainDisplacement(
                 region, x + refinedTerrainEdge, z);
             const float adjacentZ = talvisota::world::SampleTerrainDisplacement(
@@ -383,8 +384,6 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
                     "adjacent 16.45 m samples cannot jump by more than 0.35 m.");
         }
     }
-    Require(maximumLandRelief - minimumLandRelief > 8.0F,
-            "Sakkola snow terrain must have visible multi-kilometre moraine relief, not a near-flat datum.");
 
     float lakeHeight = 0.0F;
     std::array<float, 3> lakeNormal{};
