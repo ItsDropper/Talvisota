@@ -85,9 +85,16 @@ and per-LOD triangle budgets are recorded in the manifest.
 
 This writes a provenance manifest, an editable `*_scanned_source.blend`, and
 four self-contained GLB LOD exports. LOD0 preserves the imported scan geometry;
-LOD1–LOD3 use configurable collapse-decimation ratios (default 0.60, 0.25,
-0.10). Use conservative ratios for needle-rich scans and inspect every LOD,
-because generic decimation can damage thin foliage and silhouette structure.
+LOD1–LOD3 use separate collapse-decimation ratios for woody and foliage meshes.
+Woody defaults are 0.60, 0.25, 0.10; foliage defaults are deliberately more
+conservative at 0.85, 0.65, 0.40. Foliage meshes are identified by material names
+containing `needle`, `foliage`, `leaf` or `leaves`. Keep scanned needle/leaf
+surfaces in distinct mesh objects with descriptive material names: a combined
+trunk-and-needle mesh cannot be selectively decimated and will use the
+conservative foliage ratios as a whole. The pipeline records source image
+resolution, channel count, packing status, source SHA-256 and both LOD policies.
+It refuses to export when a referenced source image cannot be packed, rather
+than producing a superficially valid GLB with missing textures.
 
 Verify the exports with:
 
