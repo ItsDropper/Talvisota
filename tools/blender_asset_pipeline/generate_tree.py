@@ -54,6 +54,7 @@ class MeshBuilder:
     def __init__(self):
         self.vertices = []
         self.faces = []
+        self.face_uvs = []
 
     def tube(self, start, end, radius_start, radius_end, sides=5, bend=None):
         """Append a tapered, capped tube between two points."""
@@ -71,10 +72,19 @@ class MeshBuilder:
                 point = center + radius * (math.cos(angle) * u + math.sin(angle) * v)
                 self.vertices.append(tuple(point))
         self.faces.append(tuple(base + i for i in reversed(range(sides))))
+        self.face_uvs.append([(0.5, 0.5)] * sides)
+        v_scale = max(0.1, (b - a).length / max(radius_start + radius_end, 0.01))
         for side in range(sides):
             nxt = (side + 1) % sides
             self.faces.append((base + side, base + nxt, base + sides + nxt, base + sides + side))
+            self.face_uvs.append([
+                (side / sides, 0.0),
+                ((side + 1) / sides, 0.0),
+                ((side + 1) / sides, v_scale),
+                (side / sides, v_scale),
+            ])
         self.faces.append(tuple(base + sides + i for i in range(sides)))
+        self.face_uvs.append([(0.5, 0.5)] * sides)
 
     def cone(self, start, end, radius, sides=4):
         self.tube(start, end, radius, 0.008, sides=sides)
@@ -83,6 +93,11 @@ class MeshBuilder:
         mesh = bpy.data.meshes.new(name + "Mesh")
         mesh.from_pydata(self.vertices, [], self.faces)
         mesh.materials.append(material)
+        uv_layer = mesh.uv_layers.new(name="UVMap")
+        for polygon, coordinates in zip(mesh.polygons, self.face_uvs):
+            for loop_index, uv in zip(polygon.loop_indices, coordinates):
+                uv_layer.data[loop_index].uv = uv
+            polygon.use_smooth = True
         mesh.update()
         obj = bpy.data.objects.new(name, mesh)
         bpy.context.collection.objects.link(obj)
@@ -298,14 +313,8 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
         objects.append(snow.make_object("Snow_Load_" + lod_name, materials["snow"]))
 
     for obj in objects:
-        bpy.context.view_layer.objects.active = obj
-        obj.select_set(True)
-        bpy.ops.object.mode_set(mode="EDIT")
-        bpy.ops.mesh.select_all(action="SELECT")
-        bpy.ops.mesh.normals_make_consistent(inside=False)
-        bpy.ops.uv.smart_project(island_margin=0.012)
-        bpy.ops.object.mode_set(mode="OBJECT")
-        obj.select_set(False)
+        # UV coordinates are authored by MeshBuilder per tube; no interactive
+        # UV-editor context is required in headless Blender.
         obj.data.validate(verbose=False)
         obj.data.update()
     return objects
