@@ -57,6 +57,11 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Check photogrammetry ingestion entry points
+        run: |
+          python3 -m py_compile tools/blender_asset_pipeline/ingest_scanned_tree.py tools/blender_asset_pipeline/verify_scanned_tree.py
+          blender --background --python tools/blender_asset_pipeline/ingest_scanned_tree.py -- --help
+
       - name: Verify generated asset inventory
         shell: bash
         run: |
