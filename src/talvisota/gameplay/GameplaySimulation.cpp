@@ -439,10 +439,13 @@ bool ApplyCombatMissionEvents(SimulationState& missionState,
             return false;
         }
 
+        const auto attacker = combatState.combatants.find(command.actorEntityId);
         const auto defeated = combatState.combatants.find(command.targetEntityId);
-        if (defeated == combatState.combatants.end() || defeated->second.health != 0.0F)
+        if (attacker == combatState.combatants.end() ||
+            defeated == combatState.combatants.end() || defeated->second.health != 0.0F ||
+            combatResult.targetHealthRemaining != 0.0F || combatResult.damageApplied <= 0.0F)
         {
-            error = "Combat defeat result does not match a defeated combatant in the supplied state.";
+            error = "Combat defeat result does not match registered combatants and a zero-health target.";
             return false;
         }
 
