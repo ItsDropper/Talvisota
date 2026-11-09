@@ -24,7 +24,7 @@ import bpy
 from mathutils import Vector
 
 
-PIPELINE_VERSION = 8
+PIPELINE_VERSION = 9
 MATERIAL_MAP_STATUS = {}
 TREE_HEIGHT = 18.0
 TREE_RADIUS = 6.0
@@ -296,14 +296,14 @@ def add_needle_pair(builder, origin, direction, rng):
     # Scots pine needles are short, stiff, slightly splayed and visibly round
     # in cross-section. Use a tapered four-sided solid rather than a flat card:
     # ribbons were disappearing edge-on in the crown renders.
-    length = rng.uniform(0.16, 0.22)
+    length = rng.uniform(0.19, 0.27)
     for sign in (-1.0, 1.0):
         spread = side * sign * rng.uniform(0.20, 0.38)
         lift = Vector((0.0, 0.0, rng.uniform(0.08, 0.22)))
         needle_axis = (axis * 0.76 + spread + lift).normalized()
         tip = Vector(origin) + needle_axis * length
-        builder.tube(origin, tip, rng.uniform(0.0012, 0.0018),
-                     0.00042, sides=4, material_index=0)
+        builder.tube(origin, tip, rng.uniform(0.0024, 0.0032),
+                     0.00085, sides=4, material_index=0)
 
 
 def add_needle_spray(builder, origin, direction, rng, pairs=3):
@@ -426,7 +426,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                 # distributed along the secondary limbs. A pine branch is not a
                 # bare stick ending in a pom-pom: its outer framework is covered
                 # in overlapping sprays from branchlets all along its length.
-                branchlet_count = 4 + needle_clusters
+                branchlet_count = 7 + needle_clusters
                 for branchlet_index in range(branchlet_count):
                     branchlet_t = 0.10 + 0.80 * (
                         (branchlet_index + rng.uniform(0.18, 0.82)) / branchlet_count)
@@ -445,7 +445,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                         direction * rng.uniform(0.12, 0.42) +
                         Vector((0.0, 0.0, rng.uniform(0.22, 0.72)))
                     ).normalized()
-                    branchlet_length = secondary_length * rng.uniform(0.20, 0.34)
+                    branchlet_length = secondary_length * rng.uniform(0.24, 0.38)
                     branchlet_mid = (branchlet_origin +
                                      branchlet_direction * (branchlet_length * 0.56) +
                                      tangent * (branchlet_length * 0.10))
@@ -459,7 +459,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                     # Fascicles are spaced along the branchlet, not stacked at
                     # its endpoint. Adjacent branchlets overlap to form a
                     # continuous, irregular needle-bearing crown surface.
-                    sprays_per_branchlet = 3 + needle_clusters
+                    sprays_per_branchlet = 4 + needle_clusters
                     for spray_index in range(sprays_per_branchlet):
                         spray_t = 0.12 + 0.78 * (
                             (spray_index + rng.uniform(0.16, 0.84)) /
@@ -472,7 +472,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                         ).normalized()
                         add_needle_spray(
                             foliage, spray_origin, spray_axis, rng,
-                            pairs=max(2, needle_clusters + 1))
+                            pairs=max(3, needle_clusters + 1))
 
                 # Retain a smaller number of terminal leaders to break up the
                 # silhouette; they supplement the distributed foliage rather
