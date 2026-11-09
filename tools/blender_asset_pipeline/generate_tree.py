@@ -33,7 +33,7 @@ LOD_PRESETS = {
     "LOD0": {"tiers": 10, "branches": 8, "segments": 5, "sprays": 7, "sides": 6},
     "LOD1": {"tiers": 7, "branches": 6, "segments": 3, "sprays": 4, "sides": 5},
     "LOD2": {"tiers": 4, "branches": 5, "segments": 2, "sprays": 2, "sides": 4},
-    "LOD3": {"tiers": 2, "branches": 4, "segments": 1, "sprays": 0, "sides": 4},
+    "LOD3": {"tiers": 2, "branches": 4, "segments": 1, "sprays": 1, "sides": 4},
 }
 
 
