@@ -1,3 +1,4 @@
+#include "../support/ContentManifestFixture.hpp"
 #include "talvisota/gameplay/GameplaySimulation.hpp"
 
 #include "talvisota/content/AuthoredDefinition.hpp"
@@ -63,10 +64,12 @@ void TestAuthoredWorldSimulation()
     using namespace talvisota::world;
 
     const std::filesystem::path sourceRoot{TALVISOTA_SOURCE_DIR};
+    talvisota::test_support::ContentManifestFixture manifestFixture(sourceRoot, "gameplay-sakkola");
+    Check(manifestFixture.Ready(), "headless manifest fixture ready");
     std::string error;
     ContentRegistry registry;
     std::vector<ContentDiagnostic> contentDiagnostics;
-    Check(LoadContentManifest(sourceRoot / "content/catalog.tmanifest", sourceRoot,
+    Check(LoadContentManifest(manifestFixture.ManifestPath(), sourceRoot,
         registry, contentDiagnostics), "shipped content manifest loads for gameplay integration");
 
     const auto* missionAsset = registry.Find("mission.sakkola.first-patrol");
@@ -460,10 +463,12 @@ void TestTaipaleMissionInitializesAgainstItsAuthoredWorld()
     using namespace talvisota::world;
 
     const std::filesystem::path sourceRoot{TALVISOTA_SOURCE_DIR};
+    talvisota::test_support::ContentManifestFixture manifestFixture(sourceRoot, "gameplay-taipale");
+    Check(manifestFixture.Ready(), "headless manifest fixture ready");
     std::string error;
     ContentRegistry registry;
     std::vector<ContentDiagnostic> contentDiagnostics;
-    const bool manifestLoaded = LoadContentManifest(sourceRoot / "content/catalog.tmanifest",
+    const bool manifestLoaded = LoadContentManifest(manifestFixture.ManifestPath(),
         sourceRoot, registry, contentDiagnostics);
     Check(manifestLoaded, "Taipale mission content manifest loads");
     if (!manifestLoaded) return;

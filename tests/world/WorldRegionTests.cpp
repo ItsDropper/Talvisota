@@ -1,3 +1,4 @@
+#include "../support/ContentManifestFixture.hpp"
 #include "talvisota/content/AuthoredDefinition.hpp"
 #include "talvisota/content/ContentRegistry.hpp"
 #include "talvisota/content/WorldDefinition.hpp"
@@ -97,9 +98,11 @@ void Prepare(TemporaryDirectory& directory)
 void TestShippedTerrainHeightfieldMatchesVisualMeshVertices()
 {
     const std::filesystem::path root = TALVISOTA_SOURCE_DIR;
+    talvisota::test_support::ContentManifestFixture manifestFixture(root, "world-central-finland");
+    Require(manifestFixture.Ready());
     talvisota::content::ContentRegistry registry;
     std::vector<talvisota::content::ContentDiagnostic> manifestDiagnostics;
-    Require(talvisota::content::LoadContentManifest(root / "content/catalog.tmanifest",
+    Require(talvisota::content::LoadContentManifest(manifestFixture.ManifestPath(),
             root, registry, manifestDiagnostics), "Shipped content manifest should load.");
     talvisota::content::WorldDefinition world;
     std::vector<talvisota::content::WorldDiagnostic> worldDiagnostics;
@@ -164,9 +167,11 @@ void TestShippedTerrainHeightfieldMatchesVisualMeshVertices()
 void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
 {
     const std::filesystem::path root = TALVISOTA_SOURCE_DIR;
+    talvisota::test_support::ContentManifestFixture manifestFixture(root, "world-sakkola");
+    Require(manifestFixture.Ready());
     talvisota::content::ContentRegistry registry;
     std::vector<talvisota::content::ContentDiagnostic> manifestDiagnostics;
-    Require(talvisota::content::LoadContentManifest(root / "content/catalog.tmanifest",
+    Require(talvisota::content::LoadContentManifest(manifestFixture.ManifestPath(),
             root, registry, manifestDiagnostics), "Sakkola content manifest should load.");
 
     talvisota::content::WorldDefinition world;
@@ -725,9 +730,11 @@ void TestLargeTerrainHeightfieldLoadsAndSamplesAcrossFullExtent()
 void TestTaipaleRiverfrontWorldAndMissionLoad()
 {
     const std::filesystem::path root = TALVISOTA_SOURCE_DIR;
+    talvisota::test_support::ContentManifestFixture manifestFixture(root, "world-taipale");
+    Require(manifestFixture.Ready());
     talvisota::content::ContentRegistry registry;
     std::vector<talvisota::content::ContentDiagnostic> manifestDiagnostics;
-    Require(talvisota::content::LoadContentManifest(root / "content/catalog.tmanifest",
+    Require(talvisota::content::LoadContentManifest(manifestFixture.ManifestPath(),
             root, registry, manifestDiagnostics), "Taipale content manifest should load.");
 
     talvisota::content::WorldDefinition world;

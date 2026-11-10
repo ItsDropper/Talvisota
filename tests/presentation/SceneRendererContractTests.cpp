@@ -298,6 +298,41 @@ int main()
     missingResource.instances[0].meshIndex = 1U;
     Require(!ValidateSceneSnapshot(missingResource, error));
 
+    SceneSnapshot lodScene = ValidScene();
+    for (std::size_t index = 1U; index < 4U; ++index) {
+        lodScene.meshes.push_back(lodScene.meshes.front());
+        lodScene.materials.push_back(lodScene.materials.front());
+    }
+    lodScene.instances[0].lodCount = 4U;
+    lodScene.instances[0].lodReferenceRadius = 1.0F;
+    lodScene.instances[0].lodVariants[0] = {0U, 0U, 0.35F};
+    lodScene.instances[0].lodVariants[1] = {1U, 1U, 0.12F};
+    lodScene.instances[0].lodVariants[2] = {2U, 2U, 0.035F};
+    lodScene.instances[0].lodVariants[3] = {3U, 3U, 0.0F};
+    Require(ValidateSceneSnapshot(lodScene, error));
+    std::size_t selectedLod = 99U;
+    Require(SelectRenderLod(lodScene.instances[0], 0.35F, selectedLod));
+    Require(selectedLod == 0U && lodScene.instances[0].meshIndex == 0U);
+    Require(SelectRenderLod(lodScene.instances[0], 0.20F, selectedLod));
+    Require(selectedLod == 1U && lodScene.instances[0].meshIndex == 1U);
+    Require(SelectRenderLod(lodScene.instances[0], 0.05F, selectedLod));
+    Require(selectedLod == 2U && lodScene.instances[0].meshIndex == 2U);
+    Require(SelectRenderLod(lodScene.instances[0], 0.01F, selectedLod));
+    Require(selectedLod == 3U && lodScene.instances[0].meshIndex == 3U);
+    SceneSnapshot invalidLodOrder = lodScene;
+    invalidLodOrder.instances[0].lodVariants[1].minimumScreenCoverage = 0.40F;
+    Require(!ValidateSceneSnapshot(invalidLodOrder, error));
+    SceneSnapshot invalidLodResource = lodScene;
+    invalidLodResource.instances[0].lodVariants[2].meshIndex = 99U;
+    Require(!ValidateSceneSnapshot(invalidLodResource, error));
+    SceneSnapshot excessiveLodCount = lodScene;
+    excessiveLodCount.instances[0].lodCount = 5U;
+    Require(!ValidateSceneSnapshot(excessiveLodCount, error));
+    SceneSnapshot singleLod = ValidScene();
+    selectedLod = 99U;
+    Require(SelectRenderLod(singleLod.instances[0], 0.01F, selectedLod));
+    Require(selectedLod == 0U && singleLod.instances[0].meshIndex == 0U);
+
     SceneSnapshot singularTransform = ValidScene();
     singularTransform.instances[0].world[0] = 0.0F;
     singularTransform.instances[0].world[5] = 0.0F;

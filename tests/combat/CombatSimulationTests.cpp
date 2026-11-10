@@ -1,3 +1,4 @@
+#include "../support/ContentManifestFixture.hpp"
 #include "talvisota/combat/CombatSimulation.hpp"
 #include "talvisota/gameplay/CombatSimulation.hpp"
 #include "talvisota/content/ContentRegistry.hpp"
@@ -57,9 +58,11 @@ int main()
         "unknown weapon IDs are rejected");
 
     const std::filesystem::path sourceRoot{TALVISOTA_SOURCE_DIR};
+    talvisota::test_support::ContentManifestFixture manifestFixture(sourceRoot, "combat-catalog");
+    Check(manifestFixture.Ready(), "headless manifest fixture ready");
     content::ContentRegistry contentRegistry;
     std::vector<content::ContentDiagnostic> contentDiagnostics;
-    Check(content::LoadContentManifest(sourceRoot / "content/catalog.tmanifest",
+    Check(content::LoadContentManifest(manifestFixture.ManifestPath(),
         sourceRoot, contentRegistry, contentDiagnostics),
         "shipped content manifest resolves the weapon model catalog");
     Check(contentRegistry.Find("model.weapon.mosin_m27") != nullptr &&

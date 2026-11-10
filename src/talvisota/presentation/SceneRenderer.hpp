@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -51,10 +52,23 @@ struct RenderMaterial final
     bool snowSurface = false;
 };
 
+inline constexpr std::size_t MaximumRenderLodLevels = 4U;
+
+struct RenderLodVariant final
+{
+    std::uint32_t meshIndex = 0U;
+    std::uint32_t materialIndex = 0U;
+    float minimumScreenCoverage = 0.0F;
+};
+
 struct RenderInstance final
 {
     std::uint32_t meshIndex = 0;
     std::uint32_t materialIndex = 0;
+    std::array<RenderLodVariant, MaximumRenderLodLevels> lodVariants{};
+    std::uint8_t lodCount = 0U;
+    std::array<float, 3> lodReferenceCenter{};
+    float lodReferenceRadius = 0.0F;
     // Column-major 4x4 matrix, column vectors, translation in column 3.
     std::array<float, 16> world{
         1.0F, 0.0F, 0.0F, 0.0F,
@@ -119,6 +133,8 @@ struct SceneSnapshot final
     std::vector<RenderPointLight> pointLights;
 };
 
+[[nodiscard]] bool SelectRenderLod(RenderInstance& instance, float screenCoverage,
+    std::size_t& selectedLod) noexcept;
 [[nodiscard]] bool ValidateSceneSnapshot(const SceneSnapshot& scene, std::string& error);
 
 enum class RendererBackend

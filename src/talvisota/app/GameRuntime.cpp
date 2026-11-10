@@ -1221,7 +1221,7 @@ std::vector<float> BuildMeshCullRadii(const SceneSnapshot& scene)
 
 std::size_t CullCaptureInstances(SceneSnapshot& scene, const std::vector<float>& meshRadii,
     const std::vector<float>& maxDrawDistances, const vanta::math::Vec3& eye,
-    const vanta::math::Vec3& target, const float aspect) {
+    const vanta::math::Vec3& target, const float aspect, const float verticalFovDegrees = 60.0F) {
     const auto normalize=[](std::array<float,3> v) {
         const float length=std::sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
         if(length>1.0e-6F) for(float& value:v) value/=length;
@@ -1233,8 +1233,12 @@ std::size_t CullCaptureInstances(SceneSnapshot& scene, const std::vector<float>&
         right[1]*forward[2]-right[2]*forward[1],
         right[2]*forward[0]-right[0]*forward[2],
         right[0]*forward[1]-right[1]*forward[0]});
-    constexpr float tangentHalfFov=0.57735026919F;
+    const float safeFovDegrees=std::isfinite(verticalFovDegrees)?std::clamp(verticalFovDegrees,1.0F,179.0F):60.0F;
+    const float tangentHalfFov=std::tan(safeFovDegrees*0.00872664625997F);
     std::size_t visibleCount=0U;
+    std::array<std::size_t,talvisota::presentation::MaximumRenderLodLevels> visibleLodCounts{};
+    std::uint64_t fullDetailTriangles=0U,visibleTriangles=0U;
+    std::size_t invalidLodSelections=0U;
     for(std::size_t index=0U;index<scene.instances.size();++index) {
         auto& instance=scene.instances[index];
         if(instance.meshIndex>=meshRadii.size() || index>=maxDrawDistances.size()) {
@@ -1242,27 +1246,46 @@ std::size_t CullCaptureInstances(SceneSnapshot& scene, const std::vector<float>&
             continue;
         }
         const auto& m=instance.world;
-        const std::array<float,3> delta{m[12]-eye.x,m[13]-eye.y,m[14]-eye.z};
+        std::array<float,3> worldCenter{m[12],m[13],m[14]};
+        if(instance.lodCount>0U) {
+            const auto& c=instance.lodReferenceCenter;
+            worldCenter={m[0]*c[0]+m[4]*c[1]+m[8]*c[2]+m[12],m[1]*c[0]+m[5]*c[1]+m[9]*c[2]+m[13],m[2]*c[0]+m[6]*c[1]+m[10]*c[2]+m[14]};
+        }
+        const std::array<float,3> delta{worldCenter[0]-eye.x,worldCenter[1]-eye.y,worldCenter[2]-eye.z};
         const float distanceSquared=delta[0]*delta[0]+delta[1]*delta[1]+delta[2]*delta[2];
+        const float distance=std::sqrt(distanceSquared);
         const float maxDistance=maxDrawDistances[index];
         const float scale=std::max({std::sqrt(m[0]*m[0]+m[1]*m[1]+m[2]*m[2]),
             std::sqrt(m[4]*m[4]+m[5]*m[5]+m[6]*m[6]),
             std::sqrt(m[8]*m[8]+m[9]*m[9]+m[10]*m[10])});
-        const float radius=meshRadii[instance.meshIndex]*scale;
-        if(distanceSquared > (maxDistance + radius)*(maxDistance + radius)) {
-            instance.visible=false;
-            continue;
+        if(!std::isfinite(scale)||scale<=1.0e-6F){instance.visible=false;++invalidLodSelections;continue;}
+        const std::size_t fullDetailMeshIndex=instance.lodCount>0U?instance.lodVariants[0].meshIndex:instance.meshIndex;
+        if(fullDetailMeshIndex<scene.meshes.size())fullDetailTriangles+=scene.meshes[fullDetailMeshIndex].indices.size()/3U;
+        std::size_t selectedLod=0U;
+        const float screenCoverage=instance.lodCount>0U
+            ? (instance.lodReferenceRadius*scale)/(std::max(distance,1.0e-4F)*tangentHalfFov) : 1.0F;
+        if(!talvisota::presentation::SelectRenderLod(instance,screenCoverage,selectedLod)||instance.meshIndex>=meshRadii.size()) {
+            instance.visible=false;++invalidLodSelections;continue;
         }
+        const float radius=instance.lodCount>0U?instance.lodReferenceRadius*scale:meshRadii[instance.meshIndex]*scale;
+        if(distance>maxDistance+radius){instance.visible=false;continue;}
         const float depth=delta[0]*forward[0]+delta[1]*forward[1]+delta[2]*forward[2];
         const float horizontal=std::abs(delta[0]*right[0]+delta[1]*right[1]+delta[2]*right[2]);
         const float vertical=std::abs(delta[0]*up[0]+delta[1]*up[1]+delta[2]*up[2]);
         instance.visible=depth+radius>=0.1F && depth-radius<=6000.0F &&
             horizontal<=std::max(0.0F,depth)*tangentHalfFov*aspect+radius &&
             vertical<=std::max(0.0F,depth)*tangentHalfFov+radius;
-        if(instance.visible) ++visibleCount;
+        if(instance.visible) {
+            ++visibleCount;
+            visibleTriangles+=scene.meshes[instance.meshIndex].indices.size()/3U;
+            if(instance.lodCount>0U)++visibleLodCounts[selectedLod];
+        }
     }
     std::cout<<"Visibility culling: "<<visibleCount<<" / "<<scene.instances.size()
-        <<" instances visible (vegetation/understory 280 m, props 600 m).\n";
+        <<" instances visible; visible LOD0-3 ["<<visibleLodCounts[0U]<<", "<<visibleLodCounts[1U]
+        <<", "<<visibleLodCounts[2U]<<", "<<visibleLodCounts[3U]<<"]; estimated submitted triangles "
+        <<visibleTriangles<<" / "<<fullDetailTriangles<<" full-detail; invalid LOD selections "
+        <<invalidLodSelections<<".\n";
     return visibleCount;
 }
 
@@ -1786,7 +1809,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 << "), target=(" << target.x << "," << target.y << "," << target.z << ").\n";
             const std::size_t visibleInstanceCount = CullCaptureInstances(scene,
                 meshCullRadii, instanceMaxDrawDistances, eye, target,
-                static_cast<float>(client.right-client.left)/static_cast<float>(client.bottom-client.top));
+                static_cast<float>(client.right-client.left)/static_cast<float>(client.bottom-client.top), currentCameraFovDegrees);
             if(visibleInstanceCount==0U) {
                 error = "World capture camera sees no scene instances after culling.";
                 break;
@@ -1922,7 +1945,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         return 8;
     }
     CullCaptureInstances(scene, meshCullRadii, instanceMaxDrawDistances,
-        cameraPosition, cameraTarget, static_cast<float>(width) / static_cast<float>(height));
+        cameraPosition, cameraTarget, static_cast<float>(width) / static_cast<float>(height), currentCameraFovDegrees);
     using Clock = std::chrono::steady_clock;
     auto previousFrame = Clock::now();
     const auto start = previousFrame;
@@ -2369,7 +2392,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 break;
             }
             CullCaptureInstances(scene, meshCullRadii, instanceMaxDrawDistances,
-                cameraPosition, cameraTarget, static_cast<float>(w) / static_cast<float>(h));
+                cameraPosition, cameraTarget, static_cast<float>(w) / static_cast<float>(h), currentCameraFovDegrees);
         }
         if(!SyncMissionActorsToScene(scene,instanceMaxDrawDistances,soldierRenderAssets,
                 gameplayState,playerState,actorRenderInstances,error)) {

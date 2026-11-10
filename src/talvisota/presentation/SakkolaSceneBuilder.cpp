@@ -7,6 +7,7 @@
 #include "vanta/assets/GltfLoader.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <iostream>
@@ -15,6 +16,7 @@
 #include <limits>
 #include <map>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include <unordered_map>
 #include <utility>
@@ -197,6 +199,23 @@ bool RefineSnowTerrain(RenderMesh& mesh, const talvisota::world::WorldRegion& re
 }
 
 struct SubmeshBinding { std::uint32_t meshIndex; std::uint32_t materialIndex; };
+struct ModelLodSource { std::string assetId; float screenCoverageHint=0.0F; bool optional=false; };
+struct ModelLodBindings { float minimumScreenCoverage=0.0F; std::map<std::string,SubmeshBinding> materials; };
+struct ModelBindings { std::vector<ModelLodBindings> lods; std::array<float,3> referenceCenter{}; float referenceRadius=0.0F; };
+std::vector<ModelLodSource> GetModelLodSources(const std::string_view modelAssetId)
+{
+    if(modelAssetId=="model.environment.scots_pine") return {
+        {std::string(modelAssetId),0.35F,false},
+        {"model.environment.scots_pine_lod1",0.12F,true},
+        {"model.environment.scots_pine_lod2",0.035F,true},
+        {"model.environment.scots_pine_lod3",0.0F,true}};
+    if(modelAssetId=="model.environment.boulder") return {
+        {std::string(modelAssetId),0.30F,false},
+        {"model.environment.boulder_lod1",0.10F,true},
+        {"model.environment.boulder_lod2",0.025F,true},
+        {"model.environment.boulder_lod3",0.0F,true}};
+    return {{std::string(modelAssetId),0.0F,false}};
+}
 
 } // namespace
 
@@ -239,144 +258,154 @@ bool BuildWorldScene(const std::filesystem::path& root, const std::string_view w
         return false;
     }
 
-    std::map<std::string, std::vector<SubmeshBinding>> importedModels;
+    std::map<std::string, ModelBindings> importedModels;
     std::map<std::string, talvisota::content::MaterialDefinition> typedMaterials;
-    std::size_t importedModelCount = 0;
-    std::size_t importedSubmeshRunCount = 0;
-    std::size_t mergedModelMaterialCount = 0;
-    for (const auto& placement : region.placements) {
-        auto model = importedModels.find(placement.modelAssetId);
-        if (model == importedModels.end()) {
-            const auto* modelAsset = registry.Find(placement.modelAssetId);
-            if (modelAsset == nullptr || modelAsset->kind != talvisota::content::AssetKind::Model) {
-                error = "Placement references a missing model asset: " + placement.modelAssetId;
-                return false;
-            }
-            const auto modelPath = registry.Root() / modelAsset->relativePath;
-            vanta::assets::CpuModel imported;
-            std::string importError;
-            const std::string extension = modelPath.extension().string();
-            const bool importedSuccessfully = extension == ".glb" || extension == ".gltf"
-                ? vanta::assets::LoadGltf(modelPath, imported, importError)
-                : vanta::assets::LoadWavefrontObj(modelPath, imported, importError);
-            if (!importedSuccessfully) {
-                error = "Could not import " + placement.modelAssetId + ": " + importError;
-                return false;
-            }
-            importedSubmeshRunCount += imported.submeshes.size();
-            if (imported.submeshes.empty() || imported.materials.empty()) {
-                error = "Model has no materialized submeshes: " + placement.modelAssetId;
-                return false;
-            }
-            // OBJ importers may emit one submesh for every contiguous material run.
-            // Detailed authored trees/buildings contain hundreds of repeated runs per
-            // material; turning each run into an instance multiplies CPU and GPU work.
-            // Merge every run that uses the same material into one indexed mesh before
-            // creating the model's reusable material-bound bindings.
-            std::vector<RenderMesh> meshesByMaterial(imported.materials.size());
-            std::vector<std::unordered_map<std::uint32_t, std::uint32_t>> vertexRemaps(
-                imported.materials.size());
-            for (const auto& submesh : imported.submeshes) {
-                if (submesh.materialIndex >= imported.materials.size() || submesh.indexCount == 0U ||
-                    submesh.indexCount % 3U != 0U ||
-                    static_cast<std::size_t>(submesh.firstIndex) + submesh.indexCount > imported.indices.size()) {
-                    error = "Model has an invalid submesh/material range: " + placement.modelAssetId;
-                    return false;
+    std::size_t importedModelCount=0U, importedSubmeshRunCount=0U, mergedModelMaterialCount=0U;
+    for(const auto& placement:region.placements) {
+        auto model=importedModels.find(placement.modelAssetId);
+        if(model==importedModels.end()) {
+            ModelBindings modelBindings;
+            for(const auto& lodSource:GetModelLodSources(placement.modelAssetId)) {
+                const auto* modelAsset=registry.Find(lodSource.assetId);
+                if(modelAsset==nullptr) {
+                    if(lodSource.optional)break;
+                    error="Placement references a missing model asset: "+lodSource.assetId;return false;
                 }
-                auto& mesh = meshesByMaterial[submesh.materialIndex];
-                auto& vertexRemap = vertexRemaps[submesh.materialIndex];
-                const auto first = imported.indices.begin() + submesh.firstIndex;
-                for (std::uint32_t indexOffset = 0U; indexOffset < submesh.indexCount; ++indexOffset) {
-                    const std::uint32_t sourceIndex = *(first + indexOffset);
-                    if (sourceIndex >= imported.vertices.size()) {
-                        error = "Model submesh references a vertex outside its source vertex buffer: " +
-                            placement.modelAssetId;
-                        return false;
+                if(modelAsset->kind!=talvisota::content::AssetKind::Model) {
+                    error="Placement LOD references a non-model asset: "+lodSource.assetId;return false;
+                }
+                const auto modelPath=registry.Root()/modelAsset->relativePath;
+                std::error_code fileError;
+                bool filePresent=std::filesystem::is_regular_file(modelPath,fileError);
+                if(fileError==std::errc::no_such_file_or_directory||fileError==std::errc::not_a_directory) {
+                    fileError.clear();filePresent=false;
+                }
+                if(fileError){error="Could not inspect model LOD file "+lodSource.assetId+": "+fileError.message();return false;}
+                if(!filePresent) {
+                    if(lodSource.optional)break;
+                    error="Required model LOD file is missing: "+lodSource.assetId;return false;
+                }
+                vanta::assets::CpuModel imported;
+                std::string importError;
+                const std::string extension=modelPath.extension().string();
+                const bool importedOk=extension==".glb"||extension==".gltf"
+                    ? vanta::assets::LoadGltf(modelPath,imported,importError)
+                    : vanta::assets::LoadWavefrontObj(modelPath,imported,importError);
+                if(!importedOk){error="Could not import "+lodSource.assetId+": "+importError;return false;}
+                importedSubmeshRunCount+=imported.submeshes.size();
+                if(imported.submeshes.empty()||imported.materials.empty()) {
+                    error="Model LOD has no materialized submeshes: "+lodSource.assetId;return false;
+                }
+                std::vector<RenderMesh> meshesByMaterial(imported.materials.size());
+                std::vector<std::unordered_map<std::uint32_t,std::uint32_t>> remaps(imported.materials.size());
+                for(const auto& submesh:imported.submeshes) {
+                    if(submesh.materialIndex>=imported.materials.size()||submesh.indexCount==0U||
+                        submesh.indexCount%3U!=0U||
+                        static_cast<std::size_t>(submesh.firstIndex)+submesh.indexCount>imported.indices.size()) {
+                        error="Model LOD has an invalid submesh/material range: "+lodSource.assetId;return false;
                     }
-                    auto remapped = vertexRemap.find(sourceIndex);
-                    if (remapped == vertexRemap.end()) {
-                        if (mesh.vertices.size() >= std::numeric_limits<std::uint32_t>::max()) {
-                            error = "Merged model material mesh exceeds the 32-bit vertex index limit: " +
-                                placement.modelAssetId;
-                            return false;
+                    auto& mesh=meshesByMaterial[submesh.materialIndex];
+                    auto& remap=remaps[submesh.materialIndex];
+                    const auto first=imported.indices.begin()+submesh.firstIndex;
+                    for(std::uint32_t offset=0U;offset<submesh.indexCount;++offset) {
+                        const std::uint32_t sourceIndex=*(first+offset);
+                        if(sourceIndex>=imported.vertices.size()) {
+                            error="Model LOD submesh references a vertex outside its source buffer: "+lodSource.assetId;return false;
                         }
-                        const auto& vertex = imported.vertices[sourceIndex];
-                        const auto destinationIndex = static_cast<std::uint32_t>(mesh.vertices.size());
-                        // Preserve asset-authored UVs. Terrain texture scale is owned by
-                        // the OBJ/material content contract, not a renderer-side override.
-                        mesh.vertices.push_back({{vertex.position.x, vertex.position.y, vertex.position.z},
-                            {vertex.normal.x, vertex.normal.y, vertex.normal.z}, vertex.u, vertex.v});
-                        remapped = vertexRemap.emplace(sourceIndex, destinationIndex).first;
-                    }
-                    mesh.indices.push_back(remapped->second);
-                }
-            }
-
-            std::vector<SubmeshBinding> bindings;
-            bindings.reserve(imported.materials.size());
-            for (std::size_t materialSlot = 0; materialSlot < imported.materials.size(); ++materialSlot) {
-                RenderMesh& mesh = meshesByMaterial[materialSlot];
-                if (mesh.indices.empty())
-                    continue;
-                const auto& sourceMaterial = imported.materials[materialSlot];
-                RenderMaterial material;
-                material.baseColor = {sourceMaterial.baseColor.x, sourceMaterial.baseColor.y,
-                    sourceMaterial.baseColor.z};
-                material.roughness = sourceMaterial.roughness;
-                material.metallic = sourceMaterial.metallic;
-                material.packedMetallicRoughness = sourceMaterial.packedMetallicRoughness;
-                if (!ResolveImportedTexture(sourceMaterial.diffuseTexture, sourceMaterial.embeddedDiffuseTexture, material.baseColorTexture, error) ||
-                    !ResolveImportedTexture(sourceMaterial.normalTexture, sourceMaterial.embeddedNormalTexture, material.normalTexture, error) ||
-                    !ResolveImportedTexture(sourceMaterial.roughnessTexture, sourceMaterial.embeddedRoughnessTexture, material.roughnessTexture, error) ||
-                    !ResolveImportedTexture(sourceMaterial.metallicTexture, sourceMaterial.embeddedMetallicTexture, material.metallicTexture, error) ||
-                    !ResolveImportedTexture(sourceMaterial.ambientOcclusionTexture, sourceMaterial.embeddedAmbientOcclusionTexture, material.ambientOcclusionTexture, error))
-                    return false;
-
-                if (!placement.materialAssetId.empty() && placement.materialAssetId != "-" &&
-                    sourceMaterial.name == "snow") {
-                    auto typed = typedMaterials.find(placement.materialAssetId);
-                    if (typed == typedMaterials.end()) {
-                        const auto* typedAsset = registry.Find(placement.materialAssetId);
-                        if (typedAsset == nullptr || typedAsset->kind != talvisota::content::AssetKind::Material) {
-                            error = "Placement " + placement.id + " references a missing typed material: " +
-                                placement.materialAssetId;
-                            return false;
+                        auto found=remap.find(sourceIndex);
+                        if(found==remap.end()) {
+                            if(mesh.vertices.size()>=std::numeric_limits<std::uint32_t>::max()) {
+                                error="Merged model LOD material mesh exceeds the 32-bit vertex index limit: "+lodSource.assetId;return false;
+                            }
+                            const auto& vertex=imported.vertices[sourceIndex];
+                            const auto destination=static_cast<std::uint32_t>(mesh.vertices.size());
+                            mesh.vertices.push_back({{vertex.position.x,vertex.position.y,vertex.position.z},
+                                {vertex.normal.x,vertex.normal.y,vertex.normal.z},vertex.u,vertex.v});
+                            found=remap.emplace(sourceIndex,destination).first;
                         }
-                        talvisota::content::MaterialDefinition definition;
-                        std::vector<talvisota::content::MaterialDiagnostic> diagnostics;
-                        if (!talvisota::content::LoadMaterialDefinition(
-                                registry.Root() / typedAsset->relativePath, registry, definition, diagnostics)) {
-                            error = "Typed material failed validation:\n" + FormatDiagnostics(diagnostics);
-                            return false;
+                        mesh.indices.push_back(found->second);
+                    }
+                }
+                ModelLodBindings lodBindings;
+                lodBindings.minimumScreenCoverage=lodSource.screenCoverageHint;
+                for(std::size_t slot=0U;slot<imported.materials.size();++slot) {
+                    RenderMesh& mesh=meshesByMaterial[slot];
+                    if(mesh.indices.empty())continue;
+                    const auto& sourceMaterial=imported.materials[slot];
+                    if(sourceMaterial.name.empty()){error="Model LOD contains an unnamed material slot: "+lodSource.assetId;return false;}
+                    RenderMaterial material;
+                    material.baseColor={sourceMaterial.baseColor.x,sourceMaterial.baseColor.y,sourceMaterial.baseColor.z};
+                    material.roughness=sourceMaterial.roughness;
+                    material.metallic=sourceMaterial.metallic;
+                    material.packedMetallicRoughness=sourceMaterial.packedMetallicRoughness;
+                    if(!ResolveImportedTexture(sourceMaterial.diffuseTexture,sourceMaterial.embeddedDiffuseTexture,material.baseColorTexture,error)||
+                        !ResolveImportedTexture(sourceMaterial.normalTexture,sourceMaterial.embeddedNormalTexture,material.normalTexture,error)||
+                        !ResolveImportedTexture(sourceMaterial.roughnessTexture,sourceMaterial.embeddedRoughnessTexture,material.roughnessTexture,error)||
+                        !ResolveImportedTexture(sourceMaterial.metallicTexture,sourceMaterial.embeddedMetallicTexture,material.metallicTexture,error)||
+                        !ResolveImportedTexture(sourceMaterial.ambientOcclusionTexture,sourceMaterial.embeddedAmbientOcclusionTexture,material.ambientOcclusionTexture,error))return false;
+                    if(!placement.materialAssetId.empty()&&placement.materialAssetId!="-"&&sourceMaterial.name=="snow") {
+                        auto typed=typedMaterials.find(placement.materialAssetId);
+                        if(typed==typedMaterials.end()) {
+                            const auto* typedAsset=registry.Find(placement.materialAssetId);
+                            if(typedAsset==nullptr||typedAsset->kind!=talvisota::content::AssetKind::Material) {
+                                error="Placement "+placement.id+" references a missing typed material: "+placement.materialAssetId;return false;
+                            }
+                            talvisota::content::MaterialDefinition definition;
+                            std::vector<talvisota::content::MaterialDiagnostic> diagnostics;
+                            if(!talvisota::content::LoadMaterialDefinition(registry.Root()/typedAsset->relativePath,registry,definition,diagnostics)) {
+                                error="Typed material failed validation:\n"+FormatDiagnostics(diagnostics);return false;
+                            }
+                            typed=typedMaterials.emplace(placement.materialAssetId,std::move(definition)).first;
                         }
-                        typed = typedMaterials.emplace(placement.materialAssetId, std::move(definition)).first;
+                        if(!ApplyMaterialDefinition(typed->second,registry,material,error))return false;
                     }
-                    if (!ApplyMaterialDefinition(typed->second, registry, material, error))
-                        return false;
-                }
-
-                if (placement.modelAssetId == world.terrainModelId && sourceMaterial.name == "snow") {
-                    material.terrain = true;
-                    material.snowSurface = true;
-                    if (!RefineSnowTerrain(mesh, region, error)) {
-                        error = "Could not refine Sakkola snow terrain: " + error;
-                        return false;
+                    if(placement.modelAssetId==world.terrainModelId&&sourceMaterial.name=="snow") {
+                        material.terrain=true;material.snowSurface=true;
+                        if(!RefineSnowTerrain(mesh,region,error)){error="Could not refine Sakkola snow terrain: "+error;return false;}
+                    }
+                    const auto meshIndex=static_cast<std::uint32_t>(scene.meshes.size());
+                    const auto materialIndex=static_cast<std::uint32_t>(scene.materials.size());
+                    scene.meshes.push_back(std::move(mesh));scene.materials.push_back(std::move(material));
+                    if(!lodBindings.materials.emplace(sourceMaterial.name,SubmeshBinding{meshIndex,materialIndex}).second) {
+                        error="Model LOD contains duplicate material names: "+lodSource.assetId+" ("+sourceMaterial.name+")";return false;
                     }
                 }
-
-                const auto meshIndex = static_cast<std::uint32_t>(scene.meshes.size());
-                const auto materialIndex = static_cast<std::uint32_t>(scene.materials.size());
-                scene.meshes.push_back(std::move(mesh));
-                scene.materials.push_back(std::move(material));
-                bindings.push_back({meshIndex, materialIndex});
+                if(lodBindings.materials.empty()){error="Model LOD produced no material-bound geometry: "+lodSource.assetId;return false;}
+                if(!modelBindings.lods.empty()) {
+                    const auto& base=modelBindings.lods.front().materials;
+                    for(const auto& [name,binding]:lodBindings.materials) {
+                        (void)binding;
+                        if(!base.contains(name)){error="Model LOD introduces a material absent from LOD0: "+lodSource.assetId+" ("+name+")";return false;}
+                    }
+                }
+                mergedModelMaterialCount+=lodBindings.materials.size();
+                modelBindings.lods.push_back(std::move(lodBindings));
+                ++importedModelCount;
             }
-            if (bindings.empty()) {
-                error = "Model import produced no material-bound geometry: " + placement.modelAssetId;
-                return false;
+            if(modelBindings.lods.empty()){error="Model import produced no usable LOD geometry: "+placement.modelAssetId;return false;}
+            if(modelBindings.lods.size()>1U) {
+                modelBindings.lods.back().minimumScreenCoverage=0.0F;
+                std::array<float,3> boundsMin{
+                    std::numeric_limits<float>::max(),std::numeric_limits<float>::max(),std::numeric_limits<float>::max()};
+                std::array<float,3> boundsMax{
+                    std::numeric_limits<float>::lowest(),std::numeric_limits<float>::lowest(),std::numeric_limits<float>::lowest()};
+                for(const auto& [materialName,binding]:modelBindings.lods.front().materials) {
+                    (void)materialName;
+                    for(const auto& vertex:scene.meshes[binding.meshIndex].vertices)
+                        for(std::size_t axis=0U;axis<3U;++axis) {
+                            boundsMin[axis]=std::min(boundsMin[axis],vertex.position[axis]);
+                            boundsMax[axis]=std::max(boundsMax[axis],vertex.position[axis]);
+                        }
+                }
+                modelBindings.referenceCenter={(boundsMin[0]+boundsMax[0])*0.5F,
+                    (boundsMin[1]+boundsMax[1])*0.5F,(boundsMin[2]+boundsMax[2])*0.5F};
+                const float dx=boundsMax[0]-boundsMin[0],dy=boundsMax[1]-boundsMin[1],dz=boundsMax[2]-boundsMin[2];
+                modelBindings.referenceRadius=0.5F*std::sqrt(dx*dx+dy*dy+dz*dz);
+                if(!std::isfinite(modelBindings.referenceRadius)||modelBindings.referenceRadius<=1.0e-5F) {
+                    error="Model LOD0 has invalid bounds for screen-space LOD selection: "+placement.modelAssetId;return false;
+                }
             }
-            mergedModelMaterialCount += bindings.size();
-            model = importedModels.emplace(placement.modelAssetId, std::move(bindings)).first;
-            ++importedModelCount;
+            model=importedModels.emplace(placement.modelAssetId,std::move(modelBindings)).first;
         }
         auto transform = talvisota::world::BuildPlacementTransform(placement);
         if (placement.modelAssetId == "model.environment.scots_pine") {
@@ -410,42 +439,35 @@ bool BuildWorldScene(const std::filesystem::path& root, const std::string_view w
             }
             transform[13] = groundedY;
         }
-        for (const auto& binding : model->second) {
+        for(const auto& [materialName,baseBinding]:model->second.lods.front().materials) {
             RenderInstance instance;
-            instance.meshIndex = binding.meshIndex;
-            instance.materialIndex = binding.materialIndex;
-            instance.world = transform;
-            instance.placementId = placement.id;
-            scene.instances.push_back(instance);
-            // Terrain, lake ice and road meshes are authored in world space and
-            // can span kilometres from their placement origin. Culling them by the
-            // origin distance makes Suvanto disappear while the player is standing
-            // on the lake, and clips the far banks of the Taipale river.
-            float maxDrawDistance = 1200.0F;
-            if (placement.modelAssetId == world.terrainModelId ||
-                placement.modelAssetId == "model.environment.suvanto_ice" ||
-                placement.modelAssetId == "model.environment.taipale_ice" ||
-                placement.modelAssetId == "model.environment.sakkola_roads") {
-                maxDrawDistance = 6000.0F;
-            } else if (placement.modelAssetId == "model.environment.juniper" ||
-                       placement.modelAssetId == "model.environment.winter_brush") {
-                maxDrawDistance = 280.0F;
-            } else switch (placement.category) {
-            case talvisota::world::PlacementCategory::Vegetation:
-                maxDrawDistance = 280.0F;
-                break;
-            case talvisota::world::PlacementCategory::Prop:
-                maxDrawDistance = 600.0F;
-                break;
-            case talvisota::world::PlacementCategory::Rock:
-                maxDrawDistance = 720.0F;
-                break;
-            case talvisota::world::PlacementCategory::Structure:
-                maxDrawDistance = 1200.0F;
-                break;
-            case talvisota::world::PlacementCategory::Terrain:
-                maxDrawDistance = 1200.0F;
-                break;
+            instance.meshIndex=baseBinding.meshIndex;instance.materialIndex=baseBinding.materialIndex;
+            if(model->second.lods.size()>1U) {
+                instance.lodCount=static_cast<std::uint8_t>(model->second.lods.size());
+                instance.lodReferenceCenter=model->second.referenceCenter;
+                instance.lodReferenceRadius=model->second.referenceRadius;
+                for(std::size_t lodIndex=0U;lodIndex<model->second.lods.size();++lodIndex) {
+                    const auto& lod=model->second.lods[lodIndex];
+                    const auto found=lod.materials.find(materialName);
+                    const SubmeshBinding& selected=found!=lod.materials.end()?found->second:baseBinding;
+                    instance.lodVariants[lodIndex]={selected.meshIndex,selected.materialIndex,lod.minimumScreenCoverage};
+                }
+            }
+            instance.world=transform;instance.placementId=placement.id;scene.instances.push_back(instance);
+            // World-space terrain, ice and roads retain their extended draw distance.
+            float maxDrawDistance=1200.0F;
+            if(placement.modelAssetId==world.terrainModelId||
+                placement.modelAssetId=="model.environment.suvanto_ice"||
+                placement.modelAssetId=="model.environment.taipale_ice"||
+                placement.modelAssetId=="model.environment.sakkola_roads")maxDrawDistance=6000.0F;
+            else if(placement.modelAssetId=="model.environment.juniper"||
+                placement.modelAssetId=="model.environment.winter_brush")maxDrawDistance=280.0F;
+            else switch(placement.category) {
+            case talvisota::world::PlacementCategory::Vegetation:maxDrawDistance=280.0F;break;
+            case talvisota::world::PlacementCategory::Prop:maxDrawDistance=600.0F;break;
+            case talvisota::world::PlacementCategory::Rock:maxDrawDistance=720.0F;break;
+            case talvisota::world::PlacementCategory::Structure:maxDrawDistance=1200.0F;break;
+            case talvisota::world::PlacementCategory::Terrain:maxDrawDistance=1200.0F;break;
             }
             instanceMaxDrawDistances.push_back(maxDrawDistance);
         }
@@ -500,8 +522,8 @@ bool BuildWorldScene(const std::filesystem::path& root, const std::string_view w
         expandedVertices * sizeof(talvisota::presentation::RenderVertex) +
         expandedIndices * sizeof(std::uint32_t);
     std::cout << "Loaded " << region.id << ": " << placementCount << " placements, "
-        << importedModelCount << " distinct OBJ models, " << importedSubmeshRunCount
-        << " contiguous OBJ material runs merged into " << mergedModelMaterialCount
+        << importedModelCount << " distinct environment model/LOD files, " << importedSubmeshRunCount
+        << " imported submesh runs merged into " << mergedModelMaterialCount
         << " model-material meshes, " << drawCount << " material-bound instances; "
         << uniqueVertices << " unique mesh vertices, " << expandedVertices
         << " expanded instance vertices, " << uniqueGeometryBytes

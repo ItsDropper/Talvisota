@@ -188,8 +188,7 @@ bool ValidateInstances(const SceneSnapshot& scene, std::string& error)
 {
     for (std::size_t instanceIndex = 0; instanceIndex < scene.instances.size(); ++instanceIndex) {
         const RenderInstance& instance = scene.instances[instanceIndex];
-        if (instance.meshIndex >= scene.meshes.size() ||
-            instance.materialIndex >= scene.materials.size()) {
+        if (instance.meshIndex >= scene.meshes.size() || instance.materialIndex >= scene.materials.size()) {
             error = "Instance " + std::to_string(instanceIndex) + " references a missing mesh or material.";
             return false;
         }
@@ -197,10 +196,78 @@ bool ValidateInstances(const SceneSnapshot& scene, std::string& error)
             error = "Instance " + std::to_string(instanceIndex) + " has an invalid or singular world transform.";
             return false;
         }
+        if (!std::isfinite(instance.lodReferenceRadius) || instance.lodReferenceRadius < 0.0F) {
+            error = "Instance " + std::to_string(instanceIndex) + " has an invalid LOD reference radius.";
+            return false;
+        }
+        for (const float coordinate : instance.lodReferenceCenter) {
+            if (!std::isfinite(coordinate)) {
+                error = "Instance " + std::to_string(instanceIndex) + " has a non-finite LOD reference center.";
+                return false;
+            }
+        }
+        if (instance.lodCount > MaximumRenderLodLevels) {
+            error = "Instance " + std::to_string(instanceIndex) + " exceeds the four-level render LOD limit.";
+            return false;
+        }
+        if (instance.lodCount == 0U) continue;
+        if (instance.lodCount < 2U || instance.lodReferenceRadius <= 1.0e-5F) {
+            error = "LOD-enabled instance " + std::to_string(instanceIndex) +
+                " requires at least two levels and a positive reference bound.";
+            return false;
+        }
+        bool selectedVariantFound = false;
+        float previousCoverage = std::numeric_limits<float>::infinity();
+        for (std::size_t lodIndex = 0U; lodIndex < instance.lodCount; ++lodIndex) {
+            const RenderLodVariant& variant = instance.lodVariants[lodIndex];
+            if (variant.meshIndex >= scene.meshes.size() || variant.materialIndex >= scene.materials.size()) {
+                error = "Instance " + std::to_string(instanceIndex) + " LOD " +
+                    std::to_string(lodIndex) + " references a missing mesh or material.";
+                return false;
+            }
+            if (!std::isfinite(variant.minimumScreenCoverage) ||
+                variant.minimumScreenCoverage < 0.0F || variant.minimumScreenCoverage > 1.0F ||
+                variant.minimumScreenCoverage >= previousCoverage) {
+                error = "Instance " + std::to_string(instanceIndex) +
+                    " LOD screen-coverage thresholds must be finite, in [0,1], and strictly descending.";
+                return false;
+            }
+            previousCoverage = variant.minimumScreenCoverage;
+            selectedVariantFound = selectedVariantFound ||
+                (instance.meshIndex == variant.meshIndex && instance.materialIndex == variant.materialIndex);
+        }
+        if (instance.lodVariants[instance.lodCount - 1U].minimumScreenCoverage != 0.0F) {
+            error = "Instance " + std::to_string(instanceIndex) +
+                " LOD chain must provide a final zero-coverage fallback.";
+            return false;
+        }
+        if (!selectedVariantFound) {
+            error = "Instance " + std::to_string(instanceIndex) +
+                " current mesh/material selection is not part of its LOD chain.";
+            return false;
+        }
     }
     return true;
 }
 } // namespace detail
+
+bool SelectRenderLod(RenderInstance& instance, const float screenCoverage,
+    std::size_t& selectedLod) noexcept
+{
+    selectedLod = 0U;
+    if (instance.lodCount == 0U) return true;
+    if (instance.lodCount > MaximumRenderLodLevels ||
+        !std::isfinite(screenCoverage) || screenCoverage < 0.0F) return false;
+    for (std::size_t lodIndex = 0U; lodIndex < instance.lodCount; ++lodIndex) {
+        const RenderLodVariant& variant = instance.lodVariants[lodIndex];
+        if (screenCoverage < variant.minimumScreenCoverage) continue;
+        instance.meshIndex = variant.meshIndex;
+        instance.materialIndex = variant.materialIndex;
+        selectedLod = lodIndex;
+        return true;
+    }
+    return false;
+}
 
 bool ValidateSceneSnapshot(const SceneSnapshot& scene, std::string& error)
 {

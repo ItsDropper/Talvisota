@@ -114,7 +114,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: talvisota-scots-pine-runtime-model
-          path: ${{ runner.temp }}/generated-trees/scots_pine_lod0.glb
+          path: ${{ runner.temp }}/generated-trees/scots_pine_lod*.glb
           if-no-files-found: error
           retention-days: 7
 
@@ -200,7 +200,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: talvisota-granite-boulder-runtime-model
-          path: ${{ runner.temp }}/generated-boulder/granite_boulder_lod0.glb
+          path: ${{ runner.temp }}/generated-boulder/granite_boulder_lod*.glb
           if-no-files-found: error
           retention-days: 7
 
@@ -286,10 +286,16 @@ jobs:
         run: |
           $required = @(
             "assets/models/environment/generated/scots_pine_lod0.glb",
-            "assets/models/environment/generated/granite_boulder_lod0.glb"
+            "assets/models/environment/generated/scots_pine_lod1.glb",
+            "assets/models/environment/generated/scots_pine_lod2.glb",
+            "assets/models/environment/generated/scots_pine_lod3.glb",
+            "assets/models/environment/generated/granite_boulder_lod0.glb",
+            "assets/models/environment/generated/granite_boulder_lod1.glb",
+            "assets/models/environment/generated/granite_boulder_lod2.glb",
+            "assets/models/environment/generated/granite_boulder_lod3.glb"
           )
           foreach ($path in $required) {
-            if (-not (Test-Path -LiteralPath $path)) { throw "Generated runtime model missing: $path" }
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Generated runtime model missing: $path" }
             if ((Get-Item -LiteralPath $path).Length -lt 128) { throw "Generated runtime model is empty: $path" }
           }
 
