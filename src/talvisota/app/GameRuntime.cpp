@@ -367,13 +367,14 @@ std::array<float,16> ActorLegWorldMatrix(const std::array<float,3>& position,
     const float angle=swing+bodyPitch;
     const float cy=std::cos(yaw),sy=std::sin(yaw);
     const float cp=std::cos(angle),sp=std::sin(angle);
+    const float bodyCp=std::cos(bodyPitch),bodySp=std::sin(bodyPitch);
     const float cr=std::cos(bodyRoll),sr=std::sin(bodyRoll);
     // Rotate the hip pivot by the torso pose, but add stride only to the leg's
     // orientation. This keeps the leg attached while it swings.
     const float pivotLocalX=cr*pivotX-sr*0.83F;
     const float pivotLocalY=sr*pivotX+cr*0.83F;
-    const float pivotY=cp*pivotLocalY;
-    const float pivotZ=sp*pivotLocalY;
+    const float pivotY=bodyCp*pivotLocalY;
+    const float pivotZ=bodySp*pivotLocalY;
     return {
         cy*cr+sy*sp*sr,cp*sr,-sy*cr+cy*sp*sr,0.0F,
         -cy*sr+sy*sp*cr,cp*cr,sy*sr+cy*sp*cr,0.0F,
