@@ -5,7 +5,15 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: '0 3 * * *'
   workflow_dispatch:
+    inputs:
+      validation:
+        description: 'Validation depth for a manual run'
+        type: choice
+        options: [fast, full]
+        default: fast
 
 permissions:
   contents: read
@@ -15,8 +23,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect expensive visual validation changes
+    runs-on: ubuntu-latest
+    outputs:
+      full_visual: ${{ steps.filter.outputs.full_visual == 'true' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.validation == 'full') }}
+    steps:
+      - name: Check out source for path detection
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect visual and asset changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          base: main
+          filters: |
+            full_visual:
+              - 'tools/blender_asset_pipeline/**'
+              - 'tools/asset_pipeline/**'
+              - 'assets/**'
+              - 'content/**'
+              - 'src/talvisota/app/**'
+              - 'src/talvisota/presentation/**'
+              - 'src/talvisota/world/**'
+              - 'CMakeLists.txt'
+              - '.github/workflows/ci.yml'
+
   blender-tree-assets:
     name: Blender procedural tree assets
+    needs: changes
+    if: needs.changes.outputs.full_visual == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
@@ -101,6 +139,8 @@ jobs:
 
   blender-boulder-assets:
     name: Blender granite boulder assets
+    needs: changes
+    if: needs.changes.outputs.full_visual == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
@@ -213,7 +253,17 @@ jobs:
 
 
   windows-msvc-renderer-adapter:
-    needs: [blender-tree-assets, blender-boulder-assets]
+    needs: [changes, blender-tree-assets, blender-boulder-assets]
+    if: >-
+      always() &&
+      needs.changes.result == 'success' &&
+      (
+        needs.changes.outputs.full_visual != 'true' ||
+        (
+          needs.blender-tree-assets.result == 'success' &&
+          needs.blender-boulder-assets.result == 'success'
+        )
+      )
     name: Windows x64 / MSVC renderer adapter
     runs-on: windows-latest
     steps:
@@ -221,11 +271,25 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download generated environment runtime models
+        if: needs.changes.outputs.full_visual == 'true'
         uses: actions/download-artifact@v4
         with:
           pattern: talvisota-*-runtime-model
           path: assets/models/environment/generated
           merge-multiple: true
+
+      - name: Verify generated runtime model inputs
+        if: needs.changes.outputs.full_visual == 'true'
+        shell: pwsh
+        run: |
+          $required = @(
+            "assets/models/environment/generated/scots_pine_lod0.glb",
+            "assets/models/environment/generated/granite_boulder_lod0.glb"
+          )
+          foreach ($path in $required) {
+            if (-not (Test-Path -LiteralPath $path)) { throw "Generated runtime model missing: $path" }
+            if ((Get-Item -LiteralPath $path).Length -lt 128) { throw "Generated runtime model is empty: $path" }
+          }
 
       - name: Verify Sakkola Blender placement migration and tree collision heights
         shell: bash
@@ -293,6 +357,7 @@ jobs:
         run: cmake --build build-msvc --target talvisota talvisota_renderer_sample talvisota_renderer_contract_tests talvisota_asset_validate talvisota_content_validate talvisota_content_package talvisota_texture_process talvisota_engine_asset_validation_tests talvisota_engine_asset_package_tests talvisota_engine_asset_pipeline_tests --parallel
 
       - name: Validate shipped content
+        if: needs.changes.outputs.full_visual == 'true'
         run: .\\build-msvc\talvisota_content_validate.exe content/catalog.tmanifest .
 
       - name: Authored campaign runtime smoke test
@@ -302,18 +367,22 @@ jobs:
         run: ctest --test-dir build-msvc --output-on-failure -R "Talvisota.Presentation.SceneRendererContract|Talvisota.Content.EngineAssetValidation|Talvisota.Content.EngineAssetPackage|Talvisota.Content.EngineAssetPipeline|Talvisota.Environment.PbrMaps"
 
       - name: Engine-backed content asset validation smoke test
+        if: needs.changes.outputs.full_visual == 'true'
         run: .\\build-msvc\talvisota_asset_validate.exe content/catalog.tmanifest .
 
       - name: Build deterministic content package
+        if: needs.changes.outputs.full_visual == 'true'
         run: .\\build-msvc\talvisota_content_package.exe content/catalog.tmanifest . "$env:RUNNER_TEMP\talvisota-content-package"
 
       - name: Verify packaged content integrity
+        if: needs.changes.outputs.full_visual == 'true'
         run: .\\build-msvc\talvisota_content_package.exe --verify "$env:RUNNER_TEMP\talvisota-content-package"
 
       - name: Texture processor help smoke test
         run: .\\build-msvc\talvisota_texture_process.exe --help
 
       - name: Assemble playable Sakkola download
+        if: needs.changes.outputs.full_visual == 'true'
         shell: pwsh
         run: |
           $packageRoot = Join-Path $env:RUNNER_TEMP 'talvisota-sakkola-windows-x64'
@@ -365,6 +434,7 @@ jobs:
           Get-ChildItem -LiteralPath $packageRoot -Force | Select-Object Name, Length
 
       - name: Upload playable Sakkola Windows build
+        if: needs.changes.outputs.full_visual == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: talvisota-sakkola-windows-x64
@@ -373,6 +443,7 @@ jobs:
           retention-days: 30
 
       - name: Render Sakkola terrain viewpoints
+        if: needs.changes.outputs.full_visual == 'true'
         timeout-minutes: 8
         shell: pwsh
         run: |
@@ -387,6 +458,7 @@ jobs:
           $captures | Format-Table Name, Length
 
       - name: Upload Sakkola terrain screenshots
+        if: always() && needs.changes.outputs.full_visual == 'true'
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -398,6 +470,7 @@ jobs:
           retention-days: 30
       
       - name: Render Taipale riverfront viewpoints
+        if: needs.changes.outputs.full_visual == 'true'
         timeout-minutes: 8
         shell: pwsh
         run: |
@@ -412,6 +485,7 @@ jobs:
           $captures | Format-Table Name, Length
 
       - name: Upload Taipale riverfront screenshots
+        if: always() && needs.changes.outputs.full_visual == 'true'
         if: always()
         uses: actions/upload-artifact@v4
         with:
