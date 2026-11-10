@@ -785,6 +785,62 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                     if(ownsCom) CoUninitialize();
                     return 10;
                 }
+                const auto* waypointEntity=simulation.entities.Find(waypoint.entityId);
+                if(waypointEntity!=nullptr &&
+                    waypointEntity->kind!=talvisota::entities::EntityKind::WorldObject) {
+                    if(!simulation.entities.SetPosition(simulation.playerEntityId,waypoint.position,error)) {
+                        std::cerr<<"Campaign smoke could not stage the authored combat objective: "<<error<<"\n";
+                        if(ownsCom) CoUninitialize();
+                        return 10;
+                    }
+                    bool defeated=false;
+                    for(std::size_t shot=0U;shot<4U&&!defeated;++shot) {
+                        const std::array<talvisota::combat::CombatCommand,1> fire{{
+                            {"smoke.combat."+authoredMission.id+"."+std::to_string(index+1U)+"."+std::to_string(shot+1U),
+                                simulation.playerEntityId,waypoint.entityId,talvisota::combat::CombatAction::Fire}
+                        }};
+                        std::vector<talvisota::combat::CombatResult> combatResults;
+                        if(!talvisota::combat::AdvanceCombat(simulation.combat,simulation.entities,
+                                0.05,fire,combatResults,error)) {
+                            std::cerr<<"Campaign smoke combat step failed: "<<error<<"\n";
+                            if(ownsCom) CoUninitialize();
+                            return 10;
+                        }
+                        std::vector<talvisota::gameplay::CommandResult> missionResults;
+                        if(!talvisota::gameplay::ApplyCombatMissionEvents(simulation,simulation.combat,
+                                fire,combatResults,missionResults,error)) {
+                            std::cerr<<"Campaign smoke combat objective failed: "<<error<<"\n";
+                            if(ownsCom) CoUninitialize();
+                            return 10;
+                        }
+                        defeated=combatResults.size()==1U &&
+                            combatResults.front().outcome==talvisota::combat::CombatOutcome::TargetDefeated;
+                        if(defeated) {
+                            const auto expected=index+1U==simulation.mission.objectives.size()
+                                ?talvisota::gameplay::CommandOutcome::MissionCompleted
+                                :talvisota::gameplay::CommandOutcome::ObjectiveCompleted;
+                            if(missionResults.size()!=1U||missionResults.front().outcome!=expected) {
+                                std::cerr<<"Campaign smoke combat defeat produced an unexpected mission result.\n";
+                                if(ownsCom) CoUninitialize();
+                                return 10;
+                            }
+                        } else {
+                            for(int cooldown=0;cooldown<5;++cooldown)
+                                if(!talvisota::combat::AdvanceCombat(simulation.combat,simulation.entities,
+                                        0.25,std::span<const talvisota::combat::CombatCommand>{},combatResults,error)) {
+                                    std::cerr<<"Campaign smoke weapon cooldown failed: "<<error<<"\n";
+                                    if(ownsCom) CoUninitialize();
+                                    return 10;
+                                }
+                        }
+                    }
+                    if(!defeated) {
+                        std::cerr<<"Campaign smoke could not defeat authored combat objective: "<<waypoint.entityId<<"\n";
+                        if(ownsCom) CoUninitialize();
+                        return 10;
+                    }
+                    continue;
+                }
                 talvisota::game::PlayerState reachablePlayer;
                 if(!talvisota::game::InitializePlayer(gameRegion,playerConfig,
                         waypoint.position,reachablePlayer,error) ||
