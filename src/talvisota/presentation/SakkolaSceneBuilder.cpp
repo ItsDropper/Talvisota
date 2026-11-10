@@ -4,6 +4,7 @@
 #include "talvisota/content/MaterialDefinition.hpp"
 #include "talvisota/content/WorldDefinition.hpp"
 #include "vanta/assets/ObjLoader.hpp"
+#include "vanta/assets/GltfLoader.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -174,7 +175,11 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
             const auto modelPath = registry.Root() / modelAsset->relativePath;
             vanta::assets::CpuModel imported;
             std::string importError;
-            if (!vanta::assets::LoadWavefrontObj(modelPath, imported, importError)) {
+            const std::string extension = modelPath.extension().string();
+            const bool importedSuccessfully = extension == ".glb" || extension == ".gltf"
+                ? vanta::assets::LoadGltf(modelPath, imported, importError)
+                : vanta::assets::LoadWavefrontObj(modelPath, imported, importError);
+            if (!importedSuccessfully) {
                 error = "Could not import " + placement.modelAssetId + ": " + importError;
                 return false;
             }
@@ -293,6 +298,18 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
             ++importedModelCount;
         }
         auto transform = talvisota::world::BuildPlacementTransform(placement);
+        if (placement.modelAssetId == "model.environment.scots_pine") {
+            // Stable FNV-1a variation keeps the forest identical across machines
+            // while giving every authored tree a distinct mature-height profile.
+            std::uint64_t hash = 14695981039346656037ULL;
+            for (const unsigned char byte : placement.id) {
+                hash ^= byte;
+                hash *= 1099511628211ULL;
+            }
+            const float heightVariation = 0.78F +
+                static_cast<float>(hash % 10001ULL) / 10000.0F * 0.50F;
+            transform[5] *= heightVariation;
+        }
         // These meshes are authored in world coordinates, not placement-local
         // coordinates. Applying the placement's sampled ground elevation would
         // translate the entire road network vertically (the roads placement is
