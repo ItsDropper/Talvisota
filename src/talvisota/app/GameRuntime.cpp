@@ -1199,7 +1199,7 @@ bool FindPlayerSpawn(const talvisota::world::WorldRegion& region,
             }
         }
     }
-    error = "Could not find a collision-free first-person spawn near the Sakkola farmstead: " + error;
+    error = "Could not find a collision-free first-person spawn near the authored region start area: " + error;
     return false;
 }
 
@@ -1354,6 +1354,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     bool useD3D11 = false;
     bool captureRequested = false;
     bool missionSmokeRequested = false;
+    std::string selectedMissionId = "mission.sakkola.first-patrol";
     int argumentCount = 0;
     LPWSTR* parsedArguments = CommandLineToArgvW(GetCommandLineW(), &argumentCount);
     if (parsedArguments == nullptr) {
@@ -1364,6 +1365,21 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         const std::wstring_view token(parsedArguments[index]);
         if (token == L"--mission-smoke") {
             missionSmokeRequested = true;
+        } else if (token.rfind(L"--mission=", 0) == 0) {
+            selectedMissionId.clear();
+            for (const wchar_t character : token.substr(10)) {
+                if (character < 0x21 || character > 0x7e) {
+                    LocalFree(parsedArguments);
+                    if (ownsCom) CoUninitialize();
+                    return 1;
+                }
+                selectedMissionId.push_back(static_cast<char>(character));
+            }
+            if (selectedMissionId.empty()) {
+                LocalFree(parsedArguments);
+                if (ownsCom) CoUninitialize();
+                return 1;
+            }
         } else if (token.rfind(L"--capture-dir=", 0) == 0) {
             captureRequested = true;
             captureDir = token.substr(14);
@@ -1385,7 +1401,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         }
     }
     LocalFree(parsedArguments);
-    if (missionSmokeRequested && captureRequested) {
+    if ((missionSmokeRequested && captureRequested) ||
+        (missionSmokeRequested && selectedMissionId != "mission.sakkola.first-patrol")) {
         if (ownsCom) CoUninitialize();
         return 1;
     }
@@ -1421,13 +1438,26 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         return 2;
     }
 
+    std::string error;
+    talvisota::content::AuthoredDefinition authoredMission;
+    std::string selectedWorldId = "world.sakkola";
+    std::string selectedRegionId = "region.sakkola.church_village";
+    if (!captureRequested) {
+        if (!LoadMission(contentRoot, selectedMissionId, authoredMission, error)) {
+            std::cerr << "Could not load selected mission: " << error << "\\n";
+            if (ownsCom) CoUninitialize();
+            return 2;
+        }
+        selectedWorldId = authoredMission.worldId;
+        selectedRegionId = authoredMission.regionId;
+    }
+
     SceneSnapshot scene;
     talvisota::world::WorldRegion gameRegion;
     std::size_t placements = 0, draws = 0;
     std::vector<float> instanceMaxDrawDistances;
-    std::string error;
-    if (!BuildSakkolaScene(contentRoot, scene,
-            instanceMaxDrawDistances, placements, draws, gameRegion, error)) {
+    if (!talvisota::presentation::BuildWorldScene(contentRoot, selectedWorldId, selectedRegionId,
+            scene, instanceMaxDrawDistances, placements, draws, gameRegion, error)) {
         std::cerr << error << "\n";
         if (captureLog) captureLog << "Scene build failed:\n" << error << "\n";
         if (ownsCom) CoUninitialize();
