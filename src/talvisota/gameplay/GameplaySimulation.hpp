@@ -109,6 +109,13 @@ struct SimulationState final
 // Applies defeated combat-target events to matching active mission objectives.
 // Commands and results must be the corresponding outputs from one AdvanceCombat call.
 // The mission state and output remain unchanged on malformed or inconsistent input.
+// Resolves a first-person aim ray to the nearest living hostile combatant. The
+// supplied range is game-balance data from the equipped weapon definition.
+[[nodiscard]] bool FindNearestHostileCombatant(const SimulationState& state,
+    std::string_view actorEntityId, const std::array<float, 3>& rayOrigin,
+    const std::array<float, 3>& rayDirection, float maximumRangeMeters,
+    float targetRadiusMeters, std::string& outputEntityId, std::string& error);
+
 [[nodiscard]] bool ApplyCombatMissionEvents(SimulationState& missionState,
     const combat::CombatSimulationState& combatState,
     std::span<const combat::CombatCommand> commands,
