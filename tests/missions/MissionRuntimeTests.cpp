@@ -138,15 +138,15 @@ void TestManifestParserToMissionAdapter()
 
     const AuthoredDefinition preservedSuccessor=successor;
     content.Write("content/missions/northern-watch.tmission",
-        "talvisota-mission\\t1\\n"
-        "id = mission.sakkola.northern-watch\\n"
-        "name = Northern Watch\\n"
-        "world_id = world.sakkola\\n"
-        "region_id = region.sakkola.church_village\\n"
-        "player_character_id = character.sakkola_infantryman\\n"
-        "faction_id = faction.finnish\\n"
-        "environment_profile = volcanic\\n"
-        "objective = objective.watch -> prop.watch-post\\n");
+        "talvisota-mission\t1\n"
+        "id = mission.sakkola.northern-watch\n"
+        "name = Northern Watch\n"
+        "world_id = world.sakkola\n"
+        "region_id = region.sakkola.church_village\n"
+        "player_character_id = character.sakkola_infantryman\n"
+        "faction_id = faction.finnish\n"
+        "environment_profile = volcanic\n"
+        "objective = objective.watch -> prop.watch-post\n");
     Check(!LoadAuthoredDefinition(content.Root() / "content/missions/northern-watch.tmission",
         registry, successor, definitionDiagnostics),
         "unsupported mission weather profile is rejected");
