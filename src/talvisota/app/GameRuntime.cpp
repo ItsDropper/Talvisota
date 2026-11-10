@@ -1402,7 +1402,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     }
     LocalFree(parsedArguments);
     if ((missionSmokeRequested && captureRequested) ||
-        (missionSmokeRequested && selectedMissionId != "mission.sakkola.first-patrol")) {
+        (missionSmokeRequested && selectedMissionId != "mission.sakkola.first-patrol") ||
+        (captureRequested && selectedMissionId != "mission.sakkola.first-patrol")) {
         if (ownsCom) CoUninitialize();
         return 1;
     }
