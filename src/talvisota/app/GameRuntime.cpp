@@ -84,6 +84,9 @@ std::wstring ObjectiveTitle(const std::string_view id) {
     if(id=="objective.reach-northern-barn") return L"REACH THE NORTHERN BARN";
     if(id=="objective.check-eastern-boundary") return L"CHECK THE EASTERN BOUNDARY";
     if(id=="objective.report-watch") return L"REPORT TO THE WATCH POST";
+    if(id=="objective.stop-first-advance") return L"HOLD THE NORTHERN APPROACH";
+    if(id=="objective.stop-second-advance") return L"SECURE THE VILLAGE ROAD";
+    if(id=="objective.report-to-post") return L"REPORT TO THE CHURCH POST";
     return Utf8ToWide(id);
 }
 
@@ -271,7 +274,7 @@ void PaintMenu(HWND hwnd) {
     SelectObject(dc,old); SetTextColor(dc,RGB(126,151,169));
     RECT hint{p.left+18,p.bottom-38,p.right-18,p.bottom-12};
     DrawTextW(dc,frontendState==FrontendState::MainMenu?
-        L"WASD MOVE  |  MOUSE LOOK  |  E INTERACT  |  ESC PAUSE":
+        L"WASD MOVE  |  MOUSE LOOK  |  E INTERACT  |  LMB FIRE  |  R RELOAD  |  ESC PAUSE":
         L"ESC TO RESUME  |  MISSION PROGRESS IS KEPT",
         -1,&hint,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     DeleteObject(body); DeleteObject(title); EndPaint(hwnd,&ps);
@@ -1309,6 +1312,12 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                         gameplayState.playerEntityId,{},talvisota::combat::CombatAction::Reload});
                     reloadQueued=false;
                 }
+                std::vector<talvisota::combat::CombatCommand> aiCommands;
+                if(!talvisota::gameplay::BuildBattlefieldAiCommands(gameplayState,aiCommands,error)) {
+                    std::cerr<<"Battlefield AI failed: "<<error<<"\\n"; break;
+                }
+                combatCommands.insert(combatCommands.end(),aiCommands.begin(),aiCommands.end());
+                const auto playerHealthBefore=gameplayState.combat.combatants.at(gameplayState.playerEntityId).health;
                 std::vector<talvisota::combat::CombatResult> combatResults;
                 if(!talvisota::combat::AdvanceCombat(gameplayState.combat,gameplayState.entities,
                         gameplayFixedStep,combatCommands,combatResults,error)) {
@@ -1322,20 +1331,30 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                     }
                     for(std::size_t combatIndex=0U;combatIndex<combatResults.size();++combatIndex) {
                         const auto& result=combatResults[combatIndex];
-                        if(result.outcome==talvisota::combat::CombatOutcome::TargetDefeated)
+                        const bool playerIssued=combatCommands[combatIndex].actorEntityId==gameplayState.playerEntityId;
+                        if(playerIssued && result.outcome==talvisota::combat::CombatOutcome::TargetDefeated)
                             SetMissionFeedback(L"HOSTILE COMBATANT DEFEATED",std::chrono::milliseconds(1800));
-                        else if(result.outcome==talvisota::combat::CombatOutcome::Fired)
+                        else if(playerIssued && result.outcome==talvisota::combat::CombatOutcome::Fired)
                             SetMissionFeedback(L"SHOT FIRED",std::chrono::milliseconds(650));
-                        else if(result.outcome==talvisota::combat::CombatOutcome::ReloadStarted)
+                        else if(playerIssued && result.outcome==talvisota::combat::CombatOutcome::ReloadStarted)
                             SetMissionFeedback(L"RELOADING",std::chrono::milliseconds(1000));
-                        else if(result.outcome==talvisota::combat::CombatOutcome::EmptyMagazine)
+                        else if(playerIssued && result.outcome==talvisota::combat::CombatOutcome::EmptyMagazine)
                             SetMissionFeedback(L"EMPTY MAGAZINE  |  PRESS R",std::chrono::milliseconds(1200));
-                        else if(result.outcome==talvisota::combat::CombatOutcome::OutOfRange)
+                        else if(playerIssued && result.outcome==talvisota::combat::CombatOutcome::OutOfRange)
                             SetMissionFeedback(L"TARGET OUT OF RANGE",std::chrono::milliseconds(900));
                         if(combatMissionResults[combatIndex].outcome==talvisota::gameplay::CommandOutcome::ObjectiveCompleted ||
                             combatMissionResults[combatIndex].outcome==talvisota::gameplay::CommandOutcome::MissionCompleted)
                             SetMissionFeedback(L"MISSION OBJECTIVE COMPLETE",std::chrono::milliseconds(2200));
                     }
+                }
+                const auto playerHealthAfter=gameplayState.combat.combatants.at(gameplayState.playerEntityId).health;
+                if(playerHealthAfter<playerHealthBefore)
+                    SetMissionFeedback(L"INCOMING FIRE",std::chrono::milliseconds(850));
+                if(playerHealthAfter<=0.0F) {
+                    if(!talvisota::missions::FailMission(gameplayState.mission,error)) {
+                        std::cerr<<"Could not fail defeated player mission: "<<error<<"\\n"; break;
+                    }
+                    SetMissionFeedback(L"SECTION OVERWHELMED",std::chrono::milliseconds(5000));
                 }
                 std::vector<talvisota::gameplay::InteractionCommand> commands;
                 if(interactionQueued) {
