@@ -100,7 +100,7 @@ bool RefreshMissionOverlay(const talvisota::gameplay::SimulationState& simulatio
     updated.progress=std::to_wstring(simulation.mission.completedObjectives)+L" / "+
         std::to_wstring(simulation.mission.objectives.size())+L" OBJECTIVES";
     if(updated.completed) {
-        updated.objective=L"PATROL COMPLETE";
+        updated.objective=L"MISSION COMPLETE";
         updated.distance.clear();
         updated.prompt=campaignHasNextMission?L"PRESS E TO RECEIVE YOUR NEXT ORDERS":L"PRESS ESC TO RETURN TO THE MENU";
     } else {
@@ -251,7 +251,7 @@ void PaintMenu(HWND hwnd) {
         Rectangle(dc,b.left,b.top,b.right,b.bottom); SelectObject(dc,ob); SelectObject(dc,op); DeleteObject(pen);
         SetTextColor(dc,RGB(240,245,249));
         const wchar_t* label=frontendState==FrontendState::MainMenu?
-            (i==0?(missionOverlay.completed?(campaignHasNextMission?L"CONTINUE CAMPAIGN":L"REPLAY FIRST PATROL"):missionOverlay.hasProgress?L"CONTINUE PATROL":L"START FIRST PATROL"):L"QUIT"):
+            (i==0?(missionOverlay.completed?(campaignHasNextMission?L"CONTINUE CAMPAIGN":L"REPLAY MISSION"):missionOverlay.hasProgress?L"CONTINUE PATROL":L"START FIRST PATROL"):L"QUIT"):
             (i==0?L"RESUME":i==1?L"RETURN TO MAIN MENU":L"QUIT");
         DrawTextW(dc,label,-1,&b,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
@@ -717,13 +717,13 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         talvisota::game::PlayerConfig playerConfig;
         talvisota::game::PlayerState playerState;
         if(!FindPlayerSpawn(gameRegion,playerConfig,playerState,error)) {
-            std::cerr<<"Campaign smoke could not find a player spawn: "<<error<<"\\n";
+            std::cerr<<"Campaign smoke could not find a player spawn: "<<error<<"\n";
             if(ownsCom) CoUninitialize();
             return 10;
         }
         talvisota::content::AuthoredDefinition authoredMission;
         if(!LoadMission(contentRoot,"mission.sakkola.first-patrol",authoredMission,error)) {
-            std::cerr<<"Campaign smoke could not load First Patrol: "<<error<<"\\n";
+            std::cerr<<"Campaign smoke could not load First Patrol: "<<error<<"\n";
             if(ownsCom) CoUninitialize();
             return 10;
         }
@@ -735,7 +735,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                     authoredMission,gameRegion,playerState.position,rules,simulation,error) ||
                 !PlaceMissionInteractionAnchors(gameRegion,simulation,playerState.position,
                     playerConfig.capsuleRadius,error)) {
-                std::cerr<<"Campaign smoke initialization failed for "<<authoredMission.id<<": "<<error<<"\\n";
+                std::cerr<<"Campaign smoke initialization failed for "<<authoredMission.id<<": "<<error<<"\n";
                 if(ownsCom) CoUninitialize();
                 return 10;
             }
@@ -743,7 +743,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 talvisota::gameplay::ActiveObjectiveTarget waypoint;
                 if(!talvisota::gameplay::FindActiveObjectiveTarget(
                         simulation,simulation.playerEntityId,waypoint,error)) {
-                    std::cerr<<"Campaign smoke waypoint failed: "<<error<<"\\n";
+                    std::cerr<<"Campaign smoke waypoint failed: "<<error<<"\n";
                     if(ownsCom) CoUninitialize();
                     return 10;
                 }
@@ -753,7 +753,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                     !simulation.entities.SetPosition(simulation.playerEntityId,
                         reachablePlayer.position,error)) {
                     std::cerr<<"Campaign smoke found an unreachable objective anchor: "
-                        <<waypoint.entityId<<": "<<error<<"\\n";
+                        <<waypoint.entityId<<": "<<error<<"\n";
                     if(ownsCom) CoUninitialize();
                     return 10;
                 }
@@ -762,7 +762,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                         simulation.playerEntityId,rules.interactionRadiusMeters,selection,error) ||
                     selection.entityId!=waypoint.entityId) {
                     std::cerr<<"Campaign smoke could not select the reachable objective: "
-                        <<waypoint.entityId<<"\\n";
+                        <<waypoint.entityId<<"\n";
                     if(ownsCom) CoUninitialize();
                     return 10;
                 }
@@ -773,7 +773,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 std::vector<talvisota::gameplay::CommandResult> results;
                 if(!talvisota::gameplay::AdvanceSimulation(simulation,rules,1.0/60.0,
                         commands,results,error)) {
-                    std::cerr<<"Campaign smoke interaction failed: "<<error<<"\\n";
+                    std::cerr<<"Campaign smoke interaction failed: "<<error<<"\n";
                     if(ownsCom) CoUninitialize();
                     return 10;
                 }
@@ -781,31 +781,31 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                     ?talvisota::gameplay::CommandOutcome::MissionCompleted
                     :talvisota::gameplay::CommandOutcome::ObjectiveCompleted;
                 if(results.size()!=1U||results.front().outcome!=expected) {
-                    std::cerr<<"Campaign smoke produced an unexpected objective result.\\n";
+                    std::cerr<<"Campaign smoke produced an unexpected objective result.\n";
                     if(ownsCom) CoUninitialize();
                     return 10;
                 }
             }
             if(simulation.mission.status!=talvisota::missions::MissionStatus::Completed) {
-                std::cerr<<"Campaign smoke did not complete mission "<<authoredMission.id<<".\\n";
+                std::cerr<<"Campaign smoke did not complete mission "<<authoredMission.id<<".\n";
                 if(ownsCom) CoUninitialize();
                 return 10;
             }
             ++completedMissions;
             std::cout<<"Campaign smoke completed "<<authoredMission.id<<" ("
-                <<simulation.mission.objectives.size()<<" objectives).\\n";
+                <<simulation.mission.objectives.size()<<" objectives).\n";
             if(authoredMission.nextMissionId.empty())
                 break;
             talvisota::content::AuthoredDefinition nextMission;
             if(!LoadMission(contentRoot,authoredMission.nextMissionId,nextMission,error)) {
-                std::cerr<<"Campaign smoke could not resolve successor: "<<error<<"\\n";
+                std::cerr<<"Campaign smoke could not resolve successor: "<<error<<"\n";
                 if(ownsCom) CoUninitialize();
                 return 10;
             }
             authoredMission=std::move(nextMission);
         }
         std::cout<<"Campaign runtime smoke passed: "<<completedMissions
-            <<" linked missions completed with every authored target reachable.\\n";
+            <<" linked missions completed with every authored target reachable.\n";
         if(ownsCom) CoUninitialize();
         return 0;
     }
@@ -1116,7 +1116,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         if(restartPatrolRequested) {
             if(!talvisota::missions::RestartMission(gameplayState.mission,error) ||
                 !gameplayState.entities.SetPosition(gameplayState.playerEntityId,initialPlayerState.position,error)) {
-                std::cerr<<"Could not restart First Patrol: "<<error<<"\n";
+                std::cerr<<"Could not restart mission: "<<error<<"\n";
                 break;
             }
             playerState=initialPlayerState;
@@ -1124,7 +1124,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             gameplayAccumulator=0.0;
             interactionQueued=false;
             restartPatrolRequested=false;
-            SetMissionFeedback(L"PATROL RESTARTED",std::chrono::milliseconds(2200));
+            SetMissionFeedback(L"MISSION RESTARTED",std::chrono::milliseconds(2200));
             if(!RefreshMissionOverlay(gameplayState,playerState,gameplayRules.interactionRadiusMeters,error)) break;
         }
         const auto now=Clock::now();
