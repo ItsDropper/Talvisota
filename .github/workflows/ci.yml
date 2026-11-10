@@ -347,7 +347,7 @@ jobs:
           Talvisota.exe --mission=mission.taipale.riverfront-watch
           '@ | Set-Content -LiteralPath (Join-Path $packageRoot 'Start-Taipale.bat') -Encoding Ascii
           @'
-          TALVISOTA - SAKKOLA CAMPAIGN
+          TALVISOTA - CAMPAIGN LOCATIONS
 
           Double-click Start-Talvisota.bat to launch the first-person game.
           WASD move, mouse look, Shift sprint, Ctrl crouch, Space jump,
@@ -366,6 +366,9 @@ jobs:
           }
           if (-not (Test-Path -LiteralPath (Join-Path $packageRoot 'assets'))) {
             throw 'Packaged game assets are missing.'
+          }
+          if (-not (Test-Path -LiteralPath (Join-Path $packageRoot 'Start-Taipale.bat'))) {
+            throw 'Taipale launcher is missing from the packaged game.'
           }
           Get-ChildItem -LiteralPath $packageRoot -Force | Select-Object Name, Length
 
