@@ -1,4 +1,5 @@
 #include "talvisota/presentation/SakkolaSceneBuilder.hpp"
+#include "talvisota/presentation/MaterialRenderBridge.hpp"
 #include "talvisota/content/ContentRegistry.hpp"
 #include "talvisota/content/MaterialDefinition.hpp"
 #include "talvisota/content/WorldDefinition.hpp"
@@ -29,24 +30,6 @@ std::string FormatDiagnostics(const Diagnostics& diagnostics) {
     return result;
 }
 
-bool ResolveTexture(const talvisota::content::ContentRegistry& registry,
-    const std::string& id, std::string& output, std::string& error) {
-    if (id.empty()) { output.clear(); return true; }
-    const auto* asset = registry.Find(id);
-    if (asset == nullptr || asset->kind != talvisota::content::AssetKind::Texture) {
-        error = "Typed material references a missing or non-texture asset: " + id;
-        return false;
-    }
-    std::error_code ec;
-    const auto path = std::filesystem::weakly_canonical(registry.Root() / asset->relativePath, ec);
-    if (ec || !std::filesystem::is_regular_file(path, ec) || ec) {
-        error = "Typed material texture is not a readable regular file: " + id;
-        return false;
-    }
-    output = path.string();
-    return true;
-}
-
 bool ResolveImportedTexture(const std::filesystem::path& source,
     std::string& output, std::string& error) {
     if (source.empty()) { output.clear(); return true; }
@@ -59,25 +42,6 @@ bool ResolveImportedTexture(const std::filesystem::path& source,
     output = path.string();
     return true;
 }
-
-bool ApplyTypedMaterial(const talvisota::content::MaterialDefinition& definition,
-    const talvisota::content::ContentRegistry& registry, RenderMaterial& material, std::string& error) {
-    material.baseColor = definition.baseColor;
-    material.roughness = definition.roughness;
-    material.metallic = definition.metallic;
-    if (!ResolveTexture(registry, definition.baseColorTexture, material.baseColorTexture, error) ||
-        !ResolveTexture(registry, definition.normalTexture, material.normalTexture, error))
-        return false;
-    if (!definition.ormTexture.empty()) {
-        std::string orm;
-        if (!ResolveTexture(registry, definition.ormTexture, orm, error)) return false;
-        material.roughnessTexture = orm;
-        material.ambientOcclusionTexture = orm;
-        material.packedMetallicRoughness = true;
-    }
-    return true;
-}
-
 
 bool RefineSnowTerrain(RenderMesh& mesh, const talvisota::world::WorldRegion& region, std::string& error) {
     if (mesh.vertices.empty() || mesh.indices.empty() || mesh.indices.size()%3U!=0U) {
@@ -301,7 +265,7 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
                         }
                         typed = typedMaterials.emplace(placement.materialAssetId, std::move(definition)).first;
                     }
-                    if (!ApplyTypedMaterial(typed->second, registry, material, error))
+                    if (!ApplyMaterialDefinition(typed->second, registry, material, error))
                         return false;
                 }
 
