@@ -45,4 +45,4 @@ The current Talvisota scene bridge and both renderer backends support the metall
 
 Emissive texture maps use sRGB sampling. Alpha blending is supported with back-to-front per-instance sorting and depth writes disabled.
 
-Base-colour maps are sampled as sRGB; normal and ORM maps are sampled as linear data. Emissive factors are linear RGB.
+Base-colour and emissive texture maps are sampled as sRGB; normal and ORM maps are sampled as linear data. Emissive factors are linear RGB.
