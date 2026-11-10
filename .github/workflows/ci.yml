@@ -293,7 +293,7 @@ jobs:
         run: cmake --build build-msvc --target talvisota talvisota_renderer_sample talvisota_renderer_contract_tests talvisota_asset_validate talvisota_content_validate talvisota_content_package talvisota_texture_process talvisota_engine_asset_validation_tests talvisota_engine_asset_package_tests talvisota_engine_asset_pipeline_tests --parallel
 
       - name: Validate shipped content
-        run: .\\build-msvc\\talvisota_content_validate.exe content/catalog.tmanifest .
+        run: .\\build-msvc\talvisota_content_validate.exe content/catalog.tmanifest .
 
       - name: Authored campaign runtime smoke test
         run: .\\build-msvc\talvisota.exe --mission-smoke
