@@ -121,7 +121,7 @@ struct SimulationState final
 // Resolves a first-person aim ray to the nearest living hostile combatant. The
 // supplied range is game-balance data from the equipped weapon definition.
 [[nodiscard]] bool FindNearestHostileCombatant(const SimulationState& state,
-    std::string_view actorEntityId, const std::array<float, 3>& rayOrigin,
+    const world::WorldRegion& region, std::string_view actorEntityId, const std::array<float, 3>& rayOrigin,
     const std::array<float, 3>& rayDirection, float maximumRangeMeters,
     float targetRadiusMeters, std::string& outputEntityId, std::string& error);
 
