@@ -73,7 +73,9 @@ class MeshBuilder:
                 point = center + radius * (math.cos(angle) * u + math.sin(angle) * v)
                 self.vertices.append(tuple(point))
         self.faces.append(tuple(base + i for i in reversed(range(sides))))
-        self.face_uvs.append([(0.5, 0.5)] * sides)
+        self.face_uvs.append([(0.5 + 0.5 * math.cos(2.0 * math.pi * side / sides),
+                               0.5 + 0.5 * math.sin(2.0 * math.pi * side / sides))
+                              for side in reversed(range(sides))]
         self.face_material_indices.append(material_index)
         v_scale = max(0.1, (b - a).length / max(radius_start + radius_end, 0.01))
         for side in range(sides):
@@ -87,7 +89,9 @@ class MeshBuilder:
             ])
             self.face_material_indices.append(material_index)
         self.faces.append(tuple(base + sides + i for i in range(sides)))
-        self.face_uvs.append([(0.5, 0.5)] * sides)
+        self.face_uvs.append([(0.5 + 0.5 * math.cos(2.0 * math.pi * side / sides),
+                               0.5 + 0.5 * math.sin(2.0 * math.pi * side / sides))
+                              for side in range(sides)]
         self.face_material_indices.append(material_index)
 
     def path_tube(self, points, radii, sides=5, material_indices=None):
@@ -138,7 +142,9 @@ class MeshBuilder:
 
         first = rings[0]
         self.faces.append(tuple(first[i] for i in reversed(range(sides))))
-        self.face_uvs.append([(0.5, 0.5)] * sides)
+        self.face_uvs.append([(0.5 + 0.5 * math.cos(2.0 * math.pi * side / sides),
+                               0.5 + 0.5 * math.sin(2.0 * math.pi * side / sides))
+                              for side in reversed(range(sides))]
         self.face_material_indices.append(material_indices[0])
         for ring_index in range(len(rings) - 1):
             v0 = cumulative[ring_index] / uv_scale
@@ -154,7 +160,9 @@ class MeshBuilder:
                 self.face_material_indices.append(material_indices[ring_index])
         last = rings[-1]
         self.faces.append(tuple(last[i] for i in range(sides)))
-        self.face_uvs.append([(0.5, 0.5)] * sides)
+        self.face_uvs.append([(0.5 + 0.5 * math.cos(2.0 * math.pi * side / sides),
+                               0.5 + 0.5 * math.sin(2.0 * math.pi * side / sides))
+                              for side in range(sides)]
         self.face_material_indices.append(material_indices[-1])
 
     def needle_ribbon(self, start, end, half_width, material_index=0):
