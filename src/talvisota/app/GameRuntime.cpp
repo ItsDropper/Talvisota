@@ -382,7 +382,7 @@ bool RefreshMissionOverlay(const talvisota::gameplay::SimulationState& simulatio
         const std::wstring direction=std::abs(relativeBearing)>2.35?L"BEHIND":
             relativeBearing>0.35?L"RIGHT":relativeBearing< -0.35?L"LEFT":L"AHEAD";
         updated.distance=std::to_wstring(distance)+L" m  "+direction;
-        updated.prompt=combatObjective?L"RMB AIM  |  LMB FIRE  |  R RELOAD":
+        updated.prompt=combatObjective?L"RMB AIM  |  LMB FIRE / HOLD AUTO  |  R RELOAD":
             (target.distanceMeters<=interactionRadius?L"[E]  INTERACT":L"FOLLOW THE OBJECTIVE");
     }
     if(std::chrono::steady_clock::now()>=missionFeedbackUntil) updated.feedback.clear();
@@ -529,7 +529,7 @@ void PaintMenu(HWND hwnd) {
     SelectObject(dc,old); SetTextColor(dc,RGB(126,151,169));
     RECT hint{p.left+18,p.bottom-38,p.right-18,p.bottom-12};
     DrawTextW(dc,frontendState==FrontendState::MainMenu?
-        L"WASD MOVE  |  MOUSE LOOK  |  RMB AIM  |  E INTERACT  |  1/2/3 WEAPONS  |  LMB FIRE  |  R RELOAD  |  ESC PAUSE":
+        L"WASD MOVE  |  MOUSE LOOK  |  RMB AIM  |  E INTERACT  |  1/2/3 WEAPONS  |  LMB FIRE / HOLD AUTO  |  R RELOAD  |  ESC PAUSE":
         L"ESC TO RESUME  |  MISSION PROGRESS IS KEPT",
         -1,&hint,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     DeleteObject(body); DeleteObject(title); EndPaint(hwnd,&ps);
@@ -1696,6 +1696,14 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             interactWasDown=interactDown;
             const bool fireDown=(GetAsyncKeyState(VK_LBUTTON)&0x8000)!=0;
             if(fireDown&&!fireWasDown) fireQueued=true;
+            if(fireDown) {
+                const auto heldWeaponState=gameplayState.combat.combatants.find(gameplayState.playerEntityId);
+                const auto* heldWeapon=heldWeaponState==gameplayState.combat.combatants.end()?nullptr:
+                    talvisota::combat::FindWeaponDefinition(heldWeaponState->second.weaponId);
+                if(heldWeapon!=nullptr&&heldWeapon->archetype!=talvisota::combat::WeaponArchetype::BoltActionRifle&&
+                    gameplayState.combat.elapsedSeconds>=heldWeaponState->second.nextShotAtSeconds)
+                    fireQueued=true;
+            }
             fireWasDown=fireDown;
             const bool reloadDown=(GetAsyncKeyState('R')&0x8000)!=0;
             if(reloadDown&&!reloadWasDown) reloadQueued=true;
