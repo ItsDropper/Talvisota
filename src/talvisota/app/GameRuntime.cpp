@@ -941,7 +941,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     talvisota::presentation::ExplosionLightingSystem explosionLighting;
     std::uint64_t explosionSequence=0U;
     talvisota::presentation::SnowfallSystem snowfall;
-    if(!snowfall.Initialize(scene,instanceMaxDrawDistances,256U,error)) {
+    if(captureDir.empty() && !snowfall.Initialize(scene,instanceMaxDrawDistances,256U,error)) {
         std::cerr<<"Could not initialize Sakkola snowfall: "<<error<<"\\n";
         if(ownsCom) CoUninitialize();
         return 2;
