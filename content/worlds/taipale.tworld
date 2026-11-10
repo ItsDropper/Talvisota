@@ -1,0 +1,21 @@
+talvisota-world	1
+id = world.taipale
+name = Taipale Riverfront — Karelian Isthmus, winter 1939
+unit = meter
+up_axis = y
+north_axis = +z
+handedness = right
+bounds_min = -2048, -4, -2048
+bounds_max = 2048.1, 64, 2048.1
+sea_level = 1.78
+terrain_model_id = model.terrain.taipale
+sun_direction = -0.38,0.54,-0.75
+sun_color = 0.92,0.95,1.0
+sun_intensity = 1.08
+ambient_color = 0.28,0.38,0.51
+ambient_intensity = 0.64
+fog_color = 0.60,0.68,0.77
+fog_density = 0.00155
+fog_start = 70
+wind_direction = 0.86,0.51
+wind_strength = 0.12
