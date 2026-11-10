@@ -267,12 +267,12 @@ talvisota::presentation::RenderMesh BuildWeaponMesh(
 bool BuildBattlefieldRenderAssets(talvisota::presentation::SceneSnapshot& scene,
     BattlefieldRenderAssets& output,std::string& error) {
     if(scene.meshes.size()>static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max()-8U) ||
-        scene.materials.size()>static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max()-3U)) {
+        scene.materials.size()>static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max()-6U)) {
         error="Battlefield render assets exceed the scene index capacity."; return false;
     }
     talvisota::presentation::RenderMesh body;
-    // Rounded winter greatcoat, separate limbs, boots, field pack and helmet
-    // replace the original block-only mannequin while keeping one shared mesh.
+    // Build a shared winter infantry rig from separately materialed torso, head,
+    // field equipment, articulated arms and articulated legs.
     AppendEllipsoid(body,{0.0F,1.08F,0.0F},{0.245F,0.39F,0.155F});
     // Arms and legs are separate articulated meshes, not baked into the torso.
     AppendEllipsoid(body,{0.0F,1.465F,0.015F},{0.075F,0.075F,0.075F});
