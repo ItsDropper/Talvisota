@@ -417,9 +417,18 @@ bool BuildWorldScene(const std::filesystem::path& root, const std::string_view w
             instance.world = transform;
             instance.placementId = placement.id;
             scene.instances.push_back(instance);
+            // Terrain, lake ice and road meshes are authored in world space and
+            // can span kilometres from their placement origin. Culling them by the
+            // origin distance makes Suvanto disappear while the player is standing
+            // on the lake, and clips the far banks of the Taipale river.
             float maxDrawDistance = 1200.0F;
-            if (placement.modelAssetId == "model.environment.juniper" ||
-                placement.modelAssetId == "model.environment.winter_brush") {
+            if (placement.modelAssetId == world.terrainModelId ||
+                placement.modelAssetId == "model.environment.suvanto_ice" ||
+                placement.modelAssetId == "model.environment.taipale_ice" ||
+                placement.modelAssetId == "model.environment.sakkola_roads") {
+                maxDrawDistance = 6000.0F;
+            } else if (placement.modelAssetId == "model.environment.juniper" ||
+                       placement.modelAssetId == "model.environment.winter_brush") {
                 maxDrawDistance = 280.0F;
             } else switch (placement.category) {
             case talvisota::world::PlacementCategory::Vegetation:
