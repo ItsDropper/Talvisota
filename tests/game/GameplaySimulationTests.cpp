@@ -463,40 +463,46 @@ void TestTaipaleMissionInitializesAgainstItsAuthoredWorld()
     std::string error;
     ContentRegistry registry;
     std::vector<ContentDiagnostic> contentDiagnostics;
-    if (!Check(LoadContentManifest(sourceRoot / "content/catalog.tmanifest", sourceRoot,
-            registry, contentDiagnostics), "Taipale mission content manifest loads"))
-        return;
+    const bool manifestLoaded = LoadContentManifest(sourceRoot / "content/catalog.tmanifest",
+        sourceRoot, registry, contentDiagnostics);
+    Check(manifestLoaded, "Taipale mission content manifest loads");
+    if (!manifestLoaded) return;
 
     const auto* missionAsset = registry.Find("mission.taipale.riverfront-watch");
     const auto* worldAsset = registry.Find("world.taipale");
     const auto* regionAsset = registry.Find("region.taipale.riverfront");
-    if (!Check(missionAsset != nullptr && worldAsset != nullptr && regionAsset != nullptr,
-            "Taipale mission, world and region are registered"))
-        return;
+    const bool definitionsRegistered =
+        missionAsset != nullptr && worldAsset != nullptr && regionAsset != nullptr;
+    Check(definitionsRegistered, "Taipale mission, world and region are registered");
+    if (!definitionsRegistered) return;
 
     AuthoredDefinition mission;
     std::vector<AuthoredDefinitionDiagnostic> missionDiagnostics;
-    if (!Check(LoadAuthoredDefinition(sourceRoot / missionAsset->relativePath,
-            registry, mission, missionDiagnostics), "Taipale mission definition loads"))
-        return;
+    const bool missionLoaded = LoadAuthoredDefinition(sourceRoot / missionAsset->relativePath,
+        registry, mission, missionDiagnostics);
+    Check(missionLoaded, "Taipale mission definition loads");
+    if (!missionLoaded) return;
 
     WorldDefinition world;
     std::vector<WorldDiagnostic> worldDiagnostics;
-    if (!Check(LoadWorldDefinition(sourceRoot / worldAsset->relativePath,
-            registry, world, worldDiagnostics), "Taipale world definition loads"))
-        return;
+    const bool worldLoaded = LoadWorldDefinition(sourceRoot / worldAsset->relativePath,
+        registry, world, worldDiagnostics);
+    Check(worldLoaded, "Taipale world definition loads");
+    if (!worldLoaded) return;
 
     WorldRegion region;
     std::vector<WorldRegionDiagnostic> regionDiagnostics;
-    if (!Check(LoadWorldRegion(sourceRoot / regionAsset->relativePath,
-            registry, world, region, regionDiagnostics), "Taipale world region loads"))
-        return;
+    const bool regionLoaded = LoadWorldRegion(sourceRoot / regionAsset->relativePath,
+        registry, world, region, regionDiagnostics);
+    Check(regionLoaded, "Taipale world region loads");
+    if (!regionLoaded) return;
 
     float spawnHeight = 0.0F;
     std::array<float, 3> spawnNormal{};
-    if (!Check(SampleTerrainHeight(region, -90.0F, 70.0F,
-            spawnHeight, spawnNormal, error), "Taipale player start samples valid terrain"))
-        return;
+    const bool spawnSamples = SampleTerrainHeight(region, -90.0F, 70.0F,
+        spawnHeight, spawnNormal, error);
+    Check(spawnSamples, "Taipale player start samples valid terrain");
+    if (!spawnSamples) return;
 
     const GameplayRules rules{};
     SimulationState simulation;
