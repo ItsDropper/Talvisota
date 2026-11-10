@@ -28,6 +28,21 @@ constexpr KindInfo Kinds[] = {
     {".tequipment", "talvisota-equipment\t1", AuthoredDefinitionKind::Equipment}
 };
 
+[[nodiscard]] bool IsValidDefinitionId(const std::string_view value) noexcept
+{
+    if (value.empty() || value.size() > 128U) return false;
+    for (const unsigned char character : value)
+    {
+        const bool alphaNumeric = (character >= 'a' && character <= 'z') ||
+            (character >= 'A' && character <= 'Z') ||
+            (character >= '0' && character <= '9');
+        if (!alphaNumeric && character != '.' && character != '_' &&
+            character != '-' && character != ':')
+            return false;
+    }
+    return true;
+}
+
 [[nodiscard]] bool ParseFiniteFloat(std::string_view text, float& output) noexcept
 {
     float value = 0.0F;
@@ -229,8 +244,8 @@ bool LoadAuthoredDefinition(const std::filesystem::path& path, const ContentRegi
             if (reserveResult.ec != std::errc{} ||
                 reserveResult.ptr != fields[4].data() + fields[4].size() || reserve > 10000U)
                 valid = false;
-            if (!valid || !entities::IsValidStableId(fields[0]) ||
-                !entities::IsValidStableId(fields[1]) || !entities::IsValidStableId(fields[3]))
+            if (!valid || !IsValidDefinitionId(fields[0]) ||
+                !IsValidDefinitionId(fields[1]) || !IsValidDefinitionId(fields[3]))
             {
                 Add(diagnostics, path, lineNumber, "actor",
                     "Expected actor = stable-id -> faction-id -> x,z -> weapon-id -> reserve-rounds.");
