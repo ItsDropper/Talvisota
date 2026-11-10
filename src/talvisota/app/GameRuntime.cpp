@@ -632,18 +632,18 @@ bool WriteBgraPng(const std::vector<std::uint8_t>& pixels, const UINT width,
     return true;
 }
 
-struct CaptureView { const wchar_t* file; vanta::math::Vec3 eye; vanta::math::Vec3 target; };
-constexpr std::array<CaptureView, 5> Views = {{
-    // Keep the overview inside the 280 m vegetation visibility envelope.
+struct CaptureView { const wchar_t* file; vanta::math::Vec3 eye; vanta::math::Vec3 target; bool expectSky = true; };
+constexpr std::array<CaptureView, 7> Views = {{
+    // Exterior composition checks.
     {L"01-sakkola-overview.png", {0.0F, 35.0F, 30.0F}, {0.0F, 20.0F, 190.0F}},
-    // North approach, with both eye and target above the authored church-site terrain.
     {L"02-church-village.png", {0.0F, 22.0F, 225.0F}, {0.0F, 17.0F, 178.0F}},
-    // Stand on the ice and look directly across the north-shore boundary at close range.
     {L"03-suvanto-shoreline.png", {0.0F, 7.0F, -380.0F}, {0.0F, 7.0F, -245.0F}},
     {L"04-karelian-forest.png", {82.0F, 11.0F, -205.0F}, {175.0F, 4.0F, -62.0F}},
-    // Keep the +Z entrance in view, but lower the camera to show the facade below
-    // the roofline instead of looking down onto the roof from 20 m.
-    {L"05-farmstead.png", {-80.0F, 12.0F, 90.0F}, {-45.0F, 9.0F, 123.0F}}
+    {L"05-farmstead.png", {-80.0F, 12.0F, 90.0F}, {-45.0F, 9.0F, 123.0F}},
+    // Inside the church nave, facing the altar and the rows of pews.
+    {L"06-church-interior.png", {0.0F, 10.9F, 180.8F}, {0.0F, 10.9F, 175.5F}, false},
+    // Inside the west farmhouse, facing from the entrance toward the stove and table.
+    {L"07-farmhouse-interior.png", {-42.46F, 9.7F, 125.54F}, {-42.67F, 9.7F, 124.54F}, false}
 }};
 }
 
@@ -1019,66 +1019,14 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             const std::size_t visibleInstanceCount = CullCaptureInstances(scene,
                 meshCullRadii, instanceMaxDrawDistances, eye, target,
                 static_cast<float>(client.right-client.left)/static_cast<float>(client.bottom-client.top));
-            std::vector<double> warmFrameTimesMs;
-            std::vector<double> warmRenderTimesMs;
-            warmFrameTimesMs.reserve(static_cast<std::size_t>(framesPerView - 1));
-            warmRenderTimesMs.reserve(static_cast<std::size_t>(framesPerView - 1));
-            double firstFrameMs = 0.0;
-            double firstRenderMs = 0.0;
+            // Capture mode is a visual regression harness, not a frame-rate benchmark.
+            // Render a few settling frames, then read back exactly one presented image.
             for (int frame = 0; frame < framesPerView; ++frame) {
-                const auto frameStart = std::chrono::steady_clock::now();
                 scene.camera.elapsedSeconds = static_cast<float>(frameNumber) / 60.0F;
                 scene.camera.frameNumber = frameNumber++;
-                const auto renderStart = std::chrono::steady_clock::now();
                 if (!renderer->Render(scene, error)) break;
-                const auto renderEnd = std::chrono::steady_clock::now();
-                const double renderMs = std::chrono::duration<double, std::milli>(
-                    renderEnd - renderStart).count();
-                if (!captureRequested) Sleep(16);
-                const double frameMs = std::chrono::duration<double, std::milli>(
-                    std::chrono::steady_clock::now() - frameStart).count();
-                if (frame == 0) {
-                    firstFrameMs = frameMs;
-                    firstRenderMs = renderMs;
-                } else {
-                    warmFrameTimesMs.push_back(frameMs);
-                    warmRenderTimesMs.push_back(renderMs);
-                }
             }
             if (!error.empty()) break;
-            const std::size_t expectedWarmFrames = static_cast<std::size_t>(framesPerView - 1);
-            if (warmFrameTimesMs.size() != expectedWarmFrames ||
-                warmRenderTimesMs.size() != expectedWarmFrames) {
-                error = "Capture warm timing sample count does not match the requested frame count.";
-                break;
-            }
-            const auto percentile95 = [](std::vector<double> samples) {
-                std::sort(samples.begin(), samples.end());
-                const auto index = static_cast<std::size_t>(
-                    std::ceil(static_cast<double>(samples.size()) * 0.95)) - 1U;
-                return samples[index];
-            };
-            double totalWarmFrameMs = 0.0;
-            double totalWarmRenderMs = 0.0;
-            for (const double sample : warmFrameTimesMs) totalWarmFrameMs += sample;
-            for (const double sample : warmRenderTimesMs) totalWarmRenderMs += sample;
-            const double warmAverageFrameMs = totalWarmFrameMs / static_cast<double>(warmFrameTimesMs.size());
-            const double warmAverageRenderMs = totalWarmRenderMs / static_cast<double>(warmRenderTimesMs.size());
-            const double warmP95FrameMs = percentile95(warmFrameTimesMs);
-            const double warmP95RenderMs = percentile95(warmRenderTimesMs);
-            const std::string timingSummary = "Performance sample " +
-                std::filesystem::path(view.file).string() + ": frames=" +
-                std::to_string(framesPerView) + ", visibleInstances=" +
-                std::to_string(visibleInstanceCount) + "/" + std::to_string(scene.instances.size()) +
-                ", firstFrameMs=" + std::to_string(firstFrameMs) +
-                ", firstRenderMs=" + std::to_string(firstRenderMs) +
-                ", warmFrames=" + std::to_string(warmFrameTimesMs.size()) +
-                ", warmAvgFrameMs=" + std::to_string(warmAverageFrameMs) +
-                ", warmP95FrameMs=" + std::to_string(warmP95FrameMs) +
-                ", warmAvgRenderMs=" + std::to_string(warmAverageRenderMs) +
-                ", warmP95RenderMs=" + std::to_string(warmP95RenderMs);
-            std::cout << timingSummary << "\n";
-            if (captureLog) captureLog << timingSummary << "\n";
             std::vector<std::uint8_t> framebuffer;
             std::uint32_t framebufferWidth = 0U, framebufferHeight = 0U;
             if (!renderer->ReadbackPresentedFrame(framebuffer, framebufferWidth, framebufferHeight, error))
@@ -1092,19 +1040,21 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             if (!WriteBgraPng(framebuffer, framebufferWidth, framebufferHeight,
                     output / view.file, error))
                 break;
-            PresentedSkyRegionStats skyStats;
-            if (!ValidatePresentedSkyRegion(framebuffer, framebufferWidth, framebufferHeight,
-                    skyStats, error))
-                break;
-            const std::string skySummary = "Presented sky validation: " +
-                std::to_string(skyStats.blueDominantSampleCount) + "/" +
-                std::to_string(skyStats.sampledPixels) +
-                " top-quarter pixels; mean BGRA=(" +
-                std::to_string(static_cast<unsigned int>(skyStats.meanBlue)) + "," +
-                std::to_string(static_cast<unsigned int>(skyStats.meanGreen)) + "," +
-                std::to_string(static_cast<unsigned int>(skyStats.meanRed)) + ").";
-            std::cout << skySummary << "\n";
-            if (captureLog) captureLog << skySummary << "\n";
+            if (view.expectSky) {
+                PresentedSkyRegionStats skyStats;
+                if (!ValidatePresentedSkyRegion(framebuffer, framebufferWidth, framebufferHeight,
+                        skyStats, error))
+                    break;
+                const std::string skySummary = "Presented sky validation: " +
+                    std::to_string(skyStats.blueDominantSampleCount) + "/" +
+                    std::to_string(skyStats.sampledPixels) +
+                    " top-quarter pixels; mean BGRA=(" +
+                    std::to_string(static_cast<unsigned int>(skyStats.meanBlue)) + "," +
+                    std::to_string(static_cast<unsigned int>(skyStats.meanGreen)) + "," +
+                    std::to_string(static_cast<unsigned int>(skyStats.meanRed)) + ").";
+                std::cout << skySummary << "\n";
+                if (captureLog) captureLog << skySummary << "\n";
+            }
             std::uint64_t frameHash = 1469598103934665603ULL;
             for (const std::uint8_t byte : framebuffer) {
                 frameHash ^= byte;
@@ -1132,7 +1082,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             if (captureLog) captureLog << "Capture failed: " << error << "\n";
             return 7;
         }
-        if (captureLog) captureLog << "Capture completed: five PNG viewpoints rendered and validated.\n";
+        if (captureLog) captureLog << "Capture completed: seven PNG viewpoints rendered; five exterior and two interior views.\n";
         return 0;
     }
 
