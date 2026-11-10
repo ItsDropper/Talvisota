@@ -210,7 +210,7 @@ bool LoadAuthoredDefinition(const std::filesystem::path& path, const ContentRegi
         Add(diagnostics, path, 0U, "header", "Definition is empty or has no version header.");
 
     static constexpr std::string_view common[] = {"id", "name", "description"};
-    static constexpr std::string_view mission[] = {"world_id", "region_id", "player_character_id", "faction_id", "next_mission_id"};
+    static constexpr std::string_view mission[] = {"world_id", "region_id", "player_character_id", "faction_id", "next_mission_id", "environment_profile"};
     static constexpr std::string_view faction[] = {"side"};
     static constexpr std::string_view character[] = {"faction_id", "model_id", "portrait_texture_id"};
     static constexpr std::string_view equipment[] = {"category", "model_id", "icon_texture_id"};
@@ -258,6 +258,11 @@ bool LoadAuthoredDefinition(const std::filesystem::path& path, const ContentRegi
         if (const auto* value = required("player_character_id")) candidate.characterId = value->first;
         if (const auto* value = Get(values, "faction_id")) candidate.factionId = value->first;
         if (const auto* value = Get(values, "next_mission_id")) candidate.nextMissionId = value->first;
+        if (const auto* value = Get(values, "environment_profile")) candidate.environmentProfile = value->first;
+        if (candidate.environmentProfile != "default" && candidate.environmentProfile != "overcast" &&
+            candidate.environmentProfile != "low_visibility")
+            Add(diagnostics, path, Get(values, "environment_profile") ? Get(values, "environment_profile")->second : 0U,
+                "environment_profile", "Expected default, overcast, or low_visibility.");
         if (missionObjectives.empty())
             Add(diagnostics, path, 0U, "objective", "Mission requires at least one ordered objective.");
         {
