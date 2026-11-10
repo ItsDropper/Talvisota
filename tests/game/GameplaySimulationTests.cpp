@@ -274,6 +274,20 @@ void TestAuthoredWorldSimulation()
         battleState.combat.combatants.contains("actor.soviet.test") &&
         battleState.combat.combatants.contains("actor.soviet.test.02"),
         "player and authored opposing infantry receive registered combat loadouts");
+    auto& playerLoadout=battleState.combat.combatants.at(battleState.playerEntityId);
+    const std::uint32_t mosinMagazine=playerLoadout.magazineRounds;
+    Check(playerLoadout.weaponId=="weapon.mosin_m27" &&
+        playerLoadout.storedWeapons.contains("weapon.suomi_kp31") &&
+        playerLoadout.storedWeapons.contains("weapon.lahti_saloranta_m26"),
+        "player receives Mosin, Suomi, and Lahti-Saloranta weapon inventory");
+    Check(combat::EquipCombatantWeapon(battleState.combat,battleState.entities,
+        battleState.playerEntityId,"weapon.suomi_kp31",error) &&
+        battleState.combat.combatants.at(battleState.playerEntityId).weaponId=="weapon.suomi_kp31",
+        "player can equip the Suomi submachine gun");
+    Check(combat::EquipCombatantWeapon(battleState.combat,battleState.entities,
+        battleState.playerEntityId,"weapon.mosin_m27",error) &&
+        battleState.combat.combatants.at(battleState.playerEntityId).magazineRounds==mosinMagazine,
+        "weapon switching preserves ammunition in the stored Mosin magazine");
     ActiveObjectiveTarget combatWaypoint;
     Check(FindActiveObjectiveTarget(battleState,battleState.playerEntityId,combatWaypoint,error) &&
         combatWaypoint.entityId=="actor.soviet.test",
