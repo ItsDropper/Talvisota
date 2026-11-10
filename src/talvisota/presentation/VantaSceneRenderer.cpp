@@ -361,7 +361,7 @@ private:
             };
             material.roughness = source.roughness;
             material.metallic = source.metallic;
-            material.emissive = source.emissive;
+            material.emissive = {source.emissive[0], source.emissive[1], source.emissive[2]};
             material.normalScale = source.normalScale;
             material.occlusionStrength = source.occlusionStrength;
             material.alphaCutoff = source.alphaCutoff;
