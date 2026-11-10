@@ -31,8 +31,9 @@ constexpr KindInfo Kinds[] = {
 [[nodiscard]] bool IsValidDefinitionId(const std::string_view value) noexcept
 {
     if (value.empty() || value.size() > 128U) return false;
-    for (const unsigned char character : value)
+    for (const char rawCharacter : value)
     {
+        const auto character = static_cast<unsigned char>(rawCharacter);
         const bool alphaNumeric = (character >= 'a' && character <= 'z') ||
             (character >= 'A' && character <= 'Z') ||
             (character >= '0' && character <= '9');
@@ -217,17 +218,17 @@ bool LoadAuthoredDefinition(const std::filesystem::path& path, const ContentRegi
             bool valid = true;
             for (std::size_t field = 0U; field < fields.size(); ++field)
             {
-                const std::size_t separator = remaining.find("->");
+                const std::size_t fieldSeparator = remaining.find("->");
                 if (field + 1U == fields.size())
                 {
-                    if (separator != std::string_view::npos) valid = false;
+                    if (fieldSeparator != std::string_view::npos) valid = false;
                     fields[field] = Trim(remaining);
                 }
                 else
                 {
-                    if (separator == std::string_view::npos) { valid = false; break; }
-                    fields[field] = Trim(remaining.substr(0U, separator));
-                    remaining.remove_prefix(separator + 2U);
+                    if (fieldSeparator == std::string_view::npos) { valid = false; break; }
+                    fields[field] = Trim(remaining.substr(0U, fieldSeparator));
+                    remaining.remove_prefix(fieldSeparator + 2U);
                 }
                 if (fields[field].empty()) valid = false;
             }
