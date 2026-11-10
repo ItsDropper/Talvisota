@@ -52,7 +52,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/generated-trees
-          key: talvisota-scots-pine-${{ runner.os }}-${{ steps.tree-blender-version.outputs.version }}-${{ hashFiles('tools/blender_asset_pipeline/**/*.py', 'assets/models/environment/**', 'assets/materials/environment/**', 'assets/textures/environment/**', 'tools/asset_pipeline/EnvironmentTextureGenerator.cpp', 'CMakeLists.txt') }}
+          key: talvisota-scots-pine-${{ runner.os }}-${{ steps.tree-blender-version.outputs.version }}-${{ hashFiles('tools/blender_asset_pipeline/**/*.py', 'assets/models/environment/**', 'assets/materials/environment/**', 'assets/textures/environment/**', 'tools/asset_pipeline/**', 'CMakeLists.txt') }}
 
       - name: Generate source PBR maps
         if: steps.tree-output-cache.outputs.cache-hit != 'true'
@@ -79,6 +79,7 @@ jobs:
           retention-days: 7
 
       - name: Check photogrammetry ingestion entry points
+        if: steps.tree-output-cache.outputs.cache-hit != 'true'
         run: |
           python3 -m py_compile tools/blender_asset_pipeline/ingest_scanned_tree.py tools/blender_asset_pipeline/verify_scanned_tree.py
           blender --background --python tools/blender_asset_pipeline/ingest_scanned_tree.py -- --help
@@ -135,7 +136,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/generated-boulder
-          key: talvisota-granite-boulder-${{ runner.os }}-${{ steps.boulder-blender-version.outputs.version }}-${{ hashFiles('tools/blender_asset_pipeline/**/*.py', 'assets/models/environment/**', 'assets/materials/environment/**', 'assets/textures/environment/**', 'tools/asset_pipeline/EnvironmentTextureGenerator.cpp', 'CMakeLists.txt') }}
+          key: talvisota-granite-boulder-${{ runner.os }}-${{ steps.boulder-blender-version.outputs.version }}-${{ hashFiles('tools/blender_asset_pipeline/**/*.py', 'assets/models/environment/**', 'assets/materials/environment/**', 'assets/textures/environment/**', 'tools/asset_pipeline/**', 'CMakeLists.txt') }}
 
       - name: Generate source PBR maps
         if: steps.boulder-output-cache.outputs.cache-hit != 'true'
