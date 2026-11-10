@@ -1330,7 +1330,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     talvisota::platform::UserPaths worldUserPaths;
     std::filesystem::path dynamicWorldSavePath;
     bool dynamicWorldPersistenceEnabled=false;
-    auto lastDynamicWorldSave=Clock::now();
+    auto lastDynamicWorldSave=std::chrono::steady_clock::now();
     if(captureDir.empty() && talvisota::platform::ResolveUserPaths(worldUserPaths,error)) {
         dynamicWorldSavePath=worldUserPaths.dataDirectory/"worlds"/"sakkola.state";
         if(dynamicWorld.Load(dynamicWorldSavePath,error)) {
