@@ -115,7 +115,7 @@ void TestManifestParserToMissionAdapter()
     content.Write("catalog.tmanifest",
         "talvisota-content-manifest\t1\n"
         "asset\tmission.sakkola.first-patrol\tdefinition\tcontent/missions/first-patrol.tmission\trequired\tworld.sakkola,region.sakkola.church_village,character.sakkola_infantryman,faction.finnish,mission.sakkola.northern-watch\tproject\tproject\n"
-        "asset\tmission.sakkola.northern-watch\tdefinition\tcontent/missions/northern-watch.tmission\trequired\tworld.sakkola,region.sakkola.church_village,character.sakkola_infantryman,faction.finnish\tproject\tproject\n"
+        "asset\tmission.sakkola.northern-watch\tdefinition\tcontent/missions/northern-watch.tmission\trequired\tworld.sakkola,region.sakkola.church_village,character.sakkola_infantryman,faction.finnish,faction.soviet\tproject\tproject\n"
         "asset\tworld.sakkola\tdefinition\tcontent/worlds/sakkola.tworld\trequired\t-\tproject\tproject\n"
         "asset\tregion.sakkola.church_village\tdefinition\tcontent/worlds/sakkola-church-village.tregion\trequired\tworld.sakkola\tproject\tproject\n"
         "asset\tcharacter.sakkola_infantryman\tdefinition\tcontent/characters/sakkola-infantryman.tcharacter\trequired\tfaction.finnish\tproject\tproject\n"
