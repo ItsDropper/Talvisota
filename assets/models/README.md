@@ -28,4 +28,6 @@ remain distinct, preserving the mixed Central Finnish forest. Tree height is
 varied deterministically per placement in the scene transform, independently
 of horizontal scale, so the same world is reproduced across runs and machines.
 The four LOD files are generated and validated; current Sakkola scene binding
-uses LOD0 until runtime screen-coverage LOD selection is implemented.
+uses LOD0 until runtime screen-coverage LOD selection is implemented. GLB
+PBR images are embedded in the model and materialized into a content-hash
+runtime cache because the existing renderer texture contract consumes file paths.
