@@ -143,7 +143,20 @@ For a Debug build:
 .\Run-Talvisota.ps1 -Configuration Debug
 ```
 
-Press **Esc** or close the window to exit. The current local runtime is a rendered world preview with a fixed camera, not yet the complete first-person gameplay loop. The `talvisota.exe` target remains the headless application shell; use this script to launch the actual Sakkola renderer.
+The engine-enabled executable now launches the first-person Sakkola game, not the fixed-camera renderer sample. It opens on the Talvisota main menu with the First Patrol briefing. Select **Start First Patrol** to enter the world.
+
+**First Patrol objectives:** inspect the farmstead well, check the western woodpile, then report back to the Sakkola church. Press **E** near the active objective to interact. The HUD shows the active task, progress, distance, and interaction prompt.
+
+**Controls**
+- **WASD:** move
+- **Mouse:** look
+- **Shift:** sprint
+- **Ctrl:** crouch
+- **Space:** jump
+- **E:** interact
+- **Esc:** pause/resume; Esc from the title menu exits
+
+The game executable requires `TALVISOTA_ENABLE_VANTA_ENGINE=ON` (as configured by `Run-Talvisota.ps1`). The default non-engine `talvisota.exe` build remains a headless lifecycle/CLI shell for CI and core development.
 
 ## Optional VantaEngine renderer adapter
 
