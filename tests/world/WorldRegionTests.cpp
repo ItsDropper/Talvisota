@@ -795,6 +795,25 @@ void TestTaipaleRiverfrontWorldAndMissionLoad()
             countModel("model.environment.birch") > 10U &&
             countModel("model.environment.boulder") == 36U,
             "Taipale must contain a mixed forest and authored rock field.");
+    const auto hasCollision = [&region](const std::string& id) {
+        return std::any_of(region.collision.begin(), region.collision.end(),
+            [&id](const auto& collision) { return collision.id == id; });
+    };
+    for (const auto& placement : region.placements) {
+        const bool tree = placement.category == talvisota::world::PlacementCategory::Vegetation;
+        const bool rock = placement.category == talvisota::world::PlacementCategory::Rock;
+        const bool log = placement.modelAssetId == "model.environment.fallen_log";
+        if (!tree && !rock && !log) continue;
+        const std::string collisionId = placement.id + (tree ? ".trunk" : ".collision");
+        Require(hasCollision(collisionId),
+                "Every Taipale tree, boulder and fallen log must block the player.");
+        float groundedY = 0.0F;
+        std::string groundingError;
+        Require(talvisota::world::ResolveGroundedPlacementHeight(region,
+                    placement.position[0], placement.position[2], placement.position[1],
+                    groundedY, groundingError) && std::isfinite(groundedY),
+                "Taipale landscape collision placement must resolve against terrain.");
+    }
     for (const std::string target : {
             "prop.taipale.watch_post", "prop.taipale.farmstead", "prop.taipale.command_hut"}) {
         Require(std::any_of(region.placements.begin(), region.placements.end(),
