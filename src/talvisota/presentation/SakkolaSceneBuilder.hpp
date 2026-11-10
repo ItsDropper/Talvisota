@@ -16,4 +16,8 @@ namespace talvisota::presentation
     std::vector<float>& instanceMaxDrawDistances,
     std::size_t& placementCount, std::size_t& drawCount,
     talvisota::world::WorldRegion& outputRegion, std::string& error);
+[[nodiscard]] bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
+    std::vector<float>& instanceMaxDrawDistances,
+    std::size_t& placementCount, std::size_t& drawCount,
+    talvisota::world::WorldRegion& outputRegion, std::string& error);
 } // namespace talvisota::presentation
