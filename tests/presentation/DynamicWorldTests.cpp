@@ -112,7 +112,7 @@ int main()
     {
         std::ofstream legacy(legacyPath, std::ios::trunc);
         Require(static_cast<bool>(legacy));
-        legacy << "TALVISOTA_WORLD_STATE 1\\n" << dynamics.Objects().size() << '\\n';
+        legacy << "TALVISOTA_WORLD_STATE 1\n" << dynamics.Objects().size() << '\n';
         legacy << std::setprecision(9);
         for (const auto& object : dynamics.Objects())
         {
@@ -121,7 +121,7 @@ int main()
             for (const float value : object.position) legacy << ' ' << value;
             for (const float value : object.velocity) legacy << ' ' << value;
             for (const float value : object.angularVelocity) legacy << ' ' << value;
-            legacy << '\\n';
+            legacy << '\n';
         }
         legacy.close();
         Require(static_cast<bool>(legacy));

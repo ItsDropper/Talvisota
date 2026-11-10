@@ -433,7 +433,7 @@ bool DynamicWorldSystem::Load(const std::filesystem::path& path, std::string& er
         error = "Dynamic world save has an unsupported version or placement inventory.";
         return false;
     }
-    input.ignore(std::numeric_limits<std::streamsize>::max(), '\\n');
+    input.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     auto restored = objects_;
     std::unordered_map<std::string, std::size_t> indices;
     indices.reserve(restored.size());
