@@ -451,6 +451,68 @@ void TestAuthoredWorldSimulation()
         "combat defeat completes the active objective and consumes the previously defeated later objective");
 }
 
+
+void TestTaipaleMissionInitializesAgainstItsAuthoredWorld()
+{
+    using namespace talvisota;
+    using namespace talvisota::content;
+    using namespace talvisota::gameplay;
+    using namespace talvisota::world;
+
+    const std::filesystem::path sourceRoot{TALVISOTA_SOURCE_DIR};
+    std::string error;
+    ContentRegistry registry;
+    std::vector<ContentDiagnostic> contentDiagnostics;
+    if (!Check(LoadContentManifest(sourceRoot / "content/catalog.tmanifest", sourceRoot,
+            registry, contentDiagnostics), "Taipale mission content manifest loads"))
+        return;
+
+    const auto* missionAsset = registry.Find("mission.taipale.riverfront-watch");
+    const auto* worldAsset = registry.Find("world.taipale");
+    const auto* regionAsset = registry.Find("region.taipale.riverfront");
+    if (!Check(missionAsset != nullptr && worldAsset != nullptr && regionAsset != nullptr,
+            "Taipale mission, world and region are registered"))
+        return;
+
+    AuthoredDefinition mission;
+    std::vector<AuthoredDefinitionDiagnostic> missionDiagnostics;
+    if (!Check(LoadAuthoredDefinition(sourceRoot / missionAsset->relativePath,
+            registry, mission, missionDiagnostics), "Taipale mission definition loads"))
+        return;
+
+    WorldDefinition world;
+    std::vector<WorldDiagnostic> worldDiagnostics;
+    if (!Check(LoadWorldDefinition(sourceRoot / worldAsset->relativePath,
+            registry, world, worldDiagnostics), "Taipale world definition loads"))
+        return;
+
+    WorldRegion region;
+    std::vector<WorldRegionDiagnostic> regionDiagnostics;
+    if (!Check(LoadWorldRegion(sourceRoot / regionAsset->relativePath,
+            registry, world, region, regionDiagnostics), "Taipale world region loads"))
+        return;
+
+    float spawnHeight = 0.0F;
+    std::array<float, 3> spawnNormal{};
+    if (!Check(SampleTerrainHeight(region, -90.0F, 70.0F,
+            spawnHeight, spawnNormal, error), "Taipale player start samples valid terrain"))
+        return;
+
+    const GameplayRules rules{};
+    SimulationState simulation;
+    Check(InitializeSimulationFromAuthoredMission(mission, region,
+            {-90.0F, spawnHeight, 70.0F}, rules, simulation, error),
+        "Taipale introductory mission initializes in its selected world and region");
+    Check(simulation.mission.objectives.size() == 3U &&
+            simulation.playerEntityId == "player.character.sakkola_infantryman",
+        "Taipale mission publishes its three location objectives and player entity");
+    for (const auto& objective : simulation.mission.objectives) {
+        const auto* target = simulation.entities.Find(objective.interactionTargetId);
+        Check(target != nullptr && target->kind == entities::EntityKind::WorldObject,
+            "Each Taipale objective resolves to its authored world landmark");
+    }
+}
+
 int main()
 {
     using namespace talvisota;
@@ -458,6 +520,7 @@ int main()
     std::string error;
 
     TestAuthoredWorldSimulation();
+    TestTaipaleMissionInitializesAgainstItsAuthoredWorld();
 
     // Registry validation and stable lookup.
     entities::EntityRegistry registry;
