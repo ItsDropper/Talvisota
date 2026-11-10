@@ -92,6 +92,7 @@ std::wstring ObjectiveTitle(const std::string_view id) {
     if(id=="objective.report-watch") return L"REPORT TO THE WATCH POST";
     if(id=="objective.stop-first-advance") return L"HOLD THE NORTHERN APPROACH";
     if(id=="objective.stop-second-advance") return L"SECURE THE VILLAGE ROAD";
+    if(id=="objective.check-section-leader") return L"CHECK IN WITH THE SECTION LEADER";
     if(id=="objective.report-to-post") return L"REPORT TO THE CHURCH POST";
     if(id=="objective.check-damaged-fence") return L"CHECK THE DAMAGED FENCE";
     if(id=="objective.check-northern-barn") return L"CHECK THE NORTHERN BARN";
@@ -1990,9 +1991,26 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                     std::cerr<<"Gameplay simulation failed: "<<error<<"\n"; break;
                 }
                 for(const auto& result:commandResults) {
-                    if(result.outcome==talvisota::gameplay::CommandOutcome::ObjectiveCompleted)
+                    if(result.outcome==talvisota::gameplay::CommandOutcome::ObjectiveCompleted) {
                         SetMissionFeedback(L"OBJECTIVE COMPLETE",std::chrono::milliseconds(2200));
-                    else if(result.outcome==talvisota::gameplay::CommandOutcome::MissionCompleted)
+                        if(authoredMission.id=="mission.sakkola.defensive-line") {
+                            const auto nextObjective=std::find_if(gameplayState.mission.objectives.begin(),
+                                gameplayState.mission.objectives.end(),[](const auto& objective) {
+                                    return objective.status==talvisota::missions::ObjectiveStatus::Active;
+                                });
+                            if(nextObjective!=gameplayState.mission.objectives.end()) {
+                                if(nextObjective->id=="objective.check-section-leader")
+                                    SetMissionFeedback(L"SECTION LEADER: CHECK IN WITH ME BEFORE WE MOVE.",
+                                        std::chrono::milliseconds(4200));
+                                else if(nextObjective->id=="objective.stop-third-advance")
+                                    SetMissionFeedback(L"SECTION LEADER: EASTERN APPROACH. STAY WITH THE SECTION.",
+                                        std::chrono::milliseconds(4200));
+                                else if(nextObjective->id=="objective.stop-fourth-advance")
+                                    SetMissionFeedback(L"SECTION LEADER: THE ROAD BEYOND THE BARN. KEEP WATCH.",
+                                        std::chrono::milliseconds(4200));
+                            }
+                        }
+                    } else if(result.outcome==talvisota::gameplay::CommandOutcome::MissionCompleted)
                         SetMissionFeedback(L"MISSION COMPLETE",std::chrono::milliseconds(6000));
                     else if(result.outcome==talvisota::gameplay::CommandOutcome::OutOfRange)
                         SetMissionFeedback(L"MOVE CLOSER TO THE OBJECTIVE",std::chrono::milliseconds(1400));
