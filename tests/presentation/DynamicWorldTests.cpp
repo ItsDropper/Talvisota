@@ -5,16 +5,21 @@
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
+#include <iostream>
 #include <string>
 
 using namespace talvisota::presentation;
 
 namespace
 {
-void Require(const bool condition)
+void RequireImpl(const bool condition,const int line)
 {
-    if (!condition) std::abort();
+    if (!condition) {
+        std::cerr << "DynamicWorldTests assertion failed at line " << line << '\\n';
+        std::abort();
+    }
 }
+#define Require(condition) RequireImpl((condition),__LINE__)
 }
 
 int main()
