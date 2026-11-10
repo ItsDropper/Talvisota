@@ -757,14 +757,31 @@ bool TriggerOpeningArtilleryFlash(
     const double elapsedSeconds, const std::uint64_t sequence,
     std::string& error)
 {
-    const float x = player.position[0] + 8.0F;
-    const float z = player.position[2] - 12.0F;
-    float y = 0.0F;
-    std::array<float,3> normal{};
-    if (!talvisota::world::SampleTerrainHeight(region,x,z,y,normal,error))
-        return false;
-    return effects.Trigger("event.sakkola.defensive-line.artillery-flash."+
-        std::to_string(sequence),{x,y+0.15F,z},elapsedSeconds,48.0F,850.0F,1.4F,error);
+    // The opening barrage lands beyond the section's position, not beside the
+    // player. Staggered, offset impacts read as distant artillery through fog.
+    const float forwardX=std::sin(player.yawRadians),forwardZ=std::cos(player.yawRadians);
+    const float rightX=std::cos(player.yawRadians),rightZ=-std::sin(player.yawRadians);
+    constexpr std::array<std::array<float,2>,3> offsets{{
+        {{66.0F,-17.0F}},{{73.0F,15.0F}},{{82.0F,-3.0F}}
+    }};
+    constexpr std::array<float,3> intensities{{380.0F,460.0F,410.0F}};
+    auto candidate=effects;
+    for(std::size_t index=0U;index<offsets.size();++index) {
+        const float x=player.position[0]+forwardX*offsets[index][0]+rightX*offsets[index][1];
+        const float z=player.position[2]+forwardZ*offsets[index][0]+rightZ*offsets[index][1];
+        float y=0.0F;
+        std::array<float,3> normal{};
+        if(!talvisota::world::SampleTerrainHeight(region,x,z,y,normal,error))
+            return false;
+        if(!candidate.Trigger("event.sakkola.defensive-line.artillery-flash."+
+                std::to_string(sequence)+"."+std::to_string(index),
+                {x,y+0.15F,z},elapsedSeconds+static_cast<double>(index)*0.72,
+                92.0F,intensities[index],1.15F,error))
+            return false;
+    }
+    effects=std::move(candidate);
+    error.clear();
+    return true;
 }
 
 
