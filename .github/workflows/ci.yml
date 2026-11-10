@@ -188,6 +188,9 @@ jobs:
       - name: Build renderer adapter and content asset tools
         run: cmake --build build-msvc --target talvisota talvisota_renderer_sample talvisota_renderer_contract_tests talvisota_asset_validate talvisota_content_package talvisota_texture_process talvisota_engine_asset_validation_tests talvisota_engine_asset_package_tests talvisota_engine_asset_pipeline_tests --parallel
 
+      - name: First Patrol runtime smoke test
+        run: .\\build-msvc\\talvisota.exe --mission-smoke
+
       - name: Test game-owned renderer and asset contracts
         run: ctest --test-dir build-msvc --output-on-failure -R "Talvisota.Presentation.SceneRendererContract|Talvisota.Content.EngineAssetValidation|Talvisota.Content.EngineAssetPackage|Talvisota.Content.EngineAssetPipeline|Talvisota.Environment.PbrMaps"
 
@@ -221,16 +224,17 @@ jobs:
           @'
           @echo off
           cd /d "%~dp0"
-          TalvisotaSakkola.exe
+          Talvisota.exe
           '@ | Set-Content -LiteralPath (Join-Path $packageRoot 'Start-Talvisota.bat') -Encoding Ascii
           @'
-          TALVISOTA - SAKKOLA WORLD PREVIEW
+          TALVISOTA - SAKKOLA FIRST PATROL
 
-          Double-click Start-Talvisota.bat to launch.
-          Press Esc or close the window to exit.
+          Double-click Start-Talvisota.bat to launch the first-person game.
+          WASD move, mouse look, Shift sprint, Ctrl crouch, Space jump,
+          E interact, and Esc pause or open the main menu.
 
-          This is the current fixed-camera Sakkola world renderer preview,
-          not yet the complete first-person gameplay build.
+          First Patrol: inspect the farmstead well, check the western
+          woodpile, then report back to the Sakkola church.
           '@ | Set-Content -LiteralPath (Join-Path $packageRoot 'README.txt') -Encoding UTF8
           if (-not (Test-Path -LiteralPath (Join-Path $packageRoot 'content\\catalog.tmanifest'))) {
             throw 'Packaged Sakkola content manifest is missing.'

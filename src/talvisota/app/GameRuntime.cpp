@@ -45,6 +45,7 @@ LONG rawMouseDeltaX=0, rawMouseDeltaY=0;
 HWND mainWindow=nullptr, frontendOverlay=nullptr;
 bool frontendEnabled=false;
 bool restartPatrolRequested=false;
+int selectedMenuButton=0;
 enum class FrontendState { MainMenu, Playing, Paused };
 FrontendState frontendState=FrontendState::MainMenu;
 
@@ -128,6 +129,7 @@ bool RefreshMissionOverlay(const talvisota::gameplay::SimulationState& simulatio
 
 void SetFrontendState(const FrontendState state) {
     frontendState=state;
+    if(state!=FrontendState::Playing) selectedMenuButton=0;
     if(frontendOverlay && IsWindow(frontendOverlay)) {
         ShowWindow(frontendOverlay,SW_SHOW);
         InvalidateRect(frontendOverlay,nullptr,FALSE);
@@ -229,9 +231,9 @@ void PaintMenu(HWND hwnd) {
     const int count=frontendState==FrontendState::MainMenu?2:3;
     for(int i=0;i<count;++i) {
         RECT b=MenuButton(client.right,client.bottom,i);
-        HBRUSH fill=CreateSolidBrush(i==0?RGB(27,91,126):RGB(23,37,51));
+        HBRUSH fill=CreateSolidBrush(i==selectedMenuButton?RGB(35,105,145):RGB(23,37,51));
         FillRect(dc,&b,fill); DeleteObject(fill);
-        HPEN pen=CreatePen(PS_SOLID,1,i==0?RGB(91,175,211):RGB(63,91,112));
+        HPEN pen=CreatePen(PS_SOLID,1,i==selectedMenuButton?RGB(110,198,229):RGB(63,91,112));
         op=SelectObject(dc,pen); ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
         Rectangle(dc,b.left,b.top,b.right,b.bottom); SelectObject(dc,ob); SelectObject(dc,op); DeleteObject(pen);
         SetTextColor(dc,RGB(240,245,249));
@@ -248,25 +250,34 @@ void PaintMenu(HWND hwnd) {
         -1,&hint,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     DeleteObject(body); DeleteObject(title); EndPaint(hwnd,&ps);
 }
+void ActivateFrontendButton(const int index) {
+    if(frontendState==FrontendState::MainMenu) {
+        if(index==0) {
+            if(missionOverlay.completed) restartPatrolRequested=true;
+            SetFrontendState(FrontendState::Playing);
+        } else if(index==1&&mainWindow) DestroyWindow(mainWindow);
+    } else if(frontendState==FrontendState::Paused) {
+        if(index==0) SetFrontendState(FrontendState::Playing);
+        else if(index==1) SetFrontendState(FrontendState::MainMenu);
+        else if(index==2&&mainWindow) DestroyWindow(mainWindow);
+    }
+}
 LRESULT CALLBACK OverlayProcedure(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     if(msg==WM_ERASEBKGND) return 1;
     if(msg==WM_PAINT) { PaintMenu(hwnd); return 0; }
     if(msg==WM_NCHITTEST&&frontendState==FrontendState::Playing) return HTTRANSPARENT;
-    if(msg==WM_SETCURSOR && LOWORD(lp)==HTCLIENT) { SetCursor(LoadCursorW(nullptr,IDC_ARROW)); return TRUE; }
+    if(msg==WM_SETCURSOR && LOWORD(lp)==HTCLIENT) {
+        if(frontendState==FrontendState::Playing) return FALSE;
+        SetCursor(LoadCursorW(nullptr,IDC_ARROW)); return TRUE;
+    }
     if(msg==WM_LBUTTONUP) {
         if(frontendState==FrontendState::Playing) return 0;
         RECT c{}; GetClientRect(hwnd,&c); const int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
         const int count=frontendState==FrontendState::MainMenu?2:3;
         for(int i=0;i<count;++i) { RECT b=MenuButton(c.right,c.bottom,i);
             if(x<b.left||x>=b.right||y<b.top||y>=b.bottom) continue;
-            if(frontendState==FrontendState::MainMenu) {
-                if(i==0) {
-                    if(missionOverlay.completed) restartPatrolRequested=true;
-                    SetFrontendState(FrontendState::Playing);
-                } else if(mainWindow) DestroyWindow(mainWindow);
-            } else if(i==0) SetFrontendState(FrontendState::Playing);
-            else if(i==1) SetFrontendState(FrontendState::MainMenu);
-            else if(mainWindow) DestroyWindow(mainWindow);
+            selectedMenuButton=i;
+            ActivateFrontendButton(i);
             return 0;
         }
         return 0;
@@ -289,10 +300,22 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         return DefWindowProcW(hwnd,msg,wp,lp);
     }
+    if(msg==WM_KEYDOWN && frontendEnabled && frontendState!=FrontendState::Playing &&
+        (wp==VK_UP||wp==VK_DOWN) && (lp&(1LL<<30))==0) {
+        const int count=frontendState==FrontendState::MainMenu?2:3;
+        selectedMenuButton=(selectedMenuButton+(wp==VK_DOWN?1:count-1))%count;
+        if(frontendOverlay) InvalidateRect(frontendOverlay,nullptr,FALSE);
+        return 0;
+    }
+    if(msg==WM_KEYDOWN && frontendEnabled && frontendState!=FrontendState::Playing &&
+        wp==VK_RETURN && (lp&(1LL<<30))==0) {
+        ActivateFrontendButton(selectedMenuButton);
+        return 0;
+    }
     if(msg==WM_KEYDOWN && wp==VK_ESCAPE && (lp&(1LL<<30))==0) {
         if(frontendEnabled && frontendState==FrontendState::Playing) SetFrontendState(FrontendState::Paused);
         else if(frontendEnabled && frontendState==FrontendState::Paused) SetFrontendState(FrontendState::Playing);
-        else if(!frontendEnabled) DestroyWindow(hwnd);
+        else if(frontendState==FrontendState::MainMenu||!frontendEnabled) DestroyWindow(hwnd);
         return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
@@ -377,6 +400,7 @@ bool LoadFirstPatrol(const std::filesystem::path& contentRoot,
 bool PlaceMissionInteractionAnchors(const talvisota::world::WorldRegion& region,
     talvisota::gameplay::SimulationState& simulation,const std::array<float,3>& playerSpawn,
     const float playerRadius,std::string& error) {
+    std::array<float,3> approachFrom=playerSpawn;
     for(const auto& objective:simulation.mission.objectives) {
         auto* target=simulation.entities.Find(objective.interactionTargetId);
         if(target==nullptr) {
@@ -388,8 +412,8 @@ bool PlaceMissionInteractionAnchors(const talvisota::world::WorldRegion& region,
             [&collisionId](const talvisota::world::CollisionBox& box){return box.id==collisionId;});
         if(collision==region.collision.end()) continue;
         std::array<float,3> interactionPoint=collision->center;
-        const float dx=playerSpawn[0]-collision->center[0];
-        const float dz=playerSpawn[2]-collision->center[2];
+        const float dx=approachFrom[0]-collision->center[0];
+        const float dz=approachFrom[2]-collision->center[2];
         if(std::abs(dx)>std::abs(dz))
             interactionPoint[0]+=std::copysign(collision->halfExtents[0]+playerRadius+0.25F,dx);
         else
@@ -403,6 +427,7 @@ bool PlaceMissionInteractionAnchors(const talvisota::world::WorldRegion& region,
         }
         if(!simulation.entities.SetPosition(objective.interactionTargetId,interactionPoint,error))
             return false;
+        approachFrom=interactionPoint;
     }
     error.clear();
     return true;
@@ -578,6 +603,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     int framesPerView = 5;
     bool useD3D11 = false;
     bool captureRequested = false;
+    bool missionSmokeRequested = false;
     int argumentCount = 0;
     LPWSTR* parsedArguments = CommandLineToArgvW(GetCommandLineW(), &argumentCount);
     if (parsedArguments == nullptr) {
@@ -586,7 +612,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     }
     for (int index = 1; index < argumentCount; ++index) {
         const std::wstring_view token(parsedArguments[index]);
-        if (token.rfind(L"--capture-dir=", 0) == 0) {
+        if (token == L"--mission-smoke") {
+            missionSmokeRequested = true;
+        } else if (token.rfind(L"--capture-dir=", 0) == 0) {
             captureRequested = true;
             captureDir = token.substr(14);
         } else if (token.rfind(L"--frames-per-view=", 0) == 0) {
@@ -607,6 +635,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         }
     }
     LocalFree(parsedArguments);
+    if (missionSmokeRequested && captureRequested) {
+        if (ownsCom) CoUninitialize();
+        return 1;
+    }
     if (captureRequested && captureDir.empty()) {
         if (ownsCom) CoUninitialize();
         return 1;
@@ -658,6 +690,85 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     if (captureLog) captureLog << "Sakkola scene composition: placements=" << placements
         << ", material-bound instances=" << draws << ", unique meshes=" << scene.meshes.size()
         << ", materials=" << scene.materials.size() << ".\n";
+
+    if(missionSmokeRequested) {
+        talvisota::game::PlayerConfig playerConfig;
+        talvisota::game::PlayerState playerState;
+        if(!FindPlayerSpawn(gameRegion,playerConfig,playerState,error)) {
+            std::cerr<<"First Patrol smoke could not find a player spawn: "<<error<<"\\n";
+            if(ownsCom) CoUninitialize();
+            return 10;
+        }
+        talvisota::content::AuthoredDefinition authoredMission;
+        talvisota::gameplay::GameplayRules rules;
+        talvisota::gameplay::SimulationState simulation;
+        if(!LoadFirstPatrol(contentRoot,authoredMission,error) ||
+            !talvisota::gameplay::InitializeSimulationFromAuthoredMission(
+                authoredMission,gameRegion,playerState.position,rules,simulation,error) ||
+            !PlaceMissionInteractionAnchors(gameRegion,simulation,playerState.position,
+                playerConfig.capsuleRadius,error)) {
+            std::cerr<<"First Patrol smoke initialization failed: "<<error<<"\\n";
+            if(ownsCom) CoUninitialize();
+            return 10;
+        }
+        for(std::size_t index=0U;index<simulation.mission.objectives.size();++index) {
+            talvisota::gameplay::ActiveObjectiveTarget waypoint;
+            if(!talvisota::gameplay::FindActiveObjectiveTarget(
+                    simulation,simulation.playerEntityId,waypoint,error)) {
+                std::cerr<<"First Patrol smoke waypoint failed: "<<error<<"\\n";
+                if(ownsCom) CoUninitialize();
+                return 10;
+            }
+            talvisota::game::PlayerState reachablePlayer;
+            if(!talvisota::game::InitializePlayer(gameRegion,playerConfig,
+                    waypoint.position,reachablePlayer,error) ||
+                !simulation.entities.SetPosition(simulation.playerEntityId,
+                    reachablePlayer.position,error)) {
+                std::cerr<<"First Patrol smoke found an unreachable objective anchor: "
+                    <<waypoint.entityId<<": "<<error<<"\\n";
+                if(ownsCom) CoUninitialize();
+                return 10;
+            }
+            talvisota::gameplay::InteractionTargetSelection selection;
+            if(!talvisota::gameplay::FindNearestActiveObjectiveTarget(simulation,
+                    simulation.playerEntityId,rules.interactionRadiusMeters,selection,error) ||
+                selection.entityId!=waypoint.entityId) {
+                std::cerr<<"First Patrol smoke could not select the reachable objective: "
+                    <<waypoint.entityId<<"\\n";
+                if(ownsCom) CoUninitialize();
+                return 10;
+            }
+            const std::array<talvisota::gameplay::InteractionCommand,1> commands{{
+                {"smoke.interact."+std::to_string(index+1U),
+                    simulation.playerEntityId,selection.entityId}
+            }};
+            std::vector<talvisota::gameplay::CommandResult> results;
+            if(!talvisota::gameplay::AdvanceSimulation(simulation,rules,1.0/60.0,
+                    commands,results,error)) {
+                std::cerr<<"First Patrol smoke interaction failed: "<<error<<"\\n";
+                if(ownsCom) CoUninitialize();
+                return 10;
+            }
+            const auto expected=index+1U==simulation.mission.objectives.size()
+                ?talvisota::gameplay::CommandOutcome::MissionCompleted
+                :talvisota::gameplay::CommandOutcome::ObjectiveCompleted;
+            if(results.size()!=1U||results.front().outcome!=expected) {
+                std::cerr<<"First Patrol smoke produced an unexpected objective result.\\n";
+                if(ownsCom) CoUninitialize();
+                return 10;
+            }
+            std::cout<<"First Patrol smoke completed objective "<<(index+1U)
+                <<"/"<<simulation.mission.objectives.size()<<": "<<waypoint.entityId<<"\\n";
+        }
+        if(simulation.mission.status!=talvisota::missions::MissionStatus::Completed) {
+            std::cerr<<"First Patrol smoke did not complete the mission.\\n";
+            if(ownsCom) CoUninitialize();
+            return 10;
+        }
+        std::cout<<"First Patrol runtime smoke passed: all authored targets are reachable and all objectives complete.\\n";
+        if(ownsCom) CoUninitialize();
+        return 0;
+    }
 
     const std::vector<float> meshCullRadii = BuildMeshCullRadii(scene);
 
