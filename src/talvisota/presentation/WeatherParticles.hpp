@@ -31,6 +31,10 @@ private:
         float yPhase = 0.0F;
         float z = 0.0F;
         float drift = 0.0F;
+        float fallSpeed = 0.0F;
+        float scale = 1.0F;
+        float rotation = 0.0F;
+        float phase = 0.0F;
     };
 
     std::uint32_t m_firstInstance = 0U;
