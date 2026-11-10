@@ -1076,6 +1076,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     talvisota::platform::UserPaths worldUserPaths;
     std::filesystem::path dynamicWorldSavePath;
     bool dynamicWorldPersistenceEnabled=false;
+    auto lastDynamicWorldSave=Clock::now();
     if(captureDir.empty() && talvisota::platform::ResolveUserPaths(worldUserPaths,error)) {
         dynamicWorldSavePath=worldUserPaths.dataDirectory/"worlds"/"sakkola.state";
         if(dynamicWorld.Load(dynamicWorldSavePath,error)) {
@@ -1633,7 +1634,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             break;
         }
         if(dynamicWorldPersistenceEnabled) {
-            static auto lastDynamicWorldSave=Clock::now();
             if(now-lastDynamicWorldSave>=std::chrono::seconds(15)) {
                 if(!dynamicWorld.Save(dynamicWorldSavePath,error)) {
                     std::cerr<<"Sakkola world-state save failed: "<<error<<"\\n";
@@ -1676,6 +1676,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             break;
         }
         Sleep(1);
+    }
+    if(dynamicWorldPersistenceEnabled) {
+        std::string saveError;
+        if(!dynamicWorld.Save(dynamicWorldSavePath,saveError))
+            std::cerr<<"Final Sakkola world-state save failed: "<<saveError<<"\n";
     }
     renderer.reset(); frontendOverlay=nullptr; mainWindow=nullptr;
     if (IsWindow(window)) DestroyWindow(window);

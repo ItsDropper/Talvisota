@@ -212,6 +212,7 @@ bool DynamicWorldSystem::Update(const talvisota::world::WorldRegion& region,
             for (std::size_t axis = 0; axis < 3U; ++axis)
             {
                 object.position[axis] += object.velocity[axis] * deltaSeconds;
+                object.rotation[axis] += object.angularVelocity[axis] * deltaSeconds;
                 object.angularVelocity[axis] *= std::max(0.0F, 1.0F - 1.8F * deltaSeconds);
             }
             object.position[0] = std::clamp(object.position[0], region.boundsMin[0], region.boundsMax[0]);
@@ -251,7 +252,7 @@ bool DynamicWorldSystem::Update(const talvisota::world::WorldRegion& region,
         transform[12] = object.position[0];
         transform[13] = object.position[1];
         transform[14] = object.position[2];
-        ApplyRotation(transform, swayPitch, swayRoll);
+        ApplyRotation(transform, object.rotation[0] + swayPitch, object.rotation[2] + swayRoll);
         for (const auto index : object.instanceIndices)
         {
             if (index >= scene.instances.size())
@@ -297,6 +298,7 @@ bool DynamicWorldSystem::Save(const std::filesystem::path& path, std::string& er
             for (const float value : object.position) output << ' ' << value;
             for (const float value : object.velocity) output << ' ' << value;
             for (const float value : object.angularVelocity) output << ' ' << value;
+            for (const float value : object.rotation) output << ' ' << value;
             output << '\n';
         }
         if (!output)
@@ -368,12 +370,13 @@ bool DynamicWorldSystem::Load(const std::filesystem::path& path, std::string& er
         for (float& value : state.position) if (!(input >> value)) { error = "Truncated position."; return false; }
         for (float& value : state.velocity) if (!(input >> value)) { error = "Truncated velocity."; return false; }
         for (float& value : state.angularVelocity) if (!(input >> value)) { error = "Truncated angular velocity."; return false; }
+        for (float& value : state.rotation) if (!(input >> value)) { error = "Truncated rotation."; return false; }
         const auto found = indices.find(id);
         if (found == indices.end() || seen[found->second] ||
             !std::isfinite(state.integrity) || state.integrity < 0.0F ||
             !std::isfinite(state.mass) || state.mass <= 0.0F ||
             !std::isfinite(state.sleepSeconds) || state.sleepSeconds < 0.0F ||
-            !Finite3(state.position) || !Finite3(state.velocity) || !Finite3(state.angularVelocity))
+            !Finite3(state.position) || !Finite3(state.velocity) || !Finite3(state.angularVelocity) || !Finite3(state.rotation))
         {
             error = "Dynamic world save contains an unknown, duplicate, or invalid object state.";
             return false;
@@ -396,6 +399,7 @@ bool DynamicWorldSystem::Load(const std::filesystem::path& path, std::string& er
         target.position = state.position;
         target.velocity = state.velocity;
         target.angularVelocity = state.angularVelocity;
+        target.rotation = state.rotation;
         seen[found->second] = true;
     }
     std::string trailing;

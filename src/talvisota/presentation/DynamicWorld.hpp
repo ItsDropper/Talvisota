@@ -19,6 +19,7 @@ struct DynamicWorldObject final
     std::array<float, 3> position{};
     std::array<float, 3> velocity{};
     std::array<float, 3> angularVelocity{};
+    std::array<float, 3> rotation{};
     float integrity = 1.0F;
     float mass = 1.0F;
     float sleepSeconds = 0.0F;
