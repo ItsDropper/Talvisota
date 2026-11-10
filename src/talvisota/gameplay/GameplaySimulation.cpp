@@ -261,36 +261,26 @@ bool FindActiveObjectiveTarget(const SimulationState& state,
     const entities::EntityState* target = nullptr;
     for (const auto& [entityId, entity] : state.entities.All())
     {
-        if (entity.interactionTargetId != activeObjective->interactionTargetId ||
-            entity.kind != entities::EntityKind::WorldObject)
+        if (entity.interactionTargetId != activeObjective->interactionTargetId)
             continue;
         if (target != nullptr)
         {
-            error = "Active objective resolves to multiple world-object entities: " +
+            error = "Active objective resolves to multiple gameplay entities: " +
                 activeObjective->interactionTargetId;
             return false;
         }
-        if (entity.id != entityId || !entities::IsValidStableId(entityId))
+        if (!entity.active || entity.id != entityId || !entities::IsValidStableId(entityId))
         {
-            error = "Active objective target has an inconsistent entity identity.";
+            error = "Active objective target has an invalid or inactive gameplay entity.";
             return false;
         }
         target = &entity;
     }
-
-    if (target == nullptr || !target->active)
+    if (target == nullptr)
     {
-        error = "Active objective target is missing or inactive: " +
+        error = "Active objective target is not registered in gameplay simulation: " +
             activeObjective->interactionTargetId;
         return false;
-    }
-    for (const float coordinate : target->position)
-    {
-        if (!std::isfinite(coordinate))
-        {
-            error = "Active objective target position must be finite.";
-            return false;
-        }
     }
 
     const double x = static_cast<double>(actor->position[0]) - target->position[0];
