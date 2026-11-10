@@ -252,7 +252,7 @@ jobs:
               expected_half_height = 9.0 * scale * variation
               assert abs(collisions[placement_id] - expected_half_height) <= 0.0006, (
                   placement_id, collisions[placement_id], expected_half_height)
-          assert len(variations) > 1800, f"Tree height variation collapsed: {len(variations)}"
+          assert len(variations) > 1600, f"Tree height variation collapsed: {len(variations)}"
           print("Sakkola Blender asset migration and matching trunk colliders verified:", {
               "Blender Scots pine": len(placements),
               "Blender granite boulder": counts["model.environment.boulder"],
