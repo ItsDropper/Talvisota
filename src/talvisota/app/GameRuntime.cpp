@@ -104,12 +104,14 @@ std::wstring ObjectiveTitle(const std::string_view id) {
 
 
 struct BattlefieldRenderAssets final {
-    std::uint32_t bodyMesh=0U, rifleMesh=0U, submachineGunMesh=0U, lightMachineGunMesh=0U;
+    std::uint32_t bodyMesh=0U, armsMesh=0U, legMesh=0U;
+    std::uint32_t rifleMesh=0U, submachineGunMesh=0U, lightMachineGunMesh=0U;
     std::uint32_t finnishMaterial=0U, sovietMaterial=0U, weaponMaterial=0U;
 };
 struct BattlefieldActorRenderBinding final {
     std::string entityId;
-    std::size_t bodyInstance=0U, weaponInstance=0U;
+    std::size_t bodyInstance=0U, armsInstance=0U;
+    std::size_t leftLegInstance=0U, rightLegInstance=0U, weaponInstance=0U;
     std::array<float,3> previousPosition{};
     float stridePhase=0.0F;
     float lastUpdateSeconds=0.0F;
@@ -263,7 +265,7 @@ talvisota::presentation::RenderMesh BuildWeaponMesh(
 }
 bool BuildBattlefieldRenderAssets(talvisota::presentation::SceneSnapshot& scene,
     BattlefieldRenderAssets& output,std::string& error) {
-    if(scene.meshes.size()>static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max()-4U) ||
+    if(scene.meshes.size()>static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max()-6U) ||
         scene.materials.size()>static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max()-3U)) {
         error="Battlefield render assets exceed the scene index capacity."; return false;
     }
@@ -271,15 +273,8 @@ bool BuildBattlefieldRenderAssets(talvisota::presentation::SceneSnapshot& scene,
     // Rounded winter greatcoat, separate limbs, boots, field pack and helmet
     // replace the original block-only mannequin while keeping one shared mesh.
     AppendEllipsoid(body,{0.0F,1.08F,0.0F},{0.245F,0.39F,0.155F});
-    AppendEllipsoid(body,{-0.125F,0.55F,0.0F},{0.095F,0.285F,0.105F});
-    AppendEllipsoid(body,{0.125F,0.55F,0.0F},{0.095F,0.285F,0.105F});
-    AppendEllipsoid(body,{-0.125F,0.135F,0.035F},{0.13F,0.09F,0.19F});
-    AppendEllipsoid(body,{0.125F,0.135F,0.035F},{0.13F,0.09F,0.19F});
-    // Bent arms reach the weapon instead of hanging vertically at the sides.
-    AppendEllipsoid(body,{-0.245F,1.13F,0.075F},{0.085F,0.225F,0.09F},0.82F);
-    AppendEllipsoid(body,{0.245F,1.13F,0.075F},{0.085F,0.225F,0.09F},0.82F);
-    AppendEllipsoid(body,{-0.205F,0.94F,0.30F},{0.065F,0.075F,0.065F});
-    AppendEllipsoid(body,{0.205F,0.94F,0.30F},{0.065F,0.075F,0.065F});
+    AppendEllipsoid(body,{0.0F,1.08F,0.0F},{0.245F,0.39F,0.155F});
+    // Arms and legs are separate articulated meshes, not baked into the torso.
     AppendEllipsoid(body,{0.0F,1.115F,-0.205F},{0.18F,0.235F,0.09F});
     AppendEllipsoid(body,{0.0F,1.465F,0.015F},{0.075F,0.075F,0.075F});
     AppendEllipsoid(body,{0.0F,1.535F,0.015F},{0.105F,0.135F,0.105F});
@@ -299,6 +294,27 @@ bool BuildBattlefieldRenderAssets(talvisota::presentation::SceneSnapshot& scene,
     AppendBox(body,{0.235F,0.86F,0.10F},{0.065F,0.075F,0.045F});
     output.bodyMesh=static_cast<std::uint32_t>(scene.meshes.size());
     scene.meshes.push_back(std::move(body));
+
+    talvisota::presentation::RenderMesh arms;
+    AppendEllipsoid(arms,{-0.245F,1.13F,0.075F},{0.085F,0.225F,0.09F},0.82F);
+    AppendEllipsoid(arms,{0.245F,1.13F,0.075F},{0.085F,0.225F,0.09F},0.82F);
+    AppendEllipsoid(arms,{-0.205F,0.94F,0.30F},{0.065F,0.075F,0.065F});
+    AppendEllipsoid(arms,{0.205F,0.94F,0.30F},{0.065F,0.075F,0.065F});
+    AppendEllipsoid(arms,{-0.245F,1.00F,0.235F},{0.087F,0.045F,0.055F});
+    AppendEllipsoid(arms,{0.245F,1.00F,0.235F},{0.087F,0.045F,0.055F});
+    output.armsMesh=static_cast<std::uint32_t>(scene.meshes.size());
+    scene.meshes.push_back(std::move(arms));
+
+    talvisota::presentation::RenderMesh leg;
+    // Each leg is authored around its hip pivot so stride animation rotates the
+    // whole boot, knee and trouser silhouette coherently.
+    AppendEllipsoid(leg,{0.0F,-0.20F,0.0F},{0.095F,0.235F,0.105F});
+    AppendEllipsoid(leg,{0.0F,-0.48F,0.015F},{0.078F,0.215F,0.09F});
+    AppendEllipsoid(leg,{0.0F,-0.70F,0.065F},{0.13F,0.085F,0.19F});
+    AppendBox(leg,{0.0F,-0.52F,0.095F},{0.082F,0.07F,0.018F});
+    AppendBox(leg,{0.0F,-0.665F,0.215F},{0.075F,0.025F,0.018F});
+    output.legMesh=static_cast<std::uint32_t>(scene.meshes.size());
+    scene.meshes.push_back(std::move(leg));
     const std::array archetypes{
         talvisota::combat::WeaponArchetype::BoltActionRifle,
         talvisota::combat::WeaponArchetype::SubmachineGun,
@@ -347,6 +363,18 @@ std::array<float,16> ActorWorldMatrix(const std::array<float,3>& position,float 
         position[0],position[1]+bob,position[2],1.0F
     };
 }
+std::array<float,16> ActorLegWorldMatrix(const std::array<float,3>& position,
+    float yaw,float pivotX,float swing,float bodyPitch) {
+    const float angle=swing+bodyPitch;
+    const float cy=std::cos(yaw),sy=std::sin(yaw);
+    const float cp=std::cos(angle),sp=std::sin(angle);
+    return {
+        cy,0.0F,-sy,0.0F,
+        sy*sp,cp,cy*sp,0.0F,
+        sy*cp,-sp,cy*cp,0.0F,
+        position[0]+cy*pivotX,position[1]+0.83F,position[2]-sy*pivotX,1.0F
+    };
+}
 std::array<float,16> ActorWeaponWorldMatrix(const std::array<float,3>& position,
     float yaw,float bob,float stridePhase,float movementAmount) {
     const float c=std::cos(yaw),s=std::sin(yaw);
@@ -379,8 +407,9 @@ bool EnsureBattlefieldActorInstances(talvisota::presentation::SceneSnapshot& sce
     const BattlefieldRenderAssets& assets,std::vector<BattlefieldActorRenderBinding>& bindings,
     std::string& error) {
     for(auto& binding:bindings) {
-        if(binding.bodyInstance<scene.instances.size()) scene.instances[binding.bodyInstance].visible=false;
-        if(binding.weaponInstance<scene.instances.size()) scene.instances[binding.weaponInstance].visible=false;
+        for(const std::size_t index:{binding.bodyInstance,binding.armsInstance,
+                binding.leftLegInstance,binding.rightLegInstance,binding.weaponInstance})
+            if(index<scene.instances.size()) scene.instances[index].visible=false;
     }
     if(simulation.entities.Find(simulation.playerEntityId)==nullptr) {
         error="Battlefield actor presentation requires the active player entity."; return false;
@@ -395,20 +424,34 @@ bool EnsureBattlefieldActorInstances(talvisota::presentation::SceneSnapshot& sce
             [&](const BattlefieldActorRenderBinding& b){return b.entityId==actorId;});
         if(found==bindings.end()) {
             BattlefieldActorRenderBinding binding;
-            binding.entityId=actorId; binding.bodyInstance=scene.instances.size();
-            talvisota::presentation::RenderInstance body; body.meshIndex=assets.bodyMesh;
-            scene.instances.push_back(body); maxDrawDistances.push_back(520.0F);
-            binding.weaponInstance=scene.instances.size();
-            talvisota::presentation::RenderInstance weapon;
-            weapon.meshIndex=ResolveWeaponMesh(assets,combatant.weaponId);
-            weapon.materialIndex=assets.weaponMaterial;
-            scene.instances.push_back(weapon); maxDrawDistances.push_back(520.0F);
+            binding.entityId=actorId;
+            const auto appendActorPart=[&](const std::uint32_t meshIndex,const std::uint32_t materialIndex) {
+                talvisota::presentation::RenderInstance instance;
+                instance.meshIndex=meshIndex; instance.materialIndex=materialIndex;
+                const std::size_t index=scene.instances.size();
+                scene.instances.push_back(std::move(instance));
+                maxDrawDistances.push_back(520.0F);
+                return index;
+            };
+            binding.bodyInstance=appendActorPart(assets.bodyMesh,assets.finnishMaterial);
+            binding.armsInstance=appendActorPart(assets.armsMesh,assets.finnishMaterial);
+            binding.leftLegInstance=appendActorPart(assets.legMesh,assets.finnishMaterial);
+            binding.rightLegInstance=appendActorPart(assets.legMesh,assets.finnishMaterial);
+            binding.weaponInstance=appendActorPart(
+                ResolveWeaponMesh(assets,combatant.weaponId),assets.weaponMaterial);
             bindings.push_back(std::move(binding)); found=std::prev(bindings.end());
         }
+        const auto uniformMaterial=actor->factionId=="faction.finnish"?
+            assets.finnishMaterial:assets.sovietMaterial;
         auto& body=scene.instances[found->bodyInstance];
-        body.meshIndex=assets.bodyMesh;
-        body.materialIndex=actor->factionId=="faction.finnish"?assets.finnishMaterial:assets.sovietMaterial;
+        body.meshIndex=assets.bodyMesh; body.materialIndex=uniformMaterial;
         body.visible=combatant.health>0.0F;
+        for(const std::size_t index:{found->armsInstance,found->leftLegInstance,found->rightLegInstance}) {
+            auto& part=scene.instances[index];
+            part.meshIndex=index==found->armsInstance?assets.armsMesh:assets.legMesh;
+            part.materialIndex=uniformMaterial;
+            part.visible=combatant.health>0.0F;
+        }
         auto& weapon=scene.instances[found->weaponInstance];
         weapon.meshIndex=ResolveWeaponMesh(assets,combatant.weaponId);
         weapon.materialIndex=assets.weaponMaterial; weapon.visible=combatant.health>0.0F;
@@ -427,8 +470,12 @@ void UpdateBattlefieldActorInstances(talvisota::presentation::SceneSnapshot& sce
         const bool visible=player!=nullptr&&actor!=nullptr&&actor->active&&
             combatant!=simulation.combat.combatants.end()&&combatant->second.health>0.0F;
         auto& body=scene.instances[binding.bodyInstance];
+        auto& arms=scene.instances[binding.armsInstance];
+        auto& leftLeg=scene.instances[binding.leftLegInstance];
+        auto& rightLeg=scene.instances[binding.rightLegInstance];
         auto& weapon=scene.instances[binding.weaponInstance];
-        body.visible=visible; weapon.visible=visible;
+        body.visible=visible; arms.visible=visible;
+        leftLeg.visible=visible; rightLeg.visible=visible; weapon.visible=visible;
         if(!visible) continue;
         const float yaw=std::atan2(player->position[0]-actor->position[0],
             player->position[2]-actor->position[2]);
@@ -449,8 +496,14 @@ void UpdateBattlefieldActorInstances(talvisota::presentation::SceneSnapshot& sce
         const float gait=std::sin(binding.stridePhase+static_cast<float>(i)*0.37F);
         const float bob=movementAmount*(0.012F+0.018F*std::abs(gait))+
             std::sin(elapsedSeconds*1.8F+static_cast<float>(i)*0.73F)*0.0025F;
+        const float bodyPitch=0.12F*movementAmount;
         body.world=ActorWorldMatrix(actor->position,yaw,bob,
-            0.12F*movementAmount,gait*0.035F*movementAmount);
+            bodyPitch,gait*0.035F*movementAmount);
+        arms.world=body.world;
+        leftLeg.world=ActorLegWorldMatrix(actor->position,yaw,-0.125F,
+            gait*0.34F*movementAmount,bodyPitch);
+        rightLeg.world=ActorLegWorldMatrix(actor->position,yaw,0.125F,
+            -gait*0.34F*movementAmount,bodyPitch);
         weapon.world=ActorWeaponWorldMatrix(actor->position,yaw,bob,
             binding.stridePhase,movementAmount);
     }
