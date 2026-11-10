@@ -40,7 +40,7 @@ The current Talvisota scene bridge and both renderer backends support the metall
 - Base-colour and tangent-space normal textures.
 - A packed ORM texture, bound to all three engine texture slots. The channel contract is R=occlusion, G=roughness, B=metallic.
 - Emissive RGB factors, normal-map strength, and AO strength.
-- Alpha masking with authored cutoff, sorted alpha blending with depth writes disabled, and double-sided normal orientation.
+- Alpha masking with authored cutoff, sorted alpha blending with depth writes disabled, and single-sided back-face culling and double-sided normal orientation.
 - Texture paths are resolved against the validated content registry and must resolve to regular files before scene submission.
 
 Emissive texture maps use sRGB sampling. Alpha blending is supported with back-to-front per-instance sorting and depth writes disabled.
