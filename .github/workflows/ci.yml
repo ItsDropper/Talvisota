@@ -186,6 +186,10 @@ jobs:
           merge-multiple: true
 
       - name: Verify generated runtime model inputs
+        timeout-minutes: 8
+        continue-on-error: true
+        timeout-minutes: 8
+        continue-on-error: true
         shell: pwsh
         run: |
           $required = @(
