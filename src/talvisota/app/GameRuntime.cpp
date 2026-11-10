@@ -390,6 +390,19 @@ bool RefreshMissionOverlay(const talvisota::gameplay::SimulationState& simulatio
     }
     if(std::chrono::steady_clock::now()>=missionFeedbackUntil) updated.feedback.clear();
     const auto playerCombatant=simulation.combat.combatants.find(simulation.playerEntityId);
+    std::size_t friendlyContacts=0U, hostileContacts=0U;
+    const auto* playerEntity=simulation.entities.Find(simulation.playerEntityId);
+    for(const auto& [entityId,combatant]:simulation.combat.combatants) {
+        if(entityId==simulation.playerEntityId || combatant.health<=0.0F) continue;
+        const auto* actor=simulation.entities.Find(entityId);
+        if(actor==nullptr || !actor->active || playerEntity==nullptr) continue;
+        if(actor->factionId==playerEntity->factionId) ++friendlyContacts;
+        else ++hostileContacts;
+    }
+    updated.contact=(friendlyContacts+hostileContacts)>0U
+        ?L"SECTION  "+std::to_wstring(friendlyContacts)+L" ACTIVE   |   HOSTILE CONTACTS  "+
+            std::to_wstring(hostileContacts)
+        :std::wstring{};
     if(playerCombatant!=simulation.combat.combatants.end()) {
         const auto* weapon=talvisota::combat::FindWeaponDefinition(playerCombatant->second.weaponId);
         if(weapon!=nullptr) updated.ammo=L"HEALTH  "+
@@ -1643,7 +1656,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 missionOverlay.description=Utf8ToWide(authoredMission.description);
                 gameplayAccumulator=0.0;
                 interactionQueued=false;
-                SetMissionFeedback(L"NEW ORDERS RECEIVED",std::chrono::milliseconds(3200));
+                if(authoredMission.id=="mission.sakkola.defensive-line")
+                    SetMissionFeedback(L"SECTION LEADER: HOLD THE ROAD. WAIT FOR THE SIGNAL.",
+                        std::chrono::milliseconds(5200));
+                else
+                    SetMissionFeedback(L"NEW ORDERS RECEIVED",std::chrono::milliseconds(3200));
                 if(!RefreshMissionOverlay(gameplayState,playerState,gameplayRules.interactionRadiusMeters,error)) break;
             }
         }
@@ -1673,7 +1690,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             gameplayAccumulator=0.0;
             interactionQueued=false;
             restartPatrolRequested=false;
-            SetMissionFeedback(L"MISSION RESTARTED",std::chrono::milliseconds(2200));
+            if(authoredMission.id=="mission.sakkola.defensive-line")
+                SetMissionFeedback(L"SECTION LEADER: HOLD THE ROAD. WAIT FOR THE SIGNAL.",
+                    std::chrono::milliseconds(5200));
+            else
+                SetMissionFeedback(L"MISSION RESTARTED",std::chrono::milliseconds(2200));
             if(!RefreshMissionOverlay(gameplayState,playerState,gameplayRules.interactionRadiusMeters,error)) break;
         }
         const auto now=Clock::now();
