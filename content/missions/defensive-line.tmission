@@ -17,6 +17,7 @@ actor = actor.soviet.advance.03 -> faction.soviet -> 92,125 -> weapon.soviet.mos
 actor = actor.soviet.advance.04 -> faction.soviet -> -100,160 -> weapon.soviet.mosin_1891_30 -> 60
 objective = objective.stop-first-advance -> actor.soviet.advance.01
 objective = objective.stop-second-advance -> actor.soviet.advance.02
+objective = objective.check-section-leader -> actor.finnish.section-leader
 objective = objective.stop-third-advance -> actor.soviet.advance.03
 objective = objective.stop-fourth-advance -> actor.soviet.advance.04
 objective = objective.report-to-post -> church.sakkola
