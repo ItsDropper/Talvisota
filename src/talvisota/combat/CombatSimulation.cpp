@@ -10,13 +10,17 @@ namespace talvisota::combat
 {
 namespace
 {
-constexpr std::array<WeaponDefinition, 3> Weapons{{
+constexpr std::array<WeaponDefinition, 3> FinnishWeapons{{
     {"weapon.mosin_m27", "Mosin-Nagant M/27", "model.weapon.mosin_m27", WeaponArchetype::BoltActionRifle,
         5U, 68.0F, 180.0F, 1.05, 2.8},
     {"weapon.suomi_kp31", "Suomi KP/-31", "model.weapon.suomi_kp31", WeaponArchetype::SubmachineGun,
         20U, 24.0F, 58.0F, 0.12, 2.6},
     {"weapon.lahti_saloranta_m26", "Lahti-Saloranta M/26", "model.weapon.lahti_saloranta_m26",
         WeaponArchetype::LightMachineGun, 20U, 31.0F, 105.0F, 0.16, 3.2}
+}};
+constexpr std::array<WeaponDefinition, 1> SovietWeapons{{
+    {"weapon.soviet.mosin_1891_30", "Mosin-Nagant M1891/30", "model.weapon.soviet_mosin_1891_30",
+        WeaponArchetype::BoltActionRifle, 5U, 68.0F, 180.0F, 1.05, 2.8}
 }};
 constexpr std::size_t MaximumCommandsPerStep = 4096U;
 constexpr std::size_t MaximumProcessedCommands = 65536U;
@@ -40,14 +44,23 @@ double DistanceBetween(const entities::EntityState& first,
 
 std::span<const WeaponDefinition> Finnish1939WeaponCatalog() noexcept
 {
-    return Weapons;
+    return FinnishWeapons;
+}
+
+std::span<const WeaponDefinition> Soviet1939WeaponCatalog() noexcept
+{
+    return SovietWeapons;
 }
 
 const WeaponDefinition* FindWeaponDefinition(const std::string_view weaponId) noexcept
 {
-    const auto found = std::find_if(Weapons.begin(), Weapons.end(),
-        [weaponId](const WeaponDefinition& weapon) { return weapon.id == weaponId; });
-    return found == Weapons.end() ? nullptr : &*found;
+    const auto find = [weaponId](const auto& catalog) -> const WeaponDefinition* {
+        const auto found = std::find_if(catalog.begin(), catalog.end(),
+            [weaponId](const WeaponDefinition& weapon) { return weapon.id == weaponId; });
+        return found == catalog.end() ? nullptr : &*found;
+    };
+    if (const auto* finnish = find(FinnishWeapons)) return finnish;
+    return find(SovietWeapons);
 }
 
 bool RegisterCombatant(CombatSimulationState& state,
