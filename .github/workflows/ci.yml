@@ -342,6 +342,11 @@ jobs:
           Talvisota.exe
           '@ | Set-Content -LiteralPath (Join-Path $packageRoot 'Start-Talvisota.bat') -Encoding Ascii
           @'
+          @echo off
+          cd /d "%~dp0"
+          Talvisota.exe --mission=mission.taipale.riverfront-watch
+          '@ | Set-Content -LiteralPath (Join-Path $packageRoot 'Start-Taipale.bat') -Encoding Ascii
+          @'
           TALVISOTA - SAKKOLA CAMPAIGN
 
           Double-click Start-Talvisota.bat to launch the first-person game.
@@ -352,6 +357,9 @@ jobs:
           woodpile, then report to the Sakkola church.
           Northern Watch: reach the northern barn, check the eastern
           village boundary, then report to the church watch post.
+          
+          Taipale Riverfront: double-click Start-Taipale.bat to load the
+          separate riverfront location and its introductory landmarks.
           '@ | Set-Content -LiteralPath (Join-Path $packageRoot 'README.txt') -Encoding UTF8
           if (-not (Test-Path -LiteralPath (Join-Path $packageRoot 'content\\catalog.tmanifest'))) {
             throw 'Packaged Sakkola content manifest is missing.'
@@ -391,5 +399,30 @@ jobs:
           path: |
             ${{ runner.temp }}/sakkola-captures/*.png
             ${{ runner.temp }}/sakkola-captures/renderer.log
+          if-no-files-found: warn
+          retention-days: 30
+      
+      - name: Render Taipale riverfront viewpoints
+        timeout-minutes: 8
+        shell: pwsh
+        run: |
+          $captureDir = Join-Path $env:RUNNER_TEMP 'taipale-captures'
+          New-Item -ItemType Directory -Force -Path $captureDir | Out-Null
+          $process = Start-Process -FilePath .\\build-msvc\talvisota.exe -ArgumentList @('--backend=d3d12', '--mission=mission.taipale.riverfront-watch', "--capture-dir=$captureDir", '--frames-per-view=9') -Wait -PassThru
+          $rendererLog = Join-Path $captureDir 'renderer.log'
+          if (Test-Path -LiteralPath $rendererLog) { Get-Content -LiteralPath $rendererLog }
+          if ($process.ExitCode -ne 0) { throw "Taipale renderer exited with code $($process.ExitCode)" }
+          $captures = @(Get-ChildItem -LiteralPath $captureDir -Filter '*.png' -File)
+          if ($captures.Count -ne 7) { throw "Expected seven Taipale PNGs, found $($captures.Count)" }
+          $captures | Format-Table Name, Length
+
+      - name: Upload Taipale riverfront screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: talvisota-taipale-riverfront-screenshots
+          path: |
+            ${{ runner.temp }}/taipale-captures/*.png
+            ${{ runner.temp }}/taipale-captures/renderer.log
           if-no-files-found: warn
           retention-days: 30
