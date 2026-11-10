@@ -143,9 +143,9 @@ For a Debug build:
 .\Run-Talvisota.ps1 -Configuration Debug
 ```
 
-The engine-enabled executable now launches the first-person Sakkola game, not the fixed-camera renderer sample. It opens on the Talvisota main menu with the First Patrol briefing. Select **Start First Patrol** to enter the world.
+The engine-enabled executable launches the first-person Sakkola campaign, not the fixed-camera renderer sample. It opens on the Talvisota main menu with the First Patrol briefing. Select **Start First Patrol** to enter the world. Completing First Patrol unlocks the authored **Northern Watch** follow-up in the same Sakkola church-village region; press **E** or choose **Continue Campaign** from the menu to receive the next orders.
 
-**First Patrol objectives:** inspect the farmstead well, check the western woodpile, then report back to the Sakkola church. Press **E** near the active objective to interact. The HUD shows the active task, progress, distance, and interaction prompt.
+**First Patrol objectives:** inspect the farmstead well, check the western woodpile, then report back to the Sakkola church. **Northern Watch objectives:** reach the northern barn, check the eastern village boundary, then report to the church watch post. These are fictional connective patrol objectives authored against the existing Sakkola placements, not claims about a documented battle. Press **E** near the active objective to interact. The HUD shows the active mission, task, progress, distance, and interaction prompt. CI's `--mission-smoke` validates every linked mission and its reachable objective anchors.
 
 **Controls**
 - **WASD:** move
