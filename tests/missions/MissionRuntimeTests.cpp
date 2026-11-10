@@ -109,6 +109,7 @@ void TestManifestParserToMissionAdapter()
         "region_id = region.sakkola.church_village\n"
         "player_character_id = character.sakkola_infantryman\n"
         "faction_id = faction.finnish\n"
+        "environment_profile = overcast\n"
         "objective = objective.watch -> prop.watch-post\n");
     content.Write("catalog.tmanifest",
         "talvisota-content-manifest\t1\n"
@@ -129,6 +130,12 @@ void TestManifestParserToMissionAdapter()
     const auto missionPath = content.Root() / "content/missions/first-patrol.tmission";
     Check(LoadAuthoredDefinition(missionPath, registry, authored, definitionDiagnostics),
         "First Patrol parses through the real authored-definition loader");
+    AuthoredDefinition successor;
+    Check(LoadAuthoredDefinition(content.Root() / "content/missions/northern-watch.tmission",
+        registry, successor, definitionDiagnostics) &&
+        successor.nextMissionId.empty() && successor.environmentProfile == "overcast",
+        "successor mission loads with its authored weather profile and terminal campaign state");
+
     Check(authored.id == "mission.sakkola.first-patrol" &&
         authored.worldId == "world.sakkola" &&
         authored.regionId == "region.sakkola.church_village" &&
