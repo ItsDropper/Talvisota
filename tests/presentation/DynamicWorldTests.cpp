@@ -69,7 +69,7 @@ int main()
     DynamicWorldSystem dynamics;
     std::string error;
     Require(dynamics.Initialize(region, scene, error));
-    Require(dynamics.Objects().size() == 1U);
+    Require(dynamics.Objects().size() == 2U);
     Require(dynamics.Objects().front().instanceIndices.size() == 1U);
     Require(dynamics.Objects().back().instanceIndices.size() == 1U);
     Require(dynamics.Objects().front().instanceIndices.front() == 0U);
@@ -82,17 +82,18 @@ int main()
     Require(scene.instances.front().world != authored);
     Require(scene.instances.back().world == crateAuthored);
 
-    Require(dynamics.ApplyImpulse(tree.id, {0.0F, 8.0F, 0.0F}, {0.5F, 0.0F, 0.2F}, error));
+    Require(dynamics.ApplyImpulse(tree.id, {0.0F, 8.0F, 0.0F}, {0.5F, 0.4F, 0.2F}, error));
     Require(!dynamics.Objects().front().anchored);
     for (int frame = 0; frame < 30; ++frame)
         Require(dynamics.Update(region, scene, 1.0F / 60.0F,
             1.0 + static_cast<double>(frame) / 60.0, {0.914F, 0.406F}, 0.1F, error));
     Require(scene.instances.front().world[13] > tree.position[1]);
+    Require(std::abs(dynamics.Objects().front().rotation[1]) > 0.001F);
 
     const auto savePath = std::filesystem::temp_directory_path() / "talvisota-dynamic-world-test.state";
     Require(dynamics.Save(savePath, error));
     Require(dynamics.ApplyDamage(tree.id, 0.25F, error));
-    Require(dynamics.Save(savePath, error)); // Replacing an existing save must preserve it on failure.
+    Require(dynamics.Save(savePath, error)); // Exercise replacement of an existing save.
     DynamicWorldSystem restored;
     SceneSnapshot restoredScene = scene;
     Require(restored.Initialize(region, restoredScene, error));

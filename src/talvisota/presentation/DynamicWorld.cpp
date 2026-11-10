@@ -29,9 +29,11 @@ float LengthSquared(const std::array<float, 3>& value) noexcept
     return value[0] * value[0] + value[1] * value[1] + value[2] * value[2];
 }
 
-void ApplyRotation(std::array<float, 16>& matrix, float pitch, float roll) noexcept
+void ApplyRotation(std::array<float, 16>& matrix, const float pitch,
+    const float yaw, const float roll) noexcept
 {
     const float cp = std::cos(pitch), sp = std::sin(pitch);
+    const float cy = std::cos(yaw), sy = std::sin(yaw);
     const float cr = std::cos(roll), sr = std::sin(roll);
     for (std::size_t column = 0; column < 3U; ++column)
     {
@@ -39,9 +41,11 @@ void ApplyRotation(std::array<float, 16>& matrix, float pitch, float roll) noexc
         const float x = matrix[offset], y = matrix[offset + 1U], z = matrix[offset + 2U];
         const float pitchedY = cp * y - sp * z;
         const float pitchedZ = sp * y + cp * z;
-        matrix[offset] = cr * x - sr * pitchedY;
-        matrix[offset + 1U] = sr * x + cr * pitchedY;
-        matrix[offset + 2U] = pitchedZ;
+        const float yawedX = cy * x + sy * pitchedZ;
+        const float yawedZ = -sy * x + cy * pitchedZ;
+        matrix[offset] = cr * yawedX - sr * pitchedY;
+        matrix[offset + 1U] = sr * yawedX + cr * pitchedY;
+        matrix[offset + 2U] = yawedZ;
     }
 }
 
@@ -86,6 +90,16 @@ bool DynamicWorldSystem::Initialize(const talvisota::world::WorldRegion& region,
 
     std::vector<DynamicWorldObject> objects;
     objects.reserve(region.placements.size());
+    std::unordered_map<std::string, bool> placementIds;
+    placementIds.reserve(region.placements.size());
+    for (const auto& placement : region.placements)
+    {
+        if (placement.id.empty() || !placementIds.emplace(placement.id, true).second)
+        {
+            error = "Dynamic world placements require unique, non-empty authored IDs.";
+            return false;
+        }
+    }
     for (const auto& placement : region.placements)
     {
         DynamicWorldObject object;
@@ -156,11 +170,20 @@ bool DynamicWorldSystem::ApplyImpulse(const std::string_view placementId,
         error = "A fully damaged placement cannot receive another impulse.";
         return false;
     }
+    auto nextVelocity = found->velocity;
+    auto nextAngularVelocity = found->angularVelocity;
     for (std::size_t axis = 0; axis < 3U; ++axis)
     {
-        found->velocity[axis] += impulse[axis] / found->mass;
-        found->angularVelocity[axis] += torque[axis] / found->mass;
+        nextVelocity[axis] += impulse[axis] / found->mass;
+        nextAngularVelocity[axis] += torque[axis] / found->mass;
     }
+    if (!Finite3(nextVelocity) || !Finite3(nextAngularVelocity))
+    {
+        error = "Dynamic world impulse would produce a non-finite object velocity.";
+        return false;
+    }
+    found->velocity = nextVelocity;
+    found->angularVelocity = nextAngularVelocity;
     found->anchored = false;
     found->sleeping = false;
     found->sleepSeconds = 0.0F;
@@ -270,7 +293,8 @@ bool DynamicWorldSystem::Update(const talvisota::world::WorldRegion& region,
         transform[12] = object.position[0];
         transform[13] = object.position[1];
         transform[14] = object.position[2];
-        ApplyRotation(transform, object.rotation[0] + swayPitch, object.rotation[2] + swayRoll);
+        ApplyRotation(transform, object.rotation[0] + swayPitch,
+            object.rotation[1], object.rotation[2] + swayRoll);
         for (const auto index : object.instanceIndices)
         {
             if (index >= scene.instances.size())
@@ -409,6 +433,7 @@ bool DynamicWorldSystem::Load(const std::filesystem::path& path, std::string& er
         error = "Dynamic world save has an unsupported version or placement inventory.";
         return false;
     }
+    input.ignore(std::numeric_limits<std::streamsize>::max(), '\\n');
     auto restored = objects_;
     std::unordered_map<std::string, std::size_t> indices;
     indices.reserve(restored.size());
@@ -417,19 +442,41 @@ bool DynamicWorldSystem::Load(const std::filesystem::path& path, std::string& er
     std::vector<bool> seen(restored.size(), false);
     for (std::size_t row = 0; row < count; ++row)
     {
-        std::string id;
-        DynamicWorldObject state;
-        if (!(input >> std::quoted(id) >> state.integrity >> state.mass >>
-                state.anchored >> state.sleeping >> state.sleepSeconds))
+        std::string recordLine;
+        if (!std::getline(input, recordLine))
         {
             error = "Dynamic world save contains a truncated object record.";
             return false;
         }
-        for (float& value : state.position) if (!(input >> value)) { error = "Truncated position."; return false; }
-        for (float& value : state.velocity) if (!(input >> value)) { error = "Truncated velocity."; return false; }
-        for (float& value : state.angularVelocity) if (!(input >> value)) { error = "Truncated angular velocity."; return false; }
+        std::istringstream record(recordLine);
+        std::string id;
+        DynamicWorldObject state;
+        if (!(record >> std::quoted(id) >> state.integrity >> state.mass >>
+                state.anchored >> state.sleeping >> state.sleepSeconds))
+        {
+            error = "Dynamic world save contains an invalid object record.";
+            return false;
+        }
+        for (float& value : state.position) if (!(record >> value)) { error = "Truncated position."; return false; }
+        for (float& value : state.velocity) if (!(record >> value)) { error = "Truncated velocity."; return false; }
+        for (float& value : state.angularVelocity) if (!(record >> value)) { error = "Truncated angular velocity."; return false; }
+        record >> std::ws;
         if (version >= 2U)
-            for (float& value : state.rotation) if (!(input >> value)) { error = "Truncated rotation."; return false; }
+        {
+            for (float& value : state.rotation) if (!(record >> value)) { error = "Truncated rotation."; return false; }
+        }
+        else if (!record.eof())
+        {
+            // Version 1 was briefly written both before and after rotation was
+            // added. Accept either row shape and default old rotations to zero.
+            for (float& value : state.rotation) if (!(record >> value)) { error = "Invalid legacy rotation."; return false; }
+        }
+        record >> std::ws;
+        if (!record.eof())
+        {
+            error = "Dynamic world save object record contains trailing data.";
+            return false;
+        }
         const auto found = indices.find(id);
         if (found == indices.end() || seen[found->second] ||
             !std::isfinite(state.integrity) || state.integrity < 0.0F ||
