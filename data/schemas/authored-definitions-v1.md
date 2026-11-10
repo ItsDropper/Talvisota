@@ -34,7 +34,7 @@ Header: `talvisota-mission<TAB>1`
 
 Required: `id`, `name`, `world_id`, `player_character_id`.
 
-Optional: `faction_id`, `description`. The world reference must resolve to a `.tworld`, the player-character reference to a `.tcharacter`, and the optional faction reference to a `.tfaction`.
+Required: `region_id` in addition to the fields above. Optional: `faction_id`, `description`, and `next_mission_id`. Ordered objectives use repeated `objective = objective-id -> placement-id` records. World, region, character, faction, and optional successor references must resolve to `.tworld`, `.tregion`, `.tcharacter`, `.tfaction`, and `.tmission` assets respectively; every reference must be declared as a manifest dependency. A missing `next_mission_id` ends the authored campaign sequence.
 
 ## Reference policy
 
