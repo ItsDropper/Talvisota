@@ -143,9 +143,9 @@ For a Debug build:
 .\Run-Talvisota.ps1 -Configuration Debug
 ```
 
-The engine-enabled executable launches the first-person Sakkola campaign, not the fixed-camera renderer sample. It opens on the Talvisota main menu with the First Patrol briefing. Select **Start First Patrol** to enter the world. Completing First Patrol unlocks the authored **Northern Watch** follow-up in the same Sakkola church-village region; press **E** or choose **Continue Campaign** from the menu to receive the next orders.
+The engine-enabled executable launches the first-person Sakkola campaign, not the fixed-camera renderer sample. It opens on the Talvisota main menu with the First Patrol briefing. Completing First Patrol unlocks **Northern Watch**; completing Northern Watch unlocks **Sakkola Defensive Line**, a first authored infantry engagement in the same Sakkola church-village region. The defensive mission uses authored Finnish and Soviet infantry entities and the existing combat simulation. This is fictional connective storytelling in the Sakkola setting, not a claim that a documented battle took place at these exact positions.
 
-**First Patrol objectives:** inspect the farmstead well, check the western woodpile, then report back to the Sakkola church. **Northern Watch objectives:** reach the northern barn, check the eastern village boundary, then report to the church watch post. These are fictional connective patrol objectives authored against the existing Sakkola placements, not claims about a documented battle. Press **E** near the active objective to interact. The HUD shows the active mission, task, progress, distance, and interaction prompt. CI's `--mission-smoke` validates every linked mission and its reachable objective anchors.
+**First Patrol:** inspect the farmstead well, check the western woodpile, then report to the Sakkola church. **Northern Watch:** reach the northern barn, check the eastern village boundary, then report to the church watch post. **Sakkola Defensive Line:** engage the two authored opposing infantry objectives, then report to the church post. Mission actor objectives advance from combat defeat; if an authored combat target is defeated before its objective becomes active, its defeat is retained and consumed in campaign order. The combat simulation uses the Finnish 1939 weapon catalog, first-person aim selection, ammunition, reload timing, faction checks, and deterministic NPC fire cadence. CI's `--mission-smoke` traverses the linked campaign, including its combat objectives.
 
 **Controls**
 - **WASD:** move
@@ -153,7 +153,9 @@ The engine-enabled executable launches the first-person Sakkola campaign, not th
 - **Shift:** sprint
 - **Ctrl:** crouch
 - **Space:** jump
-- **E:** interact
+- **E:** interact / receive campaign orders
+- **Left mouse button:** fire at the nearest hostile combatant along the aim ray
+- **R:** reload
 - **Esc:** pause/resume; Esc from the title menu exits
 
 The game executable requires `TALVISOTA_ENABLE_VANTA_ENGINE=ON` (as configured by `Run-Talvisota.ps1`). The default non-engine `talvisota.exe` build remains a headless lifecycle/CLI shell for CI and core development.
