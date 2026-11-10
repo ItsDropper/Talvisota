@@ -511,7 +511,7 @@ bool BuildBattlefieldAiCommands(SimulationState& state,
 }
 
 bool FindNearestHostileCombatant(const SimulationState& state,
-    const std::string_view actorEntityId, const std::array<float, 3>& rayOrigin,
+    const world::WorldRegion& region, const std::string_view actorEntityId, const std::array<float, 3>& rayOrigin,
     const std::array<float, 3>& rayDirection, const float maximumRangeMeters,
     const float targetRadiusMeters, std::string& outputEntityId, std::string& error)
 {
@@ -575,6 +575,48 @@ bool FindNearestHostileCombatant(const SimulationState& state,
             continue;
         const double perpendicularSquared = std::max(0.0, distanceSquared - along * along);
         if (perpendicularSquared > radiusSquared)
+            continue;
+
+        bool blocked = false;
+        for (const world::CollisionBox& collision : region.collision)
+        {
+            double entry = 0.0;
+            double exit = along;
+            bool intersects = true;
+            for (std::size_t axis = 0U; axis < 3U; ++axis)
+            {
+                const double minimum = static_cast<double>(collision.center[axis]) -
+                    collision.halfExtents[axis];
+                const double maximum = static_cast<double>(collision.center[axis]) +
+                    collision.halfExtents[axis];
+                const double direction = rayDirection[axis];
+                if (std::abs(direction) <= 1.0e-7)
+                {
+                    if (rayOrigin[axis] < minimum || rayOrigin[axis] > maximum)
+                    {
+                        intersects = false;
+                        break;
+                    }
+                    continue;
+                }
+                double first = (minimum - rayOrigin[axis]) / direction;
+                double second = (maximum - rayOrigin[axis]) / direction;
+                if (first > second) std::swap(first, second);
+                entry = std::max(entry, first);
+                exit = std::min(exit, second);
+                if (entry > exit)
+                {
+                    intersects = false;
+                    break;
+                }
+            }
+            if (intersects && exit >= 0.0 && entry < along - targetRadiusMeters)
+            {
+                blocked = true;
+                break;
+            }
+        }
+        if (blocked)
             continue;
         if (selected.empty() || along < nearestAlongRay ||
             (along == nearestAlongRay && entityId < selected))
