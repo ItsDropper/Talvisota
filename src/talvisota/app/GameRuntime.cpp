@@ -1019,6 +1019,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             const std::size_t visibleInstanceCount = CullCaptureInstances(scene,
                 meshCullRadii, instanceMaxDrawDistances, eye, target,
                 static_cast<float>(client.right-client.left)/static_cast<float>(client.bottom-client.top));
+            if(visibleInstanceCount==0U) {
+                error = "Sakkola capture camera sees no scene instances after culling.";
+                break;
+            }
             // Capture mode is a visual regression harness, not a frame-rate benchmark.
             // Render a few settling frames, then read back exactly one presented image.
             for (int frame = 0; frame < framesPerView; ++frame) {
