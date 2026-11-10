@@ -155,8 +155,11 @@ void TestTypedPbrMaterialBridge()
     Require(std::abs(renderMaterial.alphaCutoff - 0.33F) < 0.0001F);
     Require(renderMaterial.doubleSided);
 
-    const RenderMaterial beforeFailure = renderMaterial;
     definition.alphaMode = content::MaterialAlphaMode::Blend;
+    Require(ApplyMaterialDefinition(definition, registry, renderMaterial, error));
+    Require(renderMaterial.alphaMode == RenderAlphaMode::Blend);
+    definition.emissiveTexture = "emissive";
+    const RenderMaterial beforeFailure = renderMaterial;
     Require(!ApplyMaterialDefinition(definition, registry, renderMaterial, error));
     Require(!error.empty());
     Require(renderMaterial.baseColor == beforeFailure.baseColor);
