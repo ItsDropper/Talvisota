@@ -147,7 +147,7 @@ void TestTypedPbrMaterialBridge()
     definition.emissive = {0.1F, 0.0F, 0.0F};
     definition.normalScale = 0.65F;
     definition.occlusionStrength = 0.4F;
-    definition.alphaMode = content::MaterialAlphaMode::Mask;
+    definition.alphaMode = talvisota::content::MaterialAlphaMode::Mask;
     definition.alphaCutoff = 0.33F;
     definition.doubleSided = true;
     Require(ApplyMaterialDefinition(definition, registry, renderMaterial, error));
@@ -158,7 +158,7 @@ void TestTypedPbrMaterialBridge()
     Require(std::abs(renderMaterial.alphaCutoff - 0.33F) < 0.0001F);
     Require(renderMaterial.doubleSided);
 
-    definition.alphaMode = content::MaterialAlphaMode::Blend;
+    definition.alphaMode = talvisota::content::MaterialAlphaMode::Blend;
     Require(ApplyMaterialDefinition(definition, registry, renderMaterial, error));
     Require(renderMaterial.alphaMode == RenderAlphaMode::Blend);
     definition.baseColorTexture = "texture.test.missing";
