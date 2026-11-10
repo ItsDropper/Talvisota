@@ -158,8 +158,7 @@ bool InitializeSimulationFromAuthoredMission(
     {
         if (!entities::IsValidStableId(actor.id) ||
             !entities::IsValidStableId(actor.factionId) ||
-            !entities::IsValidStableId(actor.weaponId) ||
-            actor.factionId == authoredMission.factionId)
+            !entities::IsValidStableId(actor.weaponId))
         {
             error = "Mission battlefield actors require unique IDs, a valid opposing faction, and a known weapon ID.";
             return false;
