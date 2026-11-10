@@ -22,17 +22,19 @@ def main():
         collection.hide_render = collection.name != "LOD0"
 
     # Cycles CPU rendering avoids the OpenGL/EGL dependency that Workbench
-    # requires on headless Linux runners. It also exercises the actual PBR maps.
+    # requires on headless Linux runners. These are review renders, so 32 samples
+    # at 512 px (768 px for the needle macro) keeps CI bounded while exercising
+    # the actual PBR maps. Runtime GLB quality is unaffected.
     scene.render.engine = "CYCLES"
     scene.cycles.device = "CPU"
-    scene.cycles.samples = 64
+    scene.cycles.samples = 32
     # Ubuntu's packaged Blender build may omit OpenImageDenoiser. Disable
     # denoising explicitly so CPU renders work in minimal headless CI images.
     scene.cycles.use_denoising = False
     scene.view_settings.view_transform = "AgX"
     scene.view_settings.look = "AgX - Medium High Contrast"
-    scene.render.resolution_x = 768
-    scene.render.resolution_y = 768
+    scene.render.resolution_x = 512
+    scene.render.resolution_y = 512
     scene.render.resolution_percentage = 100
     scene.render.image_settings.file_format = "PNG"
     scene.render.film_transparent = False
@@ -86,8 +88,8 @@ def main():
                           Vector((0.0, 0.0, 12.8)) if name == "crown" else target)
         camera_data.ortho_scale = 2.8 if name == "needle_macro" else 10.5 if name == "crown" else 22.5
         if name == "needle_macro":
-            scene.render.resolution_x = 1024
-            scene.render.resolution_y = 1024
+            scene.render.resolution_x = 768
+            scene.render.resolution_y = 768
         else:
             scene.render.resolution_x = 768
             scene.render.resolution_y = 768
