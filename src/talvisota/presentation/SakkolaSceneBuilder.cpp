@@ -77,7 +77,7 @@ bool ResolveImportedTexture(const std::filesystem::path& source,
     std::error_code ec;
     const auto cacheRoot = std::filesystem::temp_directory_path(ec) /
         "talvisota-embedded-model-textures";
-    if (ec || !std::filesystem::create_directories(cacheRoot, ec) && ec) {
+    if (ec || (!std::filesystem::create_directories(cacheRoot, ec) && ec)) {
         error = "Could not create the embedded model texture cache: " + ec.message();
         return false;
     }
