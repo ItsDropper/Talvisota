@@ -43,6 +43,6 @@ The current Talvisota scene bridge and both renderer backends support the metall
 - Alpha masking with authored cutoff, sorted alpha blending with depth writes disabled, and double-sided normal orientation.
 - Texture paths are resolved against the validated content registry and must resolve to regular files before scene submission.
 
-The bridge rejects emissive texture maps until a dedicated sRGB emissive texture resource is implemented. Alpha blending is supported with back-to-front per-instance sorting and depth writes disabled.
+Emissive texture maps use sRGB sampling. Alpha blending is supported with back-to-front per-instance sorting and depth writes disabled.
 
 Base-colour maps are sampled as sRGB; normal and ORM maps are sampled as linear data. Emissive factors are linear RGB.
