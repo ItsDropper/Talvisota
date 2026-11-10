@@ -737,8 +737,8 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
                 "Water surface must reference a declared frozen-water model placement.");
     }
 
-    // The renderer raises grounded vegetation and deadwood by the authored snow
-    // surface displacement. Apply the identical offset to their collision volumes
+    // The renderer grounds vegetation, rocks and structures against the sampled
+    // snow surface. Align their collision bottoms to that same resolved surface.
     // before bounds validation so visual geometry and player collision stay aligned.
     if (candidate.terrain.surfaceProfile == TerrainSurfaceProfile::SnowDriftV1)
     {
