@@ -10,6 +10,8 @@
 #include <cmath>
 #include <cstdint>
 #include <iostream>
+#include <fstream>
+#include <memory>
 #include <limits>
 #include <map>
 #include <string>
@@ -41,6 +43,71 @@ bool ResolveImportedTexture(const std::filesystem::path& source,
         return false;
     }
     output = path.string();
+    return true;
+}
+
+bool ResolveImportedTexture(const std::filesystem::path& source,
+    const std::shared_ptr<const vanta::assets::CpuEmbeddedImage>& embedded,
+    std::string& output, std::string& error) {
+    if (!source.empty())
+        return ResolveImportedTexture(source, output, error);
+    if (!embedded) {
+        output.clear();
+        return true;
+    }
+    if (embedded->encodedBytes.empty()) {
+        error = "Imported embedded material texture has no encoded image bytes.";
+        return false;
+    }
+
+    std::string extension;
+    if (embedded->mimeType == "image/png") extension = ".png";
+    else if (embedded->mimeType == "image/jpeg") extension = ".jpg";
+    else {
+        error = "Unsupported embedded material texture MIME type: " + embedded->mimeType;
+        return false;
+    }
+
+    std::uint64_t hash = 14695981039346656037ULL;
+    for (const std::uint8_t byte : embedded->encodedBytes) {
+        hash ^= byte;
+        hash *= 1099511628211ULL;
+    }
+
+    std::error_code ec;
+    const auto cacheRoot = std::filesystem::temp_directory_path(ec) /
+        "talvisota-embedded-model-textures";
+    if (ec || !std::filesystem::create_directories(cacheRoot, ec) && ec) {
+        error = "Could not create the embedded model texture cache: " + ec.message();
+        return false;
+    }
+    const auto cachedPath = cacheRoot / (std::to_string(hash) + extension);
+    const bool cachedFileMatches = std::filesystem::is_regular_file(cachedPath, ec) && !ec &&
+        std::filesystem::file_size(cachedPath, ec) == embedded->encodedBytes.size() && !ec;
+    if (!cachedFileMatches) {
+        std::ofstream outputFile(cachedPath, std::ios::binary | std::ios::trunc);
+        if (!outputFile || !outputFile.write(
+                reinterpret_cast<const char*>(embedded->encodedBytes.data()),
+                static_cast<std::streamsize>(embedded->encodedBytes.size()))) {
+            error = "Could not write an embedded model texture to the runtime cache: " +
+                cachedPath.string();
+            return false;
+        }
+        outputFile.close();
+        if (!outputFile) {
+            error = "Could not finish writing an embedded model texture to the runtime cache: " +
+                cachedPath.string();
+            return false;
+        }
+    }
+
+    const auto canonical = std::filesystem::weakly_canonical(cachedPath, ec);
+    if (ec || !std::filesystem::is_regular_file(canonical, ec) || ec) {
+        error = "Cached embedded model texture is missing or unreadable: " + cachedPath.string();
+        return false;
+    }
+    output = canonical.string();
+    error.clear();
     return true;
 }
 
@@ -244,11 +311,11 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
                     sourceMaterial.baseColor.z};
                 material.roughness = sourceMaterial.roughness;
                 material.metallic = sourceMaterial.metallic;
-                if (!ResolveImportedTexture(sourceMaterial.diffuseTexture, material.baseColorTexture, error) ||
-                    !ResolveImportedTexture(sourceMaterial.normalTexture, material.normalTexture, error) ||
-                    !ResolveImportedTexture(sourceMaterial.roughnessTexture, material.roughnessTexture, error) ||
-                    !ResolveImportedTexture(sourceMaterial.metallicTexture, material.metallicTexture, error) ||
-                    !ResolveImportedTexture(sourceMaterial.ambientOcclusionTexture, material.ambientOcclusionTexture, error))
+                if (!ResolveImportedTexture(sourceMaterial.diffuseTexture, sourceMaterial.embeddedDiffuseTexture, material.baseColorTexture, error) ||
+                    !ResolveImportedTexture(sourceMaterial.normalTexture, sourceMaterial.embeddedNormalTexture, material.normalTexture, error) ||
+                    !ResolveImportedTexture(sourceMaterial.roughnessTexture, sourceMaterial.embeddedRoughnessTexture, material.roughnessTexture, error) ||
+                    !ResolveImportedTexture(sourceMaterial.metallicTexture, sourceMaterial.embeddedMetallicTexture, material.metallicTexture, error) ||
+                    !ResolveImportedTexture(sourceMaterial.ambientOcclusionTexture, sourceMaterial.embeddedAmbientOcclusionTexture, material.ambientOcclusionTexture, error))
                     return false;
 
                 if (!placement.materialAssetId.empty() && placement.materialAssetId != "-" &&
