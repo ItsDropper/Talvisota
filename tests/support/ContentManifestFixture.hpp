@@ -23,6 +23,7 @@ public:
         const auto timestamp = static_cast<std::uint64_t>(
             std::chrono::steady_clock::now().time_since_epoch().count());
         const auto nonce = timestamp ^ sequence.fetch_add(1U, std::memory_order_relaxed);
+        const std::string nonceText = std::to_string(nonce);
         std::error_code filesystemError;
         const auto temporaryRoot = std::filesystem::temp_directory_path(filesystemError);
         if (filesystemError) {
@@ -31,7 +32,7 @@ public:
         }
 
         manifestDirectory_ = temporaryRoot /
-            ("talvisota-content-manifest-" + Sanitize(label) + "-" + std::to_string(nonce));
+            ("talvisota-content-manifest-" + Sanitize(label) + "-" + nonceText);
         std::filesystem::create_directories(manifestDirectory_, filesystemError);
         if (filesystemError) {
             error_ = "Could not create the temporary content-manifest directory: " +
@@ -93,9 +94,24 @@ public:
                         return;
                     }
 
-                    // Keep the original directory depth so the OBJ's relative mtllib
-                    // and texture paths continue to resolve without copying assets.
-                    fields[3] = fallbackModel;
+                    // Keep the original directory depth so relative mtllib and texture
+                    // paths still resolve, but use a unique path to avoid catalog collisions.
+                    const std::string fallbackName =
+                        (isPine ? "pine_test_fallback_" : "boulder_test_fallback_") + nonceText + ".obj";
+                    const std::filesystem::path fallbackDestination =
+                        sourceRoot_ / "assets/models/environment" / fallbackName;
+                    std::filesystem::copy_file(
+                        sourceRoot_ / fallbackModel,
+                        fallbackDestination,
+                        std::filesystem::copy_options::none,
+                        assetError);
+                    if (assetError) {
+                        error_ = "Could not create a unique fallback model for headless tests: " +
+                            assetError.message();
+                        return;
+                    }
+                    temporaryAssets_.push_back(fallbackDestination);
+                    fields[3] = fallbackDestination.lexically_relative(sourceRoot_).generic_string();
                 }
             }
 
@@ -129,6 +145,10 @@ public:
         std::error_code ignored;
         if (!manifestDirectory_.empty())
             std::filesystem::remove_all(manifestDirectory_, ignored);
+        for (const auto& assetPath : temporaryAssets_) {
+            ignored.clear();
+            std::filesystem::remove(assetPath, ignored);
+        }
     }
 
     ContentManifestFixture(const ContentManifestFixture&) = delete;
@@ -183,6 +203,7 @@ private:
 
     std::filesystem::path sourceRoot_;
     std::filesystem::path manifestDirectory_;
+    std::vector<std::filesystem::path> temporaryAssets_;
     std::string error_;
     bool ready_ = false;
 };
