@@ -188,7 +188,7 @@ jobs:
       - name: Build renderer adapter and content asset tools
         run: cmake --build build-msvc --target talvisota talvisota_renderer_sample talvisota_renderer_contract_tests talvisota_asset_validate talvisota_content_package talvisota_texture_process talvisota_engine_asset_validation_tests talvisota_engine_asset_package_tests talvisota_engine_asset_pipeline_tests --parallel
 
-      - name: First Patrol runtime smoke test
+      - name: Authored campaign runtime smoke test
         run: .\\build-msvc\\talvisota.exe --mission-smoke
 
       - name: Test game-owned renderer and asset contracts
@@ -227,14 +227,16 @@ jobs:
           Talvisota.exe
           '@ | Set-Content -LiteralPath (Join-Path $packageRoot 'Start-Talvisota.bat') -Encoding Ascii
           @'
-          TALVISOTA - SAKKOLA FIRST PATROL
+          TALVISOTA - SAKKOLA CAMPAIGN
 
           Double-click Start-Talvisota.bat to launch the first-person game.
           WASD move, mouse look, Shift sprint, Ctrl crouch, Space jump,
-          E interact, and Esc pause or open the main menu.
+          E interact or continue campaign, and Esc pause or open the menu.
 
           First Patrol: inspect the farmstead well, check the western
-          woodpile, then report back to the Sakkola church.
+          woodpile, then report to the Sakkola church.
+          Northern Watch: reach the northern barn, check the eastern
+          village boundary, then report to the church watch post.
           '@ | Set-Content -LiteralPath (Join-Path $packageRoot 'README.txt') -Encoding UTF8
           if (-not (Test-Path -LiteralPath (Join-Path $packageRoot 'content\\catalog.tmanifest'))) {
             throw 'Packaged Sakkola content manifest is missing.'
