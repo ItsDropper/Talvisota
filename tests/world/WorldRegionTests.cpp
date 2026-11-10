@@ -176,8 +176,8 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
             "Sakkola world should own its registered terrain model.");
     Require(world.hasEnvironment && std::abs(world.environment.sunIntensity - 1.15F) < 0.001F &&
             std::abs(world.environment.ambientIntensity - 0.66F) < 0.001F &&
-            std::abs(world.environment.fogDensity - 0.00062F) < 0.00001F &&
-            std::abs(world.environment.fogStart - 115.0F) < 0.001F &&
+            std::abs(world.environment.fogDensity - 0.0014F) < 0.00001F &&
+            std::abs(world.environment.fogStart - 65.0F) < 0.001F &&
             std::abs(world.environment.windStrength - 0.06F) < 0.001F,
             "Sakkola world should expose the authored overcast winter lighting, aerial perspective, and wind.");
 
