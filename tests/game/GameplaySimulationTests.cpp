@@ -294,7 +294,7 @@ void TestAuthoredWorldSimulation()
         const std::array<float,3> rayOrigin{
             enemy->position[0],enemy->position[1]+1.62F,enemy->position[2]-10.0F};
         std::string selectedTarget;
-        Check(FindNearestHostileCombatant(battleState,battleState.playerEntityId,
+        Check(FindNearestHostileCombatant(battleState,region,battleState.playerEntityId,
             rayOrigin,{0.0F,0.0F,1.0F},180.0F,0.95F,selectedTarget,error) &&
             selectedTarget=="actor.soviet.test",
             "first-person aim selection resolves the nearest hostile actor");
