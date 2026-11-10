@@ -185,9 +185,11 @@ public:
                 source.intensity
             };
         }
-        const vanta::renderer::SceneFrame frame = m_scene.BuildFrame(view);
+        // Reuse the persistent frame draw vector; rebuilding a local SceneFrame here
+        // allocated and freed the full visible-instance array on every rendered frame.
+        m_scene.BuildFrame(view, m_frameScratch);
 
-        const bool rendered = m_d3d12 ? m_d3d12->Render(frame) : m_d3d11->Render(frame);
+        const bool rendered = m_d3d12 ? m_d3d12->Render(m_frameScratch) : m_d3d11->Render(m_frameScratch);
         if (!rendered) {
             if (m_d3d12 && !m_d3d12->LastRenderError().empty())
                 error = m_d3d12->LastRenderError();
@@ -485,6 +487,7 @@ private:
     std::unique_ptr<vanta::D3D11Renderer> m_d3d11;
     std::unique_ptr<vanta::D3D12Renderer> m_d3d12;
     vanta::renderer::SceneSubmission m_scene;
+    vanta::renderer::SceneFrame m_frameScratch;
     // Persistent translation state; index i corresponds to snapshot element i.
     std::vector<vanta::renderer::MeshHandle> m_meshHandles;
     std::vector<vanta::renderer::MaterialHandle> m_materialHandles;
