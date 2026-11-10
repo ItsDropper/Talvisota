@@ -1,10 +1,14 @@
 #include "talvisota/presentation/SceneRenderer.hpp"
+#include "talvisota/presentation/MaterialRenderBridge.hpp"
+#include "talvisota/content/ContentRegistry.hpp"
+#include "talvisota/content/MaterialDefinition.hpp"
 #include "talvisota/presentation/CaptureValidation.hpp"
 
 #include <algorithm>
 #include <cstdlib>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
 #include <string>
 #include <limits>
 #include <vector>
@@ -69,6 +73,73 @@ public:
     std::uint32_t renderedFrames = 0;
 };
 
+
+void TestTypedPbrMaterialBridge()
+{
+    const std::filesystem::path root =
+        std::filesystem::temp_directory_path() / "talvisota-material-bridge-tests";
+    std::error_code filesystemError;
+    std::filesystem::remove_all(root, filesystemError);
+    std::filesystem::create_directories(root / "materials", filesystemError);
+    std::filesystem::create_directories(root / "textures", filesystemError);
+    Require(!filesystemError);
+
+    {
+        std::ofstream manifest(root / "catalog.tmanifest", std::ios::binary);
+        manifest << "talvisota-content-manifest\\t1\\n"
+                 << "asset\\tmaterial.test.snow\\tmaterial\\tmaterials/snow.tmat\\trequired\\ttexture.test.orm\\tproject\\tproject\\n"
+                 << "asset\\ttexture.test.orm\\ttexture\\ttextures/snow-orm.bmp\\trequired\\t-\\tproject\\tproject\\n";
+        Require(static_cast<bool>(manifest));
+        std::ofstream texture(root / "textures/snow-orm.bmp", std::ios::binary);
+        texture << "test texture payload";
+        Require(static_cast<bool>(texture));
+        std::ofstream material(root / "materials/snow.tmat", std::ios::binary);
+        material << "talvisota-material\\t1\\n"
+                 << "id = material.test.snow\\n"
+                 << "base_color = 0.82,0.88,0.96\\n"
+                 << "roughness = 0.91\\n"
+                 << "metallic = 0.04\\n"
+                 << "orm_texture = texture.test.orm\\n";
+        Require(static_cast<bool>(material));
+    }
+
+    talvisota::content::ContentRegistry registry;
+    std::vector<talvisota::content::ContentDiagnostic> contentDiagnostics;
+    Require(talvisota::content::LoadContentManifest(
+        root / "catalog.tmanifest", root, registry, contentDiagnostics));
+
+    talvisota::content::MaterialDefinition definition;
+    std::vector<talvisota::content::MaterialDiagnostic> materialDiagnostics;
+    Require(talvisota::content::LoadMaterialDefinition(
+        root / "materials/snow.tmat", registry, definition, materialDiagnostics));
+
+    RenderMaterial renderMaterial;
+    std::string error;
+    Require(ApplyMaterialDefinition(definition, registry, renderMaterial, error));
+    Require(error.empty());
+    Require(std::abs(renderMaterial.baseColor[0] - 0.82F) < 0.0001F);
+    Require(std::abs(renderMaterial.baseColor[1] - 0.88F) < 0.0001F);
+    Require(std::abs(renderMaterial.roughness - 0.91F) < 0.0001F);
+    Require(std::abs(renderMaterial.metallic - 0.04F) < 0.0001F);
+    Require(renderMaterial.packedMetallicRoughness);
+    Require(!renderMaterial.roughnessTexture.empty());
+    Require(renderMaterial.roughnessTexture == renderMaterial.metallicTexture);
+    Require(renderMaterial.roughnessTexture == renderMaterial.ambientOcclusionTexture);
+    Require(std::filesystem::path(renderMaterial.roughnessTexture).is_absolute());
+
+    // Unsupported advanced fields must fail explicitly and must not partially
+    // overwrite a previously valid runtime material.
+    definition.emissive = {0.1F, 0.0F, 0.0F};
+    const RenderMaterial beforeFailure = renderMaterial;
+    Require(!ApplyMaterialDefinition(definition, registry, renderMaterial, error));
+    Require(!error.empty());
+    Require(renderMaterial.baseColor == beforeFailure.baseColor);
+    Require(renderMaterial.roughnessTexture == beforeFailure.roughnessTexture);
+
+    std::filesystem::remove_all(root, filesystemError);
+    Require(!filesystemError);
+}
+
 SceneSnapshot ValidScene()
 {
     SceneSnapshot scene;
@@ -95,6 +166,7 @@ SceneSnapshot ValidScene()
 
 int main()
 {
+    TestTypedPbrMaterialBridge();
     std::string error;
     SceneSnapshot scene = ValidScene();
     FakeSceneRenderer fakeRenderer;
