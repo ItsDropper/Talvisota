@@ -746,6 +746,36 @@ void TestTaipaleRiverfrontWorldAndMissionLoad()
             region.waterSurfaces.size() == 32U,
             "Taipale must retain its 4 km terrain grid and segmented river surface.");
 
+    std::ifstream terrainMesh(root / "assets/models/terrain/taipale-riverfront.obj");
+    Require(static_cast<bool>(terrainMesh), "Taipale terrain render mesh should be readable.");
+    std::size_t terrainVertexCount = 0U;
+    std::string terrainLine;
+    while (std::getline(terrainMesh, terrainLine)) {
+        std::istringstream record(terrainLine);
+        std::string type;
+        record >> type;
+        if (type != "v") continue;
+        float x = 0.0F, y = 0.0F, z = 0.0F;
+        Require(static_cast<bool>(record >> x >> y >> z),
+                "Taipale terrain mesh vertex must contain three coordinates.");
+        const std::size_t row = terrainVertexCount / region.terrain.columns;
+        const std::size_t column = terrainVertexCount % region.terrain.columns;
+        Require(row < region.terrain.rows,
+                "Taipale terrain mesh must not exceed its authored heightfield.");
+        const float expectedX = region.terrain.originX +
+            static_cast<float>(column) * region.terrain.spacingX;
+        const float expectedZ = region.terrain.originZ +
+            static_cast<float>(row) * region.terrain.spacingZ;
+        const float expectedY = region.terrain.elevations[terrainVertexCount];
+        Require(std::abs(x - expectedX) < 0.001F &&
+                std::abs(y - expectedY) < 0.001F &&
+                std::abs(z - expectedZ) < 0.001F,
+                "Taipale visual terrain vertices must exactly match collision heightfield samples.");
+        ++terrainVertexCount;
+    }
+    Require(terrainVertexCount == region.terrain.rows * region.terrain.columns,
+            "Taipale visual terrain must contain exactly one mesh vertex per heightfield sample.");
+
     float riverHeight = 0.0F;
     std::array<float, 3> riverNormal{};
     std::string error;
