@@ -1321,6 +1321,15 @@ constexpr std::array<CaptureView, 7> Views = {{
     // Inside the west farmhouse, facing from the entrance toward the stove and table.
     {L"07-farmhouse-interior.png", {-42.46F, 9.7F, 125.54F}, {-42.67F, 9.7F, 124.54F}, false}
 }};
+constexpr std::array<CaptureView, 7> TaipaleViews = {{
+    {L"01-taipale-overview.png", {0.0F, 80.0F, -650.0F}, {0.0F, 5.0F, 620.0F}},
+    {L"02-taipale-river-bend.png", {-500.0F, 38.0F, 850.0F}, {0.0F, 5.0F, 620.0F}},
+    {L"03-taipale-frozen-river.png", {350.0F, 23.0F, 450.0F}, {0.0F, 5.0F, 620.0F}},
+    {L"04-taipale-forest.png", {1400.0F, 34.0F, 1400.0F}, {1500.0F, 14.0F, 1150.0F}},
+    {L"05-taipale-farmstead.png", {950.0F, 30.0F, -300.0F}, {720.0F, 12.0F, -560.0F}},
+    {L"06-taipale-watch-post.png", {-1350.0F, 26.0F, 1250.0F}, {-1120.0F, 10.0F, 1040.0F}},
+    {L"07-taipale-command-hut.png", {1500.0F, 27.0F, -1400.0F}, {1360.0F, 10.0F, -1160.0F}}
+}};
 }
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
@@ -1402,8 +1411,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     }
     LocalFree(parsedArguments);
     if ((missionSmokeRequested && captureRequested) ||
-        (missionSmokeRequested && selectedMissionId != "mission.sakkola.first-patrol") ||
-        (captureRequested && selectedMissionId != "mission.sakkola.first-patrol")) {
+        (missionSmokeRequested && selectedMissionId != "mission.sakkola.first-patrol")) {
         if (ownsCom) CoUninitialize();
         return 1;
     }
@@ -1424,10 +1432,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             if (ownsCom) CoUninitialize();
             return 1;
         }
-        captureLog << "Sakkola renderer backend: " << (useD3D11 ? "D3D11" : "D3D12")
+        captureLog << "Talvisota renderer backend: " << (useD3D11 ? "D3D11" : "D3D12")
             << "; capture mode enabled; output=" << std::filesystem::path(captureDir).string() << "\n";
     }
-    std::cout << "Sakkola renderer backend: " << (useD3D11 ? "D3D11" : "D3D12")
+    std::cout << "Talvisota renderer backend: " << (useD3D11 ? "D3D11" : "D3D12")
         << "; capture mode: " << (captureRequested ? "enabled" : "disabled") << ".\n";
 
     std::filesystem::path contentRoot;
@@ -1443,7 +1451,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     talvisota::content::AuthoredDefinition authoredMission;
     std::string selectedWorldId = "world.sakkola";
     std::string selectedRegionId = "region.sakkola.church_village";
-    if (!captureRequested) {
+    if (!captureRequested || selectedMissionId != "mission.sakkola.first-patrol") {
         if (!LoadMission(contentRoot, selectedMissionId, authoredMission, error)) {
             std::cerr << "Could not load selected mission: " << error << "\\n";
             if (ownsCom) CoUninitialize();
@@ -1474,10 +1482,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
 
     const auto worldEnvironment=scene.environment;
 
-    std::cout << "Sakkola scene composition: placements=" << placements
+    std::cout << gameRegion.id << " scene composition: placements=" << placements
         << ", material-bound instances=" << draws << ", unique meshes=" << scene.meshes.size()
         << ", materials=" << scene.materials.size() << ".\n";
-    if (captureLog) captureLog << "Sakkola scene composition: placements=" << placements
+    if (captureLog) captureLog << gameRegion.id << " scene composition: placements=" << placements
         << ", material-bound instances=" << draws << ", unique meshes=" << scene.meshes.size()
         << ", materials=" << scene.materials.size() << ".\n";
 
@@ -1750,25 +1758,27 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         std::filesystem::create_directories(output, directoryError);
         if (directoryError)
             error = "Could not create screenshot output directory: " + directoryError.message();
-        for (const auto& view : Views) {
+        const auto& activeViews = gameRegion.id == "region.taipale.riverfront"
+            ? TaipaleViews : Views;
+        for (const auto& view : activeViews) {
             if (!error.empty()) break;
             GetClientRect(window, &client);
             auto eye = view.eye;
             auto target = view.target;
             if (!KeepCameraAboveTerrain(gameRegion, eye, 1.7F, error) ||
                 !KeepCameraAboveTerrain(gameRegion, target, 0.35F, error)) {
-                error = "Could not place Sakkola capture camera above the terrain: " + error;
+                error = "Could not place world capture camera above the terrain: " + error;
                 break;
             }
             if (!SetCamera(scene, eye, target, client.right - client.left, client.bottom - client.top)) {
-                error = "Could not construct a valid Sakkola capture camera.";
+                error = "Could not construct a valid world capture camera.";
                 break;
             }
             const std::size_t visibleInstanceCount = CullCaptureInstances(scene,
                 meshCullRadii, instanceMaxDrawDistances, eye, target,
                 static_cast<float>(client.right-client.left)/static_cast<float>(client.bottom-client.top));
             if(visibleInstanceCount==0U) {
-                error = "Sakkola capture camera sees no scene instances after culling.";
+                error = "World capture camera sees no scene instances after culling.";
                 break;
             }
             // Capture mode is a visual regression harness, not a frame-rate benchmark.
