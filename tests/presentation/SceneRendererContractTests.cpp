@@ -141,14 +141,26 @@ void TestTypedPbrMaterialBridge()
     Require(ValidateSceneSnapshot(translatedMaterialScene, sceneValidationError));
     Require(sceneValidationError.empty());
 
-    // Unsupported advanced fields must fail explicitly and must not partially
-    // overwrite a previously valid runtime material.
     definition.emissive = {0.1F, 0.0F, 0.0F};
+    definition.normalScale = 0.65F;
+    definition.occlusionStrength = 0.4F;
+    definition.alphaMode = content::MaterialAlphaMode::Mask;
+    definition.alphaCutoff = 0.33F;
+    definition.doubleSided = true;
+    Require(ApplyMaterialDefinition(definition, registry, renderMaterial, error));
+    Require(renderMaterial.emissive == definition.emissive);
+    Require(std::abs(renderMaterial.normalScale - 0.65F) < 0.0001F);
+    Require(std::abs(renderMaterial.occlusionStrength - 0.4F) < 0.0001F);
+    Require(renderMaterial.alphaMode == RenderAlphaMode::Mask);
+    Require(std::abs(renderMaterial.alphaCutoff - 0.33F) < 0.0001F);
+    Require(renderMaterial.doubleSided);
+
     const RenderMaterial beforeFailure = renderMaterial;
+    definition.alphaMode = content::MaterialAlphaMode::Blend;
     Require(!ApplyMaterialDefinition(definition, registry, renderMaterial, error));
     Require(!error.empty());
     Require(renderMaterial.baseColor == beforeFailure.baseColor);
-    Require(renderMaterial.roughnessTexture == beforeFailure.roughnessTexture);
+    Require(renderMaterial.emissive == beforeFailure.emissive);
 
     std::filesystem::remove_all(root, filesystemError);
     Require(!filesystemError);
