@@ -5,6 +5,7 @@ world_id = world.sakkola
 region_id = region.sakkola.church_village
 player_character_id = character.sakkola_infantryman
 faction_id = faction.finnish
+environment_profile = overcast
 description = After your report at the church, the local post asks you to check the northern approach and confirm that the village boundary remains clear. This is a fictional connective patrol, not a claim about a documented engagement.
 objective = objective.reach-northern-barn -> barn.north
 objective = objective.check-eastern-boundary -> prop.fence.05
