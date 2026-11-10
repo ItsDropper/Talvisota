@@ -117,6 +117,7 @@ struct BattlefieldActorRenderBinding final {
     std::array<float,3> previousPosition{};
     float stridePhase=0.0F;
     float lastUpdateSeconds=0.0F;
+    float fallStartSeconds=-1.0F;
     bool hasPreviousPosition=false;
 };
 void AppendBox(talvisota::presentation::RenderMesh& mesh,
@@ -514,8 +515,10 @@ void UpdateBattlefieldActorInstances(talvisota::presentation::SceneSnapshot& sce
         if(binding.bodyInstance>=scene.instances.size()||binding.weaponInstance>=scene.instances.size()) continue;
         const auto* actor=simulation.entities.Find(binding.entityId);
         const auto combatant=simulation.combat.combatants.find(binding.entityId);
-        const bool visible=player!=nullptr&&actor!=nullptr&&actor->active&&
-            combatant!=simulation.combat.combatants.end()&&combatant->second.health>0.0F;
+        const bool registered=player!=nullptr&&actor!=nullptr&&actor->active&&
+            combatant!=simulation.combat.combatants.end();
+        const bool defeated=registered&&combatant->second.health<=0.0F;
+        const bool visible=registered;
         auto& body=scene.instances[binding.bodyInstance];
         auto& arms=scene.instances[binding.armsInstance];
         auto& gear=scene.instances[binding.gearInstance];
@@ -528,6 +531,26 @@ void UpdateBattlefieldActorInstances(talvisota::presentation::SceneSnapshot& sce
         if(!visible) continue;
         const float yaw=std::atan2(player->position[0]-actor->position[0],
             player->position[2]-actor->position[2]);
+        if(defeated) {
+            // Defeated infantry remain as non-graphic scene characters and settle
+            // onto the terrain instead of vanishing on the first defeated frame.
+            if(binding.fallStartSeconds<0.0F) binding.fallStartSeconds=elapsedSeconds;
+            const float progress=std::clamp((elapsedSeconds-binding.fallStartSeconds)/0.48F,0.0F,1.0F);
+            const float eased=progress*progress*(3.0F-2.0F*progress);
+            const float direction=(i%2U)==0U?1.0F:-1.0F;
+            constexpr float pivotHeight=0.84F;
+            auto fallen=ActorWorldMatrix(actor->position,yaw,0.0F,0.0F,direction*1.42F*eased);
+            // Reposition the transform around the character centre so the body
+            // rests on the snow rather than rotating below the terrain.
+            fallen[12]-=fallen[4]*pivotHeight;
+            fallen[13]+=pivotHeight-fallen[5]*pivotHeight;
+            fallen[14]-=fallen[6]*pivotHeight;
+            body.world=fallen; arms.world=fallen; gear.world=fallen; head.world=fallen;
+            leftLeg.world=fallen; rightLeg.world=fallen; weapon.world=fallen;
+            binding.hasPreviousPosition=false;
+            continue;
+        }
+        binding.fallStartSeconds=-1.0F;
         float movementAmount=0.0F;
         if(binding.hasPreviousPosition) {
             const float dt=elapsedSeconds-binding.lastUpdateSeconds;
