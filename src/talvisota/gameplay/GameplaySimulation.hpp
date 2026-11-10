@@ -7,6 +7,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <map>
 #include <set>
 #include <span>
 #include <string>
@@ -66,6 +67,8 @@ struct SimulationState final
     entities::EntityRegistry entities;
     // Mission-owned combat state advances alongside the same deterministic simulation.
     combat::CombatSimulationState combat;
+    // Deterministic NPC fire cadence, keyed by stable actor ID.
+    std::map<std::string, double, std::less<>> actorNextFireAtSeconds;
     // Set by authored-mission initialization; empty for generic test/simulation fixtures.
     std::string playerEntityId;
     missions::MissionState mission;
@@ -109,6 +112,10 @@ struct SimulationState final
 // Applies defeated combat-target events to matching active mission objectives.
 // Commands and results must be the corresponding outputs from one AdvanceCombat call.
 // The mission state and output remain unchanged on malformed or inconsistent input.
+// Builds bounded, deterministic NPC fire commands for living non-player combatants.
+[[nodiscard]] bool BuildBattlefieldAiCommands(SimulationState& state,
+    std::vector<combat::CombatCommand>& output, std::string& error);
+
 // Resolves a first-person aim ray to the nearest living hostile combatant. The
 // supplied range is game-balance data from the equipped weapon definition.
 [[nodiscard]] bool FindNearestHostileCombatant(const SimulationState& state,
