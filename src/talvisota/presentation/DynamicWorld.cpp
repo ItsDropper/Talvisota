@@ -1,0 +1,411 @@
+#include "talvisota/presentation/DynamicWorld.hpp"
+
+#include <algorithm>
+#include <cmath>
+#include <fstream>
+#include <iomanip>
+#include <limits>
+#include <sstream>
+#include <system_error>
+#include <unordered_map>
+
+namespace talvisota::presentation
+{
+namespace
+{
+constexpr float Gravity = 9.81F;
+constexpr float SleepLinearSpeed = 0.075F;
+constexpr float SleepAngularSpeed = 0.12F;
+constexpr float SleepDelay = 0.8F;
+
+bool Finite3(const std::array<float, 3>& value) noexcept
+{
+    return std::all_of(value.begin(), value.end(), [](float v) { return std::isfinite(v); });
+}
+
+float LengthSquared(const std::array<float, 3>& value) noexcept
+{
+    return value[0] * value[0] + value[1] * value[1] + value[2] * value[2];
+}
+
+void ApplyRotation(std::array<float, 16>& matrix, float pitch, float roll) noexcept
+{
+    const float cp = std::cos(pitch), sp = std::sin(pitch);
+    const float cr = std::cos(roll), sr = std::sin(roll);
+    for (std::size_t column = 0; column < 3U; ++column)
+    {
+        const std::size_t offset = column * 4U;
+        const float x = matrix[offset], y = matrix[offset + 1U], z = matrix[offset + 2U];
+        const float pitchedY = cp * y - sp * z;
+        const float pitchedZ = sp * y + cp * z;
+        matrix[offset] = cr * x - sr * pitchedY;
+        matrix[offset + 1U] = sr * x + cr * pitchedY;
+        matrix[offset + 2U] = pitchedZ;
+    }
+}
+
+float ObjectMass(const talvisota::world::WorldPlacement& placement) noexcept
+{
+    switch (placement.category)
+    {
+    case talvisota::world::PlacementCategory::Vegetation: return std::max(12.0F, 45.0F * placement.uniformScale);
+    case talvisota::world::PlacementCategory::Rock: return std::max(80.0F, 240.0F * placement.uniformScale);
+    case talvisota::world::PlacementCategory::Structure: return std::max(500.0F, 1800.0F * placement.uniformScale);
+    case talvisota::world::PlacementCategory::Terrain: return std::numeric_limits<float>::max();
+    case talvisota::world::PlacementCategory::Prop: return std::max(3.0F, 18.0F * placement.uniformScale);
+    }
+    return 1.0F;
+}
+} // namespace
+
+bool DynamicWorldSystem::Initialize(const talvisota::world::WorldRegion& region,
+    SceneSnapshot& scene, std::string& error)
+{
+    if (!objects_.empty())
+    {
+        error = "Dynamic world system is already initialized.";
+        return false;
+    }
+    if (region.placements.empty() || scene.instances.empty())
+    {
+        error = "Dynamic world initialization requires authored placements and rendered instances.";
+        return false;
+    }
+
+    std::vector<DynamicWorldObject> objects;
+    objects.reserve(region.placements.size());
+    for (const auto& placement : region.placements)
+    {
+        DynamicWorldObject object;
+        object.id = placement.id;
+        object.category = placement.category;
+        object.authoredTransform = talvisota::world::BuildPlacementTransform(placement);
+        object.position = placement.position;
+        object.mass = ObjectMass(placement);
+        object.anchored = placement.category == talvisota::world::PlacementCategory::Terrain ||
+            placement.category == talvisota::world::PlacementCategory::Structure;
+        object.sleeping = object.anchored;
+        if (placement.category == talvisota::world::PlacementCategory::Terrain)
+            object.integrity = std::numeric_limits<float>::max();
+
+        // The scene builder emits one material-bound instance per imported model
+        // material. Bind every such instance to its authored placement by transform,
+        // rather than assuming one placement equals one draw call.
+        for (std::size_t index = 0; index < scene.instances.size(); ++index)
+        {
+            const auto& world = scene.instances[index].world;
+            if (std::abs(world[12] - placement.position[0]) <= 0.02F &&
+                std::abs(world[14] - placement.position[2]) <= 0.02F &&
+                std::abs(world[13] - placement.position[1]) <= 3.0F)
+                object.instanceIndices.push_back(index);
+        }
+        if (object.instanceIndices.empty())
+        {
+            error = "Dynamic world could not bind placement to rendered instances: " + placement.id;
+            return false;
+        }
+        objects.push_back(std::move(object));
+    }
+    objects_.swap(objects);
+    error.clear();
+    return true;
+}
+
+bool DynamicWorldSystem::ApplyImpulse(const std::string_view placementId,
+    const std::array<float, 3>& impulse, const std::array<float, 3>& torque,
+    std::string& error)
+{
+    if (!Finite3(impulse) || !Finite3(torque))
+    {
+        error = "Dynamic world impulse and torque must be finite.";
+        return false;
+    }
+    const auto found = std::find_if(objects_.begin(), objects_.end(),
+        [placementId](const DynamicWorldObject& object) { return object.id == placementId; });
+    if (found == objects_.end())
+    {
+        error = "Dynamic world placement does not exist: " + std::string(placementId);
+        return false;
+    }
+    if (found->category == talvisota::world::PlacementCategory::Terrain ||
+        found->category == talvisota::world::PlacementCategory::Structure)
+    {
+        error = "This placement is anchored by its authored structural constraints.";
+        return false;
+    }
+    if (found->integrity <= 0.0F)
+    {
+        error = "A fully damaged placement cannot receive another impulse.";
+        return false;
+    }
+    for (std::size_t axis = 0; axis < 3U; ++axis)
+    {
+        found->velocity[axis] += impulse[axis] / found->mass;
+        found->angularVelocity[axis] += torque[axis] / found->mass;
+    }
+    found->anchored = false;
+    found->sleeping = false;
+    found->sleepSeconds = 0.0F;
+    error.clear();
+    return true;
+}
+
+bool DynamicWorldSystem::ApplyDamage(const std::string_view placementId,
+    const float damage, std::string& error)
+{
+    if (!std::isfinite(damage) || damage < 0.0F)
+    {
+        error = "Dynamic world damage must be finite and non-negative.";
+        return false;
+    }
+    const auto found = std::find_if(objects_.begin(), objects_.end(),
+        [placementId](const DynamicWorldObject& object) { return object.id == placementId; });
+    if (found == objects_.end())
+    {
+        error = "Dynamic world placement does not exist: " + std::string(placementId);
+        return false;
+    }
+    if (found->category == talvisota::world::PlacementCategory::Terrain ||
+        found->category == talvisota::world::PlacementCategory::Structure)
+    {
+        error = "Terrain and load-bearing structures require structural damage evaluation.";
+        return false;
+    }
+    found->integrity = std::max(0.0F, found->integrity - damage);
+    if (found->integrity <= 0.0F)
+    {
+        found->anchored = false;
+        found->sleeping = false;
+    }
+    error.clear();
+    return true;
+}
+
+bool DynamicWorldSystem::Update(const talvisota::world::WorldRegion& region,
+    SceneSnapshot& scene, const float deltaSeconds, const double elapsedSeconds,
+    const std::array<float, 2>& windDirection, const float windStrength,
+    std::string& error)
+{
+    if (objects_.empty() || !std::isfinite(deltaSeconds) || deltaSeconds < 0.0F ||
+        deltaSeconds > 0.1F || !std::isfinite(elapsedSeconds) || elapsedSeconds < 0.0 ||
+        !std::isfinite(windDirection[0]) || !std::isfinite(windDirection[1]) ||
+        !std::isfinite(windStrength) || windStrength < 0.0F || windStrength > 1.0F)
+    {
+        error = "Dynamic world update received invalid timestep or weather parameters.";
+        return false;
+    }
+
+    for (auto& object : objects_)
+    {
+        const float time = static_cast<float>(std::fmod(elapsedSeconds, 100000.0));
+        float swayPitch = 0.0F, swayRoll = 0.0F;
+        if (object.anchored && object.category == talvisota::world::PlacementCategory::Vegetation)
+        {
+            const float phase = static_cast<float>(std::hash<std::string>{}(object.id) % 6283U) * 0.001F;
+            const float amplitude = windStrength * 0.035F;
+            swayPitch = std::sin(time * 1.7F + phase) * amplitude;
+            swayRoll = std::sin(time * 1.13F + phase * 1.7F) * amplitude * 0.65F;
+        }
+        else if (!object.anchored && !object.sleeping)
+        {
+            object.velocity[1] -= Gravity * deltaSeconds;
+            for (std::size_t axis = 0; axis < 3U; ++axis)
+            {
+                object.position[axis] += object.velocity[axis] * deltaSeconds;
+                object.angularVelocity[axis] *= std::max(0.0F, 1.0F - 1.8F * deltaSeconds);
+            }
+            object.position[0] = std::clamp(object.position[0], region.boundsMin[0], region.boundsMax[0]);
+            object.position[2] = std::clamp(object.position[2], region.boundsMin[2], region.boundsMax[2]);
+            float ground = 0.0F;
+            std::array<float, 3> normal{};
+            std::string terrainError;
+            if (talvisota::world::SampleTerrainHeight(region, object.position[0],
+                    object.position[2], ground, normal, terrainError) &&
+                object.position[1] <= ground + 0.08F)
+            {
+                object.position[1] = ground + 0.08F;
+                if (object.velocity[1] < 0.0F) object.velocity[1] = -object.velocity[1] * 0.12F;
+                object.velocity[0] *= 0.72F;
+                object.velocity[2] *= 0.72F;
+                object.angularVelocity[0] *= 0.55F;
+                object.angularVelocity[2] *= 0.55F;
+            }
+            const float linearSpeed = LengthSquared(object.velocity);
+            const float angularSpeed = LengthSquared(object.angularVelocity);
+            if (linearSpeed < SleepLinearSpeed * SleepLinearSpeed &&
+                angularSpeed < SleepAngularSpeed * SleepAngularSpeed)
+                object.sleepSeconds += deltaSeconds;
+            else
+                object.sleepSeconds = 0.0F;
+            if (object.sleepSeconds >= SleepDelay)
+            {
+                object.sleeping = true;
+                object.velocity = {};
+                object.angularVelocity = {};
+            }
+            swayPitch = std::clamp(object.angularVelocity[0] * 0.12F, -0.3F, 0.3F);
+            swayRoll = std::clamp(object.angularVelocity[2] * 0.12F, -0.3F, 0.3F);
+        }
+
+        auto transform = object.authoredTransform;
+        transform[12] = object.position[0];
+        transform[13] = object.position[1];
+        transform[14] = object.position[2];
+        ApplyRotation(transform, swayPitch, swayRoll);
+        for (const auto index : object.instanceIndices)
+        {
+            if (index >= scene.instances.size())
+            {
+                error = "Dynamic world instance binding became invalid for placement: " + object.id;
+                return false;
+            }
+            scene.instances[index].world = transform;
+        }
+    }
+    error.clear();
+    return true;
+}
+
+bool DynamicWorldSystem::Save(const std::filesystem::path& path, std::string& error) const
+{
+    if (objects_.empty() || path.empty())
+    {
+        error = "Dynamic world save requires initialized state and a destination path.";
+        return false;
+    }
+    std::error_code ec;
+    std::filesystem::create_directories(path.parent_path(), ec);
+    if (ec)
+    {
+        error = "Could not create dynamic world save directory: " + ec.message();
+        return false;
+    }
+    const auto temporary = path.string() + ".tmp";
+    {
+        std::ofstream output(temporary, std::ios::out | std::ios::trunc);
+        if (!output)
+        {
+            error = "Could not open temporary dynamic world save.";
+            return false;
+        }
+        output << "TALVISOTA_WORLD_STATE 1\n" << objects_.size() << '\n';
+        output << std::setprecision(std::numeric_limits<float>::max_digits10);
+        for (const auto& object : objects_)
+        {
+            output << std::quoted(object.id) << ' ' << object.integrity << ' ' << object.mass << ' '
+                << object.anchored << ' ' << object.sleeping << ' ' << object.sleepSeconds;
+            for (const float value : object.position) output << ' ' << value;
+            for (const float value : object.velocity) output << ' ' << value;
+            for (const float value : object.angularVelocity) output << ' ' << value;
+            output << '\n';
+        }
+        if (!output)
+        {
+            error = "Could not write complete dynamic world save.";
+            return false;
+        }
+    }
+    std::filesystem::rename(temporary, path, ec);
+    if (ec)
+    {
+        std::error_code removeError;
+        std::filesystem::remove(path, removeError);
+        ec.clear();
+        std::filesystem::rename(temporary, path, ec);
+    }
+    if (ec)
+    {
+        error = "Could not atomically publish dynamic world save: " + ec.message();
+        return false;
+    }
+    error.clear();
+    return true;
+}
+
+bool DynamicWorldSystem::Load(const std::filesystem::path& path, std::string& error)
+{
+    if (objects_.empty())
+    {
+        error = "Dynamic world must be initialized before loading saved state.";
+        return false;
+    }
+    std::ifstream input(path);
+    if (!input)
+    {
+        if (!std::filesystem::exists(path))
+        {
+            error.clear();
+            return true;
+        }
+        error = "Could not open dynamic world save.";
+        return false;
+    }
+    std::string magic;
+    unsigned version = 0U;
+    std::size_t count = 0U;
+    if (!(input >> magic >> version >> count) || magic != "TALVISOTA_WORLD_STATE" ||
+        version != 1U || count != objects_.size())
+    {
+        error = "Dynamic world save has an unsupported version or placement inventory.";
+        return false;
+    }
+    auto restored = objects_;
+    std::unordered_map<std::string, std::size_t> indices;
+    indices.reserve(restored.size());
+    for (std::size_t index = 0; index < restored.size(); ++index)
+        indices.emplace(restored[index].id, index);
+    std::vector<bool> seen(restored.size(), false);
+    for (std::size_t row = 0; row < count; ++row)
+    {
+        std::string id;
+        DynamicWorldObject state;
+        if (!(input >> std::quoted(id) >> state.integrity >> state.mass >>
+                state.anchored >> state.sleeping >> state.sleepSeconds))
+        {
+            error = "Dynamic world save contains a truncated object record.";
+            return false;
+        }
+        for (float& value : state.position) if (!(input >> value)) { error = "Truncated position."; return false; }
+        for (float& value : state.velocity) if (!(input >> value)) { error = "Truncated velocity."; return false; }
+        for (float& value : state.angularVelocity) if (!(input >> value)) { error = "Truncated angular velocity."; return false; }
+        const auto found = indices.find(id);
+        if (found == indices.end() || seen[found->second] ||
+            !std::isfinite(state.integrity) || state.integrity < 0.0F ||
+            !std::isfinite(state.mass) || state.mass <= 0.0F ||
+            !std::isfinite(state.sleepSeconds) || state.sleepSeconds < 0.0F ||
+            !Finite3(state.position) || !Finite3(state.velocity) || !Finite3(state.angularVelocity))
+        {
+            error = "Dynamic world save contains an unknown, duplicate, or invalid object state.";
+            return false;
+        }
+        auto& target = restored[found->second];
+        if (target.category == talvisota::world::PlacementCategory::Terrain ||
+            target.category == talvisota::world::PlacementCategory::Structure)
+        {
+            if (!state.anchored || state.integrity != target.integrity)
+            {
+                error = "Dynamic world save attempts to alter an authored structural constraint.";
+                return false;
+            }
+        }
+        target.integrity = state.integrity;
+        target.mass = state.mass;
+        target.anchored = state.anchored;
+        target.sleeping = state.sleeping;
+        target.sleepSeconds = state.sleepSeconds;
+        target.position = state.position;
+        target.velocity = state.velocity;
+        target.angularVelocity = state.angularVelocity;
+        seen[found->second] = true;
+    }
+    std::string trailing;
+    if (input >> trailing)
+    {
+        error = "Dynamic world save contains unexpected trailing records.";
+        return false;
+    }
+    objects_.swap(restored);
+    error.clear();
+    return true;
+}
+} // namespace talvisota::presentation

@@ -10,6 +10,7 @@
 #include "talvisota/presentation/CaptureValidation.hpp"
 #include "talvisota/presentation/WeatherParticles.hpp"
 #include "talvisota/presentation/ExplosionLighting.hpp"
+#include "talvisota/presentation/DynamicWorld.hpp"
 #include "talvisota/world/WorldRegion.hpp"
 #include "vanta/math/Math.hpp"
 #include <Windows.h>
@@ -946,6 +947,30 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         if(ownsCom) CoUninitialize();
         return 2;
     }
+
+    // Persistent runtime state is bound to stable authored placement IDs, not
+    // to screenshot-only scene objects or material draw-call ordering.
+    talvisota::presentation::DynamicWorldSystem dynamicWorld;
+    if(!dynamicWorld.Initialize(gameRegion,scene,error)) {
+        std::cerr<<"Could not initialize Sakkola dynamic world: "<<error<<"\\n";
+        if(ownsCom) CoUninitialize();
+        return 2;
+    }
+    talvisota::platform::UserPaths worldUserPaths;
+    std::filesystem::path dynamicWorldSavePath;
+    bool dynamicWorldPersistenceEnabled=false;
+    if(captureDir.empty() && talvisota::platform::ResolveUserPaths(worldUserPaths,error)) {
+        dynamicWorldSavePath=worldUserPaths.dataDirectory/"worlds"/"sakkola.state";
+        if(dynamicWorld.Load(dynamicWorldSavePath,error)) {
+            dynamicWorldPersistenceEnabled=true;
+            std::cout<<"Sakkola dynamic world: "<<dynamicWorld.Objects().size()
+                <<" placements, persistent state "<<dynamicWorldSavePath.string()<<".\\n";
+        } else {
+            std::cerr<<"Sakkola world-state restore skipped: "<<error<<"\\n";
+        }
+    } else if(captureDir.empty()) {
+        std::cerr<<"Sakkola world-state persistence unavailable: "<<error<<"\\n";
+    }
     const std::vector<float> meshCullRadii = BuildMeshCullRadii(scene);
 
     const wchar_t* className = L"TalvisotaSakkolaRenderer";
@@ -1479,6 +1504,21 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         }
         scene.camera.elapsedSeconds = std::chrono::duration<float>(now - start).count();
         scene.camera.frameNumber = frameNumber++;
+        if(!dynamicWorld.Update(gameRegion,scene,deltaSeconds,scene.camera.elapsedSeconds,
+                scene.environment.windDirection,scene.environment.windStrength,error)) {
+            std::cerr<<"Sakkola dynamic world update failed: "<<error<<"\\n";
+            break;
+        }
+        if(dynamicWorldPersistenceEnabled) {
+            static auto lastDynamicWorldSave=Clock::now();
+            if(now-lastDynamicWorldSave>=std::chrono::seconds(15)) {
+                if(!dynamicWorld.Save(dynamicWorldSavePath,error)) {
+                    std::cerr<<"Sakkola world-state save failed: "<<error<<"\\n";
+                    break;
+                }
+                lastDynamicWorldSave=now;
+            }
+        }
         const std::array<float,3> snowfallCamera{
             cameraPosition.x,cameraPosition.y,cameraPosition.z};
         if(!snowfall.Update(scene,snowfallCamera,scene.camera.elapsedSeconds,
