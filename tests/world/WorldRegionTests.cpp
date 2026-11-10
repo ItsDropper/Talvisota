@@ -1,3 +1,4 @@
+#include "talvisota/content/AuthoredDefinition.hpp"
 #include "talvisota/content/ContentRegistry.hpp"
 #include "talvisota/content/WorldDefinition.hpp"
 #include "talvisota/world/WorldRegion.hpp"
@@ -718,6 +719,70 @@ void TestLargeTerrainHeightfieldLoadsAndSamplesAcrossFullExtent()
             "The far-corner elevation and finite upward surface normal must be preserved.");
 }
 
+
+void TestTaipaleRiverfrontWorldAndMissionLoad()
+{
+    const std::filesystem::path root = TALVISOTA_SOURCE_DIR;
+    talvisota::content::ContentRegistry registry;
+    std::vector<talvisota::content::ContentDiagnostic> manifestDiagnostics;
+    Require(talvisota::content::LoadContentManifest(root / "content/catalog.tmanifest",
+            root, registry, manifestDiagnostics), "Taipale content manifest should load.");
+
+    talvisota::content::WorldDefinition world;
+    std::vector<talvisota::content::WorldDiagnostic> worldDiagnostics;
+    Require(talvisota::content::LoadWorldDefinition(root / "content/worlds/taipale.tworld",
+            registry, world, worldDiagnostics), "Taipale world definition should load.");
+    Require(world.id == "world.taipale" && world.terrainModelId == "model.terrain.taipale" &&
+            world.hasEnvironment && world.environment.fogDensity > 0.001F,
+            "Taipale must expose its own terrain and winter atmosphere.");
+
+    talvisota::world::WorldRegion region;
+    std::vector<talvisota::world::WorldRegionDiagnostic> regionDiagnostics;
+    Require(talvisota::world::LoadWorldRegion(root / "content/worlds/taipale-riverfront.tregion",
+            registry, world, region, regionDiagnostics),
+            "Taipale riverfront region should load with its frozen-water metadata.");
+    Require(region.id == "region.taipale.riverfront" &&
+            region.terrain.rows == 65U && region.terrain.columns == 65U &&
+            region.waterSurfaces.size() == 32U,
+            "Taipale must retain its 4 km terrain grid and segmented river surface.");
+
+    float riverHeight = 0.0F;
+    std::array<float, 3> riverNormal{};
+    std::string error;
+    Require(talvisota::world::SampleTerrainHeight(region, 0.0F, 620.0F,
+            riverHeight, riverNormal, error) &&
+            std::abs(riverHeight - 4.60F) < 0.001F && riverNormal[1] > 0.99F,
+            "The frozen river must provide a stable walkable surface height.");
+
+    const auto countModel = [&region](const std::string& model) {
+        return std::count_if(region.placements.begin(), region.placements.end(),
+            [&model](const auto& placement) { return placement.modelAssetId == model; });
+    };
+    Require(countModel("model.environment.scots_pine") > 100U &&
+            countModel("model.environment.spruce") > 10U &&
+            countModel("model.environment.birch") > 10U &&
+            countModel("model.environment.boulder") == 36U,
+            "Taipale must contain a mixed forest and authored rock field.");
+    for (const std::string target : {
+            "prop.taipale.watch_post", "prop.taipale.farmstead", "prop.taipale.command_hut"}) {
+        Require(std::any_of(region.placements.begin(), region.placements.end(),
+                [&target](const auto& placement) { return placement.id == target; }) &&
+                std::any_of(region.collision.begin(), region.collision.end(),
+                [&target](const auto& collision) { return collision.id == target + ".collision"; }),
+                "Every Taipale mission location must have a world placement and interaction clearance.");
+    }
+
+    const auto* missionAsset = registry.Find("mission.taipale.riverfront-watch");
+    Require(missionAsset != nullptr, "Taipale introductory mission must be registered.");
+    talvisota::content::AuthoredDefinition mission;
+    std::vector<talvisota::content::AuthoredDefinitionDiagnostic> missionDiagnostics;
+    Require(talvisota::content::LoadAuthoredDefinition(root / missionAsset->relativePath,
+            registry, mission, missionDiagnostics) &&
+            mission.worldId == world.id && mission.regionId == region.id &&
+            mission.objectives.size() == 3U,
+            "Taipale's authored mission must resolve against its own world and region.");
+}
+
 void TestSessionLoadReloadFailureAndUnloadAreAtomic()
 {
     TemporaryDirectory directory;
@@ -753,6 +818,7 @@ int main()
     {
         TestShippedTerrainHeightfieldMatchesVisualMeshVertices();
         TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition();
+        TestTaipaleRiverfrontWorldAndMissionLoad();
         TestLoadsComposedRegionAndIndependentSpatialData();
         TestRejectsMissingDependenciesAndInvalidSpatialRecords();
         TestLargeTerrainHeightfieldLoadsAndSamplesAcrossFullExtent();
