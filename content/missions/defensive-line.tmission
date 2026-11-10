@@ -6,6 +6,7 @@ region_id = region.sakkola.church_village
 player_character_id = character.sakkola_infantryman
 faction_id = faction.finnish
 environment_profile = low_visibility
+next_mission_id = mission.sakkola.aftermath
 description = The northern watch has confirmed movement along the village approach. Join the local section, hold the road through the advancing infantry, and return to the church post when the position is secure. This is a fictional engagement in the Sakkola region, not a claim about a specifically documented battle.
 actor = actor.finnish.section-leader -> faction.finnish -> -12,148 -> weapon.mosin_m27 -> 45
 actor = actor.finnish.rifleman.01 -> faction.finnish -> -30,162 -> weapon.mosin_m27 -> 45

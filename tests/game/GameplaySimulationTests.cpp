@@ -139,6 +139,23 @@ void TestAuthoredWorldSimulation()
                 "battle begins with a concrete authored enemy objective rather than a disconnected demo");
         }
     }
+    const auto* aftermathAsset=registry.Find("mission.sakkola.aftermath");
+    Check(aftermathAsset!=nullptr,"Sakkola aftermath is registered as the defensive battle successor");
+    if(aftermathAsset!=nullptr) {
+        AuthoredDefinition aftermathMission;
+        std::vector<AuthoredDefinitionDiagnostic> aftermathDiagnostics;
+        const bool aftermathLoaded=LoadAuthoredDefinition(sourceRoot/aftermathAsset->relativePath,
+            registry,aftermathMission,aftermathDiagnostics);
+        Check(aftermathLoaded,"Sakkola aftermath manifest parses");
+        if(aftermathLoaded) {
+            SimulationState aftermathState;
+            Check(InitializeSimulationFromAuthoredMission(aftermathMission,region,church->position,
+                rules,aftermathState,error),"Sakkola aftermath initializes in the existing village");
+            Check(aftermathMission.objectives.size()==3U&&aftermathMission.actors.empty()&&
+                aftermathMission.nextMissionId.empty(),
+                "aftermath is a finite non-combat recovery mission with three authored objectives");
+        }
+    }
     std::array<float, 3> playerSpawn = well->position;
     playerSpawn[0] += 10.0F;
     SimulationState state;

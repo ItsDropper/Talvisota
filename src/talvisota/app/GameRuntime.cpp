@@ -93,6 +93,9 @@ std::wstring ObjectiveTitle(const std::string_view id) {
     if(id=="objective.stop-first-advance") return L"HOLD THE NORTHERN APPROACH";
     if(id=="objective.stop-second-advance") return L"SECURE THE VILLAGE ROAD";
     if(id=="objective.report-to-post") return L"REPORT TO THE CHURCH POST";
+    if(id=="objective.check-damaged-fence") return L"CHECK THE DAMAGED FENCE";
+    if(id=="objective.check-northern-barn") return L"CHECK THE NORTHERN BARN";
+    if(id=="objective.report-aftermath") return L"REPORT THE ROAD CONDITION";
     if(id=="objective.stop-third-advance") return L"SECURE THE EASTERN APPROACH";
     if(id=="objective.stop-fourth-advance") return L"CHECK THE ROAD BEYOND THE BARN";
     return Utf8ToWide(id);
@@ -1608,6 +1611,17 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                         playerConfig.capsuleRadius,error)) {
                     std::cerr<<"Campaign transition failed: "<<error<<"\\n";
                     break;
+                }
+                if(authoredMission.id=="mission.sakkola.defensive-line" &&
+                    nextMission.id=="mission.sakkola.aftermath") {
+                    if(!dynamicWorld.ApplyDamage("prop.fence.05",1.0F,error)) {
+                        std::cerr<<"Could not apply the localized Sakkola aftermath change: "<<error<<"\\n";
+                        break;
+                    }
+                    if(dynamicWorldPersistenceEnabled&&!dynamicWorld.Save(dynamicWorldSavePath,error)) {
+                        std::cerr<<"Could not save the Sakkola aftermath state: "<<error<<"\\n";
+                        break;
+                    }
                 }
                 authoredMission=std::move(nextMission);
                 missionStartPlayerState=playerState;
