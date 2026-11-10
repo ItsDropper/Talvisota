@@ -257,6 +257,64 @@ void TestAuthoredWorldSimulation()
         "mission cannot initialize when an authored target has no world placement");
     Check(preserved.tickIndex == 91U,
         "missing mission placement preserves the caller's existing simulation state");
+
+    AuthoredDefinition battleMission=authoredMission;
+    battleMission.objectives={{"objective.defeat-advance","actor.soviet.test"}};
+    battleMission.actors={{"actor.soviet.test","faction.soviet","weapon.suomi_kp31",
+        {well->position[0]+12.0F,well->position[2]+12.0F},60U}};
+    SimulationState battleState;
+    Check(InitializeSimulationFromAuthoredMission(battleMission,region,playerSpawn,
+        rules,battleState,error),
+        "authored infantry and actor-target objectives initialize in the gameplay simulation");
+    Check(battleState.combat.combatants.size()==2U &&
+        battleState.combat.combatants.contains(battleState.playerEntityId) &&
+        battleState.combat.combatants.contains("actor.soviet.test"),
+        "player and authored opposing infantry receive registered combat loadouts");
+    ActiveObjectiveTarget combatWaypoint;
+    Check(FindActiveObjectiveTarget(battleState,battleState.playerEntityId,combatWaypoint,error) &&
+        combatWaypoint.entityId=="actor.soviet.test",
+        "active mission waypoint resolves to the authored opposing infantry entity");
+
+    const auto* enemy=battleState.entities.Find("actor.soviet.test");
+    Check(enemy!=nullptr,"authored opposing infantry entity is available for aim selection");
+    if(enemy!=nullptr) {
+        const std::array<float,3> rayOrigin{
+            enemy->position[0],enemy->position[1]+1.62F,enemy->position[2]-10.0F};
+        std::string selectedTarget;
+        Check(FindNearestHostileCombatant(battleState,battleState.playerEntityId,
+            rayOrigin,{0.0F,0.0F,1.0F},180.0F,0.95F,selectedTarget,error) &&
+            selectedTarget=="actor.soviet.test",
+            "first-person aim selection resolves the nearest hostile actor");
+    }
+
+    std::vector<CombatResult> battleCombatResults;
+    const std::array<CombatCommand,1> firstBattleShot{{
+        {"combat.test.first-shot",battleState.playerEntityId,"actor.soviet.test",CombatAction::Fire}
+    }};
+    Check(AdvanceCombat(battleState.combat,battleState.entities,0.05,
+        firstBattleShot,battleCombatResults,error) &&
+        battleCombatResults.size()==1U &&
+        battleCombatResults.front().outcome==CombatOutcome::Fired,
+        "player fire command damages an authored hostile combatant");
+    for(int step=0;step<5;++step)
+        Check(AdvanceCombat(battleState.combat,battleState.entities,0.25,
+            std::span<const CombatCommand>{},battleCombatResults,error),
+            "combat clock advances through weapon cooldown without commands");
+    const std::array<CombatCommand,1> finishingBattleShot{{
+        {"combat.test.finishing-shot",battleState.playerEntityId,"actor.soviet.test",CombatAction::Fire}
+    }};
+    Check(AdvanceCombat(battleState.combat,battleState.entities,0.05,
+        finishingBattleShot,battleCombatResults,error) &&
+        battleCombatResults.size()==1U &&
+        battleCombatResults.front().outcome==CombatOutcome::TargetDefeated,
+        "subsequent player fire defeats the authored hostile combatant");
+    std::vector<CommandResult> battleMissionResults;
+    Check(ApplyCombatMissionEvents(battleState,battleState.combat,
+        finishingBattleShot,battleCombatResults,battleMissionResults,error) &&
+        battleMissionResults.size()==1U &&
+        battleMissionResults.front().outcome==CommandOutcome::MissionCompleted &&
+        battleState.mission.status==missions::MissionStatus::Completed,
+        "combat defeat advances and completes the authored battle objective");
 }
 
 int main()
