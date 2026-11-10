@@ -28,6 +28,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <limits>
 #include <map>
 #include <string>
@@ -543,6 +544,12 @@ void ActivateFrontendButton(const int index) {
                 else restartPatrolRequested=true;
             }
             SetFrontendState(FrontendState::Playing);
+            if(missionOverlay.title==L"First Patrol")
+                SetMissionFeedback(L"ORDERS: CHECK THE WELL AND WOODPILE, THEN REPORT TO THE CHURCH.",std::chrono::milliseconds(5000));
+            else if(missionOverlay.title==L"Northern Watch")
+                SetMissionFeedback(L"POST: CHECK THE NORTHERN APPROACH AND REPORT ANY MOVEMENT.",std::chrono::milliseconds(5000));
+            else if(missionOverlay.title==L"Sakkola Defensive Line")
+                SetMissionFeedback(L"SECTION LEADER: HOLD THE APPROACH. REPORT WHEN THE ROAD IS CLEAR.",std::chrono::milliseconds(5500));
         } else if(index==1&&mainWindow) DestroyWindow(mainWindow);
     } else if(frontendState==FrontendState::Paused) {
         if(index==0) {
@@ -1628,7 +1635,12 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 missionOverlay.description=Utf8ToWide(authoredMission.description);
                 gameplayAccumulator=0.0;
                 interactionQueued=false;
-                SetMissionFeedback(L"NEW ORDERS RECEIVED",std::chrono::milliseconds(3200));
+                if(authoredMission.id=="mission.sakkola.northern-watch")
+                    SetMissionFeedback(L"POST: CHECK THE NORTHERN APPROACH AND REPORT ANY MOVEMENT.",std::chrono::milliseconds(5000));
+                else if(authoredMission.id=="mission.sakkola.defensive-line")
+                    SetMissionFeedback(L"SECTION LEADER: HOLD THE APPROACH. REPORT WHEN THE ROAD IS CLEAR.",std::chrono::milliseconds(5500));
+                else
+                    SetMissionFeedback(L"NEW ORDERS RECEIVED",std::chrono::milliseconds(3200));
                 if(!RefreshMissionOverlay(gameplayState,playerState,gameplayRules.interactionRadiusMeters,error)) break;
             }
         }
@@ -1665,6 +1677,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         bool cameraChanged=restartCameraRequested;
         restartCameraRequested=false;
         if(frontendState!=previousFrontendState) {
+            cameraChanged=true;
             rawMouseDeltaX=0; rawMouseDeltaY=0; jumpWasDown=false;
             interactWasDown=false; interactionQueued=false;
             fireWasDown=false; reloadWasDown=false; fireQueued=false; reloadQueued=false;

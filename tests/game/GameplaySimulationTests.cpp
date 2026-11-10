@@ -112,6 +112,33 @@ void TestAuthoredWorldSimulation()
         return;
 
     const GameplayRules rules{};
+    const auto* defensiveAsset=registry.Find("mission.sakkola.defensive-line");
+    Check(defensiveAsset!=nullptr,"Sakkola defensive battle is registered in the campaign manifest");
+    if(defensiveAsset!=nullptr) {
+        AuthoredDefinition defensiveMission;
+        std::vector<AuthoredDefinitionDiagnostic> defensiveDiagnostics;
+        const bool defensiveLoaded=LoadAuthoredDefinition(sourceRoot/defensiveAsset->relativePath,
+            registry,defensiveMission,defensiveDiagnostics);
+        Check(defensiveLoaded,"Sakkola defensive battle manifest parses");
+        if(defensiveLoaded) {
+            SimulationState defensiveState;
+            Check(InitializeSimulationFromAuthoredMission(defensiveMission,region,church->position,
+                rules,defensiveState,error),"Sakkola defensive battle initializes at the campaign church handoff");
+            Check(defensiveMission.actors.size()==7U&&defensiveMission.objectives.size()==5U,
+                "defensive battle contains a section and two support soldiers against four ordered enemy actors");
+            Check(defensiveState.combat.combatants.size()==8U,
+                "defensive battle registers the player and all seven infantry combatants");
+            const auto finnishActors=std::count_if(defensiveMission.actors.begin(),defensiveMission.actors.end(),
+                [](const MissionActorDefinition& actor){return actor.factionId=="faction.finnish";});
+            const auto sovietActors=std::count_if(defensiveMission.actors.begin(),defensiveMission.actors.end(),
+                [](const MissionActorDefinition& actor){return actor.factionId=="faction.soviet";});
+            Check(finnishActors==3&&sovietActors==4,
+                "defensive battle has three Finnish section members and four opposing infantry");
+            Check(!defensiveState.mission.objectives.empty()&&
+                defensiveState.mission.objectives.front().interactionTargetId=="actor.soviet.advance.01",
+                "battle begins with a concrete authored enemy objective rather than a disconnected demo");
+        }
+    }
     std::array<float, 3> playerSpawn = well->position;
     playerSpawn[0] += 10.0F;
     SimulationState state;
