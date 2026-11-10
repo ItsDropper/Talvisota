@@ -104,13 +104,14 @@ std::wstring ObjectiveTitle(const std::string_view id) {
 
 
 struct BattlefieldRenderAssets final {
-    std::uint32_t bodyMesh=0U, armsMesh=0U, legMesh=0U;
+    std::uint32_t bodyMesh=0U, armsMesh=0U, legMesh=0U, gearMesh=0U, headMesh=0U;
     std::uint32_t rifleMesh=0U, submachineGunMesh=0U, lightMachineGunMesh=0U;
-    std::uint32_t finnishMaterial=0U, sovietMaterial=0U, weaponMaterial=0U;
+    std::uint32_t finnishMaterial=0U, sovietMaterial=0U;
+    std::uint32_t finnishGearMaterial=0U, sovietGearMaterial=0U, skinMaterial=0U, weaponMaterial=0U;
 };
 struct BattlefieldActorRenderBinding final {
     std::string entityId;
-    std::size_t bodyInstance=0U, armsInstance=0U;
+    std::size_t bodyInstance=0U, armsInstance=0U, gearInstance=0U, headInstance=0U;
     std::size_t leftLegInstance=0U, rightLegInstance=0U, weaponInstance=0U;
     std::array<float,3> previousPosition{};
     float stridePhase=0.0F;
@@ -265,7 +266,7 @@ talvisota::presentation::RenderMesh BuildWeaponMesh(
 }
 bool BuildBattlefieldRenderAssets(talvisota::presentation::SceneSnapshot& scene,
     BattlefieldRenderAssets& output,std::string& error) {
-    if(scene.meshes.size()>static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max()-6U) ||
+    if(scene.meshes.size()>static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max()-8U) ||
         scene.materials.size()>static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max()-3U)) {
         error="Battlefield render assets exceed the scene index capacity."; return false;
     }
@@ -274,23 +275,33 @@ bool BuildBattlefieldRenderAssets(talvisota::presentation::SceneSnapshot& scene,
     // replace the original block-only mannequin while keeping one shared mesh.
     AppendEllipsoid(body,{0.0F,1.08F,0.0F},{0.245F,0.39F,0.155F});
     // Arms and legs are separate articulated meshes, not baked into the torso.
-    AppendEllipsoid(body,{0.0F,1.115F,-0.205F},{0.18F,0.235F,0.09F});
     AppendEllipsoid(body,{0.0F,1.465F,0.015F},{0.075F,0.075F,0.075F});
-    AppendEllipsoid(body,{0.0F,1.535F,0.015F},{0.105F,0.135F,0.105F});
     AppendEllipsoid(body,{0.0F,1.68F,0.0F},{0.165F,0.075F,0.16F});
     AppendEllipsoid(body,{0.0F,1.65F,0.0F},{0.176F,0.025F,0.17F});
     AppendBox(body,{0.0F,1.635F,0.0F},{0.18F,0.012F,0.175F});
-    // Belt, shoulder webbing, closures, ammunition pouches and knee reinforcements.
-    AppendBox(body,{0.0F,0.83F,0.0F},{0.245F,0.045F,0.16F});
-    AppendBox(body,{0.0F,0.85F,0.164F},{0.055F,0.038F,0.012F});
-    AppendBox(body,{-0.075F,1.18F,0.153F},{0.025F,0.24F,0.012F});
-    AppendBox(body,{0.075F,1.18F,0.153F},{0.025F,0.24F,0.012F});
-    AppendBox(body,{-0.17F,0.91F,0.175F},{0.065F,0.075F,0.055F});
-    AppendBox(body,{0.17F,0.91F,0.175F},{0.065F,0.075F,0.055F});
-    AppendBox(body,{-0.235F,0.86F,0.10F},{0.065F,0.075F,0.045F});
-    AppendBox(body,{0.235F,0.86F,0.10F},{0.065F,0.075F,0.045F});
     output.bodyMesh=static_cast<std::uint32_t>(scene.meshes.size());
     scene.meshes.push_back(std::move(body));
+
+    talvisota::presentation::RenderMesh head;
+    AppendEllipsoid(head,{0.0F,1.535F,0.015F},{0.105F,0.135F,0.105F});
+    AppendEllipsoid(head,{0.0F,1.525F,0.112F},{0.025F,0.035F,0.025F});
+    AppendEllipsoid(head,{-0.102F,1.55F,0.015F},{0.018F,0.045F,0.04F});
+    AppendEllipsoid(head,{0.102F,1.55F,0.015F},{0.018F,0.045F,0.04F});
+    output.headMesh=static_cast<std::uint32_t>(scene.meshes.size());
+    scene.meshes.push_back(std::move(head));
+
+    talvisota::presentation::RenderMesh gear;
+    AppendEllipsoid(gear,{0.0F,1.115F,-0.205F},{0.18F,0.235F,0.09F});
+    AppendBox(gear,{0.0F,0.83F,0.0F},{0.245F,0.045F,0.16F});
+    AppendBox(gear,{0.0F,0.85F,0.164F},{0.055F,0.038F,0.012F});
+    AppendBox(gear,{-0.075F,1.18F,0.153F},{0.025F,0.24F,0.012F});
+    AppendBox(gear,{0.075F,1.18F,0.153F},{0.025F,0.24F,0.012F});
+    AppendBox(gear,{-0.17F,0.91F,0.175F},{0.065F,0.075F,0.055F});
+    AppendBox(gear,{0.17F,0.91F,0.175F},{0.065F,0.075F,0.055F});
+    AppendBox(gear,{-0.235F,0.86F,0.10F},{0.065F,0.075F,0.045F});
+    AppendBox(gear,{0.235F,0.86F,0.10F},{0.065F,0.075F,0.045F});
+    output.gearMesh=static_cast<std::uint32_t>(scene.meshes.size());
+    scene.meshes.push_back(std::move(gear));
 
     talvisota::presentation::RenderMesh arms;
     AppendEllipsoid(arms,{-0.245F,1.13F,0.075F},{0.085F,0.225F,0.09F},0.82F);
@@ -334,6 +345,18 @@ bool BuildBattlefieldRenderAssets(talvisota::presentation::SceneSnapshot& scene,
     soviet.baseColor={0.39F,0.38F,0.29F}; soviet.roughness=0.94F;
     output.sovietMaterial=static_cast<std::uint32_t>(scene.materials.size());
     scene.materials.push_back(soviet);
+    talvisota::presentation::RenderMaterial finnishGear;
+    finnishGear.baseColor={0.31F,0.36F,0.31F}; finnishGear.roughness=0.96F;
+    output.finnishGearMaterial=static_cast<std::uint32_t>(scene.materials.size());
+    scene.materials.push_back(finnishGear);
+    talvisota::presentation::RenderMaterial sovietGear;
+    sovietGear.baseColor={0.29F,0.31F,0.23F}; sovietGear.roughness=0.96F;
+    output.sovietGearMaterial=static_cast<std::uint32_t>(scene.materials.size());
+    scene.materials.push_back(sovietGear);
+    talvisota::presentation::RenderMaterial skin;
+    skin.baseColor={0.48F,0.34F,0.26F}; skin.roughness=0.92F;
+    output.skinMaterial=static_cast<std::uint32_t>(scene.materials.size());
+    scene.materials.push_back(skin);
     talvisota::presentation::RenderMaterial weapon;
     weapon.baseColor={0.13F,0.145F,0.13F}; weapon.roughness=0.72F; weapon.metallic=0.12F;
     output.weaponMaterial=static_cast<std::uint32_t>(scene.materials.size());
@@ -418,8 +441,8 @@ bool EnsureBattlefieldActorInstances(talvisota::presentation::SceneSnapshot& sce
     const BattlefieldRenderAssets& assets,std::vector<BattlefieldActorRenderBinding>& bindings,
     std::string& error) {
     for(auto& binding:bindings) {
-        for(const std::size_t index:{binding.bodyInstance,binding.armsInstance,
-                binding.leftLegInstance,binding.rightLegInstance,binding.weaponInstance})
+        for(const std::size_t index:{binding.bodyInstance,binding.armsInstance,binding.gearInstance,
+                binding.headInstance,binding.leftLegInstance,binding.rightLegInstance,binding.weaponInstance})
             if(index<scene.instances.size()) scene.instances[index].visible=false;
     }
     if(simulation.entities.Find(simulation.playerEntityId)==nullptr) {
@@ -446,6 +469,8 @@ bool EnsureBattlefieldActorInstances(talvisota::presentation::SceneSnapshot& sce
             };
             binding.bodyInstance=appendActorPart(assets.bodyMesh,assets.finnishMaterial);
             binding.armsInstance=appendActorPart(assets.armsMesh,assets.finnishMaterial);
+            binding.gearInstance=appendActorPart(assets.gearMesh,assets.finnishGearMaterial);
+            binding.headInstance=appendActorPart(assets.headMesh,assets.skinMaterial);
             binding.leftLegInstance=appendActorPart(assets.legMesh,assets.finnishMaterial);
             binding.rightLegInstance=appendActorPart(assets.legMesh,assets.finnishMaterial);
             binding.weaponInstance=appendActorPart(
@@ -457,10 +482,20 @@ bool EnsureBattlefieldActorInstances(talvisota::presentation::SceneSnapshot& sce
         auto& body=scene.instances[found->bodyInstance];
         body.meshIndex=assets.bodyMesh; body.materialIndex=uniformMaterial;
         body.visible=combatant.health>0.0F;
-        for(const std::size_t index:{found->armsInstance,found->leftLegInstance,found->rightLegInstance}) {
+        auto& arms=scene.instances[found->armsInstance];
+        arms.meshIndex=assets.armsMesh; arms.materialIndex=uniformMaterial;
+        arms.visible=combatant.health>0.0F;
+        auto& gear=scene.instances[found->gearInstance];
+        gear.meshIndex=assets.gearMesh;
+        gear.materialIndex=actor->factionId=="faction.finnish"?
+            assets.finnishGearMaterial:assets.sovietGearMaterial;
+        gear.visible=combatant.health>0.0F;
+        auto& head=scene.instances[found->headInstance];
+        head.meshIndex=assets.headMesh; head.materialIndex=assets.skinMaterial;
+        head.visible=combatant.health>0.0F;
+        for(const std::size_t index:{found->leftLegInstance,found->rightLegInstance}) {
             auto& part=scene.instances[index];
-            part.meshIndex=index==found->armsInstance?assets.armsMesh:assets.legMesh;
-            part.materialIndex=uniformMaterial;
+            part.meshIndex=assets.legMesh; part.materialIndex=uniformMaterial;
             part.visible=combatant.health>0.0F;
         }
         auto& weapon=scene.instances[found->weaponInstance];
@@ -482,10 +517,12 @@ void UpdateBattlefieldActorInstances(talvisota::presentation::SceneSnapshot& sce
             combatant!=simulation.combat.combatants.end()&&combatant->second.health>0.0F;
         auto& body=scene.instances[binding.bodyInstance];
         auto& arms=scene.instances[binding.armsInstance];
+        auto& gear=scene.instances[binding.gearInstance];
+        auto& head=scene.instances[binding.headInstance];
         auto& leftLeg=scene.instances[binding.leftLegInstance];
         auto& rightLeg=scene.instances[binding.rightLegInstance];
         auto& weapon=scene.instances[binding.weaponInstance];
-        body.visible=visible; arms.visible=visible;
+        body.visible=visible; arms.visible=visible; gear.visible=visible; head.visible=visible;
         leftLeg.visible=visible; rightLeg.visible=visible; weapon.visible=visible;
         if(!visible) continue;
         const float yaw=std::atan2(player->position[0]-actor->position[0],
@@ -511,6 +548,8 @@ void UpdateBattlefieldActorInstances(talvisota::presentation::SceneSnapshot& sce
         const float bodyRoll=gait*0.035F*movementAmount;
         body.world=ActorWorldMatrix(actor->position,yaw,bob,bodyPitch,bodyRoll);
         arms.world=body.world;
+        gear.world=body.world;
+        head.world=body.world;
         leftLeg.world=ActorLegWorldMatrix(actor->position,yaw,-0.125F,
             gait*0.34F*movementAmount,bodyPitch,bodyRoll);
         rightLeg.world=ActorLegWorldMatrix(actor->position,yaw,0.125F,
