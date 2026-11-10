@@ -259,16 +259,20 @@ void TestAuthoredWorldSimulation()
         "missing mission placement preserves the caller's existing simulation state");
 
     AuthoredDefinition battleMission=authoredMission;
-    battleMission.objectives={{"objective.defeat-advance","actor.soviet.test"}};
+    battleMission.objectives={{"objective.defeat-first","actor.soviet.test"},
+        {"objective.defeat-second","actor.soviet.test.02"}};
     battleMission.actors={{"actor.soviet.test","faction.soviet","weapon.suomi_kp31",
-        {well->position[0]+12.0F,well->position[2]+12.0F},60U}};
+        {well->position[0]+12.0F,well->position[2]+12.0F},60U},
+        {"actor.soviet.test.02","faction.soviet","weapon.suomi_kp31",
+        {well->position[0]+14.0F,well->position[2]+14.0F},60U}};
     SimulationState battleState;
     Check(InitializeSimulationFromAuthoredMission(battleMission,region,playerSpawn,
         rules,battleState,error),
         "authored infantry and actor-target objectives initialize in the gameplay simulation");
-    Check(battleState.combat.combatants.size()==2U &&
+    Check(battleState.combat.combatants.size()==3U &&
         battleState.combat.combatants.contains(battleState.playerEntityId) &&
-        battleState.combat.combatants.contains("actor.soviet.test"),
+        battleState.combat.combatants.contains("actor.soviet.test") &&
+        battleState.combat.combatants.contains("actor.soviet.test.02"),
         "player and authored opposing infantry receive registered combat loadouts");
     ActiveObjectiveTarget combatWaypoint;
     Check(FindActiveObjectiveTarget(battleState,battleState.playerEntityId,combatWaypoint,error) &&
@@ -276,10 +280,11 @@ void TestAuthoredWorldSimulation()
         "active mission waypoint resolves to the authored opposing infantry entity");
     std::vector<CombatCommand> aiCommands;
     Check(BuildBattlefieldAiCommands(battleState,aiCommands,error) &&
-        aiCommands.size()==1U &&
-        aiCommands.front().actorEntityId=="actor.soviet.test" &&
-        aiCommands.front().targetEntityId==battleState.playerEntityId,
-        "hostile battlefield AI acquires the nearest opposing combatant and emits a bounded fire command");
+        aiCommands.size()==2U &&
+        std::all_of(aiCommands.begin(),aiCommands.end(),[&](const CombatCommand& command) {
+            return command.targetEntityId==battleState.playerEntityId;
+        }),
+        "hostile battlefield AI acquires the nearest opposing combatant and emits bounded fire commands");
     Check(BuildBattlefieldAiCommands(battleState,aiCommands,error) && aiCommands.empty(),
         "battlefield AI respects its authored deterministic fire cadence");
 
@@ -296,18 +301,47 @@ void TestAuthoredWorldSimulation()
     }
 
     std::vector<CombatResult> battleCombatResults;
+    std::vector<CombatResult> battleCombatResults;
+    const std::array<CombatCommand,1> outOfOrderShot{{
+        {"combat.test.out-of-order-shot",battleState.playerEntityId,"actor.soviet.test.02",CombatAction::Fire}
+    }};
+    Check(AdvanceCombat(battleState.combat,battleState.entities,0.05,
+        outOfOrderShot,battleCombatResults,error) &&
+        battleCombatResults.size()==1U &&
+        battleCombatResults.front().outcome==CombatOutcome::Fired,
+        "player fire command damages a later authored hostile objective");
+    for(int step=0;step<5;++step)
+        Check(AdvanceCombat(battleState.combat,battleState.entities,0.25,
+            std::span<const CombatCommand>{},battleCombatResults,error),
+            "combat clock advances through weapon cooldown without commands");
+    const std::array<CombatCommand,1> outOfOrderFinisher{{
+        {"combat.test.out-of-order-finisher",battleState.playerEntityId,"actor.soviet.test.02",CombatAction::Fire}
+    }};
+    Check(AdvanceCombat(battleState.combat,battleState.entities,0.05,
+        outOfOrderFinisher,battleCombatResults,error) &&
+        battleCombatResults.size()==1U &&
+        battleCombatResults.front().outcome==CombatOutcome::TargetDefeated,
+        "subsequent player fire defeats the later authored hostile combatant");
+    std::vector<CommandResult> battleMissionResults;
+    Check(ApplyCombatMissionEvents(battleState,battleState.combat,
+        outOfOrderFinisher,battleCombatResults,battleMissionResults,error) &&
+        battleMissionResults.size()==1U &&
+        battleMissionResults.front().outcome==CommandOutcome::Ignored &&
+        battleState.mission.completedObjectives==0U &&
+        battleState.defeatedObjectiveTargets.contains("actor.soviet.test.02"),
+        "out-of-order defeat is retained without skipping the active authored objective");
+
     const std::array<CombatCommand,1> firstBattleShot{{
         {"combat.test.first-shot",battleState.playerEntityId,"actor.soviet.test",CombatAction::Fire}
     }};
     Check(AdvanceCombat(battleState.combat,battleState.entities,0.05,
         firstBattleShot,battleCombatResults,error) &&
-        battleCombatResults.size()==1U &&
         battleCombatResults.front().outcome==CombatOutcome::Fired,
-        "player fire command damages an authored hostile combatant");
+        "player can engage the currently active objective after an out-of-order defeat");
     for(int step=0;step<5;++step)
         Check(AdvanceCombat(battleState.combat,battleState.entities,0.25,
             std::span<const CombatCommand>{},battleCombatResults,error),
-            "combat clock advances through weapon cooldown without commands");
+            "combat clock advances before the second authored objective shot");
     const std::array<CombatCommand,1> finishingBattleShot{{
         {"combat.test.finishing-shot",battleState.playerEntityId,"actor.soviet.test",CombatAction::Fire}
     }};
@@ -315,14 +349,14 @@ void TestAuthoredWorldSimulation()
         finishingBattleShot,battleCombatResults,error) &&
         battleCombatResults.size()==1U &&
         battleCombatResults.front().outcome==CombatOutcome::TargetDefeated,
-        "subsequent player fire defeats the authored hostile combatant");
-    std::vector<CommandResult> battleMissionResults;
+        "subsequent player fire defeats the active authored hostile combatant");
     Check(ApplyCombatMissionEvents(battleState,battleState.combat,
         finishingBattleShot,battleCombatResults,battleMissionResults,error) &&
         battleMissionResults.size()==1U &&
         battleMissionResults.front().outcome==CommandOutcome::MissionCompleted &&
-        battleState.mission.status==missions::MissionStatus::Completed,
-        "combat defeat advances and completes the authored battle objective");
+        battleState.mission.status==missions::MissionStatus::Completed &&
+        battleState.mission.completedObjectives==2U,
+        "combat defeat completes the active objective and consumes the previously defeated later objective");
 }
 
 int main()
