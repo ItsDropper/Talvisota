@@ -69,6 +69,8 @@ struct SimulationState final
     combat::CombatSimulationState combat;
     // Deterministic NPC fire cadence, keyed by stable actor ID.
     std::map<std::string, double, std::less<>> actorNextFireAtSeconds;
+    // Defeated authored targets are retained until ordered mission progression reaches them.
+    std::set<std::string, std::less<>> defeatedObjectiveTargets;
     // Set by authored-mission initialization; empty for generic test/simulation fixtures.
     std::string playerEntityId;
     missions::MissionState mission;
