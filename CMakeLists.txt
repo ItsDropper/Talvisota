@@ -116,6 +116,7 @@ add_dependencies(talvisota_content_validate talvisota_environment_textures)
 
 add_library(talvisota_renderer_contract STATIC
     src/talvisota/presentation/SceneRenderer.cpp
+    src/talvisota/presentation/WeatherParticles.cpp
 )
 add_library(Talvisota::RendererContract ALIAS talvisota_renderer_contract)
 target_compile_features(talvisota_renderer_contract PUBLIC cxx_std_23)
