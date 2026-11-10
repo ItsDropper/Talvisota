@@ -193,13 +193,13 @@ jobs:
         run: ctest --test-dir build --output-on-failure
 
       - name: Application smoke test
-        run: .\\build\\talvisota.exe --help
+        run: .\\build\talvisota.exe --help
 
       - name: Content validator help smoke test
-        run: .\\build\\talvisota_content_validate.exe --help
+        run: .\\build\talvisota_content_validate.exe --help
 
       - name: Validate shipped content
-        run: .\\build\\talvisota_content_validate.exe content/catalog.tmanifest .
+        run: .\\build\talvisota_content_validate.exe content/catalog.tmanifest .
 
   windows-msvc-renderer-adapter:
     needs: [blender-tree-assets, blender-boulder-assets]
@@ -226,7 +226,7 @@ jobs:
           collisions = {}
           counts = {}
           for line in lines:
-              fields = line.split("\\t")
+              fields = line.split("\t")
               if fields[0] == "placement":
                   counts[fields[3]] = counts.get(fields[3], 0) + 1
                   if fields[3] == "model.environment.scots_pine":
@@ -279,29 +279,29 @@ jobs:
         run: cmake --build build-msvc --target talvisota talvisota_renderer_sample talvisota_renderer_contract_tests talvisota_asset_validate talvisota_content_package talvisota_texture_process talvisota_engine_asset_validation_tests talvisota_engine_asset_package_tests talvisota_engine_asset_pipeline_tests --parallel
 
       - name: Authored campaign runtime smoke test
-        run: .\\build-msvc\\talvisota.exe --mission-smoke
+        run: .\\build-msvc\talvisota.exe --mission-smoke
 
       - name: Test game-owned renderer and asset contracts
         run: ctest --test-dir build-msvc --output-on-failure -R "Talvisota.Presentation.SceneRendererContract|Talvisota.Content.EngineAssetValidation|Talvisota.Content.EngineAssetPackage|Talvisota.Content.EngineAssetPipeline|Talvisota.Environment.PbrMaps"
 
       - name: Engine-backed content asset validation smoke test
-        run: .\\build-msvc\\talvisota_asset_validate.exe content/catalog.tmanifest .
+        run: .\\build-msvc\talvisota_asset_validate.exe content/catalog.tmanifest .
 
       - name: Build deterministic content package
-        run: .\\build-msvc\\talvisota_content_package.exe content/catalog.tmanifest . "$env:RUNNER_TEMP\\talvisota-content-package"
+        run: .\\build-msvc\talvisota_content_package.exe content/catalog.tmanifest . "$env:RUNNER_TEMP\talvisota-content-package"
 
       - name: Verify packaged content integrity
-        run: .\\build-msvc\\talvisota_content_package.exe --verify "$env:RUNNER_TEMP\\talvisota-content-package"
+        run: .\\build-msvc\talvisota_content_package.exe --verify "$env:RUNNER_TEMP\talvisota-content-package"
 
       - name: Texture processor help smoke test
-        run: .\\build-msvc\\talvisota_texture_process.exe --help
+        run: .\\build-msvc\talvisota_texture_process.exe --help
 
       - name: Assemble playable Sakkola download
         shell: pwsh
         run: |
           $packageRoot = Join-Path $env:RUNNER_TEMP 'talvisota-sakkola-windows-x64'
           New-Item -ItemType Directory -Force -Path $packageRoot | Out-Null
-          Copy-Item -LiteralPath '.\\build-msvc\\talvisota.exe' -Destination (Join-Path $packageRoot 'Talvisota.exe')
+          Copy-Item -LiteralPath '.\\build-msvc\talvisota.exe' -Destination (Join-Path $packageRoot 'Talvisota.exe')
           Copy-Item -Path 'content', 'assets' -Destination $packageRoot -Recurse
           $runtimeDlls = @(Get-ChildItem -LiteralPath 'build-msvc' -Filter '*.dll' -File -Recurse)
           foreach ($dll in $runtimeDlls) {
@@ -350,7 +350,7 @@ jobs:
         run: |
           $captureDir = Join-Path $env:RUNNER_TEMP 'sakkola-captures'
           New-Item -ItemType Directory -Force -Path $captureDir | Out-Null
-          $process = Start-Process -FilePath .\\build-msvc\\talvisota.exe -ArgumentList @('--backend=d3d12', "--capture-dir=$captureDir", '--frames-per-view=9') -Wait -PassThru
+          $process = Start-Process -FilePath .\\build-msvc\talvisota.exe -ArgumentList @('--backend=d3d12', "--capture-dir=$captureDir", '--frames-per-view=9') -Wait -PassThru
           $rendererLog = Join-Path $captureDir 'renderer.log'
           if (Test-Path -LiteralPath $rendererLog) { Get-Content -LiteralPath $rendererLog }
           if ($process.ExitCode -ne 0) { throw "Sakkola renderer exited with code $($process.ExitCode)" }
