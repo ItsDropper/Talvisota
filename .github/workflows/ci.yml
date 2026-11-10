@@ -216,6 +216,30 @@ jobs:
           path: assets/models/environment/generated
           merge-multiple: true
 
+      - name: Verify Sakkola Blender placement migration
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          placements = [line.split("\\t") for line in Path("content/worlds/sakkola-church-village.tregion").read_text().splitlines() if line.startswith("placement\\t")]
+          counts = {}
+          for fields in placements:
+              counts[fields[3]] = counts.get(fields[3], 0) + 1
+          assert counts.get("model.environment.scots_pine") == 1907, counts
+          assert counts.get("model.environment.boulder") == 32, counts
+          assert counts.get("model.environment.pine", 0) == 0, counts
+          assert counts.get("model.environment.spruce", 0) == 0, counts
+          assert sum(counts.get(name, 0) for name in (
+              "model.environment.scots_pine", "model.environment.birch",
+              "model.environment.aspen", "model.environment.alder")) == 3094, counts
+          print("Sakkola environment migration verified:", {
+              "Blender Scots pine": counts["model.environment.scots_pine"],
+              "Blender granite boulder": counts["model.environment.boulder"],
+              "other broadleaf trees": sum(counts.get(name, 0) for name in (
+                  "model.environment.birch", "model.environment.aspen", "model.environment.alder"))
+          })
+          PY
+
       - name: Configure MSVC environment
         uses: ilammy/msvc-dev-cmd@v1
         with:
