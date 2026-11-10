@@ -2,6 +2,8 @@
 
 #include "talvisota/content/ContentRegistry.hpp"
 
+#include <array>
+#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -23,6 +25,16 @@ struct MissionObjectiveDefinition final
     std::string interactionTargetId;
 };
 
+struct MissionActorDefinition final
+{
+    std::string id;
+    std::string factionId;
+    std::string weaponId;
+    // X/Z world coordinates; the gameplay adapter samples the authored terrain height.
+    std::array<float, 2> positionXZ{};
+    std::uint32_t reserveRounds = 0U;
+};
+
 struct AuthoredDefinition final
 {
     AuthoredDefinitionKind kind = AuthoredDefinitionKind::Mission;
@@ -32,6 +44,7 @@ struct AuthoredDefinition final
     std::string worldId;
     std::string regionId;
     std::vector<MissionObjectiveDefinition> objectives;
+    std::vector<MissionActorDefinition> actors;
     std::string factionId;
     // Optional authored campaign successor; empty marks the end of the sequence.
     std::string nextMissionId;
