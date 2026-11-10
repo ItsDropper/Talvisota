@@ -44,13 +44,12 @@ bool ApplyMaterialDefinition(const content::MaterialDefinition& definition,
                              const content::ContentRegistry& registry,
                              RenderMaterial& output, std::string& error)
 {
-    // Alpha blending and emissive texture maps require dedicated blend/material
-    // resource paths. Masking and the remaining scalar PBR properties are supported.
-    if (definition.alphaMode == content::MaterialAlphaMode::Blend ||
-        !definition.emissiveTexture.empty())
+    // Emissive texture maps still require an additional GPU texture slot; all scalar
+    // emissive properties and the three alpha modes are supported by both backends.
+    if (!definition.emissiveTexture.empty())
     {
-        error = "Typed material requests alpha blending or an emissive texture, which "
-                "is not implemented by the active renderer backends.";
+        error = "Typed material requests an emissive texture map, which is not yet "
+                "implemented by the active renderer backends.";
         return false;
     }
 
@@ -63,7 +62,8 @@ bool ApplyMaterialDefinition(const content::MaterialDefinition& definition,
     candidate.occlusionStrength = definition.occlusionStrength;
     candidate.alphaCutoff = definition.alphaCutoff;
     candidate.alphaMode = definition.alphaMode == content::MaterialAlphaMode::Mask
-        ? RenderAlphaMode::Mask : RenderAlphaMode::Opaque;
+        ? RenderAlphaMode::Mask : definition.alphaMode == content::MaterialAlphaMode::Blend
+            ? RenderAlphaMode::Blend : RenderAlphaMode::Opaque;
     candidate.doubleSided = definition.doubleSided;
 
     if (!ResolveTexture(registry, definition.baseColorTexture,
