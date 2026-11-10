@@ -110,6 +110,10 @@ struct BattlefieldRenderAssets final {
 struct BattlefieldActorRenderBinding final {
     std::string entityId;
     std::size_t bodyInstance=0U, weaponInstance=0U;
+    std::array<float,3> previousPosition{};
+    float stridePhase=0.0F;
+    float lastUpdateSeconds=0.0F;
+    bool hasPreviousPosition=false;
 };
 void AppendBox(talvisota::presentation::RenderMesh& mesh,
     const std::array<float,3>& center,const std::array<float,3>& half) {
@@ -146,8 +150,11 @@ void AppendBox(talvisota::presentation::RenderMesh& mesh,
     }
 }
 void AppendEllipsoid(talvisota::presentation::RenderMesh& mesh,
-    const std::array<float,3>& center,const std::array<float,3>& radii) {
-    constexpr std::uint32_t rings=8U, segments=16U;
+    const std::array<float,3>& center,const std::array<float,3>& radii,
+    const float rotationX=0.0F) {
+    // Smoother shared geometry avoids faceted silhouettes without multiplying draw calls.
+    constexpr std::uint32_t rings=12U, segments=24U;
+    const float cosine=std::cos(rotationX),sine=std::sin(rotationX);
     const auto first=static_cast<std::uint32_t>(mesh.vertices.size());
     for(std::uint32_t ring=0U;ring<=rings;++ring) {
         const float v=static_cast<float>(ring)/static_cast<float>(rings);
@@ -161,8 +168,13 @@ void AppendEllipsoid(talvisota::presentation::RenderMesh& mesh,
             const float nx=sx/radii[0],ny=sy/radii[1],nz=sz/radii[2];
             const float normalLength=std::sqrt(nx*nx+ny*ny+nz*nz);
             talvisota::presentation::RenderVertex vertex;
-            vertex.position={center[0]+sx*radii[0],center[1]+sy*radii[1],center[2]+sz*radii[2]};
-            vertex.normal={nx/normalLength,ny/normalLength,nz/normalLength};
+            const float localY=sy*radii[1],localZ=sz*radii[2];
+            const float normalY=ny/normalLength,normalZ=nz/normalLength;
+            vertex.position={center[0]+sx*radii[0],
+                center[1]+localY*cosine-localZ*sine,
+                center[2]+localY*sine+localZ*cosine};
+            vertex.normal={nx/normalLength,
+                normalY*cosine-normalZ*sine,normalY*sine+normalZ*cosine};
             vertex.u=u; vertex.v=v;
             mesh.vertices.push_back(vertex);
         }
@@ -175,6 +187,44 @@ void AppendEllipsoid(talvisota::presentation::RenderMesh& mesh,
         }
     }
 }
+void AppendCylinderAlongZ(talvisota::presentation::RenderMesh& mesh,
+    const float centerX,const float centerY,const float startZ,const float endZ,
+    const float radius,const std::uint32_t segments=16U) {
+    if(segments<6U||!(endZ>startZ)||!(radius>0.0F)) return;
+    const auto first=static_cast<std::uint32_t>(mesh.vertices.size());
+    constexpr float tau=6.28318530717958647692F;
+    for(std::uint32_t ring=0U;ring<2U;++ring) {
+        const float z=ring==0U?startZ:endZ;
+        for(std::uint32_t segment=0U;segment<=segments;++segment) {
+            const float angle=tau*static_cast<float>(segment)/static_cast<float>(segments);
+            const float x=std::cos(angle),y=std::sin(angle);
+            talvisota::presentation::RenderVertex vertex;
+            vertex.position={centerX+x*radius,centerY+y*radius,z};
+            vertex.normal={x,y,0.0F};
+            vertex.u=static_cast<float>(segment)/static_cast<float>(segments);
+            vertex.v=static_cast<float>(ring);
+            mesh.vertices.push_back(vertex);
+        }
+    }
+    for(std::uint32_t segment=0U;segment<segments;++segment) {
+        const auto a=first+segment,b=a+segments+1U;
+        mesh.indices.insert(mesh.indices.end(),{a,a+1U,b,a+1U,b+1U,b});
+    }
+    for(std::uint32_t cap=0U;cap<2U;++cap) {
+        const float z=cap==0U?startZ:endZ;
+        const auto center=static_cast<std::uint32_t>(mesh.vertices.size());
+        talvisota::presentation::RenderVertex vertex;
+        vertex.position={centerX,centerY,z};
+        vertex.normal={0.0F,0.0F,cap==0U?-1.0F:1.0F};
+        mesh.vertices.push_back(vertex);
+        const auto ring=first+cap*(segments+1U);
+        for(std::uint32_t segment=0U;segment<segments;++segment) {
+            const auto a=ring+segment,b=a+1U;
+            if(cap==0U) mesh.indices.insert(mesh.indices.end(),{center,b,a});
+            else mesh.indices.insert(mesh.indices.end(),{center,a,b});
+        }
+    }
+}
 talvisota::presentation::RenderMesh BuildWeaponMesh(
     const talvisota::combat::WeaponArchetype archetype) {
     talvisota::presentation::RenderMesh mesh;
@@ -183,11 +233,20 @@ talvisota::presentation::RenderMesh BuildWeaponMesh(
         AppendBox(mesh,{0.0F,0.012F,0.22F},{0.043F,0.045F,0.14F});
         AppendBox(mesh,{0.0F,0.018F,0.54F},{0.014F,0.014F,0.24F});
         AppendBox(mesh,{0.0F,0.062F,0.34F},{0.014F,0.016F,0.025F});
+        AppendCylinderAlongZ(mesh,0.0F,0.018F,0.43F,0.91F,0.012F);
+        AppendCylinderAlongZ(mesh,0.0F,0.018F,0.89F,0.925F,0.016F);
+        AppendBox(mesh,{0.0F,0.047F,0.46F},{0.012F,0.024F,0.018F});
+        AppendBox(mesh,{0.0F,0.065F,0.12F},{0.012F,0.014F,0.045F});
+        AppendBox(mesh,{0.047F,0.014F,0.23F},{0.012F,0.022F,0.075F});
     } else if(archetype==talvisota::combat::WeaponArchetype::SubmachineGun) {
         AppendBox(mesh,{0.0F,0.0F,-0.025F},{0.04F,0.045F,0.16F});
         AppendBox(mesh,{0.0F,0.012F,0.20F},{0.052F,0.055F,0.15F});
         AppendBox(mesh,{0.0F,0.018F,0.48F},{0.016F,0.016F,0.14F});
         AppendBox(mesh,{0.0F,-0.085F,0.23F},{0.067F,0.078F,0.07F});
+        AppendCylinderAlongZ(mesh,0.0F,0.018F,0.37F,0.69F,0.014F);
+        AppendCylinderAlongZ(mesh,0.0F,0.018F,0.67F,0.705F,0.018F);
+        AppendBox(mesh,{0.0F,0.065F,0.30F},{0.012F,0.016F,0.025F});
+        AppendBox(mesh,{0.0F,0.057F,0.48F},{0.012F,0.014F,0.02F});
     } else {
         AppendBox(mesh,{0.0F,0.0F,-0.04F},{0.045F,0.05F,0.18F});
         AppendBox(mesh,{0.0F,0.018F,0.22F},{0.06F,0.07F,0.17F});
@@ -195,6 +254,10 @@ talvisota::presentation::RenderMesh BuildWeaponMesh(
         AppendBox(mesh,{0.0F,0.115F,0.23F},{0.06F,0.09F,0.075F});
         AppendBox(mesh,{-0.035F,-0.095F,0.42F},{0.012F,0.11F,0.018F});
         AppendBox(mesh,{0.035F,-0.095F,0.42F},{0.012F,0.11F,0.018F});
+        AppendCylinderAlongZ(mesh,0.0F,0.024F,0.48F,0.91F,0.014F);
+        AppendCylinderAlongZ(mesh,0.0F,0.024F,0.89F,0.925F,0.018F);
+        AppendBox(mesh,{0.0F,0.11F,0.48F},{0.018F,0.025F,0.035F});
+        AppendBox(mesh,{0.0F,0.105F,0.15F},{0.045F,0.012F,0.055F});
     }
     return mesh;
 }
@@ -212,17 +275,26 @@ bool BuildBattlefieldRenderAssets(talvisota::presentation::SceneSnapshot& scene,
     AppendEllipsoid(body,{0.125F,0.55F,0.0F},{0.095F,0.285F,0.105F});
     AppendEllipsoid(body,{-0.125F,0.135F,0.035F},{0.13F,0.09F,0.19F});
     AppendEllipsoid(body,{0.125F,0.135F,0.035F},{0.13F,0.09F,0.19F});
-    AppendEllipsoid(body,{-0.245F,1.13F,0.035F},{0.09F,0.245F,0.095F});
-    AppendEllipsoid(body,{0.245F,1.13F,0.035F},{0.09F,0.245F,0.095F});
-    AppendEllipsoid(body,{-0.205F,0.94F,0.11F},{0.065F,0.075F,0.065F});
-    AppendEllipsoid(body,{0.205F,0.94F,0.11F},{0.065F,0.075F,0.065F});
+    // Bent arms reach the weapon instead of hanging vertically at the sides.
+    AppendEllipsoid(body,{-0.245F,1.13F,0.075F},{0.085F,0.225F,0.09F},0.82F);
+    AppendEllipsoid(body,{0.245F,1.13F,0.075F},{0.085F,0.225F,0.09F},0.82F);
+    AppendEllipsoid(body,{-0.205F,0.94F,0.30F},{0.065F,0.075F,0.065F});
+    AppendEllipsoid(body,{0.205F,0.94F,0.30F},{0.065F,0.075F,0.065F});
     AppendEllipsoid(body,{0.0F,1.115F,-0.205F},{0.18F,0.235F,0.09F});
-    AppendEllipsoid(body,{0.0F,1.52F,0.015F},{0.105F,0.135F,0.105F});
-    AppendEllipsoid(body,{0.0F,1.68F,0.0F},{0.165F,0.085F,0.16F});
-    AppendBox(body,{0.0F,1.635F,0.0F},{0.18F,0.018F,0.175F});
+    AppendEllipsoid(body,{0.0F,1.465F,0.015F},{0.075F,0.075F,0.075F});
+    AppendEllipsoid(body,{0.0F,1.535F,0.015F},{0.105F,0.135F,0.105F});
+    AppendEllipsoid(body,{0.0F,1.68F,0.0F},{0.165F,0.075F,0.16F});
+    AppendEllipsoid(body,{0.0F,1.65F,0.0F},{0.176F,0.025F,0.17F});
+    AppendBox(body,{0.0F,1.635F,0.0F},{0.18F,0.012F,0.175F});
+    // Belt, shoulder webbing, closures, ammunition pouches and knee reinforcements.
     AppendBox(body,{0.0F,0.83F,0.0F},{0.245F,0.045F,0.16F});
+    AppendBox(body,{0.0F,0.85F,0.164F},{0.055F,0.038F,0.012F});
     AppendBox(body,{-0.075F,1.18F,0.153F},{0.025F,0.24F,0.012F});
     AppendBox(body,{0.075F,1.18F,0.153F},{0.025F,0.24F,0.012F});
+    AppendBox(body,{-0.17F,0.91F,0.175F},{0.065F,0.075F,0.055F});
+    AppendBox(body,{0.17F,0.91F,0.175F},{0.065F,0.075F,0.055F});
+    AppendBox(body,{-0.13F,0.61F,0.095F},{0.09F,0.075F,0.018F});
+    AppendBox(body,{0.13F,0.61F,0.095F},{0.09F,0.075F,0.018F});
     AppendBox(body,{-0.235F,0.86F,0.10F},{0.065F,0.075F,0.045F});
     AppendBox(body,{0.235F,0.86F,0.10F},{0.065F,0.075F,0.045F});
     output.bodyMesh=static_cast<std::uint32_t>(scene.meshes.size());
@@ -263,16 +335,26 @@ std::uint32_t ResolveWeaponMesh(const BattlefieldRenderAssets& assets,std::strin
     }
     return assets.rifleMesh;
 }
-std::array<float,16> ActorWorldMatrix(const std::array<float,3>& position,float yaw,float bob=0.0F) {
-    const float c=std::cos(yaw),s=std::sin(yaw);
-    return {c,0.0F,-s,0.0F,0.0F,1.0F,0.0F,0.0F,s,0.0F,c,0.0F,
-        position[0],position[1]+bob,position[2],1.0F};
+std::array<float,16> ActorWorldMatrix(const std::array<float,3>& position,float yaw,
+    float bob,float pitch,float roll) {
+    const float cy=std::cos(yaw),sy=std::sin(yaw);
+    const float cp=std::cos(pitch),sp=std::sin(pitch);
+    const float cr=std::cos(roll),sr=std::sin(roll);
+    return {
+        cy*cr+sy*sp*sr,cp*sr,-sy*cr+cy*sp*sr,0.0F,
+        -cy*sr+sy*sp*cr,cp*cr,sy*sr+cy*sp*cr,0.0F,
+        sy*cp,-sp,cy*cp,0.0F,
+        position[0],position[1]+bob,position[2],1.0F
+    };
 }
-std::array<float,16> ActorWeaponWorldMatrix(const std::array<float,3>& position,float yaw) {
+std::array<float,16> ActorWeaponWorldMatrix(const std::array<float,3>& position,
+    float yaw,float bob,float stridePhase,float movementAmount) {
     const float c=std::cos(yaw),s=std::sin(yaw);
+    const float sway=std::sin(stridePhase)*0.012F*movementAmount;
     constexpr float x=0.27F,y=1.02F,z=0.15F;
     return {c,0.0F,-s,0.0F,0.0F,1.0F,0.0F,0.0F,s,0.0F,c,0.0F,
-        position[0]+c*x+s*z,position[1]+y,position[2]-s*x+c*z,1.0F};
+        position[0]+c*(x+sway)+s*z,position[1]+y+bob*0.65F,
+        position[2]-s*(x+sway)+c*z,1.0F};
 }
 std::array<float,16> PlayerWeaponWorldMatrix(
     const talvisota::game::PlayerCamera& camera,float elapsedSeconds) {
@@ -335,7 +417,7 @@ bool EnsureBattlefieldActorInstances(talvisota::presentation::SceneSnapshot& sce
 }
 void UpdateBattlefieldActorInstances(talvisota::presentation::SceneSnapshot& scene,
     const talvisota::gameplay::SimulationState& simulation,
-    const std::vector<BattlefieldActorRenderBinding>& bindings,float elapsedSeconds) {
+    std::vector<BattlefieldActorRenderBinding>& bindings,float elapsedSeconds) {
     const auto* player=simulation.entities.Find(simulation.playerEntityId);
     for(std::size_t i=0U;i<bindings.size();++i) {
         const auto& binding=bindings[i];
@@ -350,9 +432,27 @@ void UpdateBattlefieldActorInstances(talvisota::presentation::SceneSnapshot& sce
         if(!visible) continue;
         const float yaw=std::atan2(player->position[0]-actor->position[0],
             player->position[2]-actor->position[2]);
-        const float bob=std::sin(elapsedSeconds*2.0F+static_cast<float>(i)*0.73F)*0.006F;
-        body.world=ActorWorldMatrix(actor->position,yaw,bob);
-        weapon.world=ActorWeaponWorldMatrix(actor->position,yaw);
+        float movementAmount=0.0F;
+        if(binding.hasPreviousPosition) {
+            const float dt=elapsedSeconds-binding.lastUpdateSeconds;
+            if(dt>1.0e-4F&&dt<0.5F) {
+                const float dx=actor->position[0]-binding.previousPosition[0];
+                const float dz=actor->position[2]-binding.previousPosition[2];
+                const float speed=std::sqrt(dx*dx+dz*dz)/dt;
+                movementAmount=std::clamp(speed/3.2F,0.0F,1.0F);
+                binding.stridePhase=std::fmod(binding.stridePhase+speed*dt*2.6F,6.28318530718F);
+            }
+        }
+        binding.previousPosition=actor->position;
+        binding.lastUpdateSeconds=elapsedSeconds;
+        binding.hasPreviousPosition=true;
+        const float gait=std::sin(binding.stridePhase+static_cast<float>(i)*0.37F);
+        const float bob=movementAmount*(0.012F+0.018F*std::abs(gait))+
+            std::sin(elapsedSeconds*1.8F+static_cast<float>(i)*0.73F)*0.0025F;
+        body.world=ActorWorldMatrix(actor->position,yaw,bob,
+            0.12F*movementAmount,gait*0.035F*movementAmount);
+        weapon.world=ActorWeaponWorldMatrix(actor->position,yaw,bob,
+            binding.stridePhase,movementAmount);
     }
 }
 bool AppendPlayerWeaponInstance(talvisota::presentation::SceneSnapshot& scene,
