@@ -23,14 +23,25 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Blender and Python dependency tooling
+        timeout-minutes: 8
         run: |
-          sudo apt-get update
           sudo apt-get install --yes --no-install-recommends blender python3-pip
 
-      - name: Install NumPy for Blender's Python 3.12
+      - name: Restore Blender Python dependency cache
+        id: blender-python-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/blender-python
+          key: blender-python-3.12-numpy-1.26.4-pillow-v1
+
+      - name: Install NumPy and Pillow for Blender's Python 3.12
+        if: steps.blender-python-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 5
         run: |
-          python3 -m pip install --disable-pip-version-check --target "$RUNNER_TEMP/blender-python" --python-version 3.12 --only-binary=:all: numpy==1.26.4 pillow
-          echo "PYTHONPATH=$RUNNER_TEMP/blender-python" >> "$GITHUB_ENV"
+          python3 -m pip install --disable-pip-version-check --retries 2 --timeout 20 --target "$RUNNER_TEMP/blender-python" --python-version 3.12 --only-binary=:all: numpy==1.26.4 pillow
+
+      - name: Configure Blender Python dependencies
+        run: echo "PYTHONPATH=$RUNNER_TEMP/blender-python" >> "$GITHUB_ENV"
 
       - name: Generate source PBR maps
         run: |
@@ -90,14 +101,25 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Blender and Python dependency tooling
+        timeout-minutes: 8
         run: |
-          sudo apt-get update
           sudo apt-get install --yes --no-install-recommends blender python3-pip
 
+      - name: Restore Blender Python dependency cache
+        id: blender-python-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/blender-python
+          key: blender-python-3.12-numpy-1.26.4-pillow-v1
+
       - name: Install NumPy and Pillow for Blender's Python 3.12
+        if: steps.blender-python-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 5
         run: |
-          python3 -m pip install --disable-pip-version-check --target "$RUNNER_TEMP/blender-python" --python-version 3.12 --only-binary=:all: numpy==1.26.4 pillow
-          echo "PYTHONPATH=$RUNNER_TEMP/blender-python" >> "$GITHUB_ENV"
+          python3 -m pip install --disable-pip-version-check --retries 2 --timeout 20 --target "$RUNNER_TEMP/blender-python" --python-version 3.12 --only-binary=:all: numpy==1.26.4 pillow
+
+      - name: Configure Blender Python dependencies
+        run: echo "PYTHONPATH=$RUNNER_TEMP/blender-python" >> "$GITHUB_ENV"
 
       - name: Generate source PBR maps
         run: |
