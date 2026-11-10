@@ -186,7 +186,11 @@ bool InitializeSimulationFromAuthoredMission(
 
     candidate.playerEntityId = playerId;
     if (!combat::RegisterCombatant(candidate.combat, candidate.entities, playerId,
-            "weapon.mosin_m27", 100.0F, 45U, error))
+            "weapon.mosin_m27", 100.0F, 45U, error) ||
+        !combat::AddCombatantWeapon(candidate.combat, candidate.entities, playerId,
+            "weapon.suomi_kp31", 120U, false, error) ||
+        !combat::AddCombatantWeapon(candidate.combat, candidate.entities, playerId,
+            "weapon.lahti_saloranta_m26", 180U, false, error))
         return false;
     for (const content::MissionActorDefinition& actor : authoredMission.actors)
     {
