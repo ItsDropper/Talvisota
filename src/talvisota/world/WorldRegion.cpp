@@ -734,7 +734,7 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
             placement->modelAssetId != "model.environment.suvanto_ice" &&
             placement->modelAssetId != "model.environment.taipale_ice")
             Add(diagnostics, path, 0, "water_surface.placement",
-                "Water surface must reference a declared Suvanto ice model placement.");
+                "Water surface must reference a declared frozen-water model placement.");
     }
 
     // The renderer raises grounded vegetation and deadwood by the authored snow
