@@ -61,6 +61,7 @@ struct MissionOverlayData final {
     std::wstring prompt=L"FOLLOW THE OBJECTIVE";
     std::wstring feedback;
     bool completed=false;
+    bool failed=false;
     bool hasProgress=false;
 };
 MissionOverlayData missionOverlay;
@@ -100,6 +101,7 @@ bool RefreshMissionOverlay(const talvisota::gameplay::SimulationState& simulatio
     const talvisota::game::PlayerState& player,const float interactionRadius,std::string& error) {
     MissionOverlayData updated=missionOverlay;
     updated.completed=simulation.mission.status==talvisota::missions::MissionStatus::Completed;
+    updated.failed=simulation.mission.status==talvisota::missions::MissionStatus::Failed;
     updated.hasProgress=simulation.mission.completedObjectives>0U;
     updated.progress=std::to_wstring(simulation.mission.completedObjectives)+L" / "+
         std::to_wstring(simulation.mission.objectives.size())+L" OBJECTIVES";
@@ -107,6 +109,10 @@ bool RefreshMissionOverlay(const talvisota::gameplay::SimulationState& simulatio
         updated.objective=L"MISSION COMPLETE";
         updated.distance.clear();
         updated.prompt=campaignHasNextMission?L"PRESS E TO RECEIVE YOUR NEXT ORDERS":L"PRESS ESC TO RETURN TO THE MENU";
+    } else if(updated.failed) {
+        updated.objective=L"MISSION FAILED";
+        updated.distance.clear();
+        updated.prompt=L"PRESS ESC TO RETURN TO THE MENU";
     } else {
         const auto active=std::find_if(simulation.mission.objectives.begin(),simulation.mission.objectives.end(),
             [](const talvisota::missions::ObjectiveState& objective) {
@@ -139,7 +145,9 @@ bool RefreshMissionOverlay(const talvisota::gameplay::SimulationState& simulatio
     const auto playerCombatant=simulation.combat.combatants.find(simulation.playerEntityId);
     if(playerCombatant!=simulation.combat.combatants.end()) {
         const auto* weapon=talvisota::combat::FindWeaponDefinition(playerCombatant->second.weaponId);
-        if(weapon!=nullptr) updated.ammo=Utf8ToWide(weapon->displayName)+L"  "+
+        if(weapon!=nullptr) updated.ammo=L"HEALTH  "+
+            std::to_wstring(static_cast<int>(std::lround(playerCombatant->second.health)))+L"   |   "+
+            Utf8ToWide(weapon->displayName)+L"  "+
             std::to_wstring(playerCombatant->second.magazineRounds)+L" / "+
             std::to_wstring(playerCombatant->second.reserveRounds);
     }
@@ -147,7 +155,7 @@ bool RefreshMissionOverlay(const talvisota::gameplay::SimulationState& simulatio
         updated.objective!=missionOverlay.objective||updated.distance!=missionOverlay.distance||
         updated.progress!=missionOverlay.progress||updated.prompt!=missionOverlay.prompt||
         updated.feedback!=missionOverlay.feedback||updated.ammo!=missionOverlay.ammo||updated.completed!=missionOverlay.completed||
-        updated.hasProgress!=missionOverlay.hasProgress;
+        updated.failed!=missionOverlay.failed||updated.hasProgress!=missionOverlay.hasProgress;
     missionOverlay=std::move(updated);
     if(changed&&frontendOverlay&&IsWindow(frontendOverlay)) InvalidateRect(frontendOverlay,nullptr,FALSE);
     error.clear();
@@ -204,13 +212,13 @@ void PaintMissionHud(HDC dc,const RECT& client) {
     RECT ammo{44,180,480,207}; DrawTextW(dc,missionOverlay.ammo.c_str(),-1,&ammo,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     SelectObject(dc,oldFont); DeleteObject(body); DeleteObject(heading);
 
-    if(missionOverlay.completed) {
+    if(missionOverlay.completed || missionOverlay.failed) {
         RECT banner{client.right/2-250,client.bottom-142,client.right/2+250,client.bottom-70};
         HBRUSH success=CreateSolidBrush(RGB(10,24,34)); FillRect(dc,&banner,success); DeleteObject(success);
         HFONT complete=CreateFontW(24,0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,
             CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
-        oldFont=SelectObject(dc,complete); SetTextColor(dc,RGB(125,215,190));
-        DrawTextW(dc,L"MISSION COMPLETE",-1,&banner,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        oldFont=SelectObject(dc,complete); SetTextColor(dc,missionOverlay.failed?RGB(220,155,130):RGB(125,215,190));
+        DrawTextW(dc,missionOverlay.failed?L"MISSION FAILED":L"MISSION COMPLETE",-1,&banner,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         SelectObject(dc,oldFont); DeleteObject(complete);
     }
     // A restrained centre reticle keeps the first-person view readable without
@@ -267,8 +275,8 @@ void PaintMenu(HWND hwnd) {
         Rectangle(dc,b.left,b.top,b.right,b.bottom); SelectObject(dc,ob); SelectObject(dc,op); DeleteObject(pen);
         SetTextColor(dc,RGB(240,245,249));
         const wchar_t* label=frontendState==FrontendState::MainMenu?
-            (i==0?(missionOverlay.completed?(campaignHasNextMission?L"CONTINUE CAMPAIGN":L"REPLAY MISSION"):missionOverlay.hasProgress?L"CONTINUE PATROL":L"START FIRST PATROL"):L"QUIT"):
-            (i==0?L"RESUME":i==1?L"RETURN TO MAIN MENU":L"QUIT");
+            (i==0?(missionOverlay.failed?L"RESTART MISSION":missionOverlay.completed?(campaignHasNextMission?L"CONTINUE CAMPAIGN":L"REPLAY MISSION"):missionOverlay.hasProgress?L"CONTINUE MISSION":L"START MISSION"):L"QUIT"):
+            (i==0?(missionOverlay.failed?L"RESTART MISSION":L"RESUME"):i==1?L"RETURN TO MAIN MENU":L"QUIT");
         DrawTextW(dc,label,-1,&b,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
     SelectObject(dc,old); SetTextColor(dc,RGB(126,151,169));
@@ -282,14 +290,18 @@ void PaintMenu(HWND hwnd) {
 void ActivateFrontendButton(const int index) {
     if(frontendState==FrontendState::MainMenu) {
         if(index==0) {
-            if(missionOverlay.completed) {
+            if(missionOverlay.failed) restartPatrolRequested=true;
+            else if(missionOverlay.completed) {
                 if(campaignHasNextMission) advanceCampaignRequested=true;
                 else restartPatrolRequested=true;
             }
             SetFrontendState(FrontendState::Playing);
         } else if(index==1&&mainWindow) DestroyWindow(mainWindow);
     } else if(frontendState==FrontendState::Paused) {
-        if(index==0) SetFrontendState(FrontendState::Playing);
+        if(index==0) {
+            if(missionOverlay.failed) restartPatrolRequested=true;
+            SetFrontendState(FrontendState::Playing);
+        }
         else if(index==1) SetFrontendState(FrontendState::MainMenu);
         else if(index==2&&mainWindow) DestroyWindow(mainWindow);
     }
@@ -1125,7 +1137,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         if (ownsCom) CoUninitialize();
         return 8;
     }
-    const talvisota::game::PlayerState initialPlayerState=playerState;
+    talvisota::game::PlayerState missionStartPlayerState=playerState;
     talvisota::content::AuthoredDefinition authoredMission;
     if(!LoadMission(contentRoot,"mission.sakkola.first-patrol",authoredMission,error)) {
         std::cerr<<error<<"\n";
@@ -1203,6 +1215,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                     break;
                 }
                 authoredMission=std::move(nextMission);
+                missionStartPlayerState=playerState;
                 scene.environment=worldEnvironment;
                 ApplyMissionEnvironment(scene,authoredMission);
                 gameplayState=std::move(nextGameplay);
@@ -1216,12 +1229,17 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             }
         }
         if(restartPatrolRequested) {
-            if(!talvisota::missions::RestartMission(gameplayState.mission,error) ||
-                !gameplayState.entities.SetPosition(gameplayState.playerEntityId,initialPlayerState.position,error)) {
+            talvisota::gameplay::SimulationState restartedGameplay;
+            if(!talvisota::gameplay::InitializeSimulationFromAuthoredMission(
+                    authoredMission,gameRegion,missionStartPlayerState.position,
+                    gameplayRules,restartedGameplay,error) ||
+                !PlaceMissionInteractionAnchors(gameRegion,restartedGameplay,
+                    missionStartPlayerState.position,playerConfig.capsuleRadius,error)) {
                 std::cerr<<"Could not restart mission: "<<error<<"\n";
                 break;
             }
-            playerState=initialPlayerState;
+            gameplayState=std::move(restartedGameplay);
+            playerState=missionStartPlayerState;
             restartCameraRequested=true;
             gameplayAccumulator=0.0;
             interactionQueued=false;
@@ -1246,7 +1264,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             static_cast<float>(frameDeltaMs * 0.001), 0.0F, 0.1F);
         previousFrame = now;
         if(frontendState==FrontendState::Playing &&
-            gameplayState.mission.status!=talvisota::missions::MissionStatus::Completed) {
+            gameplayState.mission.status==talvisota::missions::MissionStatus::Active) {
             talvisota::game::PlayerInput playerInput;
             playerInput.forward=((GetAsyncKeyState('W')&0x8000)!=0?1.0F:0.0F)-
                 ((GetAsyncKeyState('S')&0x8000)!=0?1.0F:0.0F);
