@@ -366,7 +366,8 @@ private:
             material.occlusionStrength = source.occlusionStrength;
             material.alphaCutoff = source.alphaCutoff;
             material.alphaMode = source.alphaMode == RenderAlphaMode::Mask
-                ? vanta::renderer::MaterialAlphaMode::Mask : vanta::renderer::MaterialAlphaMode::Opaque;
+                ? vanta::renderer::MaterialAlphaMode::Mask : source.alphaMode == RenderAlphaMode::Blend
+                    ? vanta::renderer::MaterialAlphaMode::Blend : vanta::renderer::MaterialAlphaMode::Opaque;
             material.doubleSided = source.doubleSided;
             material.baseColorTexture = source.baseColorTexture;
             material.normalTexture = source.normalTexture;
