@@ -1339,7 +1339,7 @@ constexpr std::array<CaptureView, 7> Views = {{
     // Exterior composition checks.
     {L"01-sakkola-overview.png", {0.0F, 35.0F, 30.0F}, {0.0F, 20.0F, 190.0F}},
     {L"02-church-village.png", {0.0F, 22.0F, 225.0F}, {0.0F, 17.0F, 178.0F}},
-    {L"03-suvanto-shoreline.png", {0.0F, 4.0F, -1100.0F}, {0.0F, 1.82F, -270.0F}},
+    {L"03-suvanto-shoreline.png", {0.0F, 8.0F, -430.0F}, {0.0F, 3.0F, -240.0F}},
     {L"04-karelian-forest.png", {82.0F, 11.0F, -205.0F}, {175.0F, 4.0F, -62.0F}},
     {L"05-farmstead.png", {-80.0F, 12.0F, 90.0F}, {-45.0F, 9.0F, 123.0F}},
     // Inside the church nave, facing the altar and the rows of pews.
@@ -1351,12 +1351,12 @@ constexpr std::array<CaptureView, 7> TaipaleViews = {{
     // Elevated landscape compositions replace the previous near-horizontal sightlines,
     // which placed the river at the vanishing line and let winter fog flatten the scene.
     {L"01-taipale-overview.png", {0.0F, 10.0F, 820.0F}, {0.0F, 3.8F, 590.0F}},
-    {L"02-taipale-river-bend.png", {-430.0F, 12.0F, 790.0F}, {-40.0F, 3.8F, 620.0F}},
+    {L"02-taipale-river-bend.png", {-330.0F, 12.0F, 850.0F}, {-120.0F, 3.8F, 660.0F}},
     {L"03-taipale-frozen-river.png", {30.0F, 7.5F, 790.0F}, {0.0F, 3.8F, 590.0F}},
     {L"04-taipale-forest.png", {1400.0F, 16.0F, 1400.0F}, {1500.0F, 6.0F, 1150.0F}, false},
-    {L"05-taipale-farmstead.png", {950.0F, 14.0F, -300.0F}, {720.0F, 5.0F, -560.0F}, false},
-    {L"06-taipale-watch-post.png", {-1350.0F, 14.0F, 1250.0F}, {-1120.0F, 5.0F, 1040.0F}, false},
-    {L"07-taipale-command-hut.png", {1500.0F, 14.0F, -1400.0F}, {1360.0F, 5.0F, -1160.0F}, false}
+    {L"05-taipale-farmstead.png", {790.0F, 10.0F, -450.0F}, {720.0F, 5.0F, -560.0F}, false},
+    {L"06-taipale-watch-post.png", {-1240.0F, 12.0F, 1150.0F}, {-1120.0F, 5.0F, 1040.0F}, false},
+    {L"07-taipale-command-hut.png", {1440.0F, 12.0F, -1290.0F}, {1360.0F, 5.0F, -1160.0F}, false}
 }};
 }
 
