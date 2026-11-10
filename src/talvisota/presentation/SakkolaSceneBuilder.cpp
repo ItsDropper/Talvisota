@@ -352,6 +352,7 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
             instance.meshIndex = binding.meshIndex;
             instance.materialIndex = binding.materialIndex;
             instance.world = transform;
+            instance.placementId = placement.id;
             scene.instances.push_back(instance);
             float maxDrawDistance = 1200.0F;
             if (placement.modelAssetId == "model.environment.juniper" ||

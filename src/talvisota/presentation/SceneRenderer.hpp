@@ -49,6 +49,8 @@ struct RenderInstance final
         0.0F, 0.0F, 0.0F, 1.0F
     };
     bool visible = true;
+    // Stable authored identity; empty for transient presentation-only instances.
+    std::string placementId;
 };
 
 struct CameraFrame final

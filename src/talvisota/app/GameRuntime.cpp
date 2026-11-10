@@ -532,7 +532,7 @@ void PaintMenu(HWND hwnd) {
     SelectObject(dc,old); SetTextColor(dc,RGB(126,151,169));
     RECT hint{p.left+18,p.bottom-38,p.right-18,p.bottom-12};
     DrawTextW(dc,frontendState==FrontendState::MainMenu?
-        L"WASD MOVE  |  MOUSE LOOK  |  RMB AIM  |  E INTERACT  |  1/2/3 WEAPONS  |  LMB FIRE / HOLD AUTO  |  R RELOAD  |  ESC PAUSE":
+        L"WASD MOVE  |  MOUSE LOOK  |  RMB AIM  |  E INTERACT  |  F PUSH PROPS  |  1/2/3 WEAPONS  |  LMB FIRE / HOLD AUTO  |  R RELOAD  |  ESC PAUSE":
         L"ESC TO RESUME  |  MISSION PROGRESS IS KEPT",
         -1,&hint,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     DeleteObject(body); DeleteObject(title); EndPaint(hwnd,&ps);

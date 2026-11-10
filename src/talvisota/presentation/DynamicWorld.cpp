@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <fstream>
 #include <iomanip>
 #include <limits>
@@ -42,6 +43,17 @@ void ApplyRotation(std::array<float, 16>& matrix, float pitch, float roll) noexc
         matrix[offset + 1U] = sr * x + cr * pitchedY;
         matrix[offset + 2U] = pitchedZ;
     }
+}
+
+std::uint32_t StableHash(const std::string_view value) noexcept
+{
+    std::uint32_t hash = 2166136261U;
+    for (const char rawCharacter : value)
+    {
+        hash ^= static_cast<unsigned char>(rawCharacter);
+        hash *= 16777619U;
+    }
+    return hash;
 }
 
 float ObjectMass(const talvisota::world::WorldPlacement& placement) noexcept
@@ -88,16 +100,22 @@ bool DynamicWorldSystem::Initialize(const talvisota::world::WorldRegion& region,
         if (placement.category == talvisota::world::PlacementCategory::Terrain)
             object.integrity = std::numeric_limits<float>::max();
 
-        // The scene builder emits one material-bound instance per imported model
-        // material. Bind every such instance to its authored placement by transform,
-        // rather than assuming one placement equals one draw call.
+        // Scene construction writes the authored placement ID onto every
+        // material-bound draw instance. Never infer identity from transforms:
+        // coincident placements and world-space assets can legitimately overlap.
+        bool capturedInitialTransform = false;
         for (std::size_t index = 0; index < scene.instances.size(); ++index)
         {
-            const auto& world = scene.instances[index].world;
-            if (std::abs(world[12] - placement.position[0]) <= 0.02F &&
-                std::abs(world[14] - placement.position[2]) <= 0.02F &&
-                std::abs(world[13] - placement.position[1]) <= 3.0F)
-                object.instanceIndices.push_back(index);
+            const auto& instance = scene.instances[index];
+            if (instance.placementId != placement.id)
+                continue;
+            if (!capturedInitialTransform)
+            {
+                object.authoredTransform = instance.world;
+                object.position = {instance.world[12], instance.world[13], instance.world[14]};
+                capturedInitialTransform = true;
+            }
+            object.instanceIndices.push_back(index);
         }
         if (object.instanceIndices.empty())
         {
@@ -201,10 +219,10 @@ bool DynamicWorldSystem::Update(const talvisota::world::WorldRegion& region,
         float swayPitch = 0.0F, swayRoll = 0.0F;
         if (object.anchored && object.category == talvisota::world::PlacementCategory::Vegetation)
         {
-            const float phase = static_cast<float>(std::hash<std::string>{}(object.id) % 6283U) * 0.001F;
+            const float phase = static_cast<float>(StableHash(object.id) % 6283U) * 0.001F;
             const float amplitude = windStrength * 0.035F;
-            swayPitch = std::sin(time * 1.7F + phase) * amplitude;
-            swayRoll = std::sin(time * 1.13F + phase * 1.7F) * amplitude * 0.65F;
+            swayPitch = std::sin(time * 1.7F + phase) * amplitude * windDirection[1];
+            swayRoll = std::sin(time * 1.13F + phase * 1.7F) * amplitude * windDirection[0] * 0.65F;
         }
         else if (!object.anchored && !object.sleeping)
         {
@@ -275,7 +293,8 @@ bool DynamicWorldSystem::Save(const std::filesystem::path& path, std::string& er
         return false;
     }
     std::error_code ec;
-    std::filesystem::create_directories(path.parent_path(), ec);
+    if (!path.parent_path().empty())
+        std::filesystem::create_directories(path.parent_path(), ec);
     if (ec)
     {
         error = "Could not create dynamic world save directory: " + ec.message();
@@ -289,7 +308,7 @@ bool DynamicWorldSystem::Save(const std::filesystem::path& path, std::string& er
             error = "Could not open temporary dynamic world save.";
             return false;
         }
-        output << "TALVISOTA_WORLD_STATE 1\n" << objects_.size() << '\n';
+        output << "TALVISOTA_WORLD_STATE 2\n" << objects_.size() << '\n';
         output << std::setprecision(std::numeric_limits<float>::max_digits10);
         for (const auto& object : objects_)
         {
@@ -301,23 +320,62 @@ bool DynamicWorldSystem::Save(const std::filesystem::path& path, std::string& er
             for (const float value : object.rotation) output << ' ' << value;
             output << '\n';
         }
+        output.flush();
         if (!output)
         {
             error = "Could not write complete dynamic world save.";
             return false;
         }
+        output.close();
+        if (!output)
+        {
+            error = "Could not close the completed dynamic world save.";
+            return false;
+        }
     }
+
+    // POSIX rename replaces atomically. Windows does not replace an existing
+    // destination, so retain a rollback copy instead of deleting the last good save.
     std::filesystem::rename(temporary, path, ec);
     if (ec)
     {
-        std::error_code removeError;
-        std::filesystem::remove(path, removeError);
-        ec.clear();
-        std::filesystem::rename(temporary, path, ec);
+        std::error_code existsError;
+        const bool destinationExists = std::filesystem::exists(path, existsError);
+        if (existsError)
+        {
+            error = "Could not inspect the previous dynamic world save: " + existsError.message();
+            return false;
+        }
+        if (destinationExists)
+        {
+            ec.clear();
+            const std::filesystem::path backup = path.string() + ".bak";
+            std::error_code backupError;
+            std::filesystem::remove(backup, backupError);
+            backupError.clear();
+            std::filesystem::rename(path, backup, backupError);
+            if (backupError)
+            {
+                error = "Could not protect the previous dynamic world save: " + backupError.message();
+                return false;
+            }
+            std::filesystem::rename(temporary, path, ec);
+            if (ec)
+            {
+                std::error_code rollbackError;
+                std::filesystem::rename(backup, path, rollbackError);
+                error = "Could not publish the new dynamic world save: " + ec.message();
+                if (rollbackError)
+                    error += "; restoring the previous save also failed: " + rollbackError.message();
+                return false;
+            }
+            std::error_code cleanupError;
+            std::filesystem::remove(backup, cleanupError);
+        }
     }
     if (ec)
     {
-        error = "Could not atomically publish dynamic world save: " + ec.message();
+        error = "Could not publish dynamic world save: " + ec.message();
         return false;
     }
     error.clear();
@@ -346,7 +404,7 @@ bool DynamicWorldSystem::Load(const std::filesystem::path& path, std::string& er
     unsigned version = 0U;
     std::size_t count = 0U;
     if (!(input >> magic >> version >> count) || magic != "TALVISOTA_WORLD_STATE" ||
-        version != 1U || count != objects_.size())
+        (version != 1U && version != 2U) || count != objects_.size())
     {
         error = "Dynamic world save has an unsupported version or placement inventory.";
         return false;
@@ -370,18 +428,26 @@ bool DynamicWorldSystem::Load(const std::filesystem::path& path, std::string& er
         for (float& value : state.position) if (!(input >> value)) { error = "Truncated position."; return false; }
         for (float& value : state.velocity) if (!(input >> value)) { error = "Truncated velocity."; return false; }
         for (float& value : state.angularVelocity) if (!(input >> value)) { error = "Truncated angular velocity."; return false; }
-        for (float& value : state.rotation) if (!(input >> value)) { error = "Truncated rotation."; return false; }
+        if (version >= 2U)
+            for (float& value : state.rotation) if (!(input >> value)) { error = "Truncated rotation."; return false; }
         const auto found = indices.find(id);
         if (found == indices.end() || seen[found->second] ||
             !std::isfinite(state.integrity) || state.integrity < 0.0F ||
             !std::isfinite(state.mass) || state.mass <= 0.0F ||
-            !std::isfinite(state.sleepSeconds) || state.sleepSeconds < 0.0F ||
+            !std::isfinite(state.sleepSeconds) || state.sleepSeconds < 0.0F || state.sleepSeconds > 60.0F ||
             !Finite3(state.position) || !Finite3(state.velocity) || !Finite3(state.angularVelocity) || !Finite3(state.rotation))
         {
             error = "Dynamic world save contains an unknown, duplicate, or invalid object state.";
             return false;
         }
         auto& target = restored[found->second];
+        if (std::abs(state.mass - target.mass) > std::max(0.001F, target.mass * 0.0001F) ||
+            (target.category != talvisota::world::PlacementCategory::Terrain && state.integrity > 1.0F) ||
+            (state.anchored && !state.sleeping) || (state.integrity <= 0.0F && state.anchored))
+        {
+            error = "Dynamic world save violates an object mass, integrity, or sleep invariant.";
+            return false;
+        }
         if (target.category == talvisota::world::PlacementCategory::Terrain ||
             target.category == talvisota::world::PlacementCategory::Structure)
         {
