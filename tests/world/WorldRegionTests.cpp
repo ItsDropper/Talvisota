@@ -319,14 +319,19 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
                 "Rendered trees, boulders, and shoreline reeds must rest on the displaced terrain surface.");
 
         if (tree) {
+            const bool pine = placement.modelAssetId == "model.environment.pine" ||
+                placement.modelAssetId == "model.environment.scots_pine";
             const float maximumScale = placement.modelAssetId == "model.environment.spruce" ? 1.95F :
-                placement.modelAssetId == "model.environment.pine" ? 1.55F :
-                placement.modelAssetId == "model.environment.birch" ? 1.55F :
-                placement.modelAssetId == "model.environment.aspen" ? 1.35F : 1.35F;
+                pine ? 1.55F :
+                placement.modelAssetId == "model.environment.birch" ? 1.55F : 1.35F;
             const float minimumScale = placement.modelAssetId == "model.environment.spruce" ? 0.72F :
-                placement.modelAssetId == "model.environment.pine" ? 0.70F :
-                placement.modelAssetId == "model.environment.birch" ? 0.70F :
-                placement.modelAssetId == "model.environment.aspen" ? 0.65F : 0.65F;
+                pine ? 0.70F :
+                placement.modelAssetId == "model.environment.birch" ? 0.70F : 0.65F;
+            if (placement.uniformScale < minimumScale || placement.uniformScale > maximumScale) {
+                std::cerr << "Invalid tree scale " << placement.uniformScale << " for " << placement.id
+                          << " (" << placement.modelAssetId << "), expected [" << minimumScale
+                          << ", " << maximumScale << "].\n";
+            }
             Require(placement.uniformScale >= minimumScale && placement.uniformScale <= maximumScale,
                     "Tree instance scale must stay within species-specific juvenile and mature height limits.");
         }
