@@ -420,7 +420,7 @@ void UpdateBattlefieldActorInstances(talvisota::presentation::SceneSnapshot& sce
     std::vector<BattlefieldActorRenderBinding>& bindings,float elapsedSeconds) {
     const auto* player=simulation.entities.Find(simulation.playerEntityId);
     for(std::size_t i=0U;i<bindings.size();++i) {
-        const auto& binding=bindings[i];
+        auto& binding=bindings[i];
         if(binding.bodyInstance>=scene.instances.size()||binding.weaponInstance>=scene.instances.size()) continue;
         const auto* actor=simulation.entities.Find(binding.entityId);
         const auto combatant=simulation.combat.combatants.find(binding.entityId);
