@@ -414,6 +414,85 @@ bool FindNearestActiveObjectiveTarget(const SimulationState& state,
 }
 
 
+bool BuildBattlefieldAiCommands(SimulationState& state,
+    std::vector<combat::CombatCommand>& output, std::string& error)
+{
+    if (state.combat.combatants.size() > 64U ||
+        state.actorNextFireAtSeconds.size() > 64U ||
+        !std::isfinite(state.combat.elapsedSeconds) || state.combat.elapsedSeconds < 0.0)
+    {
+        error = "Battlefield AI state exceeds its actor or clock limits.";
+        return false;
+    }
+    const entities::EntityState* player = state.entities.Find(state.playerEntityId);
+    if (player == nullptr || !player->active ||
+        !state.combat.combatants.contains(state.playerEntityId))
+    {
+        error = "Battlefield AI requires the active player combatant.";
+        return false;
+    }
+
+    auto nextFireAt = state.actorNextFireAtSeconds;
+    std::vector<combat::CombatCommand> commands;
+    commands.reserve(state.combat.combatants.size());
+    std::size_t commandIndex = 0U;
+    for (const auto& [actorId, combatant] : state.combat.combatants)
+    {
+        if (actorId == state.playerEntityId || combatant.health <= 0.0F)
+            continue;
+        const entities::EntityState* actor = state.entities.Find(actorId);
+        const combat::WeaponDefinition* weapon = combat::FindWeaponDefinition(combatant.weaponId);
+        if (actor == nullptr || !actor->active || weapon == nullptr)
+        {
+            error = "Battlefield AI actor has no active entity or valid weapon definition.";
+            return false;
+        }
+
+        const entities::EntityState* selectedTarget = nullptr;
+        double nearestDistance = static_cast<double>(weapon->effectiveRangeMeters) * 0.5;
+        for (const auto& [targetId, targetCombatant] : state.combat.combatants)
+        {
+            if (targetId == actorId || targetCombatant.health <= 0.0F)
+                continue;
+            const entities::EntityState* target = state.entities.Find(targetId);
+            if (target == nullptr || !target->active || target->factionId == actor->factionId)
+                continue;
+            const double dx = static_cast<double>(actor->position[0]) - target->position[0];
+            const double dy = static_cast<double>(actor->position[1]) - target->position[1];
+            const double dz = static_cast<double>(actor->position[2]) - target->position[2];
+            const double distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+            if (!std::isfinite(distance))
+            {
+                error = "Battlefield AI encountered a non-finite actor separation.";
+                return false;
+            }
+            if (distance <= nearestDistance)
+            {
+                if (selectedTarget == nullptr || distance < nearestDistance ||
+                    targetId < selectedTarget->id)
+                {
+                    selectedTarget = target;
+                    nearestDistance = distance;
+                }
+            }
+        }
+        if (selectedTarget == nullptr)
+            continue;
+
+        const auto cooldown = nextFireAt.find(actorId);
+        if (cooldown != nextFireAt.end() && cooldown->second > state.combat.elapsedSeconds)
+            continue;
+        const std::string commandId = "ai." + std::to_string(state.tickIndex) + "." +
+            std::to_string(commandIndex++);
+        commands.push_back({commandId, actorId, selectedTarget->id, combat::CombatAction::Fire});
+        nextFireAt[actorId] = state.combat.elapsedSeconds + 1.6;
+    }
+    state.actorNextFireAtSeconds = std::move(nextFireAt);
+    output = std::move(commands);
+    error.clear();
+    return true;
+}
+
 bool FindNearestHostileCombatant(const SimulationState& state,
     const std::string_view actorEntityId, const std::array<float, 3>& rayOrigin,
     const std::array<float, 3>& rayDirection, const float maximumRangeMeters,
