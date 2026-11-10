@@ -84,6 +84,7 @@ std::wstring Utf8ToWide(const std::string_view value) {
 }
 
 std::wstring ObjectiveTitle(const std::string_view id) {
+    if(id=="objective.check-in-corporal") return L"CHECK IN WITH THE FARMSTEAD CORPORAL";
     if(id=="objective.inspect-well") return L"INSPECT THE FARMSTEAD WELL";
     if(id=="objective.inspect-woodpile") return L"CHECK THE WESTERN WOODPILE";
     if(id=="objective.report-church") return L"REPORT BACK TO THE CHURCH";
@@ -645,10 +646,10 @@ bool RefreshMissionOverlay(const talvisota::gameplay::SimulationState& simulatio
         if(actor->factionId==playerEntity->factionId) ++friendlyContacts;
         else ++hostileContacts;
     }
-    updated.contact=(friendlyContacts+hostileContacts)>0U
+    updated.contact=hostileContacts>0U
         ?L"SECTION  "+std::to_wstring(friendlyContacts)+L" ACTIVE   |   HOSTILE CONTACTS  "+
             std::to_wstring(hostileContacts)
-        :std::wstring{};
+        :L"WASD MOVE   |   MOUSE LOOK   |   E INTERACT";
     if(playerCombatant!=simulation.combat.combatants.end()) {
         const auto* weapon=talvisota::combat::FindWeaponDefinition(playerCombatant->second.weaponId);
         if(weapon!=nullptr) updated.ammo=L"HEALTH  "+
@@ -1822,6 +1823,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         std::cerr<<"First Patrol HUD initialization failed: "<<error<<"\n";
         renderer.reset(); DestroyWindow(window); if(ownsCom) CoUninitialize(); return 8;
     }
+    if(authoredMission.id=="mission.sakkola.first-patrol")
+        SetMissionFeedback(L"CORPORAL: CHECK IN, THEN INSPECT THE WELL AND WOODPILE.",
+            std::chrono::milliseconds(5200));
     std::vector<BattlefieldActorRenderBinding> battlefieldActorBindings;
     std::size_t playerWeaponInstance=0U;
     if(!EnsureBattlefieldActorInstances(scene,instanceMaxDrawDistances,gameplayState,
@@ -2213,22 +2217,32 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 for(const auto& result:commandResults) {
                     if(result.outcome==talvisota::gameplay::CommandOutcome::ObjectiveCompleted) {
                         SetMissionFeedback(L"OBJECTIVE COMPLETE",std::chrono::milliseconds(2200));
-                        if(authoredMission.id=="mission.sakkola.defensive-line") {
-                            const auto nextObjective=std::find_if(gameplayState.mission.objectives.begin(),
-                                gameplayState.mission.objectives.end(),[](const auto& objective) {
-                                    return objective.status==talvisota::missions::ObjectiveStatus::Active;
-                                });
-                            if(nextObjective!=gameplayState.mission.objectives.end()) {
-                                if(nextObjective->id=="objective.check-section-leader")
-                                    SetMissionFeedback(L"SECTION LEADER: CHECK IN WITH ME BEFORE WE MOVE.",
-                                        std::chrono::milliseconds(4200));
-                                else if(nextObjective->id=="objective.stop-third-advance")
-                                    SetMissionFeedback(L"SECTION LEADER: EASTERN APPROACH. STAY WITH THE SECTION.",
-                                        std::chrono::milliseconds(4200));
-                                else if(nextObjective->id=="objective.stop-fourth-advance")
-                                    SetMissionFeedback(L"SECTION LEADER: THE ROAD BEYOND THE BARN. KEEP WATCH.",
-                                        std::chrono::milliseconds(4200));
-                            }
+                        const auto nextObjective=std::find_if(gameplayState.mission.objectives.begin(),
+                            gameplayState.mission.objectives.end(),[](const auto& objective) {
+                                return objective.status==talvisota::missions::ObjectiveStatus::Active;
+                            });
+                        if(nextObjective!=gameplayState.mission.objectives.end() &&
+                            authoredMission.id=="mission.sakkola.first-patrol") {
+                            if(nextObjective->id=="objective.inspect-well")
+                                SetMissionFeedback(L"CORPORAL: CHECK THE WELL, THEN THE WOODPILE.",
+                                    std::chrono::milliseconds(4200));
+                            else if(nextObjective->id=="objective.inspect-woodpile")
+                                SetMissionFeedback(L"CORPORAL: CHECK THE WOODPILE. REPORT TO THE CHURCH.",
+                                    std::chrono::milliseconds(4200));
+                            else if(nextObjective->id=="objective.report-church")
+                                SetMissionFeedback(L"CORPORAL: GOOD. REPORT TO THE CHURCH POST.",
+                                    std::chrono::milliseconds(4200));
+                        } else if(nextObjective!=gameplayState.mission.objectives.end() &&
+                            authoredMission.id=="mission.sakkola.defensive-line") {
+                            if(nextObjective->id=="objective.check-section-leader")
+                                SetMissionFeedback(L"SECTION LEADER: CHECK IN WITH ME BEFORE WE MOVE.",
+                                    std::chrono::milliseconds(4200));
+                            else if(nextObjective->id=="objective.stop-third-advance")
+                                SetMissionFeedback(L"SECTION LEADER: EASTERN APPROACH. STAY WITH THE SECTION.",
+                                    std::chrono::milliseconds(4200));
+                            else if(nextObjective->id=="objective.stop-fourth-advance")
+                                SetMissionFeedback(L"SECTION LEADER: THE ROAD BEYOND THE BARN. KEEP WATCH.",
+                                    std::chrono::milliseconds(4200));
                         }
                     } else if(result.outcome==talvisota::gameplay::CommandOutcome::MissionCompleted)
                         SetMissionFeedback(L"MISSION COMPLETE",std::chrono::milliseconds(6000));
