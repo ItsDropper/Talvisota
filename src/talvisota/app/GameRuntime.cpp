@@ -1783,7 +1783,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             }
             std::cout << "Capture camera " << (view.file ? "view" : "unnamed")
                 << ": eye=(" << eye.x << "," << eye.y << "," << eye.z
-                << "), target=(" << target.x << "," << target.y << "," << target.z << ").\\n";
+                << "), target=(" << target.x << "," << target.y << "," << target.z << ").\n";
             const std::size_t visibleInstanceCount = CullCaptureInstances(scene,
                 meshCullRadii, instanceMaxDrawDistances, eye, target,
                 static_cast<float>(client.right-client.left)/static_cast<float>(client.bottom-client.top));
