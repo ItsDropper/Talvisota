@@ -124,8 +124,8 @@ void TestAuthoredWorldSimulation()
             SimulationState defensiveState;
             Check(InitializeSimulationFromAuthoredMission(defensiveMission,region,church->position,
                 rules,defensiveState,error),"Sakkola defensive battle initializes at the campaign church handoff");
-            Check(defensiveMission.actors.size()==7U&&defensiveMission.objectives.size()==5U,
-                "defensive battle contains a section and two support soldiers against four ordered enemy actors");
+            Check(defensiveMission.actors.size()==7U&&defensiveMission.objectives.size()==6U,
+                "defensive battle contains four enemy actors, a three-soldier Finnish section, and an intermediate leader check-in");
             Check(defensiveState.combat.combatants.size()==8U,
                 "defensive battle registers the player and all seven infantry combatants");
             const auto finnishActors=std::count_if(defensiveMission.actors.begin(),defensiveMission.actors.end(),
