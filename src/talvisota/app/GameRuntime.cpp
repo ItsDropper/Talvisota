@@ -144,6 +144,36 @@ void AppendBox(talvisota::presentation::RenderMesh& mesh,
         mesh.indices.insert(mesh.indices.end(),{base,base+1U,base+2U,base,base+2U,base+3U});
     }
 }
+void AppendEllipsoid(talvisota::presentation::RenderMesh& mesh,
+    const std::array<float,3>& center,const std::array<float,3>& radii) {
+    constexpr std::uint32_t rings=8U, segments=16U;
+    const auto first=static_cast<std::uint32_t>(mesh.vertices.size());
+    for(std::uint32_t ring=0U;ring<=rings;++ring) {
+        const float v=static_cast<float>(ring)/static_cast<float>(rings);
+        const float theta=v*3.14159265358979323846F;
+        for(std::uint32_t segment=0U;segment<=segments;++segment) {
+            const float u=static_cast<float>(segment)/static_cast<float>(segments);
+            const float phi=u*6.28318530717958647692F;
+            const float sx=std::sin(theta)*std::cos(phi);
+            const float sy=std::cos(theta);
+            const float sz=std::sin(theta)*std::sin(phi);
+            const float nx=sx/radii[0],ny=sy/radii[1],nz=sz/radii[2];
+            const float normalLength=std::sqrt(nx*nx+ny*ny+nz*nz);
+            talvisota::presentation::RenderVertex vertex;
+            vertex.position={center[0]+sx*radii[0],center[1]+sy*radii[1],center[2]+sz*radii[2]};
+            vertex.normal={nx/normalLength,ny/normalLength,nz/normalLength};
+            vertex.u=u; vertex.v=v;
+            mesh.vertices.push_back(vertex);
+        }
+    }
+    for(std::uint32_t ring=0U;ring<rings;++ring) {
+        for(std::uint32_t segment=0U;segment<segments;++segment) {
+            const std::uint32_t a=first+ring*(segments+1U)+segment;
+            const std::uint32_t b=a+segments+1U;
+            mesh.indices.insert(mesh.indices.end(),{a,a+1U,b,a+1U,b+1U,b});
+        }
+    }
+}
 talvisota::presentation::RenderMesh BuildWeaponMesh(
     const talvisota::combat::WeaponArchetype archetype) {
     talvisota::presentation::RenderMesh mesh;
@@ -174,14 +204,26 @@ bool BuildBattlefieldRenderAssets(talvisota::presentation::SceneSnapshot& scene,
         error="Battlefield render assets exceed the scene index capacity."; return false;
     }
     talvisota::presentation::RenderMesh body;
-    AppendBox(body,{0.0F,1.08F,0.0F},{0.24F,0.34F,0.15F});
-    AppendBox(body,{-0.13F,0.48F,0.0F},{0.105F,0.34F,0.12F});
-    AppendBox(body,{0.13F,0.48F,0.0F},{0.105F,0.34F,0.12F});
-    AppendBox(body,{-0.32F,1.12F,0.035F},{0.095F,0.27F,0.105F});
-    AppendBox(body,{0.32F,1.12F,0.035F},{0.095F,0.27F,0.105F});
-    AppendBox(body,{0.0F,1.54F,0.0F},{0.105F,0.14F,0.105F});
-    AppendBox(body,{0.0F,1.69F,0.0F},{0.16F,0.075F,0.16F});
-    AppendBox(body,{0.0F,1.13F,-0.205F},{0.18F,0.24F,0.085F});
+    // Rounded winter greatcoat, separate limbs, boots, field pack and helmet
+    // replace the original block-only mannequin while keeping one shared mesh.
+    AppendEllipsoid(body,{0.0F,1.08F,0.0F},{0.245F,0.39F,0.155F});
+    AppendEllipsoid(body,{-0.125F,0.55F,0.0F},{0.095F,0.285F,0.105F});
+    AppendEllipsoid(body,{0.125F,0.55F,0.0F},{0.095F,0.285F,0.105F});
+    AppendEllipsoid(body,{-0.125F,0.135F,0.035F},{0.13F,0.09F,0.19F});
+    AppendEllipsoid(body,{0.125F,0.135F,0.035F},{0.13F,0.09F,0.19F});
+    AppendEllipsoid(body,{-0.245F,1.13F,0.035F},{0.09F,0.245F,0.095F});
+    AppendEllipsoid(body,{0.245F,1.13F,0.035F},{0.09F,0.245F,0.095F});
+    AppendEllipsoid(body,{-0.205F,0.94F,0.11F},{0.065F,0.075F,0.065F});
+    AppendEllipsoid(body,{0.205F,0.94F,0.11F},{0.065F,0.075F,0.065F});
+    AppendEllipsoid(body,{0.0F,1.115F,-0.205F},{0.18F,0.235F,0.09F});
+    AppendEllipsoid(body,{0.0F,1.52F,0.015F},{0.105F,0.135F,0.105F});
+    AppendEllipsoid(body,{0.0F,1.68F,0.0F},{0.165F,0.085F,0.16F});
+    AppendBox(body,{0.0F,1.635F,0.0F},{0.18F,0.018F,0.175F});
+    AppendBox(body,{0.0F,0.83F,0.0F},{0.245F,0.045F,0.16F});
+    AppendBox(body,{-0.075F,1.18F,0.153F},{0.025F,0.24F,0.012F});
+    AppendBox(body,{0.075F,1.18F,0.153F},{0.025F,0.24F,0.012F});
+    AppendBox(body,{-0.235F,0.86F,0.10F},{0.065F,0.075F,0.045F});
+    AppendBox(body,{0.235F,0.86F,0.10F},{0.065F,0.075F,0.045F});
     output.bodyMesh=static_cast<std::uint32_t>(scene.meshes.size());
     scene.meshes.push_back(std::move(body));
     const std::array archetypes{
