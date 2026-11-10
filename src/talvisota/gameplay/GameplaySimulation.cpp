@@ -670,23 +670,47 @@ bool ApplyCombatMissionEvents(SimulationState& missionState,
             return false;
         }
 
-        missions::InteractionResult missionResult = missions::InteractionResult::Ignored;
-        if (!missions::ApplyMissionInteraction(candidate.mission,
-                target->interactionTargetId, missionResult, error))
-            return false;
-
-        switch (missionResult)
+        const bool authoredObjectiveTarget = std::any_of(candidate.mission.objectives.begin(),
+            candidate.mission.objectives.end(), [&](const missions::ObjectiveState& objective) {
+                return objective.interactionTargetId == target->interactionTargetId;
+            });
+        if (!authoredObjectiveTarget)
         {
-        case missions::InteractionResult::Ignored:
             results.push_back({command.commandId, CommandOutcome::Ignored});
-            break;
-        case missions::InteractionResult::ObjectiveCompleted:
-            results.push_back({command.commandId, CommandOutcome::ObjectiveCompleted});
-            break;
-        case missions::InteractionResult::MissionCompleted:
-            results.push_back({command.commandId, CommandOutcome::MissionCompleted});
-            break;
+            continue;
         }
+        candidate.defeatedObjectiveTargets.insert(target->interactionTargetId);
+
+        // Combat can happen out of authored order. Preserve defeated targets and
+        // consume them as soon as progression reaches their objective.
+        CommandOutcome finalOutcome = CommandOutcome::Ignored;
+        while (candidate.mission.status == missions::MissionStatus::Active)
+        {
+            const auto activeObjective = std::find_if(candidate.mission.objectives.begin(),
+                candidate.mission.objectives.end(), [](const missions::ObjectiveState& objective) {
+                    return objective.status == missions::ObjectiveStatus::Active;
+                });
+            if (activeObjective == candidate.mission.objectives.end())
+            {
+                error = "Active mission has no objective while applying a combat defeat.";
+                return false;
+            }
+            if (!candidate.defeatedObjectiveTargets.contains(activeObjective->interactionTargetId))
+                break;
+
+            missions::InteractionResult missionResult = missions::InteractionResult::Ignored;
+            if (!missions::ApplyMissionInteraction(candidate.mission,
+                    activeObjective->interactionTargetId, missionResult, error))
+                return false;
+            if (missionResult == missions::InteractionResult::ObjectiveCompleted)
+                finalOutcome = CommandOutcome::ObjectiveCompleted;
+            else if (missionResult == missions::InteractionResult::MissionCompleted)
+            {
+                finalOutcome = CommandOutcome::MissionCompleted;
+                break;
+            }
+        }
+        results.push_back({command.commandId, finalOutcome});
     }
 
     missionState = std::move(candidate);
