@@ -7399,3 +7399,14 @@ collision	tree.regional.1799.trunk	938.189	23.421	1486.883	0.230	9.370	0.230
 collision	tree.regional.1800.trunk	964.225	16.266	896.146	0.230	6.555	0.230
 placement	interior.sakkola.church	structure	model.interior.sakkola_church	-	0.00	9.044	178.00	0.0	1.000
 placement	interior.sakkola.farmhouse.west	structure	model.interior.sakkola_farmhouse	-	-43.00	7.920	123.00	12.0	1.000
+placement	interior.farmhouse.east	structure	model.interior.sakkola_farmhouse	-	37.00	8.048	132.00	193.0	0.940
+placement	interior.farmhouse.expanded.01	structure	model.interior.sakkola_farmhouse	-	-520.000	6.924	430.000	0	1
+placement	interior.farmhouse.expanded.02	structure	model.interior.sakkola_farmhouse	-	-250.000	10.880	700.000	37	1
+placement	interior.farmhouse.expanded.03	structure	model.interior.sakkola_farmhouse	-	160.000	13.125	920.000	74	1
+placement	interior.farmhouse.expanded.04	structure	model.interior.sakkola_farmhouse	-	520.000	13.079	1080.000	111	1
+placement	interior.farmhouse.expanded.05	structure	model.interior.sakkola_farmhouse	-	850.000	9.993	820.000	148	1
+placement	interior.farmhouse.expanded.06	structure	model.interior.sakkola_farmhouse	-	1120.000	11.160	520.000	185	1
+placement	interior.farmhouse.expanded.07	structure	model.interior.sakkola_farmhouse	-	-900.000	12.458	1120.000	222	1
+placement	interior.farmhouse.expanded.08	structure	model.interior.sakkola_farmhouse	-	-1250.000	15.177	1520.000	259	1
+placement	interior.farmhouse.expanded.09	structure	model.interior.sakkola_farmhouse	-	1450.000	13.484	1450.000	296	1
+placement	interior.farmhouse.expanded.10	structure	model.interior.sakkola_farmhouse	-	1750.000	12.556	760.000	333	1
