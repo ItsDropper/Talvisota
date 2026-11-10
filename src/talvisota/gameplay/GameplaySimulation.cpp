@@ -432,6 +432,17 @@ bool BuildBattlefieldAiCommands(SimulationState& state,
         return false;
     }
 
+    std::string activeCombatObjectiveTarget;
+    if (state.mission.status == missions::MissionStatus::Active)
+    {
+        const auto objective = std::find_if(state.mission.objectives.begin(),
+            state.mission.objectives.end(), [](const missions::ObjectiveState& value) {
+                return value.status == missions::ObjectiveStatus::Active;
+            });
+        if (objective != state.mission.objectives.end())
+            activeCombatObjectiveTarget = objective->interactionTargetId;
+    }
+
     auto nextFireAt = state.actorNextFireAtSeconds;
     std::vector<combat::CombatCommand> commands;
     commands.reserve(state.combat.combatants.size());
@@ -456,6 +467,12 @@ bool BuildBattlefieldAiCommands(SimulationState& state,
                 continue;
             const entities::EntityState* target = state.entities.Find(targetId);
             if (target == nullptr || !target->active || target->factionId == actor->factionId)
+                continue;
+            // Do not let autonomous squad behavior defeat a later authored target
+            // before the player reaches that objective in campaign order.
+            if (!target->interactionTargetId.empty() &&
+                target->kind != entities::EntityKind::WorldObject &&
+                target->id != activeCombatObjectiveTarget)
                 continue;
             const double dx = static_cast<double>(actor->position[0]) - target->position[0];
             const double dy = static_cast<double>(actor->position[1]) - target->position[1];
