@@ -462,6 +462,21 @@ bool BuildBattlefieldAiCommands(SimulationState& state,
             error = "Battlefield AI actor has no active entity or valid weapon definition.";
             return false;
         }
+        if (actor->factionId == player->factionId && !activeCombatObjectiveTarget.empty())
+        {
+            const entities::EntityState* activeTarget = state.entities.Find(activeCombatObjectiveTarget);
+            if (activeTarget != nullptr && activeTarget->active &&
+                activeTarget->factionId != actor->factionId)
+            {
+                const double playerDx = static_cast<double>(player->position[0]) - activeTarget->position[0];
+                const double playerDy = static_cast<double>(player->position[1]) - activeTarget->position[1];
+                const double playerDz = static_cast<double>(player->position[2]) - activeTarget->position[2];
+                const double playerToObjective = std::sqrt(
+                    playerDx * playerDx + playerDy * playerDy + playerDz * playerDz);
+                if (playerToObjective > 45.0)
+                    continue;
+            }
+        }
 
         const entities::EntityState* selectedTarget = nullptr;
         double nearestDistance = static_cast<double>(weapon->effectiveRangeMeters) * 0.5;
