@@ -237,7 +237,7 @@ private:
         float alphaCutoff = 0.5F;
         RenderAlphaMode alphaMode = RenderAlphaMode::Opaque;
         bool doubleSided = false;
-        std::array<std::string, 5> texturePaths;
+        std::array<std::string, 6> texturePaths;
         bool packedMetallicRoughness = false;
         bool terrain = false;
         bool snowSurface = false;
@@ -248,7 +248,7 @@ private:
                 material.emissive, material.normalScale, material.occlusionStrength,
                 material.alphaCutoff, material.alphaMode, material.doubleSided,
                 {material.baseColorTexture, material.normalTexture, material.roughnessTexture,
-                    material.metallicTexture, material.ambientOcclusionTexture},
+                    material.metallicTexture, material.ambientOcclusionTexture, material.emissiveTexture},
                 material.packedMetallicRoughness, material.terrain, material.snowSurface};
         }
 
@@ -268,7 +268,8 @@ private:
                 texturePaths[1] == material.normalTexture &&
                 texturePaths[2] == material.roughnessTexture &&
                 texturePaths[3] == material.metallicTexture &&
-                texturePaths[4] == material.ambientOcclusionTexture;
+                texturePaths[4] == material.ambientOcclusionTexture &&
+                texturePaths[5] == material.emissiveTexture;
         }
     };
 
@@ -374,6 +375,7 @@ private:
             material.roughnessTexture = source.roughnessTexture;
             material.metallicTexture = source.metallicTexture;
             material.ambientOcclusionTexture = source.ambientOcclusionTexture;
+            material.emissiveTexture = source.emissiveTexture;
             material.packedMetallicRoughness = source.packedMetallicRoughness;
             material.terrain = source.terrain;
             material.snowSurface = source.snowSurface;
