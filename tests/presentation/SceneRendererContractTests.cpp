@@ -87,12 +87,13 @@ void TestTypedPbrMaterialBridge()
     {
         std::ofstream manifest(root / "catalog.tmanifest", std::ios::binary);
         manifest << "talvisota-content-manifest\t1\n"
-                 << "asset\tmaterial.test.snow\tmaterial\tmaterials/snow.tmat\trequired\ttexture.test.base,texture.test.normal,texture.test.orm\tproject\tproject\n"
+                 << "asset\tmaterial.test.snow\tmaterial\tmaterials/snow.tmat\trequired\ttexture.test.base,texture.test.normal,texture.test.orm,texture.test.emissive\tproject\tproject\n"
                  << "asset\ttexture.test.base\ttexture\ttextures/snow-albedo.bmp\trequired\t-\tproject\tproject\n"
                  << "asset\ttexture.test.normal\ttexture\ttextures/snow-normal.bmp\trequired\t-\tproject\tproject\n"
-                 << "asset\ttexture.test.orm\ttexture\ttextures/snow-orm.bmp\trequired\t-\tproject\tproject\n";
+                 << "asset\ttexture.test.orm\ttexture\ttextures/snow-orm.bmp\trequired\t-\tproject\tproject\n"
+                 << "asset\ttexture.test.emissive\ttexture\ttextures/snow-emissive.bmp\trequired\t-\tproject\tproject\n";
         Require(static_cast<bool>(manifest));
-        for (const char* filename : {"snow-albedo.bmp", "snow-normal.bmp", "snow-orm.bmp"})
+        for (const char* filename : {"snow-albedo.bmp", "snow-normal.bmp", "snow-orm.bmp", "snow-emissive.bmp"})
         {
             std::ofstream texture(root / "textures" / filename, std::ios::binary);
             texture << "test texture payload";
@@ -106,7 +107,8 @@ void TestTypedPbrMaterialBridge()
                  << "metallic = 0.04\n"
                  << "base_color_texture = texture.test.base\n"
                  << "normal_texture = texture.test.normal\n"
-                 << "orm_texture = texture.test.orm\n";
+                 << "orm_texture = texture.test.orm\n"
+                 << "emissive_texture = texture.test.emissive\n";
         Require(static_cast<bool>(material));
     }
 
@@ -135,6 +137,7 @@ void TestTypedPbrMaterialBridge()
     Require(renderMaterial.roughnessTexture == renderMaterial.metallicTexture);
     Require(renderMaterial.roughnessTexture == renderMaterial.ambientOcclusionTexture);
     Require(std::filesystem::path(renderMaterial.roughnessTexture).is_absolute());
+    Require(std::filesystem::path(renderMaterial.emissiveTexture).is_absolute());
     SceneSnapshot translatedMaterialScene;
     translatedMaterialScene.materials.push_back(renderMaterial);
     std::string sceneValidationError;
@@ -158,7 +161,7 @@ void TestTypedPbrMaterialBridge()
     definition.alphaMode = content::MaterialAlphaMode::Blend;
     Require(ApplyMaterialDefinition(definition, registry, renderMaterial, error));
     Require(renderMaterial.alphaMode == RenderAlphaMode::Blend);
-    definition.emissiveTexture = "emissive";
+    definition.baseColorTexture = "texture.test.missing";
     const RenderMaterial beforeFailure = renderMaterial;
     Require(!ApplyMaterialDefinition(definition, registry, renderMaterial, error));
     Require(!error.empty());
