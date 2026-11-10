@@ -265,7 +265,7 @@ jobs:
           if (Test-Path -LiteralPath $rendererLog) { Get-Content -LiteralPath $rendererLog }
           if ($process.ExitCode -ne 0) { throw "Sakkola renderer exited with code $($process.ExitCode)" }
           $captures = @(Get-ChildItem -LiteralPath $captureDir -Filter '*.png' -File)
-          if ($captures.Count -ne 5) { throw "Expected five rendered PNGs, found $($captures.Count)" }
+          if ($captures.Count -ne 7) { throw "Expected seven rendered PNGs (five exterior and two interior), found $($captures.Count)" }
           $captures | Format-Table Name, Length
 
       - name: Upload Sakkola terrain screenshots

@@ -50,6 +50,7 @@ bool frontendEnabled=false;
 bool restartPatrolRequested=false;
 bool advanceCampaignRequested=false;
 bool campaignHasNextMission=false;
+float currentCameraFovDegrees=60.0F;
 int selectedMenuButton=0;
 enum class FrontendState { MainMenu, Playing, Paused };
 FrontendState frontendState=FrontendState::MainMenu;
@@ -61,6 +62,7 @@ struct MissionOverlayData final {
     std::wstring distance;
     std::wstring progress=L"0 / 3 OBJECTIVES";
     std::wstring ammo;
+    std::wstring contact;
     std::wstring prompt=L"FOLLOW THE OBJECTIVE";
     std::wstring feedback;
     bool completed=false;
@@ -95,6 +97,243 @@ std::wstring ObjectiveTitle(const std::string_view id) {
     if(id=="objective.stop-fourth-advance") return L"CHECK THE ROAD BEYOND THE BARN";
     return Utf8ToWide(id);
 }
+
+
+struct BattlefieldRenderAssets final {
+    std::uint32_t bodyMesh=0U, rifleMesh=0U, submachineGunMesh=0U, lightMachineGunMesh=0U;
+    std::uint32_t finnishMaterial=0U, sovietMaterial=0U, weaponMaterial=0U;
+};
+struct BattlefieldActorRenderBinding final {
+    std::string entityId;
+    std::size_t bodyInstance=0U, weaponInstance=0U;
+};
+void AppendBox(talvisota::presentation::RenderMesh& mesh,
+    const std::array<float,3>& center,const std::array<float,3>& half) {
+    const std::array<std::array<float,3>,8> corners{{
+        {{center[0]-half[0],center[1]-half[1],center[2]-half[2]}},
+        {{center[0]+half[0],center[1]-half[1],center[2]-half[2]}},
+        {{center[0]+half[0],center[1]+half[1],center[2]-half[2]}},
+        {{center[0]-half[0],center[1]+half[1],center[2]-half[2]}},
+        {{center[0]-half[0],center[1]-half[1],center[2]+half[2]}},
+        {{center[0]+half[0],center[1]-half[1],center[2]+half[2]}},
+        {{center[0]+half[0],center[1]+half[1],center[2]+half[2]}},
+        {{center[0]-half[0],center[1]+half[1],center[2]+half[2]}}
+    }};
+    constexpr std::array<std::array<std::uint32_t,4>,6> faces{{
+        {{0U,3U,2U,1U}},{{4U,5U,6U,7U}},{{0U,4U,7U,3U}},
+        {{1U,2U,6U,5U}},{{0U,1U,5U,4U}},{{3U,7U,6U,2U}}
+    }};
+    constexpr std::array<std::array<float,3>,6> normals{{
+        {{0.0F,0.0F,-1.0F}},{{0.0F,0.0F,1.0F}},{{-1.0F,0.0F,0.0F}},
+        {{1.0F,0.0F,0.0F}},{{0.0F,-1.0F,0.0F}},{{0.0F,1.0F,0.0F}}
+    }};
+    constexpr std::array<std::array<float,2>,4> uv{{
+        {{0.0F,1.0F}},{{1.0F,1.0F}},{{1.0F,0.0F}},{{0.0F,0.0F}}
+    }};
+    for(std::size_t face=0U;face<faces.size();++face) {
+        const auto base=static_cast<std::uint32_t>(mesh.vertices.size());
+        for(std::size_t corner=0U;corner<4U;++corner) {
+            talvisota::presentation::RenderVertex vertex;
+            vertex.position=corners[faces[face][corner]];
+            vertex.normal=normals[face]; vertex.u=uv[corner][0]; vertex.v=uv[corner][1];
+            mesh.vertices.push_back(vertex);
+        }
+        mesh.indices.insert(mesh.indices.end(),{base,base+1U,base+2U,base,base+2U,base+3U});
+    }
+}
+talvisota::presentation::RenderMesh BuildWeaponMesh(
+    const talvisota::combat::WeaponArchetype archetype) {
+    talvisota::presentation::RenderMesh mesh;
+    if(archetype==talvisota::combat::WeaponArchetype::BoltActionRifle) {
+        AppendBox(mesh,{0.0F,0.0F,-0.04F},{0.035F,0.042F,0.22F});
+        AppendBox(mesh,{0.0F,0.012F,0.22F},{0.043F,0.045F,0.14F});
+        AppendBox(mesh,{0.0F,0.018F,0.54F},{0.014F,0.014F,0.24F});
+        AppendBox(mesh,{0.0F,0.062F,0.34F},{0.014F,0.016F,0.025F});
+    } else if(archetype==talvisota::combat::WeaponArchetype::SubmachineGun) {
+        AppendBox(mesh,{0.0F,0.0F,-0.025F},{0.04F,0.045F,0.16F});
+        AppendBox(mesh,{0.0F,0.012F,0.20F},{0.052F,0.055F,0.15F});
+        AppendBox(mesh,{0.0F,0.018F,0.48F},{0.016F,0.016F,0.14F});
+        AppendBox(mesh,{0.0F,-0.085F,0.23F},{0.067F,0.078F,0.07F});
+    } else {
+        AppendBox(mesh,{0.0F,0.0F,-0.04F},{0.045F,0.05F,0.18F});
+        AppendBox(mesh,{0.0F,0.018F,0.22F},{0.06F,0.07F,0.17F});
+        AppendBox(mesh,{0.0F,0.024F,0.57F},{0.018F,0.018F,0.26F});
+        AppendBox(mesh,{0.0F,0.115F,0.23F},{0.06F,0.09F,0.075F});
+        AppendBox(mesh,{-0.035F,-0.095F,0.42F},{0.012F,0.11F,0.018F});
+        AppendBox(mesh,{0.035F,-0.095F,0.42F},{0.012F,0.11F,0.018F});
+    }
+    return mesh;
+}
+bool BuildBattlefieldRenderAssets(talvisota::presentation::SceneSnapshot& scene,
+    BattlefieldRenderAssets& output,std::string& error) {
+    if(scene.meshes.size()>static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max()-4U) ||
+        scene.materials.size()>static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max()-3U)) {
+        error="Battlefield render assets exceed the scene index capacity."; return false;
+    }
+    talvisota::presentation::RenderMesh body;
+    AppendBox(body,{0.0F,1.08F,0.0F},{0.24F,0.34F,0.15F});
+    AppendBox(body,{-0.13F,0.48F,0.0F},{0.105F,0.34F,0.12F});
+    AppendBox(body,{0.13F,0.48F,0.0F},{0.105F,0.34F,0.12F});
+    AppendBox(body,{-0.32F,1.12F,0.035F},{0.095F,0.27F,0.105F});
+    AppendBox(body,{0.32F,1.12F,0.035F},{0.095F,0.27F,0.105F});
+    AppendBox(body,{0.0F,1.54F,0.0F},{0.105F,0.14F,0.105F});
+    AppendBox(body,{0.0F,1.69F,0.0F},{0.16F,0.075F,0.16F});
+    AppendBox(body,{0.0F,1.13F,-0.205F},{0.18F,0.24F,0.085F});
+    output.bodyMesh=static_cast<std::uint32_t>(scene.meshes.size());
+    scene.meshes.push_back(std::move(body));
+    const std::array archetypes{
+        talvisota::combat::WeaponArchetype::BoltActionRifle,
+        talvisota::combat::WeaponArchetype::SubmachineGun,
+        talvisota::combat::WeaponArchetype::LightMachineGun};
+    std::array<std::uint32_t,3> weaponMeshes{};
+    for(std::size_t i=0U;i<archetypes.size();++i) {
+        weaponMeshes[i]=static_cast<std::uint32_t>(scene.meshes.size());
+        scene.meshes.push_back(BuildWeaponMesh(archetypes[i]));
+    }
+    output.rifleMesh=weaponMeshes[0];
+    output.submachineGunMesh=weaponMeshes[1];
+    output.lightMachineGunMesh=weaponMeshes[2];
+    talvisota::presentation::RenderMaterial finnish;
+    finnish.baseColor={0.72F,0.76F,0.77F}; finnish.roughness=0.96F;
+    output.finnishMaterial=static_cast<std::uint32_t>(scene.materials.size());
+    scene.materials.push_back(finnish);
+    talvisota::presentation::RenderMaterial soviet;
+    soviet.baseColor={0.39F,0.38F,0.29F}; soviet.roughness=0.94F;
+    output.sovietMaterial=static_cast<std::uint32_t>(scene.materials.size());
+    scene.materials.push_back(soviet);
+    talvisota::presentation::RenderMaterial weapon;
+    weapon.baseColor={0.13F,0.145F,0.13F}; weapon.roughness=0.72F; weapon.metallic=0.12F;
+    output.weaponMaterial=static_cast<std::uint32_t>(scene.materials.size());
+    scene.materials.push_back(weapon);
+    error.clear(); return true;
+}
+std::uint32_t ResolveWeaponMesh(const BattlefieldRenderAssets& assets,std::string_view weaponId) {
+    const auto* weapon=talvisota::combat::FindWeaponDefinition(weaponId);
+    if(weapon==nullptr) return assets.rifleMesh;
+    switch(weapon->archetype) {
+    case talvisota::combat::WeaponArchetype::BoltActionRifle: return assets.rifleMesh;
+    case talvisota::combat::WeaponArchetype::SubmachineGun: return assets.submachineGunMesh;
+    case talvisota::combat::WeaponArchetype::LightMachineGun: return assets.lightMachineGunMesh;
+    }
+    return assets.rifleMesh;
+}
+std::array<float,16> ActorWorldMatrix(const std::array<float,3>& position,float yaw,float bob=0.0F) {
+    const float c=std::cos(yaw),s=std::sin(yaw);
+    return {c,0.0F,-s,0.0F,0.0F,1.0F,0.0F,0.0F,s,0.0F,c,0.0F,
+        position[0],position[1]+bob,position[2],1.0F};
+}
+std::array<float,16> ActorWeaponWorldMatrix(const std::array<float,3>& position,float yaw) {
+    const float c=std::cos(yaw),s=std::sin(yaw);
+    constexpr float x=0.27F,y=1.02F,z=0.15F;
+    return {c,0.0F,-s,0.0F,0.0F,1.0F,0.0F,0.0F,s,0.0F,c,0.0F,
+        position[0]+c*x+s*z,position[1]+y,position[2]-s*x+c*z,1.0F};
+}
+std::array<float,16> PlayerWeaponWorldMatrix(
+    const talvisota::game::PlayerCamera& camera,float elapsedSeconds) {
+    const auto& f=camera.forward;
+    std::array<float,3> right{f[2],0.0F,-f[0]};
+    float length=std::sqrt(right[0]*right[0]+right[2]*right[2]);
+    if(length<1.0e-5F) { right={1.0F,0.0F,0.0F}; length=1.0F; }
+    for(float& value:right) value/=length;
+    const std::array<float,3> up{
+        f[1]*right[2]-f[2]*right[1],f[2]*right[0]-f[0]*right[2],
+        f[0]*right[1]-f[1]*right[0]};
+    const float sway=std::sin(elapsedSeconds*2.1F)*0.004F;
+    const std::array<float,3> p{
+        camera.position[0]+f[0]*0.68F+right[0]*0.25F-up[0]*0.23F+right[0]*sway,
+        camera.position[1]+f[1]*0.68F+right[1]*0.25F-up[1]*0.23F+0.004F*std::sin(elapsedSeconds*4.2F),
+        camera.position[2]+f[2]*0.68F+right[2]*0.25F-up[2]*0.23F+right[2]*sway};
+    return {right[0],right[1],right[2],0.0F,up[0],up[1],up[2],0.0F,
+        f[0],f[1],f[2],0.0F,p[0],p[1],p[2],1.0F};
+}
+bool EnsureBattlefieldActorInstances(talvisota::presentation::SceneSnapshot& scene,
+    std::vector<float>& maxDrawDistances,const talvisota::gameplay::SimulationState& simulation,
+    const BattlefieldRenderAssets& assets,std::vector<BattlefieldActorRenderBinding>& bindings,
+    std::string& error) {
+    for(auto& binding:bindings) {
+        if(binding.bodyInstance<scene.instances.size()) scene.instances[binding.bodyInstance].visible=false;
+        if(binding.weaponInstance<scene.instances.size()) scene.instances[binding.weaponInstance].visible=false;
+    }
+    if(simulation.entities.Find(simulation.playerEntityId)==nullptr) {
+        error="Battlefield actor presentation requires the active player entity."; return false;
+    }
+    for(const auto& [actorId,combatant]:simulation.combat.combatants) {
+        if(actorId==simulation.playerEntityId) continue;
+        const auto* actor=simulation.entities.Find(actorId);
+        if(actor==nullptr||!actor->active||actor->kind!=talvisota::entities::EntityKind::Infantry) {
+            error="A mission combatant has no matching active infantry entity: "+actorId; return false;
+        }
+        auto found=std::find_if(bindings.begin(),bindings.end(),
+            [&](const BattlefieldActorRenderBinding& b){return b.entityId==actorId;});
+        if(found==bindings.end()) {
+            BattlefieldActorRenderBinding binding;
+            binding.entityId=actorId; binding.bodyInstance=scene.instances.size();
+            talvisota::presentation::RenderInstance body; body.meshIndex=assets.bodyMesh;
+            scene.instances.push_back(body); maxDrawDistances.push_back(520.0F);
+            binding.weaponInstance=scene.instances.size();
+            talvisota::presentation::RenderInstance weapon;
+            weapon.meshIndex=ResolveWeaponMesh(assets,combatant.weaponId);
+            weapon.materialIndex=assets.weaponMaterial;
+            scene.instances.push_back(weapon); maxDrawDistances.push_back(520.0F);
+            bindings.push_back(std::move(binding)); found=std::prev(bindings.end());
+        }
+        auto& body=scene.instances[found->bodyInstance];
+        body.meshIndex=assets.bodyMesh;
+        body.materialIndex=actor->factionId=="faction.finnish"?assets.finnishMaterial:assets.sovietMaterial;
+        body.visible=combatant.health>0.0F;
+        auto& weapon=scene.instances[found->weaponInstance];
+        weapon.meshIndex=ResolveWeaponMesh(assets,combatant.weaponId);
+        weapon.materialIndex=assets.weaponMaterial; weapon.visible=combatant.health>0.0F;
+    }
+    error.clear(); return true;
+}
+void UpdateBattlefieldActorInstances(talvisota::presentation::SceneSnapshot& scene,
+    const talvisota::gameplay::SimulationState& simulation,
+    const std::vector<BattlefieldActorRenderBinding>& bindings,float elapsedSeconds) {
+    const auto* player=simulation.entities.Find(simulation.playerEntityId);
+    for(std::size_t i=0U;i<bindings.size();++i) {
+        const auto& binding=bindings[i];
+        if(binding.bodyInstance>=scene.instances.size()||binding.weaponInstance>=scene.instances.size()) continue;
+        const auto* actor=simulation.entities.Find(binding.entityId);
+        const auto combatant=simulation.combat.combatants.find(binding.entityId);
+        const bool visible=player!=nullptr&&actor!=nullptr&&actor->active&&
+            combatant!=simulation.combat.combatants.end()&&combatant->second.health>0.0F;
+        auto& body=scene.instances[binding.bodyInstance];
+        auto& weapon=scene.instances[binding.weaponInstance];
+        body.visible=visible; weapon.visible=visible;
+        if(!visible) continue;
+        const float yaw=std::atan2(player->position[0]-actor->position[0],
+            player->position[2]-actor->position[2]);
+        const float bob=std::sin(elapsedSeconds*2.0F+static_cast<float>(i)*0.73F)*0.006F;
+        body.world=ActorWorldMatrix(actor->position,yaw,bob);
+        weapon.world=ActorWeaponWorldMatrix(actor->position,yaw);
+    }
+}
+bool AppendPlayerWeaponInstance(talvisota::presentation::SceneSnapshot& scene,
+    std::vector<float>& maxDrawDistances,const BattlefieldRenderAssets& assets,
+    std::size_t& outputIndex,std::string& error) {
+    outputIndex=scene.instances.size();
+    talvisota::presentation::RenderInstance weapon;
+    weapon.meshIndex=assets.rifleMesh; weapon.materialIndex=assets.weaponMaterial;
+    scene.instances.push_back(weapon); maxDrawDistances.push_back(100.0F);
+    error.clear(); return true;
+}
+void UpdatePlayerWeaponInstance(talvisota::presentation::SceneSnapshot& scene,
+    std::size_t instanceIndex,const talvisota::gameplay::SimulationState& simulation,
+    const BattlefieldRenderAssets& assets,const talvisota::game::PlayerCamera& camera,
+    float elapsedSeconds) {
+    if(instanceIndex>=scene.instances.size()) return;
+    const auto player=simulation.combat.combatants.find(simulation.playerEntityId);
+    auto& instance=scene.instances[instanceIndex];
+    if(player==simulation.combat.combatants.end()||player->second.health<=0.0F) {
+        instance.visible=false; return;
+    }
+    instance.meshIndex=ResolveWeaponMesh(assets,player->second.weaponId);
+    instance.materialIndex=assets.weaponMaterial;
+    instance.world=PlayerWeaponWorldMatrix(camera,elapsedSeconds);
+    instance.visible=true;
+}
+
 
 void SetMissionFeedback(std::wstring message,const std::chrono::milliseconds duration) {
     missionOverlay.feedback=std::move(message);
@@ -143,7 +382,7 @@ bool RefreshMissionOverlay(const talvisota::gameplay::SimulationState& simulatio
         const std::wstring direction=std::abs(relativeBearing)>2.35?L"BEHIND":
             relativeBearing>0.35?L"RIGHT":relativeBearing< -0.35?L"LEFT":L"AHEAD";
         updated.distance=std::to_wstring(distance)+L" m  "+direction;
-        updated.prompt=combatObjective?L"1/2/3 WEAPON  |  LEFT CLICK FIRE  |  R RELOAD":
+        updated.prompt=combatObjective?L"RMB AIM  |  LMB FIRE  |  R RELOAD":
             (target.distanceMeters<=interactionRadius?L"[E]  INTERACT":L"FOLLOW THE OBJECTIVE");
     }
     if(std::chrono::steady_clock::now()>=missionFeedbackUntil) updated.feedback.clear();
@@ -159,7 +398,7 @@ bool RefreshMissionOverlay(const talvisota::gameplay::SimulationState& simulatio
     const bool changed=updated.title!=missionOverlay.title||updated.description!=missionOverlay.description||
         updated.objective!=missionOverlay.objective||updated.distance!=missionOverlay.distance||
         updated.progress!=missionOverlay.progress||updated.prompt!=missionOverlay.prompt||
-        updated.feedback!=missionOverlay.feedback||updated.ammo!=missionOverlay.ammo||updated.completed!=missionOverlay.completed||
+        updated.feedback!=missionOverlay.feedback||updated.ammo!=missionOverlay.ammo||updated.contact!=missionOverlay.contact||updated.completed!=missionOverlay.completed||
         updated.failed!=missionOverlay.failed||updated.hasProgress!=missionOverlay.hasProgress;
     missionOverlay=std::move(updated);
     if(changed&&frontendOverlay&&IsWindow(frontendOverlay)) InvalidateRect(frontendOverlay,nullptr,FALSE);
@@ -169,7 +408,7 @@ bool RefreshMissionOverlay(const talvisota::gameplay::SimulationState& simulatio
 
 void SetFrontendState(const FrontendState state) {
     frontendState=state;
-    if(state!=FrontendState::Playing) selectedMenuButton=0;
+    if(state!=FrontendState::Playing) { selectedMenuButton=0; currentCameraFovDegrees=60.0F; }
     if(frontendOverlay && IsWindow(frontendOverlay)) {
         ShowWindow(frontendOverlay,SW_SHOW);
         InvalidateRect(frontendOverlay,nullptr,FALSE);
@@ -191,7 +430,7 @@ RECT MenuButton(int w,int h,int i) {
 void PaintMissionHud(HDC dc,const RECT& client) {
     SetBkMode(dc,TRANSPARENT);
     HBRUSH panel=CreateSolidBrush(RGB(10,18,27));
-    RECT card{24,24,500,218};
+    RECT card{24,24,500,250};
     FillRect(dc,&card,panel);
     HPEN edge=CreatePen(PS_SOLID,1,RGB(68,119,148));
     HGDIOBJ oldPen=SelectObject(dc,edge),oldBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
@@ -215,6 +454,9 @@ void PaintMissionHud(HDC dc,const RECT& client) {
         -1,&prompt,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     SetTextColor(dc,RGB(177,197,209));
     RECT ammo{44,180,480,207}; DrawTextW(dc,missionOverlay.ammo.c_str(),-1,&ammo,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    SetTextColor(dc,RGB(222,184,118));
+    RECT contact{44,210,480,238};
+    DrawTextW(dc,missionOverlay.contact.c_str(),-1,&contact,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     SelectObject(dc,oldFont); DeleteObject(body); DeleteObject(heading);
 
     if(missionOverlay.completed || missionOverlay.failed) {
@@ -287,7 +529,7 @@ void PaintMenu(HWND hwnd) {
     SelectObject(dc,old); SetTextColor(dc,RGB(126,151,169));
     RECT hint{p.left+18,p.bottom-38,p.right-18,p.bottom-12};
     DrawTextW(dc,frontendState==FrontendState::MainMenu?
-        L"WASD MOVE  |  MOUSE LOOK  |  E INTERACT  |  1/2/3 WEAPONS  |  LMB FIRE  |  R RELOAD  |  ESC PAUSE":
+        L"WASD MOVE  |  MOUSE LOOK  |  RMB AIM  |  E INTERACT  |  1/2/3 WEAPONS  |  LMB FIRE  |  R RELOAD  |  ESC PAUSE":
         L"ESC TO RESUME  |  MISSION PROGRESS IS KEPT",
         -1,&hint,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     DeleteObject(body); DeleteObject(title); EndPaint(hwnd,&ps);
@@ -372,10 +614,10 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
 
 
 bool SetCamera(SceneSnapshot& scene, const vanta::math::Vec3& eye,
-    const vanta::math::Vec3& target, int width, int height) {
+    const vanta::math::Vec3& target, int width, int height,const float fovDegrees=60.0F) {
     const auto view = vanta::math::Mat4::LookAtLH(eye, target, {0.0F, 1.0F, 0.0F});
     if (!view || width <= 0 || height <= 0) return false;
-    constexpr float fov = 60.0F * 3.14159265358979323846F / 180.0F;
+    const float fov = std::clamp(fovDegrees,20.0F,100.0F) * 3.14159265358979323846F / 180.0F;
     const auto projection = vanta::math::Mat4::Perspective(
         fov, static_cast<float>(width) / static_cast<float>(height), 0.1F, 1200.0F);
     std::copy(std::begin(view->elements), std::end(view->elements), scene.camera.view.begin());
@@ -639,7 +881,7 @@ bool PlaceMissionInteractionAnchors(const talvisota::world::WorldRegion& region,
 bool FindPlayerSpawn(const talvisota::world::WorldRegion& region,
     const talvisota::game::PlayerConfig& config,
     talvisota::game::PlayerState& player, std::string& error) {
-    constexpr float originX = 0.0F, originZ = -90.0F, step = 8.0F;
+    constexpr float originX = -90.0F, originZ = 70.0F, step = 8.0F;
     constexpr int directions = 16;
     for (int ring = 0; ring <= 12; ++ring) {
         const float radius = static_cast<float>(ring) * step;
@@ -648,11 +890,13 @@ bool FindPlayerSpawn(const talvisota::world::WorldRegion& region,
                 (2.0F * 3.14159265358979323846F / static_cast<float>(directions));
             const std::array<float, 3> spawn{originX + std::sin(angle) * radius,
                 0.0F, originZ + std::cos(angle) * radius};
-            if (talvisota::game::InitializePlayer(region, config, spawn, player, error))
+            if (talvisota::game::InitializePlayer(region, config, spawn, player, error)) {
+                player.yawRadians=std::atan2(-57.0F-spawn[0],129.0F-spawn[2]);
                 return true;
+            }
         }
     }
-    error = "Could not find a collision-free first-person spawn near the Sakkola starting area: " + error;
+    error = "Could not find a collision-free first-person spawn near the Sakkola farmstead: " + error;
     return false;
 }
 
@@ -1056,6 +1300,13 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         return 0;
     }
 
+    BattlefieldRenderAssets battlefieldRenderAssets;
+    if(!BuildBattlefieldRenderAssets(scene,battlefieldRenderAssets,error) ||
+        !talvisota::presentation::ValidateSceneSnapshot(scene,error)) {
+        std::cerr<<"Could not build battlefield character and weapon presentation: "<<error<<"\\n";
+        if(ownsCom) CoUninitialize();
+        return 2;
+    }
     talvisota::presentation::ExplosionLightingSystem explosionLighting;
     std::uint64_t explosionSequence=0U;
     talvisota::presentation::SnowfallSystem snowfall;
@@ -1292,6 +1543,16 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         std::cerr<<"First Patrol HUD initialization failed: "<<error<<"\n";
         renderer.reset(); DestroyWindow(window); if(ownsCom) CoUninitialize(); return 8;
     }
+    std::vector<BattlefieldActorRenderBinding> battlefieldActorBindings;
+    std::size_t playerWeaponInstance=0U;
+    if(!EnsureBattlefieldActorInstances(scene,instanceMaxDrawDistances,gameplayState,
+            battlefieldRenderAssets,battlefieldActorBindings,error) ||
+        !AppendPlayerWeaponInstance(scene,instanceMaxDrawDistances,battlefieldRenderAssets,
+            playerWeaponInstance,error) ||
+        !talvisota::presentation::ValidateSceneSnapshot(scene,error)) {
+        std::cerr<<"Battlefield actor scene initialization failed: "<<error<<"\n";
+        renderer.reset(); DestroyWindow(window); if(ownsCom) CoUninitialize(); return 8;
+    }
 
     auto playerCamera = talvisota::game::BuildPlayerCamera(playerState, playerConfig);
     vanta::math::Vec3 cameraPosition{playerCamera.position[0], playerCamera.position[1], playerCamera.position[2]};
@@ -1303,7 +1564,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     vanta::math::Vec3 cameraTarget{cameraPosition.x + playerCamera.forward[0] * 180.0F,
         cameraPosition.y + playerCamera.forward[1] * 180.0F,
         cameraPosition.z + playerCamera.forward[2] * 180.0F};
-    if (!SetCamera(scene, cameraPosition, cameraTarget, width, height)) {
+    if (!SetCamera(scene, cameraPosition, cameraTarget, width, height,currentCameraFovDegrees)) {
         renderer.reset(); DestroyWindow(window);
         if (ownsCom) CoUninitialize();
         return 8;
@@ -1357,6 +1618,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                     std::cerr<<"Could not schedule the opening artillery flash: "<<error<<"\\n"; break;
                 }
                 gameplayState=std::move(nextGameplay);
+                if(!EnsureBattlefieldActorInstances(scene,instanceMaxDrawDistances,gameplayState,
+                        battlefieldRenderAssets,battlefieldActorBindings,error)) {
+                    std::cerr<<"Campaign actor presentation update failed: "<<error<<"\\n"; break;
+                }
+                missionOverlay.contact.clear();
                 campaignHasNextMission=!authoredMission.nextMissionId.empty();
                 missionOverlay.title=Utf8ToWide(authoredMission.name);
                 missionOverlay.description=Utf8ToWide(authoredMission.description);
@@ -1377,6 +1643,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 break;
             }
             gameplayState=std::move(restartedGameplay);
+            if(!EnsureBattlefieldActorInstances(scene,instanceMaxDrawDistances,gameplayState,
+                    battlefieldRenderAssets,battlefieldActorBindings,error)) {
+                std::cerr<<"Restart actor presentation update failed: "<<error<<"\\n"; break;
+            }
+            missionOverlay.contact.clear();
             playerState=missionStartPlayerState;
             if(authoredMission.id=="mission.sakkola.defensive-line" &&
                 !TriggerOpeningArtilleryFlash(explosionLighting,gameRegion,playerState,
@@ -1455,6 +1726,39 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             cameraChanged=playerState.position!=previousPosition ||
                 playerInput.lookYawRadians!=0.0F || playerInput.lookPitchRadians!=0.0F ||
                 playerState.crouched!=wasCrouched;
+            const bool aiming=(GetAsyncKeyState(VK_RBUTTON)&0x8000)!=0;
+            const float desiredFov=aiming?38.0F:60.0F;
+            const float aimBlend=1.0F-std::exp(-12.0F*deltaSeconds);
+            const float nextFov=currentCameraFovDegrees+(desiredFov-currentCameraFovDegrees)*aimBlend;
+            if(std::abs(nextFov-currentCameraFovDegrees)>0.02F) cameraChanged=true;
+            currentCameraFovDegrees=nextFov;
+            const auto contactCamera=talvisota::game::BuildPlayerCamera(playerState,playerConfig);
+            const auto playerCombatantForContact=gameplayState.combat.combatants.find(gameplayState.playerEntityId);
+            const auto* contactWeapon=playerCombatantForContact==gameplayState.combat.combatants.end()?nullptr:
+                talvisota::combat::FindWeaponDefinition(playerCombatantForContact->second.weaponId);
+            std::wstring contactText;
+            if(contactWeapon!=nullptr) {
+                std::string contactId;
+                if(!talvisota::gameplay::FindNearestHostileCombatant(gameplayState,gameRegion,
+                        gameplayState.playerEntityId,contactCamera.position,contactCamera.forward,
+                        contactWeapon->effectiveRangeMeters,0.95F,contactId,error)) {
+                    std::cerr<<"Battlefield contact query failed: "<<error<<"\\n"; break;
+                }
+                if(!contactId.empty()) {
+                    const auto* contactEntity=gameplayState.entities.Find(contactId);
+                    if(contactEntity!=nullptr) {
+                        const double dx=static_cast<double>(contactEntity->position[0])-playerState.position[0];
+                        const double dy=static_cast<double>(contactEntity->position[1])-playerState.position[1];
+                        const double dz=static_cast<double>(contactEntity->position[2])-playerState.position[2];
+                        const auto range=static_cast<long>(std::lround(std::sqrt(dx*dx+dy*dy+dz*dz)));
+                        contactText=L"CONTACT  |  "+std::to_wstring(range)+L" M";
+                    }
+                }
+            }
+            if(contactText!=missionOverlay.contact) {
+                missionOverlay.contact=std::move(contactText);
+                if(frontendOverlay&&IsWindow(frontendOverlay)) InvalidateRect(frontendOverlay,nullptr,FALSE);
+            }
             gameplayAccumulator+=static_cast<double>(deltaSeconds);
             while(gameplayAccumulator>=gameplayFixedStep) {
                 if(weaponSwitchQueued>0) {
@@ -1614,7 +1918,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             oldWidth = w; oldHeight = h; cameraChanged = true;
         }
         if (cameraChanged) {
-            if (!SetCamera(scene, cameraPosition, cameraTarget, w, h)) {
+            if (!SetCamera(scene, cameraPosition, cameraTarget, w, h,currentCameraFovDegrees)) {
                 error = "First-person camera view/projection update failed.";
                 break;
             }
@@ -1654,6 +1958,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             std::cerr<<"Sakkola explosion lighting update failed: "<<error<<"\\n";
             break;
         }
+        const auto presentationCamera=talvisota::game::BuildPlayerCamera(playerState,playerConfig);
+        UpdateBattlefieldActorInstances(scene,gameplayState,battlefieldActorBindings,
+            scene.camera.elapsedSeconds);
+        UpdatePlayerWeaponInstance(scene,playerWeaponInstance,gameplayState,battlefieldRenderAssets,
+            presentationCamera,scene.camera.elapsedSeconds);
         const auto renderStart = Clock::now();
         const bool renderSucceeded = renderer->Render(scene, error);
         const auto renderEnd = Clock::now();
