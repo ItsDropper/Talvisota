@@ -139,7 +139,7 @@ bool RefreshMissionOverlay(const talvisota::gameplay::SimulationState& simulatio
         const std::wstring direction=std::abs(relativeBearing)>2.35?L"BEHIND":
             relativeBearing>0.35?L"RIGHT":relativeBearing< -0.35?L"LEFT":L"AHEAD";
         updated.distance=std::to_wstring(distance)+L" m  "+direction;
-        updated.prompt=combatObjective?L"LEFT CLICK TO FIRE  |  R TO RELOAD":
+        updated.prompt=combatObjective?L"1/2/3 WEAPON  |  LEFT CLICK FIRE  |  R RELOAD":
             (target.distanceMeters<=interactionRadius?L"[E]  INTERACT":L"FOLLOW THE OBJECTIVE");
     }
     if(std::chrono::steady_clock::now()>=missionFeedbackUntil) updated.feedback.clear();
@@ -283,7 +283,7 @@ void PaintMenu(HWND hwnd) {
     SelectObject(dc,old); SetTextColor(dc,RGB(126,151,169));
     RECT hint{p.left+18,p.bottom-38,p.right-18,p.bottom-12};
     DrawTextW(dc,frontendState==FrontendState::MainMenu?
-        L"WASD MOVE  |  MOUSE LOOK  |  E INTERACT  |  LMB FIRE  |  R RELOAD  |  ESC PAUSE":
+        L"WASD MOVE  |  MOUSE LOOK  |  E INTERACT  |  1/2/3 WEAPONS  |  LMB FIRE  |  R RELOAD  |  ESC PAUSE":
         L"ESC TO RESUME  |  MISSION PROGRESS IS KEPT",
         -1,&hint,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     DeleteObject(body); DeleteObject(title); EndPaint(hwnd,&ps);
@@ -1146,11 +1146,13 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     MSG message{};
     bool running=true, jumpWasDown=false, interactWasDown=false, interactionQueued=false;
     bool fireWasDown=false, reloadWasDown=false, fireQueued=false, reloadQueued=false;
+    bool weapon1WasDown=false, weapon2WasDown=false, weapon3WasDown=false;
+    int weaponSwitchQueued=0;
     bool restartCameraRequested=false;
     constexpr double gameplayFixedStep=1.0/60.0;
     double gameplayAccumulator=0.0;
     FrontendState previousFrontendState=frontendState;
-    std::cout << "Sakkola: Start Game; WASD, mouse look, Space jump, Shift sprint, Ctrl crouch, ESC pause.\n";
+    std::cout << "Sakkola: WASD, mouse look, Space jump, Shift sprint, Ctrl crouch, E interact, 1/2/3 weapons, LMB fire, R reload, ESC pause.\n";
     while (running) {
         while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE) != FALSE) {
             if (message.message == WM_QUIT) { running = false; break; }
@@ -1211,6 +1213,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             rawMouseDeltaX=0; rawMouseDeltaY=0; jumpWasDown=false;
             interactWasDown=false; interactionQueued=false;
             fireWasDown=false; reloadWasDown=false; fireQueued=false; reloadQueued=false;
+            weapon1WasDown=false; weapon2WasDown=false; weapon3WasDown=false; weaponSwitchQueued=0;
             gameplayAccumulator=0.0;
             previousFrame=now; previousFrontendState=frontendState;
             InvalidateRect(frontendOverlay,nullptr,FALSE);
@@ -1240,6 +1243,13 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             const bool reloadDown=(GetAsyncKeyState('R')&0x8000)!=0;
             if(reloadDown&&!reloadWasDown) reloadQueued=true;
             reloadWasDown=reloadDown;
+            const bool weapon1Down=(GetAsyncKeyState('1')&0x8000)!=0;
+            const bool weapon2Down=(GetAsyncKeyState('2')&0x8000)!=0;
+            const bool weapon3Down=(GetAsyncKeyState('3')&0x8000)!=0;
+            if(weapon1Down&&!weapon1WasDown) weaponSwitchQueued=1;
+            if(weapon2Down&&!weapon2WasDown) weaponSwitchQueued=2;
+            if(weapon3Down&&!weapon3WasDown) weaponSwitchQueued=3;
+            weapon1WasDown=weapon1Down; weapon2WasDown=weapon2Down; weapon3WasDown=weapon3Down;
             const float lookStep=1.45F*deltaSeconds;
             constexpr float mouseRadiansPerCount=0.0025F;
             const LONG mouseX=std::exchange(rawMouseDeltaX,0L), mouseY=std::exchange(rawMouseDeltaY,0L);
@@ -1263,6 +1273,21 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 playerState.crouched!=wasCrouched;
             gameplayAccumulator+=static_cast<double>(deltaSeconds);
             while(gameplayAccumulator>=gameplayFixedStep) {
+                if(weaponSwitchQueued>0) {
+                    constexpr std::array<std::string_view,3> weaponIds{
+                        "weapon.mosin_m27","weapon.suomi_kp31","weapon.lahti_saloranta_m26"};
+                    const auto weaponIndex=static_cast<std::size_t>(weaponSwitchQueued-1);
+                    if(!talvisota::combat::EquipCombatantWeapon(gameplayState.combat,
+                            gameplayState.entities,gameplayState.playerEntityId,
+                            weaponIds[weaponIndex],error)) {
+                        std::cerr<<"Weapon switch failed: "<<error<<"\\n"; break;
+                    }
+                    const auto* equipped=talvisota::combat::FindWeaponDefinition(weaponIds[weaponIndex]);
+                    if(equipped!=nullptr)
+                        SetMissionFeedback(L"EQUIPPED  "+Utf8ToWide(equipped->displayName),
+                            std::chrono::milliseconds(1000));
+                    weaponSwitchQueued=0;
+                }
                 std::vector<talvisota::gameplay::CombatCommand> combatCommands;
                 if(fireQueued) {
                     const auto playerCombatant=gameplayState.combat.combatants.find(gameplayState.playerEntityId);
@@ -1370,6 +1395,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             const bool interactDown=(GetAsyncKeyState('E')&0x8000)!=0;
             interactionQueued=false;
             fireWasDown=false; reloadWasDown=false; fireQueued=false; reloadQueued=false;
+            weapon1WasDown=false; weapon2WasDown=false; weapon3WasDown=false; weaponSwitchQueued=0;
             if(frontendState==FrontendState::Playing &&
                 gameplayState.mission.status==talvisota::missions::MissionStatus::Completed &&
                 campaignHasNextMission && interactDown && !interactWasDown) {
