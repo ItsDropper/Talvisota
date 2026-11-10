@@ -108,9 +108,11 @@ bool DynamicWorldSystem::Initialize(const talvisota::world::WorldRegion& region,
         object.authoredTransform = talvisota::world::BuildPlacementTransform(placement);
         object.position = placement.position;
         object.mass = ObjectMass(placement);
-        object.anchored = placement.category == talvisota::world::PlacementCategory::Terrain ||
-            placement.category == talvisota::world::PlacementCategory::Structure;
-        object.sleeping = object.anchored;
+        // Authored props and vegetation begin at rest. They become movable only
+        // after an explicit impulse or complete damage; otherwise every loose
+        // prop would fall through the first simulation tick.
+        object.anchored = true;
+        object.sleeping = true;
         if (placement.category == talvisota::world::PlacementCategory::Terrain)
             object.integrity = std::numeric_limits<float>::max();
 
