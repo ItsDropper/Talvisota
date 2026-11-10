@@ -905,7 +905,7 @@ bool SetCamera(SceneSnapshot& scene, const vanta::math::Vec3& eye,
     if (!view || width <= 0 || height <= 0) return false;
     const float fov = std::clamp(fovDegrees,20.0F,100.0F) * 3.14159265358979323846F / 180.0F;
     const auto projection = vanta::math::Mat4::Perspective(
-        fov, static_cast<float>(width) / static_cast<float>(height), 0.1F, 1200.0F);
+        fov, static_cast<float>(width) / static_cast<float>(height), 0.1F, 6000.0F);
     std::copy(std::begin(view->elements), std::end(view->elements), scene.camera.view.begin());
     std::copy(std::begin(projection.elements), std::end(projection.elements), scene.camera.projection.begin());
     scene.camera.position = {eye.x, eye.y, eye.z};
@@ -1256,7 +1256,7 @@ std::size_t CullCaptureInstances(SceneSnapshot& scene, const std::vector<float>&
         const float depth=delta[0]*forward[0]+delta[1]*forward[1]+delta[2]*forward[2];
         const float horizontal=std::abs(delta[0]*right[0]+delta[1]*right[1]+delta[2]*right[2]);
         const float vertical=std::abs(delta[0]*up[0]+delta[1]*up[1]+delta[2]*up[2]);
-        instance.visible=depth+radius>=0.1F && depth-radius<=1200.0F &&
+        instance.visible=depth+radius>=0.1F && depth-radius<=6000.0F &&
             horizontal<=std::max(0.0F,depth)*tangentHalfFov*aspect+radius &&
             vertical<=std::max(0.0F,depth)*tangentHalfFov+radius;
         if(instance.visible) ++visibleCount;
@@ -1322,13 +1322,15 @@ constexpr std::array<CaptureView, 7> Views = {{
     {L"07-farmhouse-interior.png", {-42.46F, 9.7F, 125.54F}, {-42.67F, 9.7F, 124.54F}, false}
 }};
 constexpr std::array<CaptureView, 7> TaipaleViews = {{
-    {L"01-taipale-overview.png", {0.0F, 80.0F, -450.0F}, {0.0F, 5.0F, 620.0F}},
-    {L"02-taipale-river-bend.png", {-650.0F, 26.0F, 980.0F}, {-40.0F, 5.0F, 600.0F}},
-    {L"03-taipale-frozen-river.png", {0.0F, 10.0F, 1120.0F}, {0.0F, 5.0F, 580.0F}},
-    {L"04-taipale-forest.png", {1400.0F, 34.0F, 1400.0F}, {1500.0F, 14.0F, 1150.0F}, false},
-    {L"05-taipale-farmstead.png", {950.0F, 30.0F, -300.0F}, {720.0F, 12.0F, -560.0F}, false},
-    {L"06-taipale-watch-post.png", {-1350.0F, 26.0F, 1250.0F}, {-1120.0F, 10.0F, 1040.0F}, false},
-    {L"07-taipale-command-hut.png", {1500.0F, 27.0F, -1400.0F}, {1360.0F, 10.0F, -1160.0F}, false}
+    // Elevated landscape compositions replace the previous near-horizontal sightlines,
+    // which placed the river at the vanishing line and let winter fog flatten the scene.
+    {L"01-taipale-overview.png", {0.0F, 150.0F, -450.0F}, {0.0F, 8.0F, 420.0F}},
+    {L"02-taipale-river-bend.png", {-450.0F, 82.0F, 900.0F}, {-40.0F, 6.0F, 600.0F}},
+    {L"03-taipale-frozen-river.png", {0.0F, 78.0F, 1120.0F}, {0.0F, 5.0F, 650.0F}},
+    {L"04-taipale-forest.png", {1400.0F, 58.0F, 1400.0F}, {1500.0F, 9.0F, 1150.0F}, false},
+    {L"05-taipale-farmstead.png", {950.0F, 58.0F, -300.0F}, {720.0F, 7.0F, -560.0F}, false},
+    {L"06-taipale-watch-post.png", {-1350.0F, 55.0F, 1250.0F}, {-1120.0F, 7.0F, 1040.0F}, false},
+    {L"07-taipale-command-hut.png", {1500.0F, 52.0F, -1400.0F}, {1360.0F, 7.0F, -1160.0F}, false}
 }};
 }
 
