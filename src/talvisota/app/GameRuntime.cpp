@@ -1322,13 +1322,13 @@ constexpr std::array<CaptureView, 7> Views = {{
     {L"07-farmhouse-interior.png", {-42.46F, 9.7F, 125.54F}, {-42.67F, 9.7F, 124.54F}, false}
 }};
 constexpr std::array<CaptureView, 7> TaipaleViews = {{
-    {L"01-taipale-overview.png", {0.0F, 80.0F, -650.0F}, {0.0F, 5.0F, 620.0F}},
+    {L"01-taipale-overview.png", {0.0F, 80.0F, -450.0F}, {0.0F, 5.0F, 620.0F}},
     {L"02-taipale-river-bend.png", {-500.0F, 38.0F, 850.0F}, {0.0F, 5.0F, 620.0F}},
     {L"03-taipale-frozen-river.png", {350.0F, 23.0F, 450.0F}, {0.0F, 5.0F, 620.0F}},
-    {L"04-taipale-forest.png", {1400.0F, 34.0F, 1400.0F}, {1500.0F, 14.0F, 1150.0F}},
-    {L"05-taipale-farmstead.png", {950.0F, 30.0F, -300.0F}, {720.0F, 12.0F, -560.0F}},
-    {L"06-taipale-watch-post.png", {-1350.0F, 26.0F, 1250.0F}, {-1120.0F, 10.0F, 1040.0F}},
-    {L"07-taipale-command-hut.png", {1500.0F, 27.0F, -1400.0F}, {1360.0F, 10.0F, -1160.0F}}
+    {L"04-taipale-forest.png", {1400.0F, 34.0F, 1400.0F}, {1500.0F, 14.0F, 1150.0F}, false},
+    {L"05-taipale-farmstead.png", {950.0F, 30.0F, -300.0F}, {720.0F, 12.0F, -560.0F}, false},
+    {L"06-taipale-watch-post.png", {-1350.0F, 26.0F, 1250.0F}, {-1120.0F, 10.0F, 1040.0F}, false},
+    {L"07-taipale-command-hut.png", {1500.0F, 27.0F, -1400.0F}, {1360.0F, 10.0F, -1160.0F}, false}
 }};
 }
 
