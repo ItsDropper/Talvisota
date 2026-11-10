@@ -167,9 +167,10 @@ bool ValidateMaterials(const SceneSnapshot& scene, std::string& error)
             error = "Material " + std::to_string(materialIndex) + " has invalid PBR values.";
             return false;
         }
-        const std::array<const std::string*, 5> texturePaths = {
+        const std::array<const std::string*, 6> texturePaths = {
             &material.baseColorTexture, &material.normalTexture, &material.roughnessTexture,
-            &material.metallicTexture, &material.ambientOcclusionTexture
+            &material.metallicTexture, &material.ambientOcclusionTexture,
+            &material.emissiveTexture
         };
         for (const std::string* texturePath : texturePaths) {
             if (texturePath->find('\0') != std::string::npos ||
