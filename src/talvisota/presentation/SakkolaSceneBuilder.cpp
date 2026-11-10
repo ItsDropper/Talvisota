@@ -502,9 +502,6 @@ bool BuildWorldScene(const std::filesystem::path& root, const std::string_view w
     return true;
 }
 
-
-} // namespace talvisota::presentation
-
 bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
     std::vector<float>& instanceMaxDrawDistances,
     std::size_t& placementCount, std::size_t& drawCount,
@@ -513,3 +510,5 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
     return BuildWorldScene(root, "world.sakkola", "region.sakkola.church_village",
         scene, instanceMaxDrawDistances, placementCount, drawCount, outputRegion, error);
 }
+
+} // namespace talvisota::presentation
