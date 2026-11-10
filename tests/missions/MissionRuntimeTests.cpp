@@ -97,12 +97,23 @@ void TestManifestParserToMissionAdapter()
         "region_id = region.sakkola.church_village\n"
         "player_character_id = character.sakkola_infantryman\n"
         "faction_id = faction.finnish\n"
+        "next_mission_id = mission.sakkola.northern-watch\n"
         "objective = objective.inspect-well -> prop.well.farmstead\n"
         "objective = objective.inspect-woodpile -> prop.woodpile.west\n"
         "objective = objective.report-church -> church.sakkola\n");
+    content.Write("content/missions/northern-watch.tmission",
+        "talvisota-mission\\t1\\n"
+        "id = mission.sakkola.northern-watch\\n"
+        "name = Northern Watch\\n"
+        "world_id = world.sakkola\\n"
+        "region_id = region.sakkola.church_village\\n"
+        "player_character_id = character.sakkola_infantryman\\n"
+        "faction_id = faction.finnish\\n"
+        "objective = objective.watch -> prop.watch-post\\n");
     content.Write("catalog.tmanifest",
         "talvisota-content-manifest\t1\n"
-        "asset\tmission.sakkola.first-patrol\tdefinition\tcontent/missions/first-patrol.tmission\trequired\tworld.sakkola,region.sakkola.church_village,character.sakkola_infantryman,faction.finnish\tproject\tproject\n"
+        "asset\tmission.sakkola.first-patrol\tdefinition\tcontent/missions/first-patrol.tmission\trequired\tworld.sakkola,region.sakkola.church_village,character.sakkola_infantryman,faction.finnish,mission.sakkola.northern-watch\tproject\tproject\n"
+        "asset\tmission.sakkola.northern-watch\tdefinition\tcontent/missions/northern-watch.tmission\trequired\tworld.sakkola,region.sakkola.church_village,character.sakkola_infantryman,faction.finnish\tproject\tproject\n"
         "asset\tworld.sakkola\tdefinition\tcontent/worlds/sakkola.tworld\trequired\t-\tproject\tproject\n"
         "asset\tregion.sakkola.church_village\tdefinition\tcontent/worlds/sakkola-church-village.tregion\trequired\tworld.sakkola\tproject\tproject\n"
         "asset\tcharacter.sakkola_infantryman\tdefinition\tcontent/characters/sakkola-infantryman.tcharacter\trequired\tfaction.finnish\tproject\tproject\n"
@@ -122,7 +133,8 @@ void TestManifestParserToMissionAdapter()
         authored.worldId == "world.sakkola" &&
         authored.regionId == "region.sakkola.church_village" &&
         authored.characterId == "character.sakkola_infantryman" &&
-        authored.factionId == "faction.finnish",
+        authored.factionId == "faction.finnish" &&
+        authored.nextMissionId == "mission.sakkola.northern-watch",
         "parsed First Patrol retains its authored world, region, character, and faction references");
     Check(authored.objectives.size() == 3U &&
         authored.objectives[0].id == "objective.inspect-well" &&
