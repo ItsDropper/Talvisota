@@ -695,7 +695,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         talvisota::game::PlayerConfig playerConfig;
         talvisota::game::PlayerState playerState;
         if(!FindPlayerSpawn(gameRegion,playerConfig,playerState,error)) {
-            std::cerr<<"First Patrol smoke could not find a player spawn: "<<error<<"\\n";
+            std::cerr<<"First Patrol smoke could not find a player spawn: "<<error<<"\n";
             if(ownsCom) CoUninitialize();
             return 10;
         }
@@ -707,7 +707,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 authoredMission,gameRegion,playerState.position,rules,simulation,error) ||
             !PlaceMissionInteractionAnchors(gameRegion,simulation,playerState.position,
                 playerConfig.capsuleRadius,error)) {
-            std::cerr<<"First Patrol smoke initialization failed: "<<error<<"\\n";
+            std::cerr<<"First Patrol smoke initialization failed: "<<error<<"\n";
             if(ownsCom) CoUninitialize();
             return 10;
         }
@@ -715,7 +715,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             talvisota::gameplay::ActiveObjectiveTarget waypoint;
             if(!talvisota::gameplay::FindActiveObjectiveTarget(
                     simulation,simulation.playerEntityId,waypoint,error)) {
-                std::cerr<<"First Patrol smoke waypoint failed: "<<error<<"\\n";
+                std::cerr<<"First Patrol smoke waypoint failed: "<<error<<"\n";
                 if(ownsCom) CoUninitialize();
                 return 10;
             }
@@ -725,7 +725,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 !simulation.entities.SetPosition(simulation.playerEntityId,
                     reachablePlayer.position,error)) {
                 std::cerr<<"First Patrol smoke found an unreachable objective anchor: "
-                    <<waypoint.entityId<<": "<<error<<"\\n";
+                    <<waypoint.entityId<<": "<<error<<"\n";
                 if(ownsCom) CoUninitialize();
                 return 10;
             }
@@ -734,7 +734,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                     simulation.playerEntityId,rules.interactionRadiusMeters,selection,error) ||
                 selection.entityId!=waypoint.entityId) {
                 std::cerr<<"First Patrol smoke could not select the reachable objective: "
-                    <<waypoint.entityId<<"\\n";
+                    <<waypoint.entityId<<"\n";
                 if(ownsCom) CoUninitialize();
                 return 10;
             }
@@ -745,7 +745,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             std::vector<talvisota::gameplay::CommandResult> results;
             if(!talvisota::gameplay::AdvanceSimulation(simulation,rules,1.0/60.0,
                     commands,results,error)) {
-                std::cerr<<"First Patrol smoke interaction failed: "<<error<<"\\n";
+                std::cerr<<"First Patrol smoke interaction failed: "<<error<<"\n";
                 if(ownsCom) CoUninitialize();
                 return 10;
             }
@@ -753,19 +753,19 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 ?talvisota::gameplay::CommandOutcome::MissionCompleted
                 :talvisota::gameplay::CommandOutcome::ObjectiveCompleted;
             if(results.size()!=1U||results.front().outcome!=expected) {
-                std::cerr<<"First Patrol smoke produced an unexpected objective result.\\n";
+                std::cerr<<"First Patrol smoke produced an unexpected objective result.\n";
                 if(ownsCom) CoUninitialize();
                 return 10;
             }
             std::cout<<"First Patrol smoke completed objective "<<(index+1U)
-                <<"/"<<simulation.mission.objectives.size()<<": "<<waypoint.entityId<<"\\n";
+                <<"/"<<simulation.mission.objectives.size()<<": "<<waypoint.entityId<<"\n";
         }
         if(simulation.mission.status!=talvisota::missions::MissionStatus::Completed) {
-            std::cerr<<"First Patrol smoke did not complete the mission.\\n";
+            std::cerr<<"First Patrol smoke did not complete the mission.\n";
             if(ownsCom) CoUninitialize();
             return 10;
         }
-        std::cout<<"First Patrol runtime smoke passed: all authored targets are reachable and all objectives complete.\\n";
+        std::cout<<"First Patrol runtime smoke passed: all authored targets are reachable and all objectives complete.\n";
         if(ownsCom) CoUninitialize();
         return 0;
     }
