@@ -57,6 +57,8 @@ jobs:
           blender --background --python tools/blender_asset_pipeline/verify_tree_outputs.py -- "$RUNNER_TEMP/generated-trees"
 
       - name: Render multi-angle Scots pine geometry previews
+        timeout-minutes: 8
+        continue-on-error: true
         run: |
           blender --background --python tools/blender_asset_pipeline/render_tree_previews.py -- "$RUNNER_TEMP/generated-trees/scots_pine.blend" "$RUNNER_TEMP/tree-previews"
 
@@ -135,6 +137,8 @@ jobs:
           blender --background --python tools/blender_asset_pipeline/verify_boulder_outputs.py -- "$RUNNER_TEMP/generated-boulder"
 
       - name: Render multi-angle granite boulder previews
+        timeout-minutes: 8
+        continue-on-error: true
         run: |
           blender --background --python tools/blender_asset_pipeline/render_boulder_previews.py -- "$RUNNER_TEMP/generated-boulder/granite_boulder.blend" "$RUNNER_TEMP/boulder-previews"
 
@@ -186,10 +190,6 @@ jobs:
           merge-multiple: true
 
       - name: Verify generated runtime model inputs
-        timeout-minutes: 8
-        continue-on-error: true
-        timeout-minutes: 8
-        continue-on-error: true
         shell: pwsh
         run: |
           $required = @(
