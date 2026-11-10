@@ -15,7 +15,7 @@ namespace
 void RequireImpl(const bool condition,const int line)
 {
     if (!condition) {
-        std::cerr << "DynamicWorldTests assertion failed at line " << line << '\\n';
+        std::cerr << "DynamicWorldTests assertion failed at line " << line << '\n';
         std::abort();
     }
 }
