@@ -126,6 +126,11 @@ void TestTypedPbrMaterialBridge()
     Require(renderMaterial.roughnessTexture == renderMaterial.metallicTexture);
     Require(renderMaterial.roughnessTexture == renderMaterial.ambientOcclusionTexture);
     Require(std::filesystem::path(renderMaterial.roughnessTexture).is_absolute());
+    SceneSnapshot translatedMaterialScene;
+    translatedMaterialScene.materials.push_back(renderMaterial);
+    std::string sceneValidationError;
+    Require(ValidateSceneSnapshot(translatedMaterialScene, sceneValidationError));
+    Require(sceneValidationError.empty());
 
     // Unsupported advanced fields must fail explicitly and must not partially
     // overwrite a previously valid runtime material.
