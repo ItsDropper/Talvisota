@@ -202,11 +202,19 @@ jobs:
         run: .\\build\\talvisota_content_validate.exe content/catalog.tmanifest .
 
   windows-msvc-renderer-adapter:
+    needs: [blender-tree-assets, blender-boulder-assets]
     name: Windows x64 / MSVC renderer adapter
     runs-on: windows-latest
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+
+      - name: Download generated environment runtime models
+        uses: actions/download-artifact@v4
+        with:
+          pattern: talvisota-*-runtime-model
+          path: assets/models/environment/generated
+          merge-multiple: true
 
       - name: Configure MSVC environment
         uses: ilammy/msvc-dev-cmd@v1
