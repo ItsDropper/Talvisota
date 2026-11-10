@@ -44,18 +44,13 @@ bool ApplyMaterialDefinition(const content::MaterialDefinition& definition,
                              const content::ContentRegistry& registry,
                              RenderMaterial& output, std::string& error)
 {
-    // The current renderer contract implements the metallic-roughness PBR core.
-    // Reject advanced authored properties rather than silently rendering them wrong.
-    const bool hasEmissive = definition.emissive[0] != 0.0F ||
-        definition.emissive[1] != 0.0F || definition.emissive[2] != 0.0F ||
-        !definition.emissiveTexture.empty();
-    if (hasEmissive || definition.normalScale != 1.0F ||
-        definition.occlusionStrength != 1.0F ||
-        definition.alphaMode != content::MaterialAlphaMode::Opaque ||
-        definition.alphaCutoff != 0.5F || definition.doubleSided)
+    // Alpha blending and emissive texture maps require dedicated blend/material
+    // resource paths. Masking and the remaining scalar PBR properties are supported.
+    if (definition.alphaMode == content::MaterialAlphaMode::Blend ||
+        !definition.emissiveTexture.empty())
     {
-        error = "Typed material requests emissive, normal scaling, occlusion strength, or "
-                "alpha features that are not yet supported by the active renderer contract.";
+        error = "Typed material requests alpha blending or an emissive texture, which "
+                "is not implemented by the active renderer backends.";
         return false;
     }
 
@@ -63,6 +58,13 @@ bool ApplyMaterialDefinition(const content::MaterialDefinition& definition,
     candidate.baseColor = definition.baseColor;
     candidate.roughness = definition.roughness;
     candidate.metallic = definition.metallic;
+    candidate.emissive = definition.emissive;
+    candidate.normalScale = definition.normalScale;
+    candidate.occlusionStrength = definition.occlusionStrength;
+    candidate.alphaCutoff = definition.alphaCutoff;
+    candidate.alphaMode = definition.alphaMode == content::MaterialAlphaMode::Mask
+        ? RenderAlphaMode::Mask : RenderAlphaMode::Opaque;
+    candidate.doubleSided = definition.doubleSided;
 
     if (!ResolveTexture(registry, definition.baseColorTexture,
                         candidate.baseColorTexture, error) ||
