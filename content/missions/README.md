@@ -1,3 +1,3 @@
 # Missions
 
-Mission manifests, objectives, triggers, and encounter configuration. Reusable execution rules belong in src/talvisota/missions/.
+Mission manifests, ordered objectives, and campaign links. A mission may set `next_mission_id` to another manifest-registered `.tmission`; the reference must be listed as a dependency. The game runtime loads each successor into the same authored Sakkola region after the player completes the current mission and chooses to continue. Omit the field to end the campaign chain. Reusable execution rules belong in src/talvisota/missions/.
