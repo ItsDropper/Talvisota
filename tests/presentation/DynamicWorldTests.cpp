@@ -79,6 +79,7 @@ int main()
     Require(dynamics.Objects().back().instanceIndices.size() == 1U);
     Require(dynamics.Objects().front().instanceIndices.front() == 0U);
     Require(dynamics.Objects().back().instanceIndices.front() == 1U);
+    Require(dynamics.Objects().back().anchored && dynamics.Objects().back().sleeping);
 
     const auto authored = scene.instances.front().world;
     const auto crateAuthored = scene.instances.back().world;
