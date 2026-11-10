@@ -1068,7 +1068,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             interactionQueued=false;
             restartPatrolRequested=false;
             SetMissionFeedback(L"PATROL RESTARTED",std::chrono::milliseconds(2200));
-            if(!RefreshMissionOverlay(gameplayState,gameplayRules.interactionRadiusMeters,error)) break;
+            if(!RefreshMissionOverlay(gameplayState,playerState,gameplayRules.interactionRadiusMeters,error)) break;
         }
         const auto now=Clock::now();
         bool cameraChanged=restartCameraRequested;
@@ -1152,14 +1152,14 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 gameplayAccumulator-=gameplayFixedStep;
             }
             if(!error.empty()) break;
-            if(!RefreshMissionOverlay(gameplayState,gameplayRules.interactionRadiusMeters,error)) {
+            if(!RefreshMissionOverlay(gameplayState,playerState,gameplayRules.interactionRadiusMeters,error)) {
                 std::cerr<<"Mission HUD update failed: "<<error<<"\n"; break;
             }
         } else {
             rawMouseDeltaX=0; rawMouseDeltaY=0; jumpWasDown=false;
             interactWasDown=false; interactionQueued=false;
             if(frontendState==FrontendState::Playing) {
-                if(!RefreshMissionOverlay(gameplayState,gameplayRules.interactionRadiusMeters,error)) break;
+                if(!RefreshMissionOverlay(gameplayState,playerState,gameplayRules.interactionRadiusMeters,error)) break;
             }
         }
         if (cameraChanged) {
