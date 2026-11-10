@@ -416,6 +416,27 @@ bool LoadMission(const std::filesystem::path& contentRoot,const std::string_view
     return true;
 }
 
+void ApplyMissionEnvironment(SceneSnapshot& scene,
+    const talvisota::content::AuthoredDefinition& mission) {
+    if(mission.environmentProfile=="overcast") {
+        scene.environment.enabled=true;
+        scene.environment.sunIntensity=std::min(scene.environment.sunIntensity,1.45F);
+        scene.environment.ambientIntensity=std::min(scene.environment.ambientIntensity,0.82F);
+        scene.environment.fogColor={0.48F,0.57F,0.68F};
+        scene.environment.fogDensity=std::max(scene.environment.fogDensity,0.0020F);
+        scene.environment.fogStart=std::min(scene.environment.fogStart,65.0F);
+        scene.environment.windStrength=std::max(scene.environment.windStrength,0.10F);
+    } else if(mission.environmentProfile=="low_visibility") {
+        scene.environment.enabled=true;
+        scene.environment.sunIntensity=std::min(scene.environment.sunIntensity,1.10F);
+        scene.environment.ambientIntensity=std::min(scene.environment.ambientIntensity,0.65F);
+        scene.environment.fogColor={0.45F,0.54F,0.66F};
+        scene.environment.fogDensity=std::max(scene.environment.fogDensity,0.0040F);
+        scene.environment.fogStart=std::min(scene.environment.fogStart,32.0F);
+        scene.environment.windStrength=std::max(scene.environment.windStrength,0.14F);
+    }
+}
+
 // Mission targets are approached from outside their authored collision volumes.
 // This matters for structures such as the church: a waypoint at the structure's
 // centre is physically unreachable even though the mission target is valid.
@@ -705,6 +726,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         if (ownsCom) CoUninitialize();
         return 2;
     }
+
+    const auto worldEnvironment=scene.environment;
 
     std::cout << "Sakkola scene composition: placements=" << placements
         << ", material-bound instances=" << draws << ", unique meshes=" << scene.meshes.size()
@@ -1046,6 +1069,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     missionOverlay.title=Utf8ToWide(authoredMission.name);
     missionOverlay.description=Utf8ToWide(authoredMission.description);
     campaignHasNextMission=!authoredMission.nextMissionId.empty();
+    scene.environment=worldEnvironment;
+    ApplyMissionEnvironment(scene,authoredMission);
     if(!RefreshMissionOverlay(gameplayState,playerState,gameplayRules.interactionRadiusMeters,error)) {
         std::cerr<<"First Patrol HUD initialization failed: "<<error<<"\n";
         renderer.reset(); DestroyWindow(window); if(ownsCom) CoUninitialize(); return 8;
@@ -1103,6 +1128,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                     break;
                 }
                 authoredMission=std::move(nextMission);
+                scene.environment=worldEnvironment;
+                ApplyMissionEnvironment(scene,authoredMission);
                 gameplayState=std::move(nextGameplay);
                 campaignHasNextMission=!authoredMission.nextMissionId.empty();
                 missionOverlay.title=Utf8ToWide(authoredMission.name);
