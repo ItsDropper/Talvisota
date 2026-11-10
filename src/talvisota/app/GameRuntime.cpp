@@ -1807,7 +1807,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 error = "Could not construct a valid world capture camera.";
                 break;
             }
-            const std::string cameraSummary = "Capture camera " + std::string(view.file ? view.file : "unnamed") +
+            const std::string viewName = view.file != nullptr
+                ? std::filesystem::path(view.file).string() : "unnamed";
+            const std::string cameraSummary = "Capture camera " + viewName +
                 ": eye=(" + std::to_string(eye.x) + "," + std::to_string(eye.y) + "," +
                 std::to_string(eye.z) + "), target=(" + std::to_string(target.x) + "," +
                 std::to_string(target.y) + "," + std::to_string(target.z) + ").";
