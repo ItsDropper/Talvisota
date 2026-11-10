@@ -273,7 +273,6 @@ bool BuildBattlefieldRenderAssets(talvisota::presentation::SceneSnapshot& scene,
     // Rounded winter greatcoat, separate limbs, boots, field pack and helmet
     // replace the original block-only mannequin while keeping one shared mesh.
     AppendEllipsoid(body,{0.0F,1.08F,0.0F},{0.245F,0.39F,0.155F});
-    AppendEllipsoid(body,{0.0F,1.08F,0.0F},{0.245F,0.39F,0.155F});
     // Arms and legs are separate articulated meshes, not baked into the torso.
     AppendEllipsoid(body,{0.0F,1.115F,-0.205F},{0.18F,0.235F,0.09F});
     AppendEllipsoid(body,{0.0F,1.465F,0.015F},{0.075F,0.075F,0.075F});
@@ -288,8 +287,6 @@ bool BuildBattlefieldRenderAssets(talvisota::presentation::SceneSnapshot& scene,
     AppendBox(body,{0.075F,1.18F,0.153F},{0.025F,0.24F,0.012F});
     AppendBox(body,{-0.17F,0.91F,0.175F},{0.065F,0.075F,0.055F});
     AppendBox(body,{0.17F,0.91F,0.175F},{0.065F,0.075F,0.055F});
-    AppendBox(body,{-0.13F,0.61F,0.095F},{0.09F,0.075F,0.018F});
-    AppendBox(body,{0.13F,0.61F,0.095F},{0.09F,0.075F,0.018F});
     AppendBox(body,{-0.235F,0.86F,0.10F},{0.065F,0.075F,0.045F});
     AppendBox(body,{0.235F,0.86F,0.10F},{0.065F,0.075F,0.045F});
     output.bodyMesh=static_cast<std::uint32_t>(scene.meshes.size());
@@ -313,6 +310,8 @@ bool BuildBattlefieldRenderAssets(talvisota::presentation::SceneSnapshot& scene,
     AppendEllipsoid(leg,{0.0F,-0.70F,0.065F},{0.13F,0.085F,0.19F});
     AppendBox(leg,{0.0F,-0.52F,0.095F},{0.082F,0.07F,0.018F});
     AppendBox(leg,{0.0F,-0.665F,0.215F},{0.075F,0.025F,0.018F});
+    AppendEllipsoid(leg,{0.0F,-0.29F,0.095F},{0.09F,0.075F,0.018F});
+    AppendBox(leg,{0.0F,-0.055F,0.075F},{0.09F,0.035F,0.015F});
     output.legMesh=static_cast<std::uint32_t>(scene.meshes.size());
     scene.meshes.push_back(std::move(leg));
     const std::array archetypes{
@@ -364,25 +363,36 @@ std::array<float,16> ActorWorldMatrix(const std::array<float,3>& position,float 
     };
 }
 std::array<float,16> ActorLegWorldMatrix(const std::array<float,3>& position,
-    float yaw,float pivotX,float swing,float bodyPitch) {
+    float yaw,float pivotX,float swing,float bodyPitch,float bodyRoll) {
     const float angle=swing+bodyPitch;
     const float cy=std::cos(yaw),sy=std::sin(yaw);
     const float cp=std::cos(angle),sp=std::sin(angle);
+    const float cr=std::cos(bodyRoll),sr=std::sin(bodyRoll);
+    // Rotate the hip pivot by the torso pose, but add stride only to the leg's
+    // orientation. This keeps the leg attached while it swings.
+    const float pivotLocalX=cr*pivotX-sr*0.83F;
+    const float pivotLocalY=sr*pivotX+cr*0.83F;
+    const float pivotY=cp*pivotLocalY;
+    const float pivotZ=sp*pivotLocalY;
     return {
-        cy,0.0F,-sy,0.0F,
-        sy*sp,cp,cy*sp,0.0F,
+        cy*cr+sy*sp*sr,cp*sr,-sy*cr+cy*sp*sr,0.0F,
+        -cy*sr+sy*sp*cr,cp*cr,sy*sr+cy*sp*cr,0.0F,
         sy*cp,-sp,cy*cp,0.0F,
-        position[0]+cy*pivotX,position[1]+0.83F,position[2]-sy*pivotX,1.0F
+        position[0]+cy*pivotLocalX+sy*pivotZ,
+        position[1]+pivotY,
+        position[2]-sy*pivotLocalX+cy*pivotZ,1.0F
     };
 }
 std::array<float,16> ActorWeaponWorldMatrix(const std::array<float,3>& position,
-    float yaw,float bob,float stridePhase,float movementAmount) {
-    const float c=std::cos(yaw),s=std::sin(yaw);
+    float yaw,float bob,float stridePhase,float movementAmount,float pitch,float roll) {
+    auto transform=ActorWorldMatrix(position,yaw,bob,pitch,roll);
     const float sway=std::sin(stridePhase)*0.012F*movementAmount;
-    constexpr float x=0.27F,y=1.02F,z=0.15F;
-    return {c,0.0F,-s,0.0F,0.0F,1.0F,0.0F,0.0F,s,0.0F,c,0.0F,
-        position[0]+c*(x+sway)+s*z,position[1]+y+bob*0.65F,
-        position[2]-s*(x+sway)+c*z,1.0F};
+    constexpr float localY=1.02F,localZ=0.15F;
+    const float localX=0.27F+sway;
+    transform[12]+=transform[0]*localX+transform[4]*localY+transform[8]*localZ;
+    transform[13]+=transform[1]*localX+transform[5]*localY+transform[9]*localZ;
+    transform[14]+=transform[2]*localX+transform[6]*localY+transform[10]*localZ;
+    return transform;
 }
 std::array<float,16> PlayerWeaponWorldMatrix(
     const talvisota::game::PlayerCamera& camera,float elapsedSeconds) {
@@ -497,15 +507,15 @@ void UpdateBattlefieldActorInstances(talvisota::presentation::SceneSnapshot& sce
         const float bob=movementAmount*(0.012F+0.018F*std::abs(gait))+
             std::sin(elapsedSeconds*1.8F+static_cast<float>(i)*0.73F)*0.0025F;
         const float bodyPitch=0.12F*movementAmount;
-        body.world=ActorWorldMatrix(actor->position,yaw,bob,
-            bodyPitch,gait*0.035F*movementAmount);
+        const float bodyRoll=gait*0.035F*movementAmount;
+        body.world=ActorWorldMatrix(actor->position,yaw,bob,bodyPitch,bodyRoll);
         arms.world=body.world;
         leftLeg.world=ActorLegWorldMatrix(actor->position,yaw,-0.125F,
-            gait*0.34F*movementAmount,bodyPitch);
+            gait*0.34F*movementAmount,bodyPitch,bodyRoll);
         rightLeg.world=ActorLegWorldMatrix(actor->position,yaw,0.125F,
-            -gait*0.34F*movementAmount,bodyPitch);
+            -gait*0.34F*movementAmount,bodyPitch,bodyRoll);
         weapon.world=ActorWeaponWorldMatrix(actor->position,yaw,bob,
-            binding.stridePhase,movementAmount);
+            binding.stridePhase,movementAmount,bodyPitch,bodyRoll);
     }
 }
 bool AppendPlayerWeaponInstance(talvisota::presentation::SceneSnapshot& scene,
