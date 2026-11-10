@@ -461,7 +461,6 @@ jobs:
 
       - name: Upload Sakkola terrain screenshots
         if: always() && needs.changes.outputs.full_visual == 'true'
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: talvisota-sakkola-terrain-screenshots
