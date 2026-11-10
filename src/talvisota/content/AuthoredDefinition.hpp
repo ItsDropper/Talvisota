@@ -33,6 +33,8 @@ struct AuthoredDefinition final
     std::string regionId;
     std::vector<MissionObjectiveDefinition> objectives;
     std::string factionId;
+    // Optional authored campaign successor; empty marks the end of the sequence.
+    std::string nextMissionId;
     std::string characterId;
     std::string modelId;
     std::string textureId;
