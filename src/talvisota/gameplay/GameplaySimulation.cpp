@@ -521,7 +521,10 @@ bool BuildBattlefieldAiCommands(SimulationState& state,
         const std::string commandId = "ai." + std::to_string(state.tickIndex) + "." +
             std::to_string(commandIndex++);
         commands.push_back({commandId, actorId, selectedTarget->id, combat::CombatAction::Fire});
-        nextFireAt[actorId] = state.combat.elapsedSeconds + 1.6;
+        // Keep NPC pressure measured: the simulation currently resolves a valid
+        // command deterministically, so a longer cadence avoids relentless,
+        // overly accurate incoming fire while richer perception is developed.
+        nextFireAt[actorId] = state.combat.elapsedSeconds + 2.6;
     }
     state.actorNextFireAtSeconds = std::move(nextFireAt);
     output = std::move(commands);
