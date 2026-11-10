@@ -34,7 +34,7 @@ Header: `talvisota-mission<TAB>1`
 
 Required: `id`, `name`, `world_id`, `player_character_id`.
 
-Required: `region_id` in addition to the fields above. Optional: `faction_id`, `description`, and `next_mission_id`. Ordered objectives use repeated `objective = objective-id -> placement-id` records. World, region, character, faction, and optional successor references must resolve to `.tworld`, `.tregion`, `.tcharacter`, `.tfaction`, and `.tmission` assets respectively; every reference must be declared as a manifest dependency. A missing `next_mission_id` ends the authored campaign sequence.
+Required: `region_id` in addition to the fields above. Optional: `faction_id`, `description`, `next_mission_id`, and `environment_profile`. The environment profile is one of `default`, `overcast`, or `low_visibility`; it adjusts only renderer-supported sun, ambient, fog, and wind parameters. Ordered objectives use repeated `objective = objective-id -> placement-id` records. World, region, character, faction, and optional successor references must resolve to `.tworld`, `.tregion`, `.tcharacter`, `.tfaction`, and `.tmission` assets respectively; every reference must be declared as a manifest dependency. A missing `next_mission_id` ends the authored campaign sequence.
 
 ## Reference policy
 
