@@ -1,6 +1,9 @@
 #include "talvisota/content/AuthoredDefinition.hpp"
 
 #include <algorithm>
+#include <charconv>
+#include <cmath>
+#include <cstdint>
 #include <fstream>
 #include <string_view>
 #include <unordered_map>
@@ -24,6 +27,16 @@ constexpr KindInfo Kinds[] = {
     {".tcharacter", "talvisota-character\t1", AuthoredDefinitionKind::Character},
     {".tequipment", "talvisota-equipment\t1", AuthoredDefinitionKind::Equipment}
 };
+
+[[nodiscard]] bool ParseFiniteFloat(std::string_view text, float& output) noexcept
+{
+    float value = 0.0F;
+    const auto result = std::from_chars(text.data(), text.data() + text.size(), value);
+    if (result.ec != std::errc{} || result.ptr != text.data() + text.size() || !std::isfinite(value))
+        return false;
+    output = value;
+    return true;
+}
 
 [[nodiscard]] std::string_view Trim(std::string_view value) noexcept
 {
@@ -130,6 +143,7 @@ bool LoadAuthoredDefinition(const std::filesystem::path& path, const ContentRegi
     }
     std::unordered_map<std::string, std::pair<std::string, std::size_t>> values;
     std::vector<std::pair<MissionObjectiveDefinition, std::size_t>> missionObjectives;
+    std::vector<std::pair<MissionActorDefinition, std::size_t>> missionActors;
     std::string line;
     std::size_t totalBytes = 0U;
     std::size_t lineNumber = 0U;
@@ -180,6 +194,52 @@ bool LoadAuthoredDefinition(const std::filesystem::path& path, const ContentRegi
             Add(diagnostics, path, lineNumber, "record", "Key and value must both be non-empty.");
             continue;
         }
+        if (key == "actor" && kindInfo->kind == AuthoredDefinitionKind::Mission)
+        {
+            // actor = stable-id -> faction-id -> x,z -> weapon-id -> reserve-rounds
+            std::array<std::string_view, 5> fields{};
+            std::string_view remaining = value;
+            bool valid = true;
+            for (std::size_t field = 0U; field < fields.size(); ++field)
+            {
+                const std::size_t separator = remaining.find("->");
+                if (field + 1U == fields.size())
+                {
+                    if (separator != std::string_view::npos) valid = false;
+                    fields[field] = Trim(remaining);
+                }
+                else
+                {
+                    if (separator == std::string_view::npos) { valid = false; break; }
+                    fields[field] = Trim(remaining.substr(0U, separator));
+                    remaining.remove_prefix(separator + 2U);
+                }
+                if (fields[field].empty()) valid = false;
+            }
+            const std::size_t coordinateSeparator = fields[2].find(',');
+            float x = 0.0F, z = 0.0F;
+            std::uint32_t reserve = 0U;
+            if (coordinateSeparator == std::string_view::npos ||
+                fields[2].find(',', coordinateSeparator + 1U) != std::string_view::npos ||
+                !ParseFiniteFloat(Trim(fields[2].substr(0U, coordinateSeparator)), x) ||
+                !ParseFiniteFloat(Trim(fields[2].substr(coordinateSeparator + 1U)), z))
+                valid = false;
+            const auto reserveResult = std::from_chars(fields[4].data(),
+                fields[4].data() + fields[4].size(), reserve);
+            if (reserveResult.ec != std::errc{} ||
+                reserveResult.ptr != fields[4].data() + fields[4].size() || reserve > 10000U)
+                valid = false;
+            if (!valid || !entities::IsValidStableId(fields[0]) ||
+                !entities::IsValidStableId(fields[1]) || !entities::IsValidStableId(fields[3]))
+            {
+                Add(diagnostics, path, lineNumber, "actor",
+                    "Expected actor = stable-id -> faction-id -> x,z -> weapon-id -> reserve-rounds.");
+                continue;
+            }
+            missionActors.push_back({{std::string(fields[0]), std::string(fields[1]),
+                std::string(fields[3]), {x, z}, reserve}, lineNumber});
+            continue;
+        }
         if (key == "objective" && kindInfo->kind == AuthoredDefinitionKind::Mission)
         {
             const std::size_t objectiveSeparator = value.find("->");
@@ -224,7 +284,7 @@ bool LoadAuthoredDefinition(const std::filesystem::path& path, const ContentRegi
         };
         switch (kindInfo->kind)
         {
-        case AuthoredDefinitionKind::Mission: return key == "objective" || contains(mission);
+        case AuthoredDefinitionKind::Mission: return key == "objective" || key == "actor" || contains(mission);
         case AuthoredDefinitionKind::Faction: return contains(faction);
         case AuthoredDefinitionKind::Character: return contains(character);
         case AuthoredDefinitionKind::Equipment: return contains(equipment);
@@ -276,6 +336,17 @@ bool LoadAuthoredDefinition(const std::filesystem::path& path, const ContentRegi
                     Add(diagnostics, path, objectiveLine, "objective",
                         "Interaction target IDs must be unique: " + objective.interactionTargetId);
                 candidate.objectives.push_back(objective);
+            }
+        }
+        {
+            std::unordered_set<std::string> actorIds;
+            if (missionActors.size() > 64U)
+                Add(diagnostics, path, 0U, "actor", "A mission may author at most 64 battlefield actors.");
+            for (const auto& [actor, actorLine] : missionActors)
+            {
+                if (!actorIds.insert(actor.id).second)
+                    Add(diagnostics, path, actorLine, "actor", "Actor IDs must be unique: " + actor.id);
+                candidate.actors.push_back(actor);
             }
         }
         break;
@@ -339,6 +410,9 @@ bool LoadAuthoredDefinition(const std::filesystem::path& path, const ContentRegi
         ValidateReference(candidate.nextMissionId, AssetKind::Definition, ".tmission", registry, owner,
                           path, Get(values, "next_mission_id") ? Get(values, "next_mission_id")->second : 0U,
                           "next_mission_id", diagnostics);
+        for (const auto& [actor, actorLine] : missionActors)
+            ValidateReference(actor.factionId, AssetKind::Definition, ".tfaction", registry, owner,
+                path, actorLine, "actor", diagnostics);
         break;
     case AuthoredDefinitionKind::Character:
         ValidateReference(candidate.factionId, AssetKind::Definition, ".tfaction", registry, owner,
