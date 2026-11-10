@@ -125,6 +125,7 @@ target_compile_features(talvisota_renderer_contract PUBLIC cxx_std_23)
 target_include_directories(talvisota_renderer_contract PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
 )
+target_link_libraries(talvisota_renderer_contract PUBLIC Talvisota::World)
 talvisota_apply_compiler_options(talvisota_renderer_contract)
 
 if(TALVISOTA_ENABLE_VANTA_ENGINE)
