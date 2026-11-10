@@ -153,6 +153,13 @@ bool ValidateMaterials(const SceneSnapshot& scene, std::string& error)
         const RenderMaterial& material = scene.materials[materialIndex];
         if (!IsFinite(material.baseColor) || material.baseColor[0] < 0.0F ||
             material.baseColor[1] < 0.0F || material.baseColor[2] < 0.0F ||
+            !IsFinite(material.emissive) || material.emissive[0] < 0.0F ||
+            material.emissive[1] < 0.0F || material.emissive[2] < 0.0F ||
+            !std::isfinite(material.normalScale) || material.normalScale < 0.0F ||
+            !std::isfinite(material.occlusionStrength) || material.occlusionStrength < 0.0F ||
+            material.occlusionStrength > 1.0F || !std::isfinite(material.alphaCutoff) ||
+            material.alphaCutoff < 0.0F || material.alphaCutoff > 1.0F ||
+            (material.alphaMode != RenderAlphaMode::Opaque && material.alphaMode != RenderAlphaMode::Mask) ||
             !std::isfinite(material.roughness) || !std::isfinite(material.metallic) ||
             material.roughness < 0.0F || material.roughness > 1.0F ||
             material.metallic < 0.0F || material.metallic > 1.0F) {
