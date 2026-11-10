@@ -1314,7 +1314,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                     const auto aimCamera=talvisota::game::BuildPlayerCamera(playerState,playerConfig);
                     std::string targetEntityId;
                     if(weapon==nullptr || !talvisota::gameplay::FindNearestHostileCombatant(
-                            gameplayState,gameplayState.playerEntityId,aimCamera.position,
+                            gameplayState,gameRegion,gameplayState.playerEntityId,aimCamera.position,
                             aimCamera.forward,weapon->effectiveRangeMeters,0.95F,targetEntityId,error)) {
                         std::cerr<<"Combat target selection failed: "<<error<<"\\n"; break;
                     }
