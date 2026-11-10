@@ -1313,7 +1313,7 @@ constexpr std::array<CaptureView, 7> Views = {{
     // Exterior composition checks.
     {L"01-sakkola-overview.png", {0.0F, 35.0F, 30.0F}, {0.0F, 20.0F, 190.0F}},
     {L"02-church-village.png", {0.0F, 22.0F, 225.0F}, {0.0F, 17.0F, 178.0F}},
-    {L"03-suvanto-shoreline.png", {0.0F, 8.0F, -1100.0F}, {0.0F, 5.0F, -300.0F}},
+    {L"03-suvanto-shoreline.png", {0.0F, 48.0F, -620.0F}, {0.0F, 6.0F, -270.0F}},
     {L"04-karelian-forest.png", {82.0F, 11.0F, -205.0F}, {175.0F, 4.0F, -62.0F}},
     {L"05-farmstead.png", {-80.0F, 12.0F, 90.0F}, {-45.0F, 9.0F, 123.0F}},
     // Inside the church nave, facing the altar and the rows of pews.
@@ -1760,6 +1760,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         std::filesystem::create_directories(output, directoryError);
         if (directoryError)
             error = "Could not create screenshot output directory: " + directoryError.message();
+        // Screenshot review needs readable mid-distance terrain; the gameplay fog
+        // profiles are intentionally atmospheric but wash out the entire snowfield
+        // at these fixed landscape-review distances.
+        scene.environment.fogDensity = std::min(scene.environment.fogDensity, 0.00045F);
+        scene.environment.fogStart = std::max(scene.environment.fogStart, 100.0F);
         const auto& activeViews = gameRegion.id == "region.taipale.riverfront"
             ? TaipaleViews : Views;
         for (const auto& view : activeViews) {
