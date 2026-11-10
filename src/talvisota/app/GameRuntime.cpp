@@ -8,6 +8,7 @@
 #include "talvisota/presentation/VantaSceneRenderer.hpp"
 #include "talvisota/presentation/SakkolaSceneBuilder.hpp"
 #include "talvisota/presentation/CaptureValidation.hpp"
+#include "talvisota/presentation/WeatherParticles.hpp"
 #include "talvisota/world/WorldRegion.hpp"
 #include "vanta/math/Math.hpp"
 #include <Windows.h>
@@ -919,6 +920,12 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         return 0;
     }
 
+    talvisota::presentation::SnowfallSystem snowfall;
+    if(!snowfall.Initialize(scene,instanceMaxDrawDistances,256U,error)) {
+        std::cerr<<"Could not initialize Sakkola snowfall: "<<error<<"\\n";
+        if(ownsCom) CoUninitialize();
+        return 2;
+    }
     const std::vector<float> meshCullRadii = BuildMeshCullRadii(scene);
 
     const wchar_t* className = L"TalvisotaSakkolaRenderer";
@@ -1456,6 +1463,14 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         }
         scene.camera.elapsedSeconds = std::chrono::duration<float>(now - start).count();
         scene.camera.frameNumber = frameNumber++;
+        const std::array<float,3> snowfallCamera{
+            cameraPosition.x,cameraPosition.y,cameraPosition.z};
+        if(!snowfall.Update(scene,snowfallCamera,scene.camera.elapsedSeconds,
+                scene.environment.windDirection,scene.environment.windStrength,
+                authoredMission.environmentProfile!="default",error)) {
+            std::cerr<<"Sakkola snowfall update failed: "<<error<<"\\n";
+            break;
+        }
         const auto renderStart = Clock::now();
         const bool renderSucceeded = renderer->Render(scene, error);
         const auto renderEnd = Clock::now();
