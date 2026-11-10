@@ -49,6 +49,14 @@ jobs:
         run: |
           blender --background --python tools/blender_asset_pipeline/render_tree_previews.py -- "$RUNNER_TEMP/generated-trees/scots_pine.blend" "$RUNNER_TEMP/tree-previews"
 
+      - name: Upload generated Scots pine runtime model
+        uses: actions/upload-artifact@v4
+        with:
+          name: talvisota-scots-pine-runtime-model
+          path: ${{ runner.temp }}/generated-trees/scots_pine_lod0.glb
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Upload Scots pine geometry previews
         uses: actions/upload-artifact@v4
         with:
@@ -108,6 +116,14 @@ jobs:
         run: |
           blender --background --python tools/blender_asset_pipeline/render_boulder_previews.py -- "$RUNNER_TEMP/generated-boulder/granite_boulder.blend" "$RUNNER_TEMP/boulder-previews"
 
+      - name: Upload generated granite boulder runtime model
+        uses: actions/upload-artifact@v4
+        with:
+          name: talvisota-granite-boulder-runtime-model
+          path: ${{ runner.temp }}/generated-boulder/granite_boulder_lod0.glb
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Upload granite boulder review renders
         uses: actions/upload-artifact@v4
         with:
@@ -128,6 +144,7 @@ jobs:
           PY
 
   windows:
+    needs: [blender-tree-assets, blender-boulder-assets]
     name: Windows x64 / ${{ matrix.configuration }}
     runs-on: windows-latest
     strategy:
@@ -138,6 +155,25 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+
+      - name: Download generated environment runtime models
+        uses: actions/download-artifact@v4
+        with:
+          pattern: talvisota-*-runtime-model
+          path: assets/models/environment/generated
+          merge-multiple: true
+
+      - name: Verify generated runtime model inputs
+        shell: pwsh
+        run: |
+          $required = @(
+            "assets/models/environment/generated/scots_pine_lod0.glb",
+            "assets/models/environment/generated/granite_boulder_lod0.glb"
+          )
+          foreach ($path in $required) {
+            if (-not (Test-Path -LiteralPath $path)) { throw "Generated runtime model missing: $path" }
+            if ((Get-Item -LiteralPath $path).Length -lt 128) { throw "Generated runtime model is empty: $path" }
+          }
 
       - name: Configure
         run: >-
