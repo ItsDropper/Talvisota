@@ -45,6 +45,7 @@ struct RenderMaterial final
     std::string roughnessTexture;
     std::string metallicTexture;
     std::string ambientOcclusionTexture;
+    std::string emissiveTexture;
     bool packedMetallicRoughness = false;
     bool terrain = false;
     bool snowSurface = false;
