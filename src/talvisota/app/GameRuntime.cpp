@@ -57,6 +57,7 @@ struct MissionOverlayData final {
     std::wstring prompt=L"FOLLOW THE OBJECTIVE";
     std::wstring feedback;
     bool completed=false;
+    bool hasProgress=false;
 };
 MissionOverlayData missionOverlay;
 std::chrono::steady_clock::time_point missionFeedbackUntil{};
@@ -89,6 +90,7 @@ bool RefreshMissionOverlay(const talvisota::gameplay::SimulationState& simulatio
     const float interactionRadius,std::string& error) {
     MissionOverlayData updated=missionOverlay;
     updated.completed=simulation.mission.status==talvisota::missions::MissionStatus::Completed;
+    updated.hasProgress=simulation.mission.completedObjectives>0U;
     updated.progress=std::to_wstring(simulation.mission.completedObjectives)+L" / "+
         std::to_wstring(simulation.mission.objectives.size())+L" OBJECTIVES";
     if(updated.completed) {
@@ -116,7 +118,8 @@ bool RefreshMissionOverlay(const talvisota::gameplay::SimulationState& simulatio
     const bool changed=updated.title!=missionOverlay.title||updated.description!=missionOverlay.description||
         updated.objective!=missionOverlay.objective||updated.distance!=missionOverlay.distance||
         updated.progress!=missionOverlay.progress||updated.prompt!=missionOverlay.prompt||
-        updated.feedback!=missionOverlay.feedback||updated.completed!=missionOverlay.completed;
+        updated.feedback!=missionOverlay.feedback||updated.completed!=missionOverlay.completed||
+        updated.hasProgress!=missionOverlay.hasProgress;
     missionOverlay=std::move(updated);
     if(changed&&frontendOverlay&&IsWindow(frontendOverlay)) InvalidateRect(frontendOverlay,nullptr,FALSE);
     error.clear();
@@ -233,7 +236,7 @@ void PaintMenu(HWND hwnd) {
         Rectangle(dc,b.left,b.top,b.right,b.bottom); SelectObject(dc,ob); SelectObject(dc,op); DeleteObject(pen);
         SetTextColor(dc,RGB(240,245,249));
         const wchar_t* label=frontendState==FrontendState::MainMenu?
-            (i==0?(missionOverlay.completed?L"REPLAY FIRST PATROL":L"START FIRST PATROL"):L"QUIT"):
+            (i==0?(missionOverlay.completed?L"REPLAY FIRST PATROL":missionOverlay.hasProgress?L"CONTINUE PATROL":L"START FIRST PATROL"):L"QUIT"):
             (i==0?L"RESUME":i==1?L"RETURN TO MAIN MENU":L"QUIT");
         DrawTextW(dc,label,-1,&b,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
@@ -922,6 +925,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     int oldWidth = client.right - client.left, oldHeight = client.bottom - client.top;
     MSG message{};
     bool running=true, jumpWasDown=false, interactWasDown=false, interactionQueued=false;
+    bool restartCameraRequested=false;
     constexpr double gameplayFixedStep=1.0/60.0;
     double gameplayAccumulator=0.0;
     FrontendState previousFrontendState=frontendState;
@@ -940,6 +944,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 break;
             }
             playerState=initialPlayerState;
+            restartCameraRequested=true;
             gameplayAccumulator=0.0;
             interactionQueued=false;
             restartPatrolRequested=false;
@@ -947,7 +952,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             if(!RefreshMissionOverlay(gameplayState,gameplayRules.interactionRadiusMeters,error)) break;
         }
         const auto now=Clock::now();
-        bool cameraChanged=false;
+        bool cameraChanged=restartCameraRequested;
+        restartCameraRequested=false;
         if(frontendState!=previousFrontendState) {
             rawMouseDeltaX=0; rawMouseDeltaY=0; jumpWasDown=false;
             interactWasDown=false; interactionQueued=false; gameplayAccumulator=0.0;
