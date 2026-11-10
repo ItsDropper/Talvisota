@@ -77,7 +77,11 @@ bool SnowfallSystem::Initialize(SceneSnapshot& scene,
             (UnitFloat(seed) * 2.0F - 1.0F) * 18.0F,
             UnitFloat(seed ^ 0x68bc21ebU) * 24.0F,
             (UnitFloat(seed ^ 0x02e5be93U) * 2.0F - 1.0F) * 24.0F,
-            UnitFloat(seed ^ 0x967a889bU) * 2.0F - 1.0F
+            UnitFloat(seed ^ 0x967a889bU) * 2.0F - 1.0F,
+            1.15F + UnitFloat(seed ^ 0x51ed270bU) * 2.05F,
+            0.55F + UnitFloat(seed ^ 0x94d049bbU) * 0.9F,
+            UnitFloat(seed ^ 0x369dea0fU) * 6.28318530718F,
+            UnitFloat(seed ^ 0xdb4f0b91U) * 6.28318530718F
         });
     }
 
@@ -147,18 +151,27 @@ bool SnowfallSystem::Update(SceneSnapshot& scene,
     for (std::size_t index = 0U; index < m_offsets.size(); ++index)
     {
         const Offset& offset = m_offsets[index];
-        const float driftTime = time * windStrength * 0.7F;
-        const float x = cameraPosition[0] +
-            WrapCentered(offset.x + windDirection[0] * driftTime + offset.drift * driftTime, 20.0F);
-        const float y = cameraPosition[1] + 12.0F -
-            std::fmod(time * 2.4F + offset.yPhase, 24.0F);
-        const float z = cameraPosition[2] +
-            WrapCentered(offset.z + windDirection[1] * driftTime + offset.drift * driftTime * 0.35F, 26.0F);
+        const float gust = std::sin(time * 0.31F + offset.phase) * 0.22F +
+            std::sin(time * 0.83F + offset.phase * 1.7F) * 0.08F;
+        const float driftTime = time * (0.22F + windStrength * 1.25F);
+        const float lateralDrift = offset.drift * (0.7F + windStrength * 1.8F);
+        const float x = cameraPosition[0] + WrapCentered(
+            offset.x + windDirection[0] * driftTime + lateralDrift * driftTime * 0.12F + gust,
+            20.0F);
+        const float fallCycle = std::fmod(time * offset.fallSpeed + offset.yPhase, 24.0F);
+        const float y = cameraPosition[1] + 12.0F - fallCycle;
+        const float z = cameraPosition[2] + WrapCentered(
+            offset.z + windDirection[1] * driftTime + lateralDrift * driftTime * 0.08F +
+                std::sin(time * 0.24F + offset.phase * 0.73F) * 0.18F,
+            26.0F);
+        const float angle = offset.rotation + time * (0.18F + offset.scale * 0.12F) + gust * 0.35F;
+        const float cosine = std::cos(angle) * offset.scale;
+        const float sine = std::sin(angle) * offset.scale;
 
         RenderInstance& instance = scene.instances[static_cast<std::size_t>(m_firstInstance) + index];
-        instance.world[12] = x;
-        instance.world[13] = y;
-        instance.world[14] = z;
+        instance.world = {cosine, 0.0F, -sine, 0.0F,
+            0.0F, offset.scale, 0.0F, 0.0F,
+            sine, 0.0F, cosine, 0.0F, x, y, z, 1.0F};
         instance.visible = enabled;
     }
     error.clear();
