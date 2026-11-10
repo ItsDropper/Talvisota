@@ -487,7 +487,6 @@ jobs:
 
       - name: Upload Taipale riverfront screenshots
         if: always() && needs.changes.outputs.full_visual == 'true'
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: talvisota-taipale-riverfront-screenshots
