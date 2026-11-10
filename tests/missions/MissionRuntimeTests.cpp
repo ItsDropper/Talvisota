@@ -102,14 +102,14 @@ void TestManifestParserToMissionAdapter()
         "objective = objective.inspect-woodpile -> prop.woodpile.west\n"
         "objective = objective.report-church -> church.sakkola\n");
     content.Write("content/missions/northern-watch.tmission",
-        "talvisota-mission\\t1\\n"
-        "id = mission.sakkola.northern-watch\\n"
-        "name = Northern Watch\\n"
-        "world_id = world.sakkola\\n"
-        "region_id = region.sakkola.church_village\\n"
-        "player_character_id = character.sakkola_infantryman\\n"
-        "faction_id = faction.finnish\\n"
-        "objective = objective.watch -> prop.watch-post\\n");
+        "talvisota-mission\t1\n"
+        "id = mission.sakkola.northern-watch\n"
+        "name = Northern Watch\n"
+        "world_id = world.sakkola\n"
+        "region_id = region.sakkola.church_village\n"
+        "player_character_id = character.sakkola_infantryman\n"
+        "faction_id = faction.finnish\n"
+        "objective = objective.watch -> prop.watch-post\n");
     content.Write("catalog.tmanifest",
         "talvisota-content-manifest\t1\n"
         "asset\tmission.sakkola.first-patrol\tdefinition\tcontent/missions/first-patrol.tmission\trequired\tworld.sakkola,region.sakkola.church_village,character.sakkola_infantryman,faction.finnish,mission.sakkola.northern-watch\tproject\tproject\n"
