@@ -457,19 +457,15 @@ jobs:
         run: |
           $captureDir = Join-Path $env:RUNNER_TEMP 'sakkola-captures'
           New-Item -ItemType Directory -Force -Path $captureDir | Out-Null
-          $consoleLog = Join-Path $captureDir 'renderer-console.log'
-          $stderrLog = Join-Path $captureDir 'renderer-stderr.log'
-          $process = Start-Process -FilePath .\\build-msvc\talvisota.exe -ArgumentList @('--backend=d3d12', "--capture-dir=$captureDir", '--frames-per-view=9') -RedirectStandardOutput $consoleLog -RedirectStandardError $stderrLog -Wait -PassThru
+          $process = Start-Process -FilePath .\\build-msvc\talvisota.exe -ArgumentList @('--backend=d3d12', "--capture-dir=$captureDir", '--frames-per-view=9') -Wait -PassThru
           $rendererLog = Join-Path $captureDir 'renderer.log'
           if (Test-Path -LiteralPath $rendererLog) { Get-Content -LiteralPath $rendererLog }
-          if (Test-Path -LiteralPath $consoleLog) { Get-Content -LiteralPath $consoleLog }
-          if (Test-Path -LiteralPath $stderrLog) { Get-Content -LiteralPath $stderrLog }
           if ($process.ExitCode -ne 0) { throw "Sakkola renderer exited with code $($process.ExitCode)" }
-          if (-not (Test-Path -LiteralPath $consoleLog -PathType Leaf)) { throw "Sakkola renderer stdout log is missing" }
-          $lodDiagnostics = @(Select-String -LiteralPath $consoleLog -Pattern 'visible LOD0-3 \[')
+          if (-not (Test-Path -LiteralPath $rendererLog -PathType Leaf)) { throw "Sakkola renderer log is missing" }
+          $lodDiagnostics = @(Select-String -LiteralPath $rendererLog -Pattern 'visible LOD0-3 \[')
           if ($lodDiagnostics.Count -eq 0) { throw "Sakkola capture did not emit screen-space LOD diagnostics" }
-          if (Select-String -LiteralPath $consoleLog -Pattern 'invalid LOD selections [1-9][0-9]*' -Quiet) { throw "Sakkola capture reported an invalid LOD selection" }
-          $triangleDiagnostics = @(Select-String -LiteralPath $consoleLog -Pattern 'estimated submitted triangles [1-9][0-9]* / [1-9][0-9]* full-detail')
+          if (Select-String -LiteralPath $rendererLog -Pattern 'invalid LOD selections [1-9][0-9]*' -Quiet) { throw "Sakkola capture reported an invalid LOD selection" }
+          $triangleDiagnostics = @(Select-String -LiteralPath $rendererLog -Pattern 'estimated submitted triangles [1-9][0-9]* / [1-9][0-9]* full-detail')
           if ($triangleDiagnostics.Count -eq 0) { throw "Sakkola capture did not report a non-empty visible triangle budget" }
           Write-Host "Captured $($lodDiagnostics.Count) LOD diagnostics and $($triangleDiagnostics.Count) non-empty triangle budgets."
           $captures = @(Get-ChildItem -LiteralPath $captureDir -Filter '*.png' -File)
@@ -484,8 +480,6 @@ jobs:
           path: |
             ${{ runner.temp }}/sakkola-captures/*.png
             ${{ runner.temp }}/sakkola-captures/renderer.log
-            ${{ runner.temp }}/sakkola-captures/renderer-console.log
-            ${{ runner.temp }}/sakkola-captures/renderer-stderr.log
           if-no-files-found: warn
           retention-days: 30
       
@@ -496,19 +490,15 @@ jobs:
         run: |
           $captureDir = Join-Path $env:RUNNER_TEMP 'taipale-captures'
           New-Item -ItemType Directory -Force -Path $captureDir | Out-Null
-          $consoleLog = Join-Path $captureDir 'renderer-console.log'
-          $stderrLog = Join-Path $captureDir 'renderer-stderr.log'
-          $process = Start-Process -FilePath .\\build-msvc\talvisota.exe -ArgumentList @('--backend=d3d12', '--mission=mission.taipale.riverfront-watch', "--capture-dir=$captureDir", '--frames-per-view=9') -RedirectStandardOutput $consoleLog -RedirectStandardError $stderrLog -Wait -PassThru
+          $process = Start-Process -FilePath .\\build-msvc\talvisota.exe -ArgumentList @('--backend=d3d12', '--mission=mission.taipale.riverfront-watch', "--capture-dir=$captureDir", '--frames-per-view=9') -Wait -PassThru
           $rendererLog = Join-Path $captureDir 'renderer.log'
           if (Test-Path -LiteralPath $rendererLog) { Get-Content -LiteralPath $rendererLog }
-          if (Test-Path -LiteralPath $consoleLog) { Get-Content -LiteralPath $consoleLog }
-          if (Test-Path -LiteralPath $stderrLog) { Get-Content -LiteralPath $stderrLog }
           if ($process.ExitCode -ne 0) { throw "Taipale renderer exited with code $($process.ExitCode)" }
-          if (-not (Test-Path -LiteralPath $consoleLog -PathType Leaf)) { throw "Taipale renderer stdout log is missing" }
-          $lodDiagnostics = @(Select-String -LiteralPath $consoleLog -Pattern 'visible LOD0-3 \[')
+          if (-not (Test-Path -LiteralPath $rendererLog -PathType Leaf)) { throw "Taipale renderer log is missing" }
+          $lodDiagnostics = @(Select-String -LiteralPath $rendererLog -Pattern 'visible LOD0-3 \[')
           if ($lodDiagnostics.Count -eq 0) { throw "Taipale capture did not emit screen-space LOD diagnostics" }
-          if (Select-String -LiteralPath $consoleLog -Pattern 'invalid LOD selections [1-9][0-9]*' -Quiet) { throw "Taipale capture reported an invalid LOD selection" }
-          $triangleDiagnostics = @(Select-String -LiteralPath $consoleLog -Pattern 'estimated submitted triangles [1-9][0-9]* / [1-9][0-9]* full-detail')
+          if (Select-String -LiteralPath $rendererLog -Pattern 'invalid LOD selections [1-9][0-9]*' -Quiet) { throw "Taipale capture reported an invalid LOD selection" }
+          $triangleDiagnostics = @(Select-String -LiteralPath $rendererLog -Pattern 'estimated submitted triangles [1-9][0-9]* / [1-9][0-9]* full-detail')
           if ($triangleDiagnostics.Count -eq 0) { throw "Taipale capture did not report a non-empty visible triangle budget" }
           Write-Host "Captured $($lodDiagnostics.Count) LOD diagnostics and $($triangleDiagnostics.Count) non-empty triangle budgets."
           $captures = @(Get-ChildItem -LiteralPath $captureDir -Filter '*.png' -File)
@@ -523,7 +513,5 @@ jobs:
           path: |
             ${{ runner.temp }}/taipale-captures/*.png
             ${{ runner.temp }}/taipale-captures/renderer.log
-            ${{ runner.temp }}/taipale-captures/renderer-console.log
-            ${{ runner.temp }}/taipale-captures/renderer-stderr.log
           if-no-files-found: warn
           retention-days: 30

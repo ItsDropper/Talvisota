@@ -1221,7 +1221,8 @@ std::vector<float> BuildMeshCullRadii(const SceneSnapshot& scene)
 
 std::size_t CullCaptureInstances(SceneSnapshot& scene, const std::vector<float>& meshRadii,
     const std::vector<float>& maxDrawDistances, const vanta::math::Vec3& eye,
-    const vanta::math::Vec3& target, const float aspect, const float verticalFovDegrees = 60.0F) {
+    const vanta::math::Vec3& target, const float aspect, const float verticalFovDegrees = 60.0F,
+    std::ostream* diagnostics = nullptr) {
     const auto normalize=[](std::array<float,3> v) {
         const float length=std::sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
         if(length>1.0e-6F) for(float& value:v) value/=length;
@@ -1281,11 +1282,13 @@ std::size_t CullCaptureInstances(SceneSnapshot& scene, const std::vector<float>&
             if(instance.lodCount>0U)++visibleLodCounts[selectedLod];
         }
     }
-    std::cout<<"Visibility culling: "<<visibleCount<<" / "<<scene.instances.size()
+    std::ostream& output = diagnostics != nullptr ? *diagnostics : std::cout;
+    output<<"Visibility culling: "<<visibleCount<<" / "<<scene.instances.size()
         <<" instances visible; visible LOD0-3 ["<<visibleLodCounts[0U]<<", "<<visibleLodCounts[1U]
         <<", "<<visibleLodCounts[2U]<<", "<<visibleLodCounts[3U]<<"]; estimated submitted triangles "
         <<visibleTriangles<<" / "<<fullDetailTriangles<<" full-detail; invalid LOD selections "
         <<invalidLodSelections<<".\n";
+    if (diagnostics != nullptr) output.flush();
     return visibleCount;
 }
 
@@ -1804,12 +1807,16 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 error = "Could not construct a valid world capture camera.";
                 break;
             }
-            std::cout << "Capture camera " << (view.file ? "view" : "unnamed")
-                << ": eye=(" << eye.x << "," << eye.y << "," << eye.z
-                << "), target=(" << target.x << "," << target.y << "," << target.z << ").\n";
+            const std::string cameraSummary = "Capture camera " + std::string(view.file ? view.file : "unnamed") +
+                ": eye=(" + std::to_string(eye.x) + "," + std::to_string(eye.y) + "," +
+                std::to_string(eye.z) + "), target=(" + std::to_string(target.x) + "," +
+                std::to_string(target.y) + "," + std::to_string(target.z) + ").";
+            std::cout << cameraSummary << "\n";
+            if (captureLog) captureLog << cameraSummary << "\n";
             const std::size_t visibleInstanceCount = CullCaptureInstances(scene,
                 meshCullRadii, instanceMaxDrawDistances, eye, target,
-                static_cast<float>(client.right-client.left)/static_cast<float>(client.bottom-client.top), currentCameraFovDegrees);
+                static_cast<float>(client.right-client.left)/static_cast<float>(client.bottom-client.top),
+                currentCameraFovDegrees, &captureLog);
             if(visibleInstanceCount==0U) {
                 error = "World capture camera sees no scene instances after culling.";
                 break;
