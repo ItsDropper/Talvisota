@@ -210,10 +210,14 @@ int main(int argc, char** argv)
                             {
                                 return candidate.id == objective.interactionTargetId;
                             });
-                        if (placement == region->second.placements.end())
+                        const bool actorTarget = std::any_of(definition.actors.begin(),
+                            definition.actors.end(), [&](const auto& actor) {
+                                return actor.id == objective.interactionTargetId;
+                            });
+                        if (placement == region->second.placements.end() && !actorTarget)
                         {
                             PrintDiagnostic(contentRoot / asset.relativePath, 0U, "objective",
-                                "Interaction target is not a placement in the mission region: " +
+                                "Interaction target is neither a placement in the mission region nor an authored mission actor: " +
                                 objective.interactionTargetId);
                             return 1;
                         }
