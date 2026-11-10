@@ -87,18 +87,25 @@ void TestTypedPbrMaterialBridge()
     {
         std::ofstream manifest(root / "catalog.tmanifest", std::ios::binary);
         manifest << "talvisota-content-manifest\\t1\\n"
-                 << "asset\\tmaterial.test.snow\\tmaterial\\tmaterials/snow.tmat\\trequired\\ttexture.test.orm\\tproject\\tproject\\n"
+                 << "asset\\tmaterial.test.snow\\tmaterial\\tmaterials/snow.tmat\\trequired\\ttexture.test.base,texture.test.normal,texture.test.orm\\tproject\\tproject\\n"
+                 << "asset\\ttexture.test.base\\ttexture\\ttextures/snow-albedo.bmp\\trequired\\t-\\tproject\\tproject\\n"
+                 << "asset\\ttexture.test.normal\\ttexture\\ttextures/snow-normal.bmp\\trequired\\t-\\tproject\\tproject\\n"
                  << "asset\\ttexture.test.orm\\ttexture\\ttextures/snow-orm.bmp\\trequired\\t-\\tproject\\tproject\\n";
         Require(static_cast<bool>(manifest));
-        std::ofstream texture(root / "textures/snow-orm.bmp", std::ios::binary);
-        texture << "test texture payload";
-        Require(static_cast<bool>(texture));
+        for (const char* filename : {"snow-albedo.bmp", "snow-normal.bmp", "snow-orm.bmp"})
+        {
+            std::ofstream texture(root / "textures" / filename, std::ios::binary);
+            texture << "test texture payload";
+            Require(static_cast<bool>(texture));
+        }
         std::ofstream material(root / "materials/snow.tmat", std::ios::binary);
         material << "talvisota-material\\t1\\n"
                  << "id = material.test.snow\\n"
                  << "base_color = 0.82,0.88,0.96\\n"
                  << "roughness = 0.91\\n"
                  << "metallic = 0.04\\n"
+                 << "base_color_texture = texture.test.base\\n"
+                 << "normal_texture = texture.test.normal\\n"
                  << "orm_texture = texture.test.orm\\n";
         Require(static_cast<bool>(material));
     }
@@ -122,6 +129,8 @@ void TestTypedPbrMaterialBridge()
     Require(std::abs(renderMaterial.roughness - 0.91F) < 0.0001F);
     Require(std::abs(renderMaterial.metallic - 0.04F) < 0.0001F);
     Require(renderMaterial.packedMetallicRoughness);
+    Require(std::filesystem::path(renderMaterial.baseColorTexture).is_absolute());
+    Require(std::filesystem::path(renderMaterial.normalTexture).is_absolute());
     Require(!renderMaterial.roughnessTexture.empty());
     Require(renderMaterial.roughnessTexture == renderMaterial.metallicTexture);
     Require(renderMaterial.roughnessTexture == renderMaterial.ambientOcclusionTexture);
