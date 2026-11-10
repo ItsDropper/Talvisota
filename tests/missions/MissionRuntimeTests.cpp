@@ -110,6 +110,7 @@ void TestManifestParserToMissionAdapter()
         "player_character_id = character.sakkola_infantryman\n"
         "faction_id = faction.finnish\n"
         "environment_profile = overcast\n"
+        "actor = actor.soviet.01 -> faction.soviet -> 18,42 -> weapon.suomi_kp31 -> 60\n"
         "objective = objective.watch -> prop.watch-post\n");
     content.Write("catalog.tmanifest",
         "talvisota-content-manifest\t1\n"
@@ -118,7 +119,8 @@ void TestManifestParserToMissionAdapter()
         "asset\tworld.sakkola\tdefinition\tcontent/worlds/sakkola.tworld\trequired\t-\tproject\tproject\n"
         "asset\tregion.sakkola.church_village\tdefinition\tcontent/worlds/sakkola-church-village.tregion\trequired\tworld.sakkola\tproject\tproject\n"
         "asset\tcharacter.sakkola_infantryman\tdefinition\tcontent/characters/sakkola-infantryman.tcharacter\trequired\tfaction.finnish\tproject\tproject\n"
-        "asset\tfaction.finnish\tdefinition\tcontent/factions/finnish.tfaction\trequired\t-\tproject\tproject\n");
+        "asset\tfaction.finnish\tdefinition\tcontent/factions/finnish.tfaction\trequired\t-\tproject\tproject\n"
+        "asset\tfaction.soviet\tdefinition\tcontent/factions/soviet.tfaction\trequired\t-\tproject\tproject\n");
 
     ContentRegistry registry;
     std::vector<ContentDiagnostic> manifestDiagnostics;
@@ -135,6 +137,14 @@ void TestManifestParserToMissionAdapter()
         registry, successor, definitionDiagnostics) &&
         successor.nextMissionId.empty() && successor.environmentProfile == "overcast",
         "successor mission loads with its authored weather profile and terminal campaign state");
+    Check(successor.actors.size() == 1U &&
+        successor.actors[0].id == "actor.soviet.01" &&
+        successor.actors[0].factionId == "faction.soviet" &&
+        successor.actors[0].weaponId == "weapon.suomi_kp31" &&
+        successor.actors[0].positionXZ[0] == 18.0F &&
+        successor.actors[0].positionXZ[1] == 42.0F &&
+        successor.actors[0].reserveRounds == 60U,
+        "authored battlefield actor preserves faction, world position, weapon, and reserve ammunition");
 
     const AuthoredDefinition preservedSuccessor=successor;
     content.Write("content/missions/northern-watch.tmission",
