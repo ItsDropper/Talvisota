@@ -91,6 +91,8 @@ std::wstring ObjectiveTitle(const std::string_view id) {
     if(id=="objective.stop-first-advance") return L"HOLD THE NORTHERN APPROACH";
     if(id=="objective.stop-second-advance") return L"SECURE THE VILLAGE ROAD";
     if(id=="objective.report-to-post") return L"REPORT TO THE CHURCH POST";
+    if(id=="objective.stop-third-advance") return L"SECURE THE EASTERN APPROACH";
+    if(id=="objective.stop-fourth-advance") return L"CHECK THE ROAD BEYOND THE BARN";
     return Utf8ToWide(id);
 }
 
@@ -464,6 +466,114 @@ bool TriggerOpeningArtilleryFlash(
         std::to_string(sequence),{x,y+0.15F,z},elapsedSeconds,48.0F,850.0F,1.4F,error);
 }
 
+
+struct SoldierRenderAssets final {
+    std::uint32_t meshIndex=0U;
+    std::uint32_t finnishMaterialIndex=0U;
+    std::uint32_t sovietMaterialIndex=0U;
+};
+
+void AppendSoldierBox(talvisota::presentation::RenderMesh& mesh,
+    const std::array<float,3>& center,const std::array<float,3>& half) {
+    using Vertex=talvisota::presentation::RenderVertex;
+    const float x0=center[0]-half[0],x1=center[0]+half[0];
+    const float y0=center[1]-half[1],y1=center[1]+half[1];
+    const float z0=center[2]-half[2],z1=center[2]+half[2];
+    const std::array<std::array<float,3>,8> corners{{
+        {x0,y0,z0},{x1,y0,z0},{x1,y1,z0},{x0,y1,z0},
+        {x0,y0,z1},{x1,y0,z1},{x1,y1,z1},{x0,y1,z1}
+    }};
+    struct Face final { std::array<std::uint32_t,4> corners; std::array<float,3> normal; };
+    constexpr std::array<Face,6> faces{{
+        {{{4U,5U,6U,7U}},{0.0F,0.0F,1.0F}},
+        {{{1U,0U,3U,2U}},{0.0F,0.0F,-1.0F}},
+        {{{5U,1U,2U,6U}},{1.0F,0.0F,0.0F}},
+        {{{0U,4U,7U,3U}},{-1.0F,0.0F,0.0F}},
+        {{{3U,7U,6U,2U}},{0.0F,1.0F,0.0F}},
+        {{{0U,1U,5U,4U}},{0.0F,-1.0F,0.0F}}
+    }};
+    for(const Face& face:faces) {
+        const auto first=static_cast<std::uint32_t>(mesh.vertices.size());
+        for(const std::uint32_t index:face.corners)
+            mesh.vertices.push_back(Vertex{corners[index],face.normal,0.0F,0.0F});
+        mesh.indices.insert(mesh.indices.end(),{first,first+1U,first+2U,first,first+2U,first+3U});
+    }
+}
+
+bool CreateSoldierRenderAssets(SceneSnapshot& scene,SoldierRenderAssets& output,std::string& error) {
+    if(scene.meshes.size()>=static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max()) ||
+        scene.materials.size()+2U>static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max())) {
+        error="Scene has no remaining material or mesh indices for battlefield infantry.";
+        return false;
+    }
+    talvisota::presentation::RenderMesh soldier;
+    // A compact, deliberately readable low-poly winter infantry silhouette.
+    // The model is game presentation only; it does not encode real weapon handling.
+    AppendSoldierBox(soldier,{0.0F,1.08F,0.0F},{0.25F,0.34F,0.15F});       // coat
+    AppendSoldierBox(soldier,{0.0F,1.53F,0.0F},{0.13F,0.16F,0.13F});       // head
+    AppendSoldierBox(soldier,{0.0F,1.70F,0.0F},{0.17F,0.075F,0.17F});     // winter helmet
+    AppendSoldierBox(soldier,{-0.13F,0.46F,0.0F},{0.105F,0.34F,0.12F});   // left leg
+    AppendSoldierBox(soldier,{0.13F,0.46F,0.0F},{0.105F,0.34F,0.12F});    // right leg
+    AppendSoldierBox(soldier,{-0.13F,0.105F,0.035F},{0.13F,0.095F,0.19F}); // left boot
+    AppendSoldierBox(soldier,{0.13F,0.105F,0.035F},{0.13F,0.095F,0.19F}); // right boot
+    AppendSoldierBox(soldier,{-0.31F,1.12F,0.015F},{0.095F,0.29F,0.11F}); // left arm
+    AppendSoldierBox(soldier,{0.31F,1.12F,0.015F},{0.095F,0.29F,0.11F});  // right arm
+    AppendSoldierBox(soldier,{0.0F,1.10F,-0.205F},{0.19F,0.27F,0.095F}); // field pack
+    output.meshIndex=static_cast<std::uint32_t>(scene.meshes.size());
+    scene.meshes.push_back(std::move(soldier));
+    output.finnishMaterialIndex=static_cast<std::uint32_t>(scene.materials.size());
+    scene.materials.push_back({{0.30F,0.35F,0.29F},0.96F,0.0F});
+    output.sovietMaterialIndex=static_cast<std::uint32_t>(scene.materials.size());
+    scene.materials.push_back({{0.34F,0.31F,0.23F},0.96F,0.0F});
+    error.clear();
+    return true;
+}
+
+bool SyncMissionActorsToScene(SceneSnapshot& scene,
+    std::vector<float>& instanceMaxDrawDistances,const SoldierRenderAssets& assets,
+    const talvisota::gameplay::SimulationState& simulation,
+    const talvisota::game::PlayerState& player,
+    std::map<std::string,std::size_t,std::less<>>& actorInstances,std::string& error) {
+    for(const auto& [actorId,index]:actorInstances) {
+        (void)actorId;
+        if(index<scene.instances.size()) scene.instances[index].visible=false;
+    }
+    for(const auto& [entityId,entity]:simulation.entities.All()) {
+        if(!entity.active || entity.kind!=talvisota::entities::EntityKind::Infantry) continue;
+        const auto combatant=simulation.combat.combatants.find(entityId);
+        if(combatant==simulation.combat.combatants.end()) continue;
+        auto found=actorInstances.find(entityId);
+        if(found==actorInstances.end()) {
+            if(scene.instances.size()>=static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max())) {
+                error="Scene instance capacity was exceeded while adding battlefield infantry.";
+                return false;
+            }
+            talvisota::presentation::RenderInstance instance;
+            instance.meshIndex=assets.meshIndex;
+            instance.materialIndex=entity.factionId=="faction.soviet"
+                ?assets.sovietMaterialIndex:assets.finnishMaterialIndex;
+            const std::size_t index=scene.instances.size();
+            scene.instances.push_back(instance);
+            instanceMaxDrawDistances.push_back(420.0F);
+            found=actorInstances.emplace(entityId,index).first;
+        }
+        auto& instance=scene.instances[found->second];
+        instance.visible=combatant->second.health>0.0F;
+        const double yaw=std::atan2(static_cast<double>(player.position[0])-entity.position[0],
+            static_cast<double>(player.position[2])-entity.position[2]);
+        const float cosine=static_cast<float>(std::cos(yaw));
+        const float sine=static_cast<float>(std::sin(yaw));
+        instance.world={
+            cosine,0.0F,-sine,0.0F,
+            0.0F,1.0F,0.0F,0.0F,
+            sine,0.0F,cosine,0.0F,
+            entity.position[0],entity.position[1],entity.position[2],1.0F
+        };
+    }
+    error.clear();
+    return true;
+}
+
 void ApplyMissionEnvironment(SceneSnapshot& scene,
     const talvisota::content::AuthoredDefinition& mission) {
     if(mission.environmentProfile=="overcast") {
@@ -774,6 +884,13 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         std::cerr << error << "\n";
         if (captureLog) captureLog << "Scene build failed:\n" << error << "\n";
         if (ownsCom) CoUninitialize();
+        return 2;
+    }
+
+    SoldierRenderAssets soldierRenderAssets;
+    if(!CreateSoldierRenderAssets(scene,soldierRenderAssets,error)) {
+        std::cerr<<"Could not create battlefield infantry presentation: "<<error<<"\\n";
+        if(ownsCom) CoUninitialize();
         return 2;
     }
 
@@ -1151,6 +1268,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     }
     talvisota::gameplay::GameplayRules gameplayRules;
     talvisota::gameplay::SimulationState gameplayState;
+    std::map<std::string,std::size_t,std::less<>> actorRenderInstances;
     if(!talvisota::gameplay::InitializeSimulationFromAuthoredMission(
             authoredMission,gameRegion,playerState.position,gameplayRules,gameplayState,error) ||
         !PlaceMissionInteractionAnchors(gameRegion,gameplayState,playerState.position,
@@ -1501,6 +1619,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             }
             CullCaptureInstances(scene, meshCullRadii, instanceMaxDrawDistances,
                 cameraPosition, cameraTarget, static_cast<float>(w) / static_cast<float>(h));
+        }
+        if(!SyncMissionActorsToScene(scene,instanceMaxDrawDistances,soldierRenderAssets,
+                gameplayState,playerState,actorRenderInstances,error)) {
+            std::cerr<<"Battlefield actor presentation failed: "<<error<<"\\n";
+            break;
         }
         scene.camera.elapsedSeconds = std::chrono::duration<float>(now - start).count();
         scene.camera.frameNumber = frameNumber++;
