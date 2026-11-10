@@ -34,13 +34,15 @@ Texture references must resolve to manifest assets of kind `texture`. The textur
 
 ## Runtime renderer support
 
-The current Talvisota scene bridge supports the metallic-roughness PBR core:
+The current Talvisota scene bridge and both renderer backends support the metallic-roughness PBR core and these material extensions:
 
 - Linear `base_color`, scalar `roughness`, and scalar `metallic`.
 - Base-colour and tangent-space normal textures.
 - A packed ORM texture, bound to all three engine texture slots. The channel contract is R=occlusion, G=roughness, B=metallic.
+- Emissive RGB factors, normal-map strength, and AO strength.
+- Alpha masking with authored cutoff and double-sided normal orientation.
 - Texture paths are resolved against the validated content registry and must resolve to regular files before scene submission.
 
-The bridge deliberately rejects non-default emissive, normal-scale, occlusion-strength, alpha-mode, alpha-cutoff, and double-sided settings. The parser retains these authored fields for schema compatibility, but the active renderer does not yet implement them. This is a hard error rather than silently dropping material intent. In particular, `alpha_mode = blend` is not treated as working transparency.
+The bridge rejects alpha blending and emissive texture maps until dedicated transparent draw ordering and emissive texture resources are implemented. It does not silently treat either feature as opaque.
 
-Texture colour-space handling remains an engine-side concern: base-colour/emissive maps must be sampled as sRGB, while normal and ORM data must be sampled as linear values. A material definition being valid does not by itself guarantee that a backend has implemented the required texture format and shader behavior.
+Base-colour maps are sampled as sRGB; normal and ORM maps are sampled as linear data. Emissive factors are linear RGB.
