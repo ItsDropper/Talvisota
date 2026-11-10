@@ -59,7 +59,7 @@ int main()
 
     const std::filesystem::path sourceRoot{TALVISOTA_SOURCE_DIR};
     talvisota::test_support::ContentManifestFixture manifestFixture(sourceRoot, "combat-catalog");
-    Check(manifestFixture.Ready(), "headless manifest fixture ready");
+    Check(manifestFixture.Ready(), manifestFixture.Error().c_str());
     content::ContentRegistry contentRegistry;
     std::vector<content::ContentDiagnostic> contentDiagnostics;
     Check(content::LoadContentManifest(manifestFixture.ManifestPath(),

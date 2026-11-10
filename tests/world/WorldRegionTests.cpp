@@ -99,7 +99,7 @@ void TestShippedTerrainHeightfieldMatchesVisualMeshVertices()
 {
     const std::filesystem::path root = TALVISOTA_SOURCE_DIR;
     talvisota::test_support::ContentManifestFixture manifestFixture(root, "world-central-finland");
-    Require(manifestFixture.Ready());
+    Require(manifestFixture.Ready(), manifestFixture.Error().c_str());
     talvisota::content::ContentRegistry registry;
     std::vector<talvisota::content::ContentDiagnostic> manifestDiagnostics;
     Require(talvisota::content::LoadContentManifest(manifestFixture.ManifestPath(),
@@ -168,7 +168,7 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
 {
     const std::filesystem::path root = TALVISOTA_SOURCE_DIR;
     talvisota::test_support::ContentManifestFixture manifestFixture(root, "world-sakkola");
-    Require(manifestFixture.Ready());
+    Require(manifestFixture.Ready(), manifestFixture.Error().c_str());
     talvisota::content::ContentRegistry registry;
     std::vector<talvisota::content::ContentDiagnostic> manifestDiagnostics;
     Require(talvisota::content::LoadContentManifest(manifestFixture.ManifestPath(),
@@ -731,7 +731,7 @@ void TestTaipaleRiverfrontWorldAndMissionLoad()
 {
     const std::filesystem::path root = TALVISOTA_SOURCE_DIR;
     talvisota::test_support::ContentManifestFixture manifestFixture(root, "world-taipale");
-    Require(manifestFixture.Ready());
+    Require(manifestFixture.Ready(), manifestFixture.Error().c_str());
     talvisota::content::ContentRegistry registry;
     std::vector<talvisota::content::ContentDiagnostic> manifestDiagnostics;
     Require(talvisota::content::LoadContentManifest(manifestFixture.ManifestPath(),

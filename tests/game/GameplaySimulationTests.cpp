@@ -65,7 +65,7 @@ void TestAuthoredWorldSimulation()
 
     const std::filesystem::path sourceRoot{TALVISOTA_SOURCE_DIR};
     talvisota::test_support::ContentManifestFixture manifestFixture(sourceRoot, "gameplay-sakkola");
-    Check(manifestFixture.Ready(), "headless manifest fixture ready");
+    Check(manifestFixture.Ready(), manifestFixture.Error().c_str());
     std::string error;
     ContentRegistry registry;
     std::vector<ContentDiagnostic> contentDiagnostics;
@@ -464,7 +464,7 @@ void TestTaipaleMissionInitializesAgainstItsAuthoredWorld()
 
     const std::filesystem::path sourceRoot{TALVISOTA_SOURCE_DIR};
     talvisota::test_support::ContentManifestFixture manifestFixture(sourceRoot, "gameplay-taipale");
-    Check(manifestFixture.Ready(), "headless manifest fixture ready");
+    Check(manifestFixture.Ready(), manifestFixture.Error().c_str());
     std::string error;
     ContentRegistry registry;
     std::vector<ContentDiagnostic> contentDiagnostics;

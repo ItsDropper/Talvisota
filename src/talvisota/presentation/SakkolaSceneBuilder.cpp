@@ -113,6 +113,28 @@ bool ResolveImportedTexture(const std::filesystem::path& source,
     return true;
 }
 
+bool AreRenderMaterialsEquivalent(const RenderMaterial& lhs, const RenderMaterial& rhs)
+{
+    return lhs.baseColor == rhs.baseColor &&
+        lhs.roughness == rhs.roughness &&
+        lhs.metallic == rhs.metallic &&
+        lhs.emissive == rhs.emissive &&
+        lhs.normalScale == rhs.normalScale &&
+        lhs.occlusionStrength == rhs.occlusionStrength &&
+        lhs.alphaCutoff == rhs.alphaCutoff &&
+        lhs.alphaMode == rhs.alphaMode &&
+        lhs.doubleSided == rhs.doubleSided &&
+        lhs.baseColorTexture == rhs.baseColorTexture &&
+        lhs.normalTexture == rhs.normalTexture &&
+        lhs.roughnessTexture == rhs.roughnessTexture &&
+        lhs.metallicTexture == rhs.metallicTexture &&
+        lhs.ambientOcclusionTexture == rhs.ambientOcclusionTexture &&
+        lhs.emissiveTexture == rhs.emissiveTexture &&
+        lhs.packedMetallicRoughness == rhs.packedMetallicRoughness &&
+        lhs.terrain == rhs.terrain &&
+        lhs.snowSurface == rhs.snowSurface;
+}
+
 bool RefineSnowTerrain(RenderMesh& mesh, const talvisota::world::WorldRegion& region, std::string& error) {
     if (mesh.vertices.empty() || mesh.indices.empty() || mesh.indices.size()%3U!=0U) {
         error="Snow terrain refinement requires indexed triangle geometry."; return false;
@@ -200,8 +222,8 @@ bool RefineSnowTerrain(RenderMesh& mesh, const talvisota::world::WorldRegion& re
 
 struct SubmeshBinding { std::uint32_t meshIndex; std::uint32_t materialIndex; };
 struct ModelLodSource { std::string assetId; float screenCoverageHint=0.0F; bool optional=false; };
-struct ModelLodBindings { float minimumScreenCoverage=0.0F; std::map<std::string,SubmeshBinding> materials; };
-struct ModelBindings { std::vector<ModelLodBindings> lods; std::array<float,3> referenceCenter{}; float referenceRadius=0.0F; };
+struct ModelLodBindings { float minimumScreenCoverage=0.0F; std::map<std::size_t,SubmeshBinding> materials; };
+struct ModelBindings { std::vector<ModelLodBindings> lods; std::array<float,3> referenceCenter{}; float referenceRadius=0.0F; std::size_t materialSlotCount=0U; };
 std::vector<ModelLodSource> GetModelLodSources(const std::string_view modelAssetId)
 {
     if(modelAssetId=="model.environment.scots_pine") return {
@@ -296,6 +318,10 @@ bool BuildWorldScene(const std::filesystem::path& root, const std::string_view w
                 if(imported.submeshes.empty()||imported.materials.empty()) {
                     error="Model LOD has no materialized submeshes: "+lodSource.assetId;return false;
                 }
+                if(!modelBindings.lods.empty()&&imported.materials.size()!=modelBindings.materialSlotCount) {
+                    error="Model LOD material-slot count differs from LOD0: "+lodSource.assetId;return false;
+                }
+                if(modelBindings.lods.empty())modelBindings.materialSlotCount=imported.materials.size();
                 std::vector<RenderMesh> meshesByMaterial(imported.materials.size());
                 std::vector<std::unordered_map<std::uint32_t,std::uint32_t>> remaps(imported.materials.size());
                 for(const auto& submesh:imported.submeshes) {
@@ -332,7 +358,6 @@ bool BuildWorldScene(const std::filesystem::path& root, const std::string_view w
                     RenderMesh& mesh=meshesByMaterial[slot];
                     if(mesh.indices.empty())continue;
                     const auto& sourceMaterial=imported.materials[slot];
-                    if(sourceMaterial.name.empty()){error="Model LOD contains an unnamed material slot: "+lodSource.assetId;return false;}
                     RenderMaterial material;
                     material.baseColor={sourceMaterial.baseColor.x,sourceMaterial.baseColor.y,sourceMaterial.baseColor.z};
                     material.roughness=sourceMaterial.roughness;
@@ -364,18 +389,35 @@ bool BuildWorldScene(const std::filesystem::path& root, const std::string_view w
                         if(!RefineSnowTerrain(mesh,region,error)){error="Could not refine Sakkola snow terrain: "+error;return false;}
                     }
                     const auto meshIndex=static_cast<std::uint32_t>(scene.meshes.size());
-                    const auto materialIndex=static_cast<std::uint32_t>(scene.materials.size());
-                    scene.meshes.push_back(std::move(mesh));scene.materials.push_back(std::move(material));
-                    if(!lodBindings.materials.emplace(sourceMaterial.name,SubmeshBinding{meshIndex,materialIndex}).second) {
-                        error="Model LOD contains duplicate material names: "+lodSource.assetId+" ("+sourceMaterial.name+")";return false;
+                    std::uint32_t materialIndex=0U;
+                    if(!modelBindings.lods.empty()) {
+                        const auto baseMaterial=modelBindings.lods.front().materials.find(slot);
+                        if(baseMaterial!=modelBindings.lods.front().materials.end()&&
+                            AreRenderMaterialsEquivalent(scene.materials[baseMaterial->second.materialIndex],material)) {
+                            materialIndex=baseMaterial->second.materialIndex;
+                        } else {
+                            materialIndex=static_cast<std::uint32_t>(scene.materials.size());
+                            scene.materials.push_back(std::move(material));
+                        }
+                    } else {
+                        materialIndex=static_cast<std::uint32_t>(scene.materials.size());
+                        scene.materials.push_back(std::move(material));
+                    }
+                    scene.meshes.push_back(std::move(mesh));
+                    if(!lodBindings.materials.emplace(slot,SubmeshBinding{meshIndex,materialIndex}).second) {
+                        error="Model LOD contains a duplicate material slot: "+lodSource.assetId+
+                            " (slot "+std::to_string(slot)+")";return false;
                     }
                 }
                 if(lodBindings.materials.empty()){error="Model LOD produced no material-bound geometry: "+lodSource.assetId;return false;}
                 if(!modelBindings.lods.empty()) {
                     const auto& base=modelBindings.lods.front().materials;
-                    for(const auto& [name,binding]:lodBindings.materials) {
+                    for(const auto& [slot,binding]:lodBindings.materials) {
                         (void)binding;
-                        if(!base.contains(name)){error="Model LOD introduces a material absent from LOD0: "+lodSource.assetId+" ("+name+")";return false;}
+                        if(!base.contains(slot)) {
+                            error="Model LOD introduces a material slot absent from LOD0: "+lodSource.assetId+
+                                " (slot "+std::to_string(slot)+")";return false;
+                        }
                     }
                 }
                 mergedModelMaterialCount+=lodBindings.materials.size();
@@ -389,8 +431,8 @@ bool BuildWorldScene(const std::filesystem::path& root, const std::string_view w
                     std::numeric_limits<float>::max(),std::numeric_limits<float>::max(),std::numeric_limits<float>::max()};
                 std::array<float,3> boundsMax{
                     std::numeric_limits<float>::lowest(),std::numeric_limits<float>::lowest(),std::numeric_limits<float>::lowest()};
-                for(const auto& [materialName,binding]:modelBindings.lods.front().materials) {
-                    (void)materialName;
+                for(const auto& [materialSlot,binding]:modelBindings.lods.front().materials) {
+                    (void)materialSlot;
                     for(const auto& vertex:scene.meshes[binding.meshIndex].vertices)
                         for(std::size_t axis=0U;axis<3U;++axis) {
                             boundsMin[axis]=std::min(boundsMin[axis],vertex.position[axis]);
@@ -439,7 +481,7 @@ bool BuildWorldScene(const std::filesystem::path& root, const std::string_view w
             }
             transform[13] = groundedY;
         }
-        for(const auto& [materialName,baseBinding]:model->second.lods.front().materials) {
+        for(const auto& [materialSlot,baseBinding]:model->second.lods.front().materials) {
             RenderInstance instance;
             instance.meshIndex=baseBinding.meshIndex;instance.materialIndex=baseBinding.materialIndex;
             if(model->second.lods.size()>1U) {
@@ -448,7 +490,7 @@ bool BuildWorldScene(const std::filesystem::path& root, const std::string_view w
                 instance.lodReferenceRadius=model->second.referenceRadius;
                 for(std::size_t lodIndex=0U;lodIndex<model->second.lods.size();++lodIndex) {
                     const auto& lod=model->second.lods[lodIndex];
-                    const auto found=lod.materials.find(materialName);
+                    const auto found=lod.materials.find(materialSlot);
                     const SubmeshBinding& selected=found!=lod.materials.end()?found->second:baseBinding;
                     instance.lodVariants[lodIndex]={selected.meshIndex,selected.materialIndex,lod.minimumScreenCoverage};
                 }

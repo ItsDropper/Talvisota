@@ -154,7 +154,8 @@ private:
     {
         std::string result;
         result.reserve(label.size());
-        for (const unsigned char character : label) {
+        for (const char rawCharacter : label) {
+            const auto character = static_cast<unsigned char>(rawCharacter);
             const bool alphanumeric =
                 (character >= 'a' && character <= 'z') ||
                 (character >= 'A' && character <= 'Z') ||

@@ -163,7 +163,6 @@ void CullCaptureInstances(SceneSnapshot& scene, const std::vector<float>& meshRa
             std::sqrt(m[8]*m[8]+m[9]*m[9]+m[10]*m[10])});
         if(!std::isfinite(scale)||scale<=1.0e-6F){instance.visible=false;++invalidLodSelections;continue;}
         const std::size_t fullDetailMeshIndex=instance.lodCount>0U?instance.lodVariants[0].meshIndex:instance.meshIndex;
-        if(fullDetailMeshIndex<scene.meshes.size())fullDetailTriangles+=scene.meshes[fullDetailMeshIndex].indices.size()/3U;
         std::size_t selectedLod=0U;
         const float screenCoverage=instance.lodCount>0U
             ? (instance.lodReferenceRadius*scale)/(std::max(distance,1.0e-4F)*tangentHalfFov) : 1.0F;
@@ -180,6 +179,7 @@ void CullCaptureInstances(SceneSnapshot& scene, const std::vector<float>& meshRa
             vertical<=std::max(0.0F,depth)*tangentHalfFov+radius;
         if(instance.visible) {
             ++visibleCount;
+            if(fullDetailMeshIndex<scene.meshes.size())fullDetailTriangles+=scene.meshes[fullDetailMeshIndex].indices.size()/3U;
             visibleTriangles+=scene.meshes[instance.meshIndex].indices.size()/3U;
             if(instance.lodCount>0U)++visibleLodCounts[selectedLod];
         }
