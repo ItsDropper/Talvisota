@@ -104,13 +104,20 @@ bool InitializeSimulationFromAuthoredMission(
     }
 
     std::vector<entities::EntityDefinition> definitions;
-    definitions.reserve(missionDefinition.objectives.size() + 1U);
+    definitions.reserve(missionDefinition.objectives.size() + authoredMission.actors.size() + 1U);
     definitions.push_back({
         playerId, authoredMission.factionId, entities::EntityKind::Player, playerSpawn, {}
     });
 
     for (const missions::ObjectiveDefinition& objective : missionDefinition.objectives)
     {
+        const auto actorTarget = std::find_if(authoredMission.actors.begin(), authoredMission.actors.end(),
+            [&](const content::MissionActorDefinition& actor) {
+                return actor.id == objective.interactionTargetId;
+            });
+        if (actorTarget != authoredMission.actors.end())
+            continue;
+
         const world::WorldPlacement* targetPlacement = nullptr;
         for (const world::WorldPlacement& placement : region.placements)
         {
@@ -147,11 +154,47 @@ bool InitializeSimulationFromAuthoredMission(
         });
     }
 
+    for (const content::MissionActorDefinition& actor : authoredMission.actors)
+    {
+        if (!entities::IsValidStableId(actor.id) ||
+            !entities::IsValidStableId(actor.factionId) ||
+            !entities::IsValidStableId(actor.weaponId) ||
+            actor.factionId == authoredMission.factionId)
+        {
+            error = "Mission battlefield actors require unique IDs, a valid opposing faction, and a known weapon ID.";
+            return false;
+        }
+        if (actor.positionXZ[0] < region.boundsMin[0] ||
+            actor.positionXZ[0] > region.boundsMax[0] ||
+            actor.positionXZ[1] < region.boundsMin[2] ||
+            actor.positionXZ[1] > region.boundsMax[2])
+        {
+            error = "Mission battlefield actor is outside the authored world region: " + actor.id;
+            return false;
+        }
+        float terrainHeight = 0.0F;
+        std::array<float, 3> terrainNormal{};
+        if (!world::SampleTerrainHeight(region, actor.positionXZ[0], actor.positionXZ[1],
+                terrainHeight, terrainNormal, error))
+            return false;
+        definitions.push_back({actor.id, actor.factionId, entities::EntityKind::Infantry,
+            {actor.positionXZ[0], terrainHeight, actor.positionXZ[1]}, actor.id});
+    }
+
     SimulationState candidate;
     if (!InitializeSimulation(missionDefinition, definitions, rules, candidate, error))
         return false;
 
     candidate.playerEntityId = playerId;
+    if (!combat::RegisterCombatant(candidate.combat, candidate.entities, playerId,
+            "weapon.mosin_m27", 100.0F, 45U, error))
+        return false;
+    for (const content::MissionActorDefinition& actor : authoredMission.actors)
+    {
+        if (!combat::RegisterCombatant(candidate.combat, candidate.entities, actor.id,
+                actor.weaponId, 100.0F, actor.reserveRounds, error))
+            return false;
+    }
     output = std::move(candidate);
     error.clear();
     return true;
