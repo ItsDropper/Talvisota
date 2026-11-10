@@ -251,15 +251,17 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
     }
     std::sort(species.begin(), species.end());
     species.erase(std::unique(species.begin(), species.end()), species.end());
-    Require(species.size() == 5U,
-            "Sakkola forest should mix spruce, pine, birch, aspen, and alder rather than repeat one tree model.");
+    Require(species.size() == 6U,
+            "Sakkola forest should retain five native species alongside the dominant Blender Scots pine asset.");
     const auto speciesCount = [&region](const std::string& model) {
         return std::count_if(region.placements.begin(), region.placements.end(),
             [&model](const auto& item) {
                 return item.category == talvisota::world::PlacementCategory::Vegetation && item.modelAssetId == model;
             });
     };
-    Require(speciesCount("model.environment.spruce") >= 140U &&
+    Require(speciesCount("model.environment.scots_pine") == 1667U &&
+            speciesCount("model.environment.scots_pine") > vegetation / 2U &&
+            speciesCount("model.environment.spruce") >= 140U &&
             speciesCount("model.environment.pine") >= 100U &&
             speciesCount("model.environment.birch") >= 70U &&
             speciesCount("model.environment.aspen") >= 30U &&
