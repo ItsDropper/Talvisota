@@ -195,3 +195,14 @@ The game-facing contract lives in `talvisota/presentation/SceneRenderer.hpp` and
 This repository uses the custom **Talvisota Source-Available Reference Licence** in `LICENSE`. Source inspection and independent inspiration are allowed under its terms. Copying, redistribution, modification, and reuse of project code or original assets are not granted.
 
 This is **not an open-source licence**. Third-party components and assets remain governed by their own licences. Read [LICENSE](LICENSE) before using any material from this repository.
+
+
+### Launching a different authored location
+
+The default launch starts the Sakkola campaign. To load the Taipale riverfront introductory mission directly:
+
+```powershell
+.\build\bin\talvisota.exe --mission=mission.taipale.riverfront-watch
+```
+
+Mission selection resolves the mission's registered world and region before building the scene. World-state persistence is stored separately per world.
