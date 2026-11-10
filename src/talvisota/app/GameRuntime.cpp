@@ -353,7 +353,7 @@ bool LoadFirstPatrol(const std::filesystem::path& contentRoot,
             contentRoot,registry,manifestDiagnostics)) {
         error="First Patrol content manifest validation failed.";
         for(const auto& item:manifestDiagnostics)
-            error+="\\n"+item.file.string()+":"+std::to_string(item.line)+" ["+item.field+"] "+item.message;
+            error+="\n"+item.file.string()+":"+std::to_string(item.line)+" ["+item.field+"] "+item.message;
         return false;
     }
     std::vector<talvisota::content::AuthoredDefinitionDiagnostic> diagnostics;
@@ -361,7 +361,7 @@ bool LoadFirstPatrol(const std::filesystem::path& contentRoot,
             registry,output,diagnostics)) {
         error="First Patrol authored definition failed validation.";
         for(const auto& item:diagnostics)
-            error+="\\n"+item.file.string()+":"+std::to_string(item.line)+" ["+item.field+"] "+item.message;
+            error+="\n"+item.file.string()+":"+std::to_string(item.line)+" ["+item.field+"] "+item.message;
         return false;
     }
     error.clear();
@@ -630,8 +630,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     std::filesystem::path contentRoot;
     std::string contentRootError;
     if(!ResolveContentRoot(instance,contentRoot,contentRootError)) {
-        std::cerr<<contentRootError<<"\\n";
-        if(captureLog) captureLog<<contentRootError<<"\\n";
+        std::cerr<<contentRootError<<"\n";
+        if(captureLog) captureLog<<contentRootError<<"\n";
         if(ownsCom) CoUninitialize();
         return 2;
     }
@@ -696,7 +696,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     RAWINPUTDEVICE mouseDevice{0x01U, 0x02U, 0U, window};
     const bool rawMouseAvailable = RegisterRawInputDevices(&mouseDevice, 1U, sizeof(mouseDevice)) != FALSE;
     if (!rawMouseAvailable)
-        std::cerr << "Raw mouse registration failed; use arrow keys for camera look.\\n";
+        std::cerr << "Raw mouse registration failed; use arrow keys for camera look.\n";
     ShowWindow(window, showCommand);
     UpdateWindow(window);
     SetForegroundWindow(window);
@@ -877,7 +877,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     const talvisota::game::PlayerState initialPlayerState=playerState;
     talvisota::content::AuthoredDefinition authoredMission;
     if(!LoadFirstPatrol(contentRoot,authoredMission,error)) {
-        std::cerr<<error<<"\\n";
+        std::cerr<<error<<"\n";
         renderer.reset(); DestroyWindow(window); if(ownsCom) CoUninitialize(); return 8;
     }
     talvisota::gameplay::GameplayRules gameplayRules;
@@ -886,13 +886,13 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             authoredMission,gameRegion,playerState.position,gameplayRules,gameplayState,error) ||
         !PlaceMissionInteractionAnchors(gameRegion,gameplayState,playerState.position,
             playerConfig.capsuleRadius,error)) {
-        std::cerr<<"First Patrol initialization failed: "<<error<<"\\n";
+        std::cerr<<"First Patrol initialization failed: "<<error<<"\n";
         renderer.reset(); DestroyWindow(window); if(ownsCom) CoUninitialize(); return 8;
     }
     missionOverlay.title=Utf8ToWide(authoredMission.name);
     missionOverlay.description=Utf8ToWide(authoredMission.description);
     if(!RefreshMissionOverlay(gameplayState,gameplayRules.interactionRadiusMeters,error)) {
-        std::cerr<<"First Patrol HUD initialization failed: "<<error<<"\\n";
+        std::cerr<<"First Patrol HUD initialization failed: "<<error<<"\n";
         renderer.reset(); DestroyWindow(window); if(ownsCom) CoUninitialize(); return 8;
     }
 
@@ -936,7 +936,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         if(restartPatrolRequested) {
             if(!talvisota::missions::RestartMission(gameplayState.mission,error) ||
                 !gameplayState.entities.SetPosition(gameplayState.playerEntityId,initialPlayerState.position,error)) {
-                std::cerr<<"Could not restart First Patrol: "<<error<<"\\n";
+                std::cerr<<"Could not restart First Patrol: "<<error<<"\n";
                 break;
             }
             playerState=initialPlayerState;
@@ -986,10 +986,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             const bool wasCrouched=playerState.crouched;
             if(!talvisota::game::UpdatePlayer(gameRegion,playerConfig,playerInput,
                     std::max(deltaSeconds,1.0F/1000.0F),playerState,error)) {
-                std::cerr<<"Player simulation failed: "<<error<<"\\n"; break;
+                std::cerr<<"Player simulation failed: "<<error<<"\n"; break;
             }
             if(!gameplayState.entities.SetPosition(gameplayState.playerEntityId,playerState.position,error)) {
-                std::cerr<<"Player entity synchronization failed: "<<error<<"\\n"; break;
+                std::cerr<<"Player entity synchronization failed: "<<error<<"\n"; break;
             }
             cameraChanged=playerState.position!=previousPosition ||
                 playerInput.lookYawRadians!=0.0F || playerInput.lookPitchRadians!=0.0F ||
@@ -1001,7 +1001,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                     talvisota::gameplay::InteractionTargetSelection selection;
                     if(!talvisota::gameplay::FindNearestActiveObjectiveTarget(gameplayState,
                             gameplayState.playerEntityId,gameplayRules.interactionRadiusMeters,selection,error)) {
-                        std::cerr<<"Objective interaction query failed: "<<error<<"\\n"; break;
+                        std::cerr<<"Objective interaction query failed: "<<error<<"\n"; break;
                     }
                     if(selection.entityId.empty()) {
                         SetMissionFeedback(L"MOVE CLOSER TO THE OBJECTIVE",std::chrono::milliseconds(1400));
@@ -1014,7 +1014,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 std::vector<talvisota::gameplay::CommandResult> commandResults;
                 if(!talvisota::gameplay::AdvanceSimulation(gameplayState,gameplayRules,
                         gameplayFixedStep,commands,commandResults,error)) {
-                    std::cerr<<"Gameplay simulation failed: "<<error<<"\\n"; break;
+                    std::cerr<<"Gameplay simulation failed: "<<error<<"\n"; break;
                 }
                 for(const auto& result:commandResults) {
                     if(result.outcome==talvisota::gameplay::CommandOutcome::ObjectiveCompleted)
@@ -1028,7 +1028,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             }
             if(!error.empty()) break;
             if(!RefreshMissionOverlay(gameplayState,gameplayRules.interactionRadiusMeters,error)) {
-                std::cerr<<"Mission HUD update failed: "<<error<<"\\n"; break;
+                std::cerr<<"Mission HUD update failed: "<<error<<"\n"; break;
             }
         } else {
             rawMouseDeltaX=0; rawMouseDeltaY=0; jumpWasDown=false;
@@ -1042,7 +1042,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             cameraPosition = {playerCamera.position[0], playerCamera.position[1], playerCamera.position[2]};
             if (!KeepCameraAboveTerrain(gameRegion, cameraPosition,
                     playerState.crouched ? playerConfig.crouchedEyeHeight : playerConfig.eyeHeight, error)) {
-                std::cerr << "Player camera terrain sampling failed: " << error << "\\n";
+                std::cerr << "Player camera terrain sampling failed: " << error << "\n";
                 break;
             }
             cameraTarget = {cameraPosition.x + playerCamera.forward[0] * 180.0F,
