@@ -24,10 +24,10 @@ int main()
     SnowfallSystem snowfall;
     std::string error;
 
-    Require(snowfall.Initialize(scene,maximumDrawDistances,256U,error));
-    Require(snowfall.IsInitialized() && snowfall.FlakeCount()==256U);
+    Require(snowfall.Initialize(scene,maximumDrawDistances,768U,error));
+    Require(snowfall.IsInitialized() && snowfall.FlakeCount()==768U);
     Require(scene.meshes.size()==1U && scene.materials.size()==1U);
-    Require(scene.instances.size()==256U && maximumDrawDistances.size()==256U);
+    Require(scene.instances.size()==768U && maximumDrawDistances.size()==768U);
     Require(std::all_of(maximumDrawDistances.begin(),maximumDrawDistances.end(),
         [](const float distance) { return distance==60.0F; }));
     Require(ValidateSceneSnapshot(scene,error));
@@ -52,9 +52,12 @@ int main()
         [](const RenderInstance& instance) { return instance.visible; }));
 
     const auto preserved=scene.instances.front().world;
+    const auto varied=scene.instances[1].world;
+    Require(scene.instances.front().world[0]!=scene.instances[1].world[0] ||
+        scene.instances.front().world[5]!=scene.instances[1].world[5]);
     Require(!snowfall.Update(scene,camera,
         std::numeric_limits<double>::quiet_NaN(),{0.914F,0.406F},0.14F,true,error));
-    Require(scene.instances.front().world==preserved &&
+    Require(scene.instances.front().world==preserved && scene.instances[1].world==varied &&
         std::none_of(scene.instances.begin(),scene.instances.end(),
             [](const RenderInstance& instance) { return instance.visible; }));
 
