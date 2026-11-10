@@ -35,6 +35,8 @@ struct WeaponDefinition final
 
 // These are deliberately game-balance values, not real-world performance data.
 [[nodiscard]] std::span<const WeaponDefinition> Finnish1939WeaponCatalog() noexcept;
+// Historically grounded Soviet infantry equipment used during the Winter War.
+[[nodiscard]] std::span<const WeaponDefinition> Soviet1939WeaponCatalog() noexcept;
 [[nodiscard]] const WeaponDefinition* FindWeaponDefinition(std::string_view weaponId) noexcept;
 
 struct WeaponAmmoState final
