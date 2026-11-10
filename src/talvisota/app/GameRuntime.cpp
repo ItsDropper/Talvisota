@@ -57,6 +57,7 @@ struct MissionOverlayData final {
     std::wstring objective=L"INSPECT THE FARMSTEAD WELL";
     std::wstring distance;
     std::wstring progress=L"0 / 3 OBJECTIVES";
+    std::wstring ammo;
     std::wstring prompt=L"FOLLOW THE OBJECTIVE";
     std::wstring feedback;
     bool completed=false;
@@ -116,6 +117,8 @@ bool RefreshMissionOverlay(const talvisota::gameplay::SimulationState& simulatio
         if(!talvisota::gameplay::FindActiveObjectiveTarget(simulation,simulation.playerEntityId,target,error))
             return false;
         updated.objective=ObjectiveTitle(active->id);
+        const auto* objectiveEntity=simulation.entities.Find(target.entityId);
+        const bool combatObjective=objectiveEntity!=nullptr && objectiveEntity->kind!=talvisota::entities::EntityKind::WorldObject;
         const long distance=std::max(0L,std::lround(target.distanceMeters));
         const double bearing=std::atan2(
             static_cast<double>(target.position[0])-player.position[0],
@@ -126,13 +129,21 @@ bool RefreshMissionOverlay(const talvisota::gameplay::SimulationState& simulatio
         const std::wstring direction=std::abs(relativeBearing)>2.35?L"BEHIND":
             relativeBearing>0.35?L"RIGHT":relativeBearing< -0.35?L"LEFT":L"AHEAD";
         updated.distance=std::to_wstring(distance)+L" m  "+direction;
-        updated.prompt=target.distanceMeters<=interactionRadius?L"[E]  INTERACT":L"FOLLOW THE OBJECTIVE";
+        updated.prompt=combatObjective?L"LEFT CLICK TO FIRE  |  R TO RELOAD":
+            (target.distanceMeters<=interactionRadius?L"[E]  INTERACT":L"FOLLOW THE OBJECTIVE");
     }
     if(std::chrono::steady_clock::now()>=missionFeedbackUntil) updated.feedback.clear();
+    const auto playerCombatant=simulation.combat.combatants.find(simulation.playerEntityId);
+    if(playerCombatant!=simulation.combat.combatants.end()) {
+        const auto* weapon=talvisota::combat::FindWeaponDefinition(playerCombatant->second.weaponId);
+        if(weapon!=nullptr) updated.ammo=Utf8ToWide(weapon->displayName)+L"  "+
+            std::to_wstring(playerCombatant->second.magazineRounds)+L" / "+
+            std::to_wstring(playerCombatant->second.reserveRounds);
+    }
     const bool changed=updated.title!=missionOverlay.title||updated.description!=missionOverlay.description||
         updated.objective!=missionOverlay.objective||updated.distance!=missionOverlay.distance||
         updated.progress!=missionOverlay.progress||updated.prompt!=missionOverlay.prompt||
-        updated.feedback!=missionOverlay.feedback||updated.completed!=missionOverlay.completed||
+        updated.feedback!=missionOverlay.feedback||updated.ammo!=missionOverlay.ammo||updated.completed!=missionOverlay.completed||
         updated.hasProgress!=missionOverlay.hasProgress;
     missionOverlay=std::move(updated);
     if(changed&&frontendOverlay&&IsWindow(frontendOverlay)) InvalidateRect(frontendOverlay,nullptr,FALSE);
@@ -164,7 +175,7 @@ RECT MenuButton(int w,int h,int i) {
 void PaintMissionHud(HDC dc,const RECT& client) {
     SetBkMode(dc,TRANSPARENT);
     HBRUSH panel=CreateSolidBrush(RGB(10,18,27));
-    RECT card{24,24,500,190};
+    RECT card{24,24,500,218};
     FillRect(dc,&card,panel);
     HPEN edge=CreatePen(PS_SOLID,1,RGB(68,119,148));
     HGDIOBJ oldPen=SelectObject(dc,edge),oldBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
@@ -186,6 +197,8 @@ void PaintMissionHud(HDC dc,const RECT& client) {
     SetTextColor(dc,RGB(113,192,220));
     RECT prompt{44,145,480,174}; DrawTextW(dc,missionOverlay.feedback.empty()?missionOverlay.prompt.c_str():missionOverlay.feedback.c_str(),
         -1,&prompt,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    SetTextColor(dc,RGB(177,197,209));
+    RECT ammo{44,180,480,207}; DrawTextW(dc,missionOverlay.ammo.c_str(),-1,&ammo,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     SelectObject(dc,oldFont); DeleteObject(body); DeleteObject(heading);
 
     if(missionOverlay.completed) {
@@ -1104,6 +1117,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     int oldWidth = client.right - client.left, oldHeight = client.bottom - client.top;
     MSG message{};
     bool running=true, jumpWasDown=false, interactWasDown=false, interactionQueued=false;
+    bool fireWasDown=false, reloadWasDown=false, fireQueued=false, reloadQueued=false;
     bool restartCameraRequested=false;
     constexpr double gameplayFixedStep=1.0/60.0;
     double gameplayAccumulator=0.0;
@@ -1161,7 +1175,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         restartCameraRequested=false;
         if(frontendState!=previousFrontendState) {
             rawMouseDeltaX=0; rawMouseDeltaY=0; jumpWasDown=false;
-            interactWasDown=false; interactionQueued=false; gameplayAccumulator=0.0;
+            interactWasDown=false; interactionQueued=false;
+            fireWasDown=false; reloadWasDown=false; fireQueued=false; reloadQueued=false;
+            gameplayAccumulator=0.0;
             previousFrame=now; previousFrontendState=frontendState;
             InvalidateRect(frontendOverlay,nullptr,FALSE);
         }
@@ -1184,6 +1200,12 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             const bool interactDown=(GetAsyncKeyState('E')&0x8000)!=0;
             if(interactDown&&!interactWasDown) interactionQueued=true;
             interactWasDown=interactDown;
+            const bool fireDown=(GetAsyncKeyState(VK_LBUTTON)&0x8000)!=0;
+            if(fireDown&&!fireWasDown) fireQueued=true;
+            fireWasDown=fireDown;
+            const bool reloadDown=(GetAsyncKeyState('R')&0x8000)!=0;
+            if(reloadDown&&!reloadWasDown) reloadQueued=true;
+            reloadWasDown=reloadDown;
             const float lookStep=1.45F*deltaSeconds;
             constexpr float mouseRadiansPerCount=0.0025F;
             const LONG mouseX=std::exchange(rawMouseDeltaX,0L), mouseY=std::exchange(rawMouseDeltaY,0L);
@@ -1207,6 +1229,58 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 playerState.crouched!=wasCrouched;
             gameplayAccumulator+=static_cast<double>(deltaSeconds);
             while(gameplayAccumulator>=gameplayFixedStep) {
+                std::vector<talvisota::gameplay::CombatCommand> combatCommands;
+                if(fireQueued) {
+                    const auto playerCombatant=gameplayState.combat.combatants.find(gameplayState.playerEntityId);
+                    const auto* weapon=playerCombatant==gameplayState.combat.combatants.end()?nullptr:
+                        talvisota::combat::FindWeaponDefinition(playerCombatant->second.weaponId);
+                    const auto aimCamera=talvisota::game::BuildPlayerCamera(playerState,playerConfig);
+                    std::string targetEntityId;
+                    if(weapon==nullptr || !talvisota::gameplay::FindNearestHostileCombatant(
+                            gameplayState,gameplayState.playerEntityId,aimCamera.position,
+                            aimCamera.forward,weapon->effectiveRangeMeters,0.95F,targetEntityId,error)) {
+                        std::cerr<<"Combat target selection failed: "<<error<<"\\n"; break;
+                    }
+                    if(targetEntityId.empty())
+                        SetMissionFeedback(L"NO HOSTILE TARGET IN SIGHT",std::chrono::milliseconds(900));
+                    else
+                        combatCommands.push_back({"combat.player.fire."+std::to_string(gameplayState.tickIndex+1U),
+                            gameplayState.playerEntityId,targetEntityId,talvisota::combat::CombatAction::Fire});
+                    fireQueued=false;
+                }
+                if(reloadQueued) {
+                    combatCommands.push_back({"combat.player.reload."+std::to_string(gameplayState.tickIndex+1U),
+                        gameplayState.playerEntityId,{},talvisota::combat::CombatAction::Reload});
+                    reloadQueued=false;
+                }
+                std::vector<talvisota::combat::CombatResult> combatResults;
+                if(!talvisota::combat::AdvanceCombat(gameplayState.combat,gameplayState.entities,
+                        gameplayFixedStep,combatCommands,combatResults,error)) {
+                    std::cerr<<"Combat simulation failed: "<<error<<"\\n"; break;
+                }
+                if(!combatCommands.empty()) {
+                    std::vector<talvisota::gameplay::CommandResult> combatMissionResults;
+                    if(!talvisota::gameplay::ApplyCombatMissionEvents(gameplayState,
+                            gameplayState.combat,combatCommands,combatResults,combatMissionResults,error)) {
+                        std::cerr<<"Combat mission integration failed: "<<error<<"\\n"; break;
+                    }
+                    for(std::size_t combatIndex=0U;combatIndex<combatResults.size();++combatIndex) {
+                        const auto& result=combatResults[combatIndex];
+                        if(result.outcome==talvisota::combat::CombatOutcome::TargetDefeated)
+                            SetMissionFeedback(L"HOSTILE COMBATANT DEFEATED",std::chrono::milliseconds(1800));
+                        else if(result.outcome==talvisota::combat::CombatOutcome::Fired)
+                            SetMissionFeedback(L"SHOT FIRED",std::chrono::milliseconds(650));
+                        else if(result.outcome==talvisota::combat::CombatOutcome::ReloadStarted)
+                            SetMissionFeedback(L"RELOADING",std::chrono::milliseconds(1000));
+                        else if(result.outcome==talvisota::combat::CombatOutcome::EmptyMagazine)
+                            SetMissionFeedback(L"EMPTY MAGAZINE  |  PRESS R",std::chrono::milliseconds(1200));
+                        else if(result.outcome==talvisota::combat::CombatOutcome::OutOfRange)
+                            SetMissionFeedback(L"TARGET OUT OF RANGE",std::chrono::milliseconds(900));
+                        if(combatMissionResults[combatIndex].outcome==talvisota::gameplay::CommandOutcome::ObjectiveCompleted ||
+                            combatMissionResults[combatIndex].outcome==talvisota::gameplay::CommandOutcome::MissionCompleted)
+                            SetMissionFeedback(L"MISSION OBJECTIVE COMPLETE",std::chrono::milliseconds(2200));
+                    }
+                }
                 std::vector<talvisota::gameplay::InteractionCommand> commands;
                 if(interactionQueued) {
                     talvisota::gameplay::InteractionTargetSelection selection;
@@ -1244,6 +1318,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         } else {
             rawMouseDeltaX=0; rawMouseDeltaY=0; jumpWasDown=false;
             interactWasDown=false; interactionQueued=false;
+            fireWasDown=false; reloadWasDown=false; fireQueued=false; reloadQueued=false;
             if(frontendState==FrontendState::Playing &&
                 gameplayState.mission.status==talvisota::missions::MissionStatus::Completed &&
                 campaignHasNextMission && (GetAsyncKeyState('E')&0x8000)!=0) {
