@@ -446,6 +446,8 @@ bool PlaceMissionInteractionAnchors(const talvisota::world::WorldRegion& region,
     std::array<float,3> approachFrom=playerSpawn;
     for(const auto& objective:simulation.mission.objectives) {
         auto* target=simulation.entities.Find(objective.interactionTargetId);
+        if(target!=nullptr && target->kind!=talvisota::entities::EntityKind::WorldObject)
+            continue;
         if(target==nullptr) {
             error="Mission interaction anchor is missing its world-object entity: "+objective.interactionTargetId;
             return false;
