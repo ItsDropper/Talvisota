@@ -89,6 +89,7 @@ void TestManifestParserToMissionAdapter()
     content.Write("content/worlds/sakkola-church-village.tregion", "fixture region\n");
     content.Write("content/characters/sakkola-infantryman.tcharacter", "fixture character\n");
     content.Write("content/factions/finnish.tfaction", "fixture faction\n");
+    content.Write("content/factions/soviet.tfaction", "fixture faction\n");
     content.Write("content/missions/first-patrol.tmission",
         "talvisota-mission\t1\n"
         "id = mission.sakkola.first-patrol\n"
