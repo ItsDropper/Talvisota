@@ -19,5 +19,6 @@ namespace talvisota::presentation::detail
 [[nodiscard]] bool ValidateMeshes(const SceneSnapshot& scene, std::string& error);
 [[nodiscard]] bool ValidateMaterials(const SceneSnapshot& scene, std::string& error);
 [[nodiscard]] bool ValidateInstances(const SceneSnapshot& scene, std::string& error);
+[[nodiscard]] bool ValidatePointLights(const SceneSnapshot& scene, std::string& error);
 
 } // namespace talvisota::presentation::detail

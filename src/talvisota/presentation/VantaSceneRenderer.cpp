@@ -125,6 +125,8 @@ public:
             return false;
         if (!detail::ValidateEnvironment(snapshot.environment, error))
             return false;
+        if (!detail::ValidatePointLights(snapshot, error))
+            return false;
 
         if (SceneResourcesMatch(snapshot)) {
             if (!detail::ValidateInstances(snapshot, error))
@@ -172,6 +174,17 @@ public:
         view.environment.windDirectionX = snapshot.environment.windDirection[0];
         view.environment.windDirectionZ = snapshot.environment.windDirection[1];
         view.environment.windStrength = snapshot.environment.windStrength;
+        view.pointLightCount = static_cast<std::uint32_t>(snapshot.pointLights.size());
+        for (std::size_t index = 0U; index < snapshot.pointLights.size(); ++index)
+        {
+            const RenderPointLight& source = snapshot.pointLights[index];
+            view.pointLights[index] = {
+                {source.position[0], source.position[1], source.position[2]},
+                source.range,
+                {source.color[0], source.color[1], source.color[2]},
+                source.intensity
+            };
+        }
         const vanta::renderer::SceneFrame frame = m_scene.BuildFrame(view);
 
         const bool rendered = m_d3d12 ? m_d3d12->Render(frame) : m_d3d11->Render(frame);

@@ -214,5 +214,11 @@ int main()
     invalidCamera.camera.elapsedSeconds = std::numeric_limits<float>::quiet_NaN();
     Require(!ValidateSceneSnapshot(invalidCamera, error));
 
+    SceneSnapshot localLighting = ValidScene();
+    localLighting.pointLights.push_back({{2.0F, 3.0F, 4.0F}, 24.0F, {1.0F, 0.5F, 0.2F}, 120.0F});
+    Require(ValidateSceneSnapshot(localLighting, error));
+    localLighting.pointLights.front().range = 0.0F;
+    Require(!ValidateSceneSnapshot(localLighting, error));
+
     return 0;
 }

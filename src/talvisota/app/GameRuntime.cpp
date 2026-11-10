@@ -9,6 +9,7 @@
 #include "talvisota/presentation/SakkolaSceneBuilder.hpp"
 #include "talvisota/presentation/CaptureValidation.hpp"
 #include "talvisota/presentation/WeatherParticles.hpp"
+#include "talvisota/presentation/ExplosionLighting.hpp"
 #include "talvisota/world/WorldRegion.hpp"
 #include "vanta/math/Math.hpp"
 #include <Windows.h>
@@ -443,6 +444,23 @@ bool LoadMission(const std::filesystem::path& contentRoot,const std::string_view
     }
     error.clear();
     return true;
+}
+
+bool TriggerOpeningArtilleryFlash(
+    talvisota::presentation::ExplosionLightingSystem& effects,
+    const talvisota::world::WorldRegion& region,
+    const talvisota::game::PlayerState& player,
+    const double elapsedSeconds, const std::uint64_t sequence,
+    std::string& error)
+{
+    const float x = player.position[0] + 8.0F;
+    const float z = player.position[2] - 12.0F;
+    float y = 0.0F;
+    std::array<float,3> normal{};
+    if (!talvisota::world::SampleTerrainHeight(region,x,z,y,normal,error))
+        return false;
+    return effects.Trigger("event.sakkola.defensive-line.artillery-flash."+
+        std::to_string(sequence),{x,y+0.15F,z},elapsedSeconds,48.0F,850.0F,1.4F,error);
 }
 
 void ApplyMissionEnvironment(SceneSnapshot& scene,
@@ -920,6 +938,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         return 0;
     }
 
+    talvisota::presentation::ExplosionLightingSystem explosionLighting;
+    std::uint64_t explosionSequence=0U;
     talvisota::presentation::SnowfallSystem snowfall;
     if(!snowfall.Initialize(scene,instanceMaxDrawDistances,256U,error)) {
         std::cerr<<"Could not initialize Sakkola snowfall: "<<error<<"\\n";
@@ -1118,6 +1138,12 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     campaignHasNextMission=!authoredMission.nextMissionId.empty();
     scene.environment=worldEnvironment;
     ApplyMissionEnvironment(scene,authoredMission);
+    if(authoredMission.id=="mission.sakkola.defensive-line" &&
+        !TriggerOpeningArtilleryFlash(explosionLighting,gameRegion,playerState,
+            scene.camera.elapsedSeconds,explosionSequence++,error)) {
+        std::cerr<<"Could not schedule the opening artillery flash: "<<error<<"\\n";
+        renderer.reset(); DestroyWindow(window); if(ownsCom) CoUninitialize(); return 8;
+    }
     if(!RefreshMissionOverlay(gameplayState,playerState,gameplayRules.interactionRadiusMeters,error)) {
         std::cerr<<"First Patrol HUD initialization failed: "<<error<<"\n";
         renderer.reset(); DestroyWindow(window); if(ownsCom) CoUninitialize(); return 8;
@@ -1181,6 +1207,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 missionStartPlayerState=playerState;
                 scene.environment=worldEnvironment;
                 ApplyMissionEnvironment(scene,authoredMission);
+                if(authoredMission.id=="mission.sakkola.defensive-line" &&
+                    !TriggerOpeningArtilleryFlash(explosionLighting,gameRegion,playerState,
+                        scene.camera.elapsedSeconds,explosionSequence++,error)) {
+                    std::cerr<<"Could not schedule the opening artillery flash: "<<error<<"\\n"; break;
+                }
                 gameplayState=std::move(nextGameplay);
                 campaignHasNextMission=!authoredMission.nextMissionId.empty();
                 missionOverlay.title=Utf8ToWide(authoredMission.name);
@@ -1203,6 +1234,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             }
             gameplayState=std::move(restartedGameplay);
             playerState=missionStartPlayerState;
+            if(authoredMission.id=="mission.sakkola.defensive-line" &&
+                !TriggerOpeningArtilleryFlash(explosionLighting,gameRegion,playerState,
+                    scene.camera.elapsedSeconds,explosionSequence++,error)) {
+                std::cerr<<"Could not schedule the opening artillery flash: "<<error<<"\\n"; break;
+            }
             restartCameraRequested=true;
             gameplayAccumulator=0.0;
             interactionQueued=false;
@@ -1449,6 +1485,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 scene.environment.windDirection,scene.environment.windStrength,
                 authoredMission.environmentProfile!="default",error)) {
             std::cerr<<"Sakkola snowfall update failed: "<<error<<"\\n";
+            break;
+        }
+        if(!explosionLighting.Update(scene,scene.camera.elapsedSeconds,error)) {
+            std::cerr<<"Sakkola explosion lighting update failed: "<<error<<"\\n";
             break;
         }
         const auto renderStart = Clock::now();

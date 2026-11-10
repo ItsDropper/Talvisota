@@ -117,6 +117,7 @@ add_dependencies(talvisota_content_validate talvisota_environment_textures)
 add_library(talvisota_renderer_contract STATIC
     src/talvisota/presentation/SceneRenderer.cpp
     src/talvisota/presentation/WeatherParticles.cpp
+    src/talvisota/presentation/ExplosionLighting.cpp
 )
 add_library(Talvisota::RendererContract ALIAS talvisota_renderer_contract)
 target_compile_features(talvisota_renderer_contract PUBLIC cxx_std_23)
@@ -131,7 +132,7 @@ if(TALVISOTA_ENABLE_VANTA_ENGINE)
     endif()
 
     include(FetchContent)
-    set(TALVISOTA_VANTA_ENGINE_REVISION "981f501cf612af67f0f9b22f82d82644e9e5c883")
+    set(TALVISOTA_VANTA_ENGINE_REVISION "cb6cb406a58344e10f4bac793ec17b513620e81b")
     set(_talvisota_build_testing "${BUILD_TESTING}")
     set(BUILD_TESTING OFF)
     FetchContent_Declare(vantaengine

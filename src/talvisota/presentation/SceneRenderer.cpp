@@ -84,6 +84,33 @@ bool ValidateEnvironment(const RenderEnvironment& environment, std::string& erro
     return true;
 }
 
+bool ValidatePointLights(const SceneSnapshot& scene, std::string& error)
+{
+    if (scene.pointLights.size() > 8U)
+    {
+        error = "Scene exceeds the renderer's eight local point-light limit.";
+        return false;
+    }
+    for (std::size_t index = 0U; index < scene.pointLights.size(); ++index)
+    {
+        const RenderPointLight& light = scene.pointLights[index];
+        const auto validColor = std::all_of(light.color.begin(), light.color.end(),
+            [](const float value) {
+                return std::isfinite(value) && value >= 0.0F && value <= 1000.0F;
+            });
+        if (!IsFinite(light.position) || !validColor ||
+            !std::isfinite(light.range) || light.range <= 0.0F || light.range > 10000.0F ||
+            !std::isfinite(light.intensity) || light.intensity < 0.0F ||
+            light.intensity > 100000.0F)
+        {
+            error = "Scene point light " + std::to_string(index) +
+                " contains an invalid position, range, color, or intensity.";
+            return false;
+        }
+    }
+    return true;
+}
+
 bool ValidateMeshes(const SceneSnapshot& scene, std::string& error)
 {
     for (std::size_t meshIndex = 0; meshIndex < scene.meshes.size(); ++meshIndex) {
@@ -172,6 +199,9 @@ bool ValidateSceneSnapshot(const SceneSnapshot& scene, std::string& error)
         return false;
 
     if (!detail::ValidateEnvironment(scene.environment, error))
+        return false;
+
+    if (!detail::ValidatePointLights(scene, error))
         return false;
 
     if (!detail::ValidateMeshes(scene, error))

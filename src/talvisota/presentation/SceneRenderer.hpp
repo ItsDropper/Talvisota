@@ -85,6 +85,14 @@ struct RenderEnvironment final
     float windStrength = 0.06F;
 };
 
+struct RenderPointLight final
+{
+    std::array<float, 3> position{};
+    float range = 0.0F;
+    std::array<float, 3> color{1.0F, 1.0F, 1.0F};
+    float intensity = 0.0F;
+};
+
 struct SceneSnapshot final
 {
     CameraFrame camera;
@@ -92,6 +100,7 @@ struct SceneSnapshot final
     std::vector<RenderMesh> meshes;
     std::vector<RenderMaterial> materials;
     std::vector<RenderInstance> instances;
+    std::vector<RenderPointLight> pointLights;
 };
 
 [[nodiscard]] bool ValidateSceneSnapshot(const SceneSnapshot& scene, std::string& error);
