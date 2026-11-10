@@ -1497,8 +1497,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             if(ownsCom) CoUninitialize();
             return 10;
         }
-        talvisota::content::AuthoredDefinition authoredMission;
-        if(!LoadMission(contentRoot,"mission.sakkola.first-patrol",authoredMission,error)) {
+        talvisota::content::AuthoredDefinition campaignMission;
+        if(!LoadMission(contentRoot,"mission.sakkola.first-patrol",campaignMission,error)) {
             std::cerr<<"Campaign smoke could not load First Patrol: "<<error<<"\n";
             if(ownsCom) CoUninitialize();
             return 10;
@@ -1508,10 +1508,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         while(true) {
             talvisota::gameplay::SimulationState simulation;
             if(!talvisota::gameplay::InitializeSimulationFromAuthoredMission(
-                    authoredMission,gameRegion,playerState.position,rules,simulation,error) ||
+                    campaignMission,gameRegion,playerState.position,rules,simulation,error) ||
                 !PlaceMissionInteractionAnchors(gameRegion,simulation,playerState.position,
                     playerConfig.capsuleRadius,error)) {
-                std::cerr<<"Campaign smoke initialization failed for "<<authoredMission.id<<": "<<error<<"\n";
+                std::cerr<<"Campaign smoke initialization failed for "<<campaignMission.id<<": "<<error<<"\n";
                 if(ownsCom) CoUninitialize();
                 return 10;
             }
@@ -1534,7 +1534,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                     bool defeated=false;
                     for(std::size_t shot=0U;shot<4U&&!defeated;++shot) {
                         const std::array<talvisota::combat::CombatCommand,1> fire{{
-                            {"smoke.combat."+authoredMission.id+"."+std::to_string(index+1U)+"."+std::to_string(shot+1U),
+                            {"smoke.combat."+campaignMission.id+"."+std::to_string(index+1U)+"."+std::to_string(shot+1U),
                                 simulation.playerEntityId,waypoint.entityId,talvisota::combat::CombatAction::Fire}
                         }};
                         std::vector<talvisota::combat::CombatResult> combatResults;
@@ -1599,7 +1599,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                     return 10;
                 }
                 const std::array<talvisota::gameplay::InteractionCommand,1> commands{{
-                    {"smoke."+authoredMission.id+"."+std::to_string(index+1U),
+                    {"smoke."+campaignMission.id+"."+std::to_string(index+1U),
                         simulation.playerEntityId,selection.entityId}
                 }};
                 std::vector<talvisota::gameplay::CommandResult> results;
@@ -1619,22 +1619,22 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 }
             }
             if(simulation.mission.status!=talvisota::missions::MissionStatus::Completed) {
-                std::cerr<<"Campaign smoke did not complete mission "<<authoredMission.id<<".\n";
+                std::cerr<<"Campaign smoke did not complete mission "<<campaignMission.id<<".\n";
                 if(ownsCom) CoUninitialize();
                 return 10;
             }
             ++completedMissions;
-            std::cout<<"Campaign smoke completed "<<authoredMission.id<<" ("
+            std::cout<<"Campaign smoke completed "<<campaignMission.id<<" ("
                 <<simulation.mission.objectives.size()<<" objectives).\n";
-            if(authoredMission.nextMissionId.empty())
+            if(campaignMission.nextMissionId.empty())
                 break;
             talvisota::content::AuthoredDefinition nextMission;
-            if(!LoadMission(contentRoot,authoredMission.nextMissionId,nextMission,error)) {
+            if(!LoadMission(contentRoot,campaignMission.nextMissionId,nextMission,error)) {
                 std::cerr<<"Campaign smoke could not resolve successor: "<<error<<"\n";
                 if(ownsCom) CoUninitialize();
                 return 10;
             }
-            authoredMission=std::move(nextMission);
+            campaignMission=std::move(nextMission);
         }
         std::cout<<"Campaign runtime smoke passed: "<<completedMissions
             <<" linked missions completed with every authored target reachable.\n";
