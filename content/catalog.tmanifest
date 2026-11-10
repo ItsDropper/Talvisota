@@ -80,7 +80,9 @@ asset	model.weapon.mosin_m27	model	assets/models/weapons/mosin-m27.obj	required	
 asset	model.weapon.suomi_kp31	model	assets/models/weapons/suomi-kp31.obj	required	material.weapons.finnish_arms	project	project
 asset	model.weapon.lahti_saloranta_m26	model	assets/models/weapons/lahti-saloranta-m26.obj	required	material.weapons.finnish_arms	project	project
 asset	faction.finnish	definition	content/factions/finnish.tfaction	required	-	project	project
+asset	faction.soviet	definition	content/factions/soviet.tfaction	required	-	project	project
 asset	character.sakkola_infantryman	definition	content/characters/infantryman.tcharacter	required	faction.finnish	project	project
 asset	mission.sakkola.first-patrol	definition	content/missions/first-patrol.tmission	required	world.sakkola,region.sakkola.church_village,character.sakkola_infantryman,faction.finnish,mission.sakkola.northern-watch	project	project
 
-asset	mission.sakkola.northern-watch	definition	content/missions/northern-watch.tmission	required	world.sakkola,region.sakkola.church_village,character.sakkola_infantryman,faction.finnish	project	project
+asset	mission.sakkola.northern-watch	definition	content/missions/northern-watch.tmission	required	world.sakkola,region.sakkola.church_village,character.sakkola_infantryman,faction.finnish,mission.sakkola.defensive-line	project	project
+asset	mission.sakkola.defensive-line	definition	content/missions/defensive-line.tmission	required	world.sakkola,region.sakkola.church_village,character.sakkola_infantryman,faction.finnish,faction.soviet	project	project
