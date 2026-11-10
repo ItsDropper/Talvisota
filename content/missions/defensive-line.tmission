@@ -1,0 +1,15 @@
+talvisota-mission	1
+id = mission.sakkola.defensive-line
+name = Sakkola Defensive Line
+world_id = world.sakkola
+region_id = region.sakkola.church_village
+player_character_id = character.sakkola_infantryman
+faction_id = faction.finnish
+environment_profile = low_visibility
+description = The northern watch reports movement beyond the village. Your section is ordered to hold the approach while the local post organizes the next move. This fictional engagement is set in the Sakkola region and does not represent a specifically documented battle.
+actor = actor.finnish.section-leader -> faction.finnish -> -12,148 -> weapon.mosin_m27 -> 45
+actor = actor.soviet.advance.01 -> faction.soviet -> 38,128 -> weapon.suomi_kp31 -> 60
+actor = actor.soviet.advance.02 -> faction.soviet -> -42,156 -> weapon.suomi_kp31 -> 60
+objective = objective.stop-first-advance -> actor.soviet.advance.01
+objective = objective.stop-second-advance -> actor.soviet.advance.02
+objective = objective.report-to-post -> church.sakkola
