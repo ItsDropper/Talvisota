@@ -17,7 +17,7 @@ claim that procedural output is equivalent to photogrammetry or a real scan.
 
 From the repository root:
 
-    blender --background --python tools/blender_asset_pipeline/generate_tree.py -- --output build/generated/trees --texture-root assets/textures/environment --seed 1939
+    blender --background --python tools/blender_asset_pipeline/generate_tree.py -- --output assets/models/environment/generated --texture-root assets/textures/environment --seed 1939
 
 The generator writes:
 
@@ -155,15 +155,16 @@ used by Talvisota. The exported manifest records Talvisota's +Y up, +X east,
 
 ## Verify
 
-    blender --background --python tools/blender_asset_pipeline/verify_tree_outputs.py -- build/generated/trees
+    blender --background --python tools/blender_asset_pipeline/verify_tree_outputs.py -- assets/models/environment/generated
 
 The verifier re-imports each GLB in Blender and checks its GLB container,
 non-empty mesh geometry, UVs, material assignments, required source maps and
 strictly decreasing triangle budgets. This proves export integrity, not visual
-photorealism. Talvisota's engine-backed asset validator and content packager
-remain the integration gates once generated files are registered in the
-content manifest. This generator does not silently replace shipped OBJ assets
-or alter the content catalog.
+photorealism. The Sakkola content manifest now registers the generated Scots
+pine LOD0 GLB; CI generates all LODs, verifies them, and transfers LOD0 into
+the Windows build before content validation and packaging. Local builds must
+generate the same outputs in `assets/models/environment/generated/` before
+running the game or content validator.
 
 
 ## Granite glacial boulder
@@ -178,14 +179,15 @@ horizontal upper facets so it cannot hide the stone body.
 
 Run:
 
-    blender --background --python tools/blender_asset_pipeline/generate_boulder.py -- --output build/generated/boulder --texture-root assets/textures/environment --seed 1939
-    blender --background --python tools/blender_asset_pipeline/verify_boulder_outputs.py -- build/generated/boulder
-    blender --background --python tools/blender_asset_pipeline/render_boulder_previews.py -- build/generated/boulder/granite_boulder.blend build/boulder-previews
+    blender --background --python tools/blender_asset_pipeline/generate_boulder.py -- --output assets/models/environment/generated --texture-root assets/textures/environment --seed 1939
+    blender --background --python tools/blender_asset_pipeline/verify_boulder_outputs.py -- assets/models/environment/generated
+    blender --background --python tools/blender_asset_pipeline/render_boulder_previews.py -- assets/models/environment/generated/granite_boulder.blend build/boulder-previews
 
 The generated geometry is deliberately a reusable shared asset, not a scene-wide
 mesh. Each LOD is one material-grouped mesh object, with budgets of 6k / 2k /
 500 / 150 triangles. Keep collision geometry separate and simple; do not use
-the render mesh as a physics collider. The generator does not replace the
-shipped OBJ or change the content catalog: import validation, in-game
-appearance, collision alignment, and runtime LOD selection remain integration
-gates before promotion.
+the render mesh as a physics collider. The Sakkola manifest now points all 32 authored boulder placements at this
+Blender GLB. CI generates and validates all four LODs, then supplies LOD0 to
+the Windows content validator and playable package. Import validation,
+in-game appearance, collision alignment, and runtime LOD selection remain
+separate verification concerns; the current scene renderer selects LOD0.
