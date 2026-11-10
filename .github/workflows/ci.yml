@@ -216,15 +216,23 @@ jobs:
           path: assets/models/environment/generated
           merge-multiple: true
 
-      - name: Verify Sakkola Blender placement migration
+      - name: Verify Sakkola Blender placement migration and tree collision heights
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          placements = [line.split("\\t") for line in Path("content/worlds/sakkola-church-village.tregion").read_text().splitlines() if line.startswith("placement\\t")]
+          lines = Path("content/worlds/sakkola-church-village.tregion").read_text().splitlines()
+          placements = {}
+          collisions = {}
           counts = {}
-          for fields in placements:
-              counts[fields[3]] = counts.get(fields[3], 0) + 1
+          for line in lines:
+              fields = line.split("\\t")
+              if fields[0] == "placement":
+                  counts[fields[3]] = counts.get(fields[3], 0) + 1
+                  if fields[3] == "model.environment.scots_pine":
+                      placements[fields[1]] = float(fields[9])
+              elif fields[0] == "collision" and fields[1].endswith(".trunk"):
+                  collisions[fields[1][:-6]] = float(fields[6])
           assert counts.get("model.environment.scots_pine") == 1907, counts
           assert counts.get("model.environment.boulder") == 32, counts
           assert counts.get("model.environment.pine", 0) == 0, counts
@@ -232,10 +240,24 @@ jobs:
           assert sum(counts.get(name, 0) for name in (
               "model.environment.scots_pine", "model.environment.birch",
               "model.environment.aspen", "model.environment.alder")) == 3094, counts
-          print("Sakkola environment migration verified:", {
-              "Blender Scots pine": counts["model.environment.scots_pine"],
+          assert len(placements) == 1907, len(placements)
+          variations = set()
+          for placement_id, scale in placements.items():
+              hash_value = 14695981039346656037
+              for byte in placement_id.encode("ascii"):
+                  hash_value = ((hash_value ^ byte) * 1099511628211) & 0xFFFFFFFFFFFFFFFF
+              variation = 0.78 + (hash_value % 10001) / 10000.0 * 0.50
+              variations.add(round(variation, 5))
+              assert placement_id in collisions, f"Missing trunk collision: {placement_id}"
+              expected_half_height = 9.0 * scale * variation
+              assert abs(collisions[placement_id] - expected_half_height) <= 0.0006, (
+                  placement_id, collisions[placement_id], expected_half_height)
+          assert len(variations) > 1800, f"Tree height variation collapsed: {len(variations)}"
+          print("Sakkola Blender asset migration and matching trunk colliders verified:", {
+              "Blender Scots pine": len(placements),
               "Blender granite boulder": counts["model.environment.boulder"],
-              "other broadleaf trees": sum(counts.get(name, 0) for name in (
+              "distinct pine height factors": len(variations),
+              "retained broadleaf trees": sum(counts.get(name, 0) for name in (
                   "model.environment.birch", "model.environment.aspen", "model.environment.alder"))
           })
           PY
