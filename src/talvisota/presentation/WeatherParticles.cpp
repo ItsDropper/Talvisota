@@ -78,8 +78,8 @@ bool SnowfallSystem::Initialize(SceneSnapshot& scene,
             UnitFloat(seed ^ 0x68bc21ebU) * 24.0F,
             (UnitFloat(seed ^ 0x02e5be93U) * 2.0F - 1.0F) * 24.0F,
             UnitFloat(seed ^ 0x967a889bU) * 2.0F - 1.0F,
-            1.15F + UnitFloat(seed ^ 0x51ed270bU) * 2.05F,
-            0.55F + UnitFloat(seed ^ 0x94d049bbU) * 0.9F,
+            0.45F + UnitFloat(seed ^ 0x51ed270bU) * 1.05F,
+            0.35F + UnitFloat(seed ^ 0x94d049bbU) * 0.65F,
             UnitFloat(seed ^ 0x369dea0fU) * 6.28318530718F,
             UnitFloat(seed ^ 0xdb4f0b91U) * 6.28318530718F
         });
@@ -151,10 +151,12 @@ bool SnowfallSystem::Update(SceneSnapshot& scene,
     for (std::size_t index = 0U; index < m_offsets.size(); ++index)
     {
         const Offset& offset = m_offsets[index];
-        const float gust = std::sin(time * 0.31F + offset.phase) * 0.22F +
-            std::sin(time * 0.83F + offset.phase * 1.7F) * 0.08F;
-        const float driftTime = time * (0.22F + windStrength * 1.25F);
-        const float lateralDrift = offset.drift * (0.7F + windStrength * 1.8F);
+        // Snow crystals fall at varied terminal speeds; horizontal transport and
+        // turbulent gusts scale with the authored wind instead of moving in calm air.
+        const float gust = (std::sin(time * 0.31F + offset.phase) * 0.72F +
+            std::sin(time * 0.83F + offset.phase * 1.7F) * 0.28F) * windStrength * 0.34F;
+        const float driftTime = time * windStrength * 1.8F;
+        const float lateralDrift = offset.drift * windStrength * 2.2F;
         const float x = cameraPosition[0] + WrapCentered(
             offset.x + windDirection[0] * driftTime + lateralDrift * driftTime * 0.12F + gust,
             20.0F);
@@ -162,7 +164,7 @@ bool SnowfallSystem::Update(SceneSnapshot& scene,
         const float y = cameraPosition[1] + 12.0F - fallCycle;
         const float z = cameraPosition[2] + WrapCentered(
             offset.z + windDirection[1] * driftTime + lateralDrift * driftTime * 0.08F +
-                std::sin(time * 0.24F + offset.phase * 0.73F) * 0.18F,
+                std::sin(time * 0.24F + offset.phase * 0.73F) * windStrength * 0.55F,
             26.0F);
         const float angle = offset.rotation + time * (0.18F + offset.scale * 0.12F) + gust * 0.35F;
         const float cosine = std::cos(angle) * offset.scale;
