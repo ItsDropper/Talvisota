@@ -40,7 +40,7 @@ jobs:
         uses: dorny/paths-filter@v3
         with:
           token: ${{ github.token }}
-          base: main
+          base: ${{ github.event_name == 'push' && github.event.before || 'main' }}
           filters: |
             full_visual:
               - 'tools/blender_asset_pipeline/**'
