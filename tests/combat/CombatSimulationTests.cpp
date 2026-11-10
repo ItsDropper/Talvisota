@@ -35,7 +35,12 @@ int main()
     using namespace talvisota::combat;
 
     const auto catalog = Finnish1939WeaponCatalog();
+    const auto sovietCatalog = Soviet1939WeaponCatalog();
     Check(catalog.size() == 3U, "catalog exposes three Finnish 1939-era infantry weapon archetypes");
+    Check(sovietCatalog.size() == 1U &&
+        sovietCatalog.front().id == "weapon.soviet.mosin_1891_30" &&
+        sovietCatalog.front().archetype == WeaponArchetype::BoltActionRifle,
+        "Soviet Winter War infantry use their historically appropriate Mosin-Nagant M1891/30 rifle");
     Check(FindWeaponDefinition("weapon.mosin_m27") != nullptr &&
         FindWeaponDefinition("weapon.mosin_m27")->modelAssetId == "model.weapon.mosin_m27",
         "catalog resolves the Mosin-Nagant M/27 rifle");
@@ -45,6 +50,9 @@ int main()
     Check(FindWeaponDefinition("weapon.lahti_saloranta_m26") != nullptr &&
         FindWeaponDefinition("weapon.lahti_saloranta_m26")->modelAssetId == "model.weapon.lahti_saloranta_m26",
         "catalog resolves the Lahti-Saloranta M/26 light machine gun");
+    Check(FindWeaponDefinition("weapon.soviet.mosin_1891_30") != nullptr &&
+        FindWeaponDefinition("weapon.soviet.mosin_1891_30")->modelAssetId == "model.weapon.soviet_mosin_1891_30",
+        "catalog resolves the Soviet Mosin-Nagant M1891/30 rifle");
     Check(FindWeaponDefinition("weapon.unknown") == nullptr,
         "unknown weapon IDs are rejected");
 
@@ -56,7 +64,8 @@ int main()
         "shipped content manifest resolves the weapon model catalog");
     Check(contentRegistry.Find("model.weapon.mosin_m27") != nullptr &&
         contentRegistry.Find("model.weapon.suomi_kp31") != nullptr &&
-        contentRegistry.Find("model.weapon.lahti_saloranta_m26") != nullptr,
+        contentRegistry.Find("model.weapon.lahti_saloranta_m26") != nullptr &&
+        contentRegistry.Find("model.weapon.soviet_mosin_1891_30") != nullptr,
         "all Finnish 1939 weapon models are registered content assets");
 
     entities::EntityRegistry registry;
