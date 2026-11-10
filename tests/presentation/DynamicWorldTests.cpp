@@ -19,7 +19,7 @@ void RequireImpl(const bool condition,const int line)
         std::abort();
     }
 }
-#define Require(condition) RequireImpl((condition),__LINE__)
+#define Require(...) RequireImpl((__VA_ARGS__),__LINE__)
 }
 
 int main()
