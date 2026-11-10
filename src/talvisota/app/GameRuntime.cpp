@@ -28,7 +28,6 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <iterator>
 #include <limits>
 #include <map>
 #include <string>
@@ -544,12 +543,6 @@ void ActivateFrontendButton(const int index) {
                 else restartPatrolRequested=true;
             }
             SetFrontendState(FrontendState::Playing);
-            if(missionOverlay.title==L"First Patrol")
-                SetMissionFeedback(L"ORDERS: CHECK THE WELL AND WOODPILE, THEN REPORT TO THE CHURCH.",std::chrono::milliseconds(5000));
-            else if(missionOverlay.title==L"Northern Watch")
-                SetMissionFeedback(L"POST: CHECK THE NORTHERN APPROACH AND REPORT ANY MOVEMENT.",std::chrono::milliseconds(5000));
-            else if(missionOverlay.title==L"Sakkola Defensive Line")
-                SetMissionFeedback(L"SECTION LEADER: HOLD THE APPROACH. REPORT WHEN THE ROAD IS CLEAR.",std::chrono::milliseconds(5500));
         } else if(index==1&&mainWindow) DestroyWindow(mainWindow);
     } else if(frontendState==FrontendState::Paused) {
         if(index==0) {
@@ -1589,12 +1582,13 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     bool running=true, jumpWasDown=false, interactWasDown=false, interactionQueued=false;
     bool fireWasDown=false, reloadWasDown=false, fireQueued=false, reloadQueued=false;
     bool weapon1WasDown=false, weapon2WasDown=false, weapon3WasDown=false;
+    bool pushObjectWasDown=false;
     int weaponSwitchQueued=0;
     bool restartCameraRequested=false;
     constexpr double gameplayFixedStep=1.0/60.0;
     double gameplayAccumulator=0.0;
     FrontendState previousFrontendState=frontendState;
-    std::cout << "Sakkola: WASD, mouse look, Space jump, Shift sprint, Ctrl crouch, E interact, 1/2/3 weapons, LMB fire, R reload, ESC pause.\n";
+    std::cout << "Sakkola: WASD, mouse look, Space jump, Shift sprint, Ctrl crouch, E interact, F push nearby props, 1/2/3 weapons, LMB fire, R reload, ESC pause.\n";
     while (running) {
         while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE) != FALSE) {
             if (message.message == WM_QUIT) { running = false; break; }
@@ -1635,12 +1629,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                 missionOverlay.description=Utf8ToWide(authoredMission.description);
                 gameplayAccumulator=0.0;
                 interactionQueued=false;
-                if(authoredMission.id=="mission.sakkola.northern-watch")
-                    SetMissionFeedback(L"POST: CHECK THE NORTHERN APPROACH AND REPORT ANY MOVEMENT.",std::chrono::milliseconds(5000));
-                else if(authoredMission.id=="mission.sakkola.defensive-line")
-                    SetMissionFeedback(L"SECTION LEADER: HOLD THE APPROACH. REPORT WHEN THE ROAD IS CLEAR.",std::chrono::milliseconds(5500));
-                else
-                    SetMissionFeedback(L"NEW ORDERS RECEIVED",std::chrono::milliseconds(3200));
+                SetMissionFeedback(L"NEW ORDERS RECEIVED",std::chrono::milliseconds(3200));
                 if(!RefreshMissionOverlay(gameplayState,playerState,gameplayRules.interactionRadiusMeters,error)) break;
             }
         }
@@ -1677,11 +1666,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         bool cameraChanged=restartCameraRequested;
         restartCameraRequested=false;
         if(frontendState!=previousFrontendState) {
-            cameraChanged=true;
             rawMouseDeltaX=0; rawMouseDeltaY=0; jumpWasDown=false;
             interactWasDown=false; interactionQueued=false;
             fireWasDown=false; reloadWasDown=false; fireQueued=false; reloadQueued=false;
             weapon1WasDown=false; weapon2WasDown=false; weapon3WasDown=false; weaponSwitchQueued=0;
+            pushObjectWasDown=false;
             gameplayAccumulator=0.0;
             previousFrame=now; previousFrontendState=frontendState;
             InvalidateRect(frontendOverlay,nullptr,FALSE);
@@ -1736,6 +1725,44 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             if(!gameplayState.entities.SetPosition(gameplayState.playerEntityId,playerState.position,error)) {
                 std::cerr<<"Player entity synchronization failed: "<<error<<"\n"; break;
             }
+            // F applies a physical shove to a nearby movable world prop.
+            const bool pushObjectDown=(GetAsyncKeyState('F')&0x8000)!=0;
+            if(pushObjectDown&&!pushObjectWasDown) {
+                const auto pushCamera=talvisota::game::BuildPlayerCamera(playerState,playerConfig);
+                const talvisota::presentation::DynamicWorldObject* nearest=nullptr;
+                float nearestDistanceSquared=2.5F*2.5F;
+                for(const auto& object:dynamicWorld.Objects()) {
+                    if(object.category==talvisota::world::PlacementCategory::Terrain ||
+                        object.category==talvisota::world::PlacementCategory::Structure ||
+                        object.integrity<=0.0F) continue;
+                    const float dx=object.position[0]-playerState.position[0];
+                    const float dz=object.position[2]-playerState.position[2];
+                    const float distanceSquared=dx*dx+dz*dz;
+                    if(distanceSquared<0.64F || distanceSquared>=nearestDistanceSquared) continue;
+                    const float inverseDistance=1.0F/std::sqrt(distanceSquared);
+                    const float facing=(dx*pushCamera.forward[0]+dz*pushCamera.forward[2])*inverseDistance;
+                    if(facing<0.55F) continue;
+                    nearest=&object;
+                    nearestDistanceSquared=distanceSquared;
+                }
+                if(nearest!=nullptr) {
+                    const float dx=nearest->position[0]-playerState.position[0];
+                    const float dz=nearest->position[2]-playerState.position[2];
+                    const float inverseDistance=1.0F/std::sqrt(dx*dx+dz*dz);
+                    const std::array<float,3> impulse{
+                        dx*inverseDistance*nearest->mass*1.25F,0.0F,
+                        dz*inverseDistance*nearest->mass*1.25F};
+                    const std::array<float,3> torque{
+                        0.0F,(dx*pushCamera.forward[2]-dz*pushCamera.forward[0])*nearest->mass*0.12F,0.0F};
+                    if(!dynamicWorld.ApplyImpulse(nearest->id,impulse,torque,error)) {
+                        std::cerr<<"World prop interaction failed: "<<error<<"\\n"; break;
+                    }
+                    SetMissionFeedback(L"OBJECT MOVED",std::chrono::milliseconds(1000));
+                } else {
+                    SetMissionFeedback(L"NO MOVABLE OBJECT IN REACH",std::chrono::milliseconds(900));
+                }
+            }
+            pushObjectWasDown=pushObjectDown;
             cameraChanged=playerState.position!=previousPosition ||
                 playerInput.lookYawRadians!=0.0F || playerInput.lookPitchRadians!=0.0F ||
                 playerState.crouched!=wasCrouched;
