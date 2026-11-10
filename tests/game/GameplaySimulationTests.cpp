@@ -343,6 +343,10 @@ void TestAuthoredWorldSimulation()
         battleState.mission.completedObjectives==0U &&
         battleState.defeatedObjectiveTargets.contains("actor.soviet.test.02"),
         "out-of-order defeat is retained without skipping the active authored objective");
+    for(int step=0;step<5;++step)
+        Check(AdvanceCombat(battleState.combat,battleState.entities,0.25,
+            std::span<const CombatCommand>{},battleCombatResults,error),
+            "player weapon cooldown advances before the next authored objective");
 
     const std::array<CombatCommand,1> firstBattleShot{{
         {"combat.test.first-shot",battleState.playerEntityId,"actor.soviet.test",CombatAction::Fire}
