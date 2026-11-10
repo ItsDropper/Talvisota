@@ -43,16 +43,30 @@ jobs:
       - name: Configure Blender Python dependencies
         run: echo "PYTHONPATH=$RUNNER_TEMP/blender-python" >> "$GITHUB_ENV"
 
+      - name: Record Blender toolchain version
+        id: tree-blender-version
+        run: echo "version=$(blender --version | head -n 1 | tr ' ' '-')" >> "$GITHUB_OUTPUT"
+
+      - name: Restore deterministic Scots pine outputs
+        id: tree-output-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/generated-trees
+          key: talvisota-scots-pine-${{ runner.os }}-${{ steps.tree-blender-version.outputs.version }}-${{ hashFiles('tools/blender_asset_pipeline/**/*.py', 'assets/models/environment/**', 'assets/materials/environment/**', 'assets/textures/environment/**', 'tools/asset_pipeline/EnvironmentTextureGenerator.cpp', 'CMakeLists.txt') }}
+
       - name: Generate source PBR maps
+        if: steps.tree-output-cache.outputs.cache-hit != 'true'
         run: |
           cmake -S . -B build-blender -DBUILD_TESTING=OFF
           cmake --build build-blender --target talvisota_environment_textures --parallel
 
       - name: Generate deterministic Scots pine LODs
+        if: steps.tree-output-cache.outputs.cache-hit != 'true'
         run: |
           blender --background --python tools/blender_asset_pipeline/generate_tree.py -- --output "$RUNNER_TEMP/generated-trees" --texture-root assets/textures/environment --seed 1939
 
       - name: Re-import and validate generated GLBs
+        if: steps.tree-output-cache.outputs.cache-hit != 'true'
         run: |
           blender --background --python tools/blender_asset_pipeline/verify_tree_outputs.py -- "$RUNNER_TEMP/generated-trees"
 
@@ -78,6 +92,9 @@ jobs:
           assert manifest["species"] == "Pinus sylvestris"
           assert set(manifest["lods"]) == {"LOD0", "LOD1", "LOD2", "LOD3"}
           assert all(item["objects"] <= 3 for item in manifest["lods"].values())
+          for lod in range(4):
+              model = pathlib.Path(sys.argv[1]).parent / f"scots_pine_lod{lod}.glb"
+              assert model.is_file() and model.stat().st_size > 128, model
           print(json.dumps(manifest["lods"], indent=2))
           PY
 
@@ -109,16 +126,30 @@ jobs:
       - name: Configure Blender Python dependencies
         run: echo "PYTHONPATH=$RUNNER_TEMP/blender-python" >> "$GITHUB_ENV"
 
+      - name: Record Blender toolchain version
+        id: boulder-blender-version
+        run: echo "version=$(blender --version | head -n 1 | tr ' ' '-')" >> "$GITHUB_OUTPUT"
+
+      - name: Restore deterministic Granite boulder outputs
+        id: boulder-output-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/generated-boulder
+          key: talvisota-granite-boulder-${{ runner.os }}-${{ steps.boulder-blender-version.outputs.version }}-${{ hashFiles('tools/blender_asset_pipeline/**/*.py', 'assets/models/environment/**', 'assets/materials/environment/**', 'assets/textures/environment/**', 'tools/asset_pipeline/EnvironmentTextureGenerator.cpp', 'CMakeLists.txt') }}
+
       - name: Generate source PBR maps
+        if: steps.boulder-output-cache.outputs.cache-hit != 'true'
         run: |
           cmake -S . -B build-blender -DBUILD_TESTING=OFF
           cmake --build build-blender --target talvisota_environment_textures --parallel
 
       - name: Generate granite boulder LODs
+        if: steps.boulder-output-cache.outputs.cache-hit != 'true'
         run: |
           blender --background --python tools/blender_asset_pipeline/generate_boulder.py -- --output "$RUNNER_TEMP/generated-boulder" --texture-root assets/textures/environment --seed 1939
 
       - name: Re-import and validate boulder GLBs
+        if: steps.boulder-output-cache.outputs.cache-hit != 'true'
         run: |
           blender --background --python tools/blender_asset_pipeline/verify_boulder_outputs.py -- "$RUNNER_TEMP/generated-boulder"
 
@@ -138,11 +169,13 @@ jobs:
           assert manifest["asset"] == "model.environment.boulder"
           assert set(manifest["lods"]) == {"LOD0", "LOD1", "LOD2", "LOD3"}
           assert all(item["objects"] == 1 for item in manifest["lods"].values())
+          for lod in range(4):
+              model = pathlib.Path(sys.argv[1]).parent / f"granite_boulder_lod{lod}.glb"
+              assert model.is_file() and model.stat().st_size > 128, model
           print(json.dumps(manifest["lods"], indent=2))
           PY
 
   windows:
-    needs: [blender-tree-assets, blender-boulder-assets]
     name: Windows x64 / ${{ matrix.configuration }}
     runs-on: windows-latest
     strategy:
@@ -153,25 +186,6 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
-
-      - name: Download generated environment runtime models
-        uses: actions/download-artifact@v4
-        with:
-          pattern: talvisota-*-runtime-model
-          path: assets/models/environment/generated
-          merge-multiple: true
-
-      - name: Verify generated runtime model inputs
-        shell: pwsh
-        run: |
-          $required = @(
-            "assets/models/environment/generated/scots_pine_lod0.glb",
-            "assets/models/environment/generated/granite_boulder_lod0.glb"
-          )
-          foreach ($path in $required) {
-            if (-not (Test-Path -LiteralPath $path)) { throw "Generated runtime model missing: $path" }
-            if ((Get-Item -LiteralPath $path).Length -lt 128) { throw "Generated runtime model is empty: $path" }
-          }
 
       - name: Configure
         run: >-
@@ -196,8 +210,6 @@ jobs:
       - name: Content validator help smoke test
         run: .\\build\talvisota_content_validate.exe --help
 
-      - name: Validate shipped content
-        run: .\\build\talvisota_content_validate.exe content/catalog.tmanifest .
 
   windows-msvc-renderer-adapter:
     needs: [blender-tree-assets, blender-boulder-assets]
@@ -277,7 +289,10 @@ jobs:
           -DTALVISOTA_ENABLE_VANTA_ENGINE=ON
 
       - name: Build renderer adapter and content asset tools
-        run: cmake --build build-msvc --target talvisota talvisota_renderer_sample talvisota_renderer_contract_tests talvisota_asset_validate talvisota_content_package talvisota_texture_process talvisota_engine_asset_validation_tests talvisota_engine_asset_package_tests talvisota_engine_asset_pipeline_tests --parallel
+        run: cmake --build build-msvc --target talvisota talvisota_renderer_sample talvisota_renderer_contract_tests talvisota_asset_validate talvisota_content_validate talvisota_content_package talvisota_texture_process talvisota_engine_asset_validation_tests talvisota_engine_asset_package_tests talvisota_engine_asset_pipeline_tests --parallel
+
+      - name: Validate shipped content
+        run: .\\build-msvc\\talvisota_content_validate.exe content/catalog.tmanifest .
 
       - name: Authored campaign runtime smoke test
         run: .\\build-msvc\talvisota.exe --mission-smoke
