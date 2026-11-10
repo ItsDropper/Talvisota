@@ -47,6 +47,20 @@ int main()
         Require(std::abs(instance.world[14]-camera[2])<=26.0F);
     }
 
+    // In calm air flakes fall without artificial horizontal drift. A wind field
+    // must then transport the same deterministic flakes across the camera volume.
+    Require(snowfall.Update(scene,camera,13.0,{0.914F,0.406F},0.0F,true,error));
+    const auto calmTransform=scene.instances.front().world;
+    Require(snowfall.Update(scene,camera,14.0,{0.914F,0.406F},0.0F,true,error));
+    Require(scene.instances.front().world[12]==calmTransform[12] &&
+        scene.instances.front().world[14]==calmTransform[14]);
+    Require(scene.instances.front().world[13]!=calmTransform[13]);
+    const auto calmX=scene.instances.front().world[12];
+    const auto calmZ=scene.instances.front().world[14];
+    Require(snowfall.Update(scene,camera,14.0,{0.914F,0.406F},0.14F,true,error));
+    Require(scene.instances.front().world[12]!=calmX ||
+        scene.instances.front().world[14]!=calmZ);
+
     Require(snowfall.Update(scene,camera,13.0,{0.914F,0.406F},0.14F,false,error));
     Require(std::none_of(scene.instances.begin(),scene.instances.end(),
         [](const RenderInstance& instance) { return instance.visible; }));
