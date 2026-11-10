@@ -292,7 +292,7 @@ void TestAuthoredWorldSimulation()
     Check(enemy!=nullptr,"authored opposing infantry entity is available for aim selection");
     if(enemy!=nullptr) {
         const std::array<float,3> rayOrigin{
-            enemy->position[0],enemy->position[1]+1.62F,enemy->position[2]-10.0F};
+            enemy->position[0],enemy->position[1]+1.62F,enemy->position[2]-1.0F};
         std::string selectedTarget;
         Check(FindNearestHostileCombatant(battleState,region,battleState.playerEntityId,
             rayOrigin,{0.0F,0.0F,1.0F},180.0F,0.95F,selectedTarget,error) &&
