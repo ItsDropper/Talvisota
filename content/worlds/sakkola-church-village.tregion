@@ -7397,3 +7397,5 @@ collision	tree.regional.1797.trunk	680.630	20.431	1061.874	0.230	9.098	0.230
 collision	tree.regional.1798.trunk	969.246	19.464	1234.530	0.230	7.331	0.230
 collision	tree.regional.1799.trunk	938.189	23.421	1486.883	0.230	9.370	0.230
 collision	tree.regional.1800.trunk	964.225	16.266	896.146	0.230	6.555	0.230
+placement	interior.sakkola.church	structure	model.interior.sakkola_church	-	0.00	9.044	178.00	0.0	1.000
+placement	interior.sakkola.farmhouse.west	structure	model.interior.sakkola_farmhouse	-	-43.00	7.920	123.00	12.0	1.000
