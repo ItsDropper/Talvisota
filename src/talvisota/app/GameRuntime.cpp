@@ -1410,13 +1410,15 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
             }
         } else {
             rawMouseDeltaX=0; rawMouseDeltaY=0; jumpWasDown=false;
-            interactWasDown=false; interactionQueued=false;
+            const bool interactDown=(GetAsyncKeyState('E')&0x8000)!=0;
+            interactionQueued=false;
             fireWasDown=false; reloadWasDown=false; fireQueued=false; reloadQueued=false;
             if(frontendState==FrontendState::Playing &&
                 gameplayState.mission.status==talvisota::missions::MissionStatus::Completed &&
-                campaignHasNextMission && (GetAsyncKeyState('E')&0x8000)!=0) {
+                campaignHasNextMission && interactDown && !interactWasDown) {
                 advanceCampaignRequested=true;
             }
+            interactWasDown=interactDown;
             if(frontendState==FrontendState::Playing) {
                 if(!RefreshMissionOverlay(gameplayState,playerState,gameplayRules.interactionRadiusMeters,error)) break;
             }
