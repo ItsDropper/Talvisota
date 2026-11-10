@@ -155,6 +155,7 @@ The engine-enabled executable launches the first-person Sakkola campaign, not th
 - **Space:** jump
 - **E:** interact / receive campaign orders
 - **Left mouse button:** fire at the nearest hostile combatant along the aim ray
+- **1 / 2 / 3:** equip Mosin M/27, Suomi KP/-31, or Lahti-Saloranta M/26
 - **R:** reload
 - **Esc:** pause/resume; Esc from the title menu exits
 
