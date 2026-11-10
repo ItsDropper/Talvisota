@@ -88,7 +88,7 @@ void SetMissionFeedback(std::wstring message,const std::chrono::milliseconds dur
 }
 
 bool RefreshMissionOverlay(const talvisota::gameplay::SimulationState& simulation,
-    const float interactionRadius,std::string& error) {
+    const talvisota::game::PlayerState& player,const float interactionRadius,std::string& error) {
     MissionOverlayData updated=missionOverlay;
     updated.completed=simulation.mission.status==talvisota::missions::MissionStatus::Completed;
     updated.hasProgress=simulation.mission.completedObjectives>0U;
@@ -112,7 +112,15 @@ bool RefreshMissionOverlay(const talvisota::gameplay::SimulationState& simulatio
             return false;
         updated.objective=ObjectiveTitle(active->id);
         const long distance=std::max(0L,std::lround(target.distanceMeters));
-        updated.distance=std::to_wstring(distance)+L" m";
+        const double bearing=std::atan2(
+            static_cast<double>(target.position[0])-player.position[0],
+            static_cast<double>(target.position[2])-player.position[2]);
+        constexpr double fullTurn=6.28318530717958647692;
+        const double relativeBearing=std::remainder(
+            bearing-static_cast<double>(player.yawRadians),fullTurn);
+        const std::wstring direction=std::abs(relativeBearing)>2.35?L"BEHIND":
+            relativeBearing>0.35?L"RIGHT":relativeBearing< -0.35?L"LEFT":L"AHEAD";
+        updated.distance=std::to_wstring(distance)+L" m  "+direction;
         updated.prompt=target.distanceMeters<=interactionRadius?L"[E]  INTERACT":L"FOLLOW THE OBJECTIVE";
     }
     if(std::chrono::steady_clock::now()>=missionFeedbackUntil) updated.feedback.clear();
@@ -1005,7 +1013,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     }
     missionOverlay.title=Utf8ToWide(authoredMission.name);
     missionOverlay.description=Utf8ToWide(authoredMission.description);
-    if(!RefreshMissionOverlay(gameplayState,gameplayRules.interactionRadiusMeters,error)) {
+    if(!RefreshMissionOverlay(gameplayState,playerState,gameplayRules.interactionRadiusMeters,error)) {
         std::cerr<<"First Patrol HUD initialization failed: "<<error<<"\n";
         renderer.reset(); DestroyWindow(window); if(ownsCom) CoUninitialize(); return 8;
     }
