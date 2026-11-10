@@ -21,11 +21,24 @@ struct RenderMesh final
     std::vector<std::uint32_t> indices;
 };
 
+enum class RenderAlphaMode
+{
+    Opaque,
+    Mask,
+    Blend
+};
+
 struct RenderMaterial final
 {
     std::array<float, 3> baseColor{1.0F, 1.0F, 1.0F};
     float roughness = 0.8F;
     float metallic = 0.0F;
+    std::array<float, 3> emissive{0.0F, 0.0F, 0.0F};
+    float normalScale = 1.0F;
+    float occlusionStrength = 1.0F;
+    float alphaCutoff = 0.5F;
+    RenderAlphaMode alphaMode = RenderAlphaMode::Opaque;
+    bool doubleSided = false;
     // Optional absolute paths resolved by the content layer before scene submission.
     std::string baseColorTexture;
     std::string normalTexture;
