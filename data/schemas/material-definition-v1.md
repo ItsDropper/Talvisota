@@ -32,4 +32,15 @@ Every remaining record is one unique `key = value` assignment. Blank lines and l
 
 Texture references must resolve to manifest assets of kind `texture`. The texture slots define colour-space interpretation: base-colour and emissive RGB data are sRGB; normal and packed occlusion/roughness/metallic (ORM) data are linear. ORM channel packing is R=occlusion, G=roughness, B=metallic. Importers must preserve these semantics; they must not infer colour space from filenames.
 
-This schema describes authored material intent. VantaEngine's submitted-scene API now accepts base-colour, tangent-space normal, roughness, metallic, and ambient-occlusion maps, and both D3D11 and D3D12 shaders sample them. The typed `.tmat` to runtime `MaterialDescription` bridge and alpha-blend pipeline are still separate integration work; do not infer that every schema field is already active in the game renderer.
+## Runtime renderer support
+
+The current Talvisota scene bridge supports the metallic-roughness PBR core:
+
+- Linear `base_color`, scalar `roughness`, and scalar `metallic`.
+- Base-colour and tangent-space normal textures.
+- A packed ORM texture, bound to all three engine texture slots. The channel contract is R=occlusion, G=roughness, B=metallic.
+- Texture paths are resolved against the validated content registry and must resolve to regular files before scene submission.
+
+The bridge deliberately rejects non-default emissive, normal-scale, occlusion-strength, alpha-mode, alpha-cutoff, and double-sided settings. The parser retains these authored fields for schema compatibility, but the active renderer does not yet implement them. This is a hard error rather than silently dropping material intent. In particular, `alpha_mode = blend` is not treated as working transparency.
+
+Texture colour-space handling remains an engine-side concern: base-colour/emissive maps must be sampled as sRGB, while normal and ORM data must be sampled as linear values. A material definition being valid does not by itself guarantee that a backend has implemented the required texture format and shader behavior.
