@@ -116,6 +116,7 @@ add_dependencies(talvisota_content_validate talvisota_environment_textures)
 
 add_library(talvisota_renderer_contract STATIC
     src/talvisota/presentation/SceneRenderer.cpp
+    src/talvisota/presentation/MaterialRenderBridge.cpp
     src/talvisota/presentation/WeatherParticles.cpp
     src/talvisota/presentation/ExplosionLighting.cpp
     src/talvisota/presentation/DynamicWorld.cpp
