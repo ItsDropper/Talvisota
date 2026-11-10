@@ -301,7 +301,6 @@ void TestAuthoredWorldSimulation()
     }
 
     std::vector<CombatResult> battleCombatResults;
-    std::vector<CombatResult> battleCombatResults;
     const std::array<CombatCommand,1> outOfOrderShot{{
         {"combat.test.out-of-order-shot",battleState.playerEntityId,"actor.soviet.test.02",CombatAction::Fire}
     }};
