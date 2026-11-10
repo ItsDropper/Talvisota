@@ -231,6 +231,12 @@ private:
         std::array<float, 3> baseColor{};
         float roughness = 0.0F;
         float metallic = 0.0F;
+        std::array<float, 3> emissive{};
+        float normalScale = 1.0F;
+        float occlusionStrength = 1.0F;
+        float alphaCutoff = 0.5F;
+        RenderAlphaMode alphaMode = RenderAlphaMode::Opaque;
+        bool doubleSided = false;
         std::array<std::string, 5> texturePaths;
         bool packedMetallicRoughness = false;
         bool terrain = false;
@@ -239,6 +245,8 @@ private:
         static MaterialIdentity Of(const RenderMaterial& material)
         {
             return MaterialIdentity{material.baseColor, material.roughness, material.metallic,
+                material.emissive, material.normalScale, material.occlusionStrength,
+                material.alphaCutoff, material.alphaMode, material.doubleSided,
                 {material.baseColorTexture, material.normalTexture, material.roughnessTexture,
                     material.metallicTexture, material.ambientOcclusionTexture},
                 material.packedMetallicRoughness, material.terrain, material.snowSurface};
@@ -250,7 +258,10 @@ private:
         [[nodiscard]] bool Matches(const RenderMaterial& material) const
         {
             return baseColor == material.baseColor && roughness == material.roughness &&
-                metallic == material.metallic &&
+                metallic == material.metallic && emissive == material.emissive &&
+                normalScale == material.normalScale && occlusionStrength == material.occlusionStrength &&
+                alphaCutoff == material.alphaCutoff && alphaMode == material.alphaMode &&
+                doubleSided == material.doubleSided &&
                 packedMetallicRoughness == material.packedMetallicRoughness &&
                 terrain == material.terrain && snowSurface == material.snowSurface &&
                 texturePaths[0] == material.baseColorTexture &&
@@ -350,6 +361,13 @@ private:
             };
             material.roughness = source.roughness;
             material.metallic = source.metallic;
+            material.emissive = source.emissive;
+            material.normalScale = source.normalScale;
+            material.occlusionStrength = source.occlusionStrength;
+            material.alphaCutoff = source.alphaCutoff;
+            material.alphaMode = source.alphaMode == RenderAlphaMode::Mask
+                ? vanta::renderer::MaterialAlphaMode::Mask : vanta::renderer::MaterialAlphaMode::Opaque;
+            material.doubleSided = source.doubleSided;
             material.baseColorTexture = source.baseColorTexture;
             material.normalTexture = source.normalTexture;
             material.roughnessTexture = source.roughnessTexture;
