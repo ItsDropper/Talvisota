@@ -89,3 +89,4 @@ asset	mission.sakkola.first-patrol	definition	content/missions/first-patrol.tmis
 asset	mission.sakkola.northern-watch	definition	content/missions/northern-watch.tmission	required	world.sakkola,region.sakkola.church_village,character.sakkola_infantryman,faction.finnish,mission.sakkola.defensive-line	project	project
 asset	mission.sakkola.defensive-line	definition	content/missions/defensive-line.tmission	required	world.sakkola,region.sakkola.church_village,character.sakkola_infantryman,faction.finnish,faction.soviet,mission.sakkola.aftermath	project	project
 asset	mission.sakkola.aftermath	definition	content/missions/aftermath.tmission	required	world.sakkola,region.sakkola.church_village,character.sakkola_infantryman,faction.finnish	project	project
+asset	model.weapon.soviet_mosin_1891_30	model	assets/models/weapons/mosin-1891-30.obj	required	material.weapons.finnish_arms	project	project
