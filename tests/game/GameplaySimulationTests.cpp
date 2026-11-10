@@ -111,6 +111,9 @@ void TestAuthoredWorldSimulation()
     if (well == nullptr || woodpile == nullptr || church == nullptr)
         return;
 
+    Check(authoredMission.actors.size()==1U && authoredMission.objectives.size()==4U,
+        "First Patrol opens with a Finnish corporal and a human check-in before its three farmstead duties");
+
     const GameplayRules rules{};
     const auto* defensiveAsset=registry.Find("mission.sakkola.defensive-line");
     Check(defensiveAsset!=nullptr,"Sakkola defensive battle is registered in the campaign manifest");
@@ -163,16 +166,21 @@ void TestAuthoredWorldSimulation()
         rules, state, error),
         "authored mission and loaded region initialize a complete gameplay simulation");
     Check(state.playerEntityId == "player.character.sakkola_infantryman" &&
-        state.entities.Size() == 4U,
-        "simulation contains one authored player and exactly three mission target entities");
+        state.entities.Size() == 5U && state.combat.combatants.size()==2U,
+        "simulation contains the player, one friendly corporal, three mission targets, and both combatants");
 
     const entities::EntityState* const player = state.entities.Find(state.playerEntityId);
     const entities::EntityState* const wellEntity = state.entities.Find("prop.well.farmstead");
     const entities::EntityState* const woodpileEntity = state.entities.Find("prop.woodpile.west");
     const entities::EntityState* const churchEntity = state.entities.Find("church.sakkola");
+    const entities::EntityState* const corporal = state.entities.Find("actor.finnish.farmstead.cpl");
     Check(player != nullptr && player->kind == entities::EntityKind::Player &&
         player->factionId == "faction.finnish",
         "player entity inherits the authored Finnish character/faction identity");
+    Check(corporal!=nullptr && corporal->kind==entities::EntityKind::Infantry &&
+        corporal->factionId=="faction.finnish" &&
+        state.combat.combatants.contains("actor.finnish.farmstead.cpl"),
+        "the opening corporal is a real friendly infantry character with a registered loadout");
     Check(wellEntity != nullptr && woodpileEntity != nullptr && churchEntity != nullptr &&
         wellEntity->factionId.empty() && woodpileEntity->factionId.empty() &&
         churchEntity->factionId.empty(),
@@ -186,16 +194,16 @@ void TestAuthoredWorldSimulation()
         "player entity starts at the supplied in-region spawn position");
 
     std::vector<CommandResult> results;
-    const std::array<InteractionCommand, 1> inspectWellOutOfRange{{
-        {"command.first-patrol.inspect-well-out-of-range",
-            state.playerEntityId, "prop.well.farmstead"}
+    const std::array<InteractionCommand, 1> checkInOutOfRange{{
+        {"command.first-patrol.check-in-out-of-range",
+            state.playerEntityId, "actor.finnish.farmstead.cpl"}
     }};
     ActiveObjectiveTarget waypoint;
     Check(FindActiveObjectiveTarget(state, state.playerEntityId, waypoint, error) &&
-        waypoint.entityId == "prop.well.farmstead" &&
-        waypoint.position == well->position &&
+        waypoint.entityId == "actor.finnish.farmstead.cpl" &&
+        waypoint.position == corporal->position &&
         waypoint.distanceMeters > rules.interactionRadiusMeters,
-        "all-range objective query resolves the authored well waypoint from player spawn");
+        "First Patrol begins with a reachable waypoint to the farmstead corporal");
 
     ActiveObjectiveTarget preservedWaypoint;
     preservedWaypoint.entityId = "preserved.waypoint";
@@ -207,9 +215,32 @@ void TestAuthoredWorldSimulation()
         "invalid actor query fails without mutating waypoint output");
 
     Check(AdvanceSimulation(state, rules, 1.0 / 60.0,
-        inspectWellOutOfRange, results, error) &&
+        checkInOutOfRange, results, error) &&
         results.size() == 1U && results[0].outcome == CommandOutcome::OutOfRange &&
         state.mission.completedObjectives == 0U,
+        "corporal check-in outside the configured radius cannot advance First Patrol");
+
+    Check(state.entities.SetPosition(state.playerEntityId, corporal->position, error),
+        "player simulation entity moves into range of the farmstead corporal");
+    const std::array<InteractionCommand,1> checkInCorporal{{
+        {"command.first-patrol.check-in-corporal",
+            state.playerEntityId,"actor.finnish.farmstead.cpl"}
+    }};
+    Check(AdvanceSimulation(state,rules,1.0/60.0,checkInCorporal,results,error) &&
+        results.size()==1U && results[0].outcome==CommandOutcome::ObjectiveCompleted &&
+        state.mission.completedObjectives==1U,
+        "speaking with the corporal completes the opening human interaction objective");
+    Check(FindActiveObjectiveTarget(state,state.playerEntityId,waypoint,error) &&
+        waypoint.entityId=="prop.well.farmstead" && waypoint.position==well->position,
+        "corporal check-in directs the player to the well");
+
+    const std::array<InteractionCommand,1> inspectWellOutOfRange{{
+        {"command.first-patrol.inspect-well-out-of-range",
+            state.playerEntityId,"prop.well.farmstead"}
+    }};
+    Check(AdvanceSimulation(state,rules,1.0/60.0,inspectWellOutOfRange,results,error) &&
+        results.size()==1U && results[0].outcome==CommandOutcome::OutOfRange &&
+        state.mission.completedObjectives==1U,
         "well interaction outside the configured radius cannot advance First Patrol");
 
     Check(state.entities.SetPosition(state.playerEntityId, well->position, error),
@@ -227,8 +258,8 @@ void TestAuthoredWorldSimulation()
     Check(AdvanceSimulation(state, rules, 1.0 / 60.0,
         inspectWellInRange, results, error) &&
         results.size() == 1U && results[0].outcome == CommandOutcome::ObjectiveCompleted &&
-        state.mission.completedObjectives == 1U,
-        "a new in-range command completes the first authored objective after the out-of-range attempt");
+        state.mission.completedObjectives == 2U,
+        "a new in-range command completes the well objective after the corporal check-in");
 
     Check(FindActiveObjectiveTarget(state, state.playerEntityId, waypoint, error) &&
         waypoint.entityId == "prop.woodpile.west" &&
@@ -259,8 +290,8 @@ void TestAuthoredWorldSimulation()
     }};
     Check(AdvanceSimulation(state, rules, 1.0 / 60.0, inspectWoodpile, results, error) &&
         results.size() == 1U && results[0].outcome == CommandOutcome::ObjectiveCompleted &&
-        state.mission.completedObjectives == 2U,
-        "interacting with the real woodpile placement completes the second objective");
+        state.mission.completedObjectives == 3U,
+        "interacting with the real woodpile placement completes the third objective");
 
     Check(FindActiveObjectiveTarget(state, state.playerEntityId, waypoint, error) &&
         waypoint.entityId == "church.sakkola" &&
