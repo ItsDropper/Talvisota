@@ -38,8 +38,8 @@ namespace
         {{0.0F, 0.0F, 0.025F}, {0.0F, 0.0F, 1.0F}, 0.5F, 1.0F}
     };
     mesh.indices = {
-        0U, 3U, 5U, 0U, 5U, 2U, 0U, 2U, 4U, 0U, 4U, 3U,
-        1U, 5U, 3U, 1U, 2U, 5U, 1U, 4U, 2U, 1U, 3U, 4U
+        0U, 5U, 3U, 0U, 2U, 5U, 0U, 4U, 2U, 0U, 3U, 4U,
+        1U, 3U, 5U, 1U, 5U, 2U, 1U, 2U, 4U, 1U, 4U, 3U
     };
     return mesh;
 }
@@ -132,6 +132,15 @@ bool SnowfallSystem::Update(SceneSnapshot& scene,
     {
         error = "Snowfall scene resources were removed or reordered after initialization.";
         return false;
+    }
+    for (std::size_t index = 0U; index < m_offsets.size(); ++index)
+    {
+        const RenderInstance& instance = scene.instances[static_cast<std::size_t>(m_firstInstance) + index];
+        if (instance.meshIndex != m_meshIndex || instance.materialIndex != m_materialIndex)
+        {
+            error = "Snowfall instance resources were reordered after initialization.";
+            return false;
+        }
     }
 
     const float time = static_cast<float>(std::fmod(elapsedSeconds, 100000.0));
