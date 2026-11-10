@@ -135,12 +135,199 @@ bool AreRenderMaterialsEquivalent(const RenderMaterial& lhs, const RenderMateria
         lhs.snowSurface == rhs.snowSurface;
 }
 
+
+using TerrainClipPolygon = std::vector<RenderVertex>;
+
+RenderVertex InterpolateTerrainVertex(const RenderVertex& a, const RenderVertex& b,
+    const float t, const bool interpolateX, const float boundary) {
+    RenderVertex result;
+    for (std::size_t axis = 0U; axis < 3U; ++axis) {
+        result.position[axis] = a.position[axis] + (b.position[axis] - a.position[axis]) * t;
+        result.normal[axis] = a.normal[axis] + (b.normal[axis] - a.normal[axis]) * t;
+    }
+    if (interpolateX) result.position[0] = boundary;
+    else result.position[2] = boundary;
+    result.u = a.u + (b.u - a.u) * t;
+    result.v = a.v + (b.v - a.v) * t;
+    return result;
+}
+
+TerrainClipPolygon ClipTerrainPolygon(const TerrainClipPolygon& polygon,
+    const bool clipX, const float boundary, const bool keepGreater) {
+    TerrainClipPolygon output;
+    if (polygon.size() < 3U) return output;
+    output.reserve(polygon.size() + 1U);
+    const auto coordinate = [clipX](const RenderVertex& vertex) {
+        return vertex.position[clipX ? 0U : 2U];
+    };
+    const auto inside = [boundary, keepGreater, &coordinate](const RenderVertex& vertex) {
+        return keepGreater ? coordinate(vertex) >= boundary : coordinate(vertex) <= boundary;
+    };
+    const RenderVertex* previous = &polygon.back();
+    bool previousInside = inside(*previous);
+    for (const RenderVertex& current : polygon) {
+        const bool currentInside = inside(current);
+        if (currentInside != previousInside) {
+            const float previousCoordinate = coordinate(*previous);
+            const float currentCoordinate = coordinate(current);
+            const float denominator = currentCoordinate - previousCoordinate;
+            if (std::abs(denominator) > 1.0e-8F) {
+                const float t = std::clamp((boundary - previousCoordinate) / denominator, 0.0F, 1.0F);
+                output.push_back(InterpolateTerrainVertex(*previous, current, t, clipX, boundary));
+            }
+        }
+        if (currentInside) output.push_back(current);
+        previous = &current;
+        previousInside = currentInside;
+    }
+    return output;
+}
+
+std::vector<TerrainClipPolygon> SubtractWaterRectangle(const TerrainClipPolygon& polygon,
+    const talvisota::world::WaterSurface& water) {
+    std::vector<TerrainClipPolygon> outsidePieces;
+    TerrainClipPolygon remaining = polygon;
+    struct Boundary final { bool clipX; float value; bool keepGreater; };
+    const std::array<Boundary, 4> boundaries{{
+        {true, water.minX, true}, {true, water.maxX, false},
+        {false, water.minZ, true}, {false, water.maxZ, false}
+    }};
+    for (const Boundary& boundary : boundaries) {
+        TerrainClipPolygon outside = ClipTerrainPolygon(
+            remaining, boundary.clipX, boundary.value, !boundary.keepGreater);
+        if (outside.size() >= 3U) outsidePieces.push_back(std::move(outside));
+        remaining = ClipTerrainPolygon(
+            remaining, boundary.clipX, boundary.value, boundary.keepGreater);
+        if (remaining.size() < 3U) break;
+    }
+    return outsidePieces;
+}
+
+bool RemoveWaterSurfacesFromTerrain(RenderMesh& mesh,
+    const talvisota::world::WorldRegion& region, std::string& error) {
+    if (region.waterSurfaces.empty()) {
+        error.clear();
+        return true;
+    }
+    std::vector<std::uint32_t> clippedIndices;
+    clippedIndices.reserve(mesh.indices.size());
+    std::size_t removedTriangles = 0U;
+    std::size_t boundaryTriangles = 0U;
+    for (std::size_t offset = 0U; offset < mesh.indices.size(); offset += 3U) {
+        const std::array<std::uint32_t, 3> sourceIndices{
+            mesh.indices[offset], mesh.indices[offset + 1U], mesh.indices[offset + 2U]};
+        TerrainClipPolygon sourcePolygon;
+        sourcePolygon.reserve(3U);
+        float minX = std::numeric_limits<float>::max();
+        float maxX = std::numeric_limits<float>::lowest();
+        float minZ = std::numeric_limits<float>::max();
+        float maxZ = std::numeric_limits<float>::lowest();
+        for (const std::uint32_t index : sourceIndices) {
+            if (index >= mesh.vertices.size()) {
+                error = "Water clipping encountered an out-of-range terrain index.";
+                return false;
+            }
+            const RenderVertex& vertex = mesh.vertices[index];
+            sourcePolygon.push_back(vertex);
+            minX = std::min(minX, vertex.position[0]);
+            maxX = std::max(maxX, vertex.position[0]);
+            minZ = std::min(minZ, vertex.position[2]);
+            maxZ = std::max(maxZ, vertex.position[2]);
+        }
+
+        std::vector<TerrainClipPolygon> fragments{std::move(sourcePolygon)};
+        bool overlapsWaterBounds = false;
+        for (const auto& water : region.waterSurfaces) {
+            if (maxX <= water.minX || minX >= water.maxX ||
+                maxZ <= water.minZ || minZ >= water.maxZ)
+                continue;
+            overlapsWaterBounds = true;
+            std::vector<TerrainClipPolygon> nextFragments;
+            for (const auto& fragment : fragments) {
+                auto outside = SubtractWaterRectangle(fragment, water);
+                for (auto& piece : outside)
+                    nextFragments.push_back(std::move(piece));
+            }
+            fragments.swap(nextFragments);
+            if (fragments.empty()) break;
+        }
+
+        if (!overlapsWaterBounds) {
+            clippedIndices.insert(clippedIndices.end(), sourceIndices.begin(), sourceIndices.end());
+            continue;
+        }
+        ++boundaryTriangles;
+        if (fragments.empty()) {
+            ++removedTriangles;
+            continue;
+        }
+        for (const auto& polygon : fragments) {
+            if (polygon.size() < 3U) continue;
+            float twiceArea = 0.0F;
+            for (std::size_t i = 0U; i < polygon.size(); ++i) {
+                const auto& a = polygon[i].position;
+                const auto& b = polygon[(i + 1U) % polygon.size()].position;
+                twiceArea += a[0] * b[2] - b[0] * a[2];
+            }
+            if (std::abs(twiceArea) <= 1.0e-5F) continue;
+            if (mesh.vertices.size() + polygon.size() >
+                static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max())) {
+                error = "Water-clipped terrain exceeds the 32-bit vertex index limit.";
+                return false;
+            }
+            const auto first = static_cast<std::uint32_t>(mesh.vertices.size());
+            mesh.vertices.insert(mesh.vertices.end(), polygon.begin(), polygon.end());
+            for (std::size_t i = 1U; i + 1U < polygon.size(); ++i)
+                clippedIndices.insert(clippedIndices.end(), {
+                    first, first + static_cast<std::uint32_t>(i),
+                    first + static_cast<std::uint32_t>(i + 1U)});
+        }
+    }
+
+    if (clippedIndices.empty()) {
+        error = "Water clipping removed every terrain triangle.";
+        return false;
+    }
+
+    // Clipping appends replacement vertices only at shore boundaries. Compact the
+    // original grid afterwards so lake-interior vertices cannot produce invalid
+    // zero-area normals during the snow-terrain refinement pass.
+    std::vector<std::uint32_t> remap(mesh.vertices.size(),
+        std::numeric_limits<std::uint32_t>::max());
+    std::vector<RenderVertex> compactVertices;
+    compactVertices.reserve(mesh.vertices.size());
+    for (std::uint32_t& index : clippedIndices) {
+        if (remap[index] == std::numeric_limits<std::uint32_t>::max()) {
+            if (compactVertices.size() >= static_cast<std::size_t>(
+                    std::numeric_limits<std::uint32_t>::max())) {
+                error = "Water-clipped terrain exceeds the compacted 32-bit vertex limit.";
+                return false;
+            }
+            remap[index] = static_cast<std::uint32_t>(compactVertices.size());
+            compactVertices.push_back(mesh.vertices[index]);
+        }
+        index = remap[index];
+    }
+    mesh.vertices.swap(compactVertices);
+    mesh.indices.swap(clippedIndices);
+    std::cout << "Water/terrain separation: removed " << removedTriangles
+        << " submerged terrain triangles and clipped " << boundaryTriangles
+        << " shore-boundary triangles across " << region.waterSurfaces.size()
+        << " authored water segments.\n";
+    error.clear();
+    return true;
+}
+
 bool RefineSnowTerrain(RenderMesh& mesh, const talvisota::world::WorldRegion& region, std::string& error) {
     if (mesh.vertices.empty() || mesh.indices.empty() || mesh.indices.size()%3U!=0U) {
         error="Snow terrain refinement requires indexed triangle geometry."; return false;
     }
     constexpr std::size_t MaximumVertices=1000000U;
     const std::size_t originalVertexCount=mesh.vertices.size();
+    if (!RemoveWaterSurfacesFromTerrain(mesh, region, error)) {
+        error = "Could not separate frozen water from the snow terrain: " + error;
+        return false;
+    }
     // Keep the same one-million-vertex budget for both the original close-range
     // village mesh and the expanded regional mesh. Larger source grids use a
     // coarser final edge target so refinement stays bounded instead of failing
