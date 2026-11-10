@@ -747,7 +747,9 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
             const bool tree = placement.category == PlacementCategory::Vegetation;
             const bool deadwood = placement.modelAssetId == "model.environment.fallen_log" ||
                                   placement.modelAssetId == "model.environment.stump";
-            if (!tree && !deadwood)
+            const bool rock = placement.category == PlacementCategory::Rock;
+            const bool structure = placement.category == PlacementCategory::Structure;
+            if (!tree && !deadwood && !rock && !structure)
                 continue;
             const std::string collisionId = placement.id + (tree ? ".trunk" : ".collision");
             const auto collision = std::find_if(candidate.collision.begin(), candidate.collision.end(),
