@@ -79,7 +79,7 @@ bool SetCamera(SceneSnapshot& scene, const vanta::math::Vec3& eye,
     if (!view || width <= 0 || height <= 0) return false;
     constexpr float fov = 60.0F * 3.14159265358979323846F / 180.0F;
     const auto projection = vanta::math::Mat4::Perspective(
-        fov, static_cast<float>(width) / static_cast<float>(height), 0.1F, 1200.0F);
+        fov, static_cast<float>(width) / static_cast<float>(height), 0.1F, 3000.0F);
     std::copy(std::begin(view->elements), std::end(view->elements), scene.camera.view.begin());
     std::copy(std::begin(projection.elements), std::end(projection.elements), scene.camera.projection.begin());
     scene.camera.position = {eye.x, eye.y, eye.z};
@@ -159,7 +159,7 @@ void CullCaptureInstances(SceneSnapshot& scene, const std::vector<float>& meshRa
         const float depth=delta[0]*forward[0]+delta[1]*forward[1]+delta[2]*forward[2];
         const float horizontal=std::abs(delta[0]*right[0]+delta[1]*right[1]+delta[2]*right[2]);
         const float vertical=std::abs(delta[0]*up[0]+delta[1]*up[1]+delta[2]*up[2]);
-        instance.visible=depth+radius>=0.1F && depth-radius<=1200.0F &&
+        instance.visible=depth+radius>=0.1F && depth-radius<=3000.0F &&
             horizontal<=std::max(0.0F,depth)*tangentHalfFov*aspect+radius &&
             vertical<=std::max(0.0F,depth)*tangentHalfFov+radius;
         if(instance.visible) ++visibleCount;
@@ -217,7 +217,7 @@ struct CaptureView { const wchar_t* file; vanta::math::Vec3 eye; vanta::math::Ve
 constexpr std::array<CaptureView, 5> Views = {{
     {L"01-sakkola-overview.png", {-95.0F, 21.0F, 20.0F}, {0.0F, 8.0F, 160.0F}},
     {L"02-church-village.png", {-28.0F, 13.0F, 145.0F}, {0.0F, 14.0F, 178.0F}},
-    {L"03-suvanto-shoreline.png", {-85.0F, 7.0F, -205.0F}, {-85.0F, 4.0F, -150.0F}},
+    {L"03-suvanto-shoreline.png", {0.0F, 48.0F, -620.0F}, {0.0F, 6.0F, -270.0F}},
     {L"04-karelian-forest.png", {160.0F, 11.0F, -115.0F}, {160.0F, 8.0F, -25.0F}},
     {L"05-farmstead.png", {-75.0F, 11.0F, 92.0F}, {-43.0F, 10.0F, 123.0F}}
 }};
