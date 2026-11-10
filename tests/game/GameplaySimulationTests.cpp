@@ -274,6 +274,14 @@ void TestAuthoredWorldSimulation()
     Check(FindActiveObjectiveTarget(battleState,battleState.playerEntityId,combatWaypoint,error) &&
         combatWaypoint.entityId=="actor.soviet.test",
         "active mission waypoint resolves to the authored opposing infantry entity");
+    std::vector<CombatCommand> aiCommands;
+    Check(BuildBattlefieldAiCommands(battleState,aiCommands,error) &&
+        aiCommands.size()==1U &&
+        aiCommands.front().actorEntityId=="actor.soviet.test" &&
+        aiCommands.front().targetEntityId==battleState.playerEntityId,
+        "hostile battlefield AI acquires the nearest opposing combatant and emits a bounded fire command");
+    Check(BuildBattlefieldAiCommands(battleState,aiCommands,error) && aiCommands.empty(),
+        "battlefield AI respects its authored deterministic fire cadence");
 
     const auto* enemy=battleState.entities.Find("actor.soviet.test");
     Check(enemy!=nullptr,"authored opposing infantry entity is available for aim selection");
