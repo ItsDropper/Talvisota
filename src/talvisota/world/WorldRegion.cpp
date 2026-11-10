@@ -731,7 +731,8 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
         const auto placement = std::find_if(candidate.placements.begin(), candidate.placements.end(),
             [&surface](const WorldPlacement& item) { return item.id == surface.placementId; });
         if (placement == candidate.placements.end() ||
-            placement->modelAssetId != "model.environment.suvanto_ice")
+            placement->modelAssetId != "model.environment.suvanto_ice" &&
+            placement->modelAssetId != "model.environment.taipale_ice")
             Add(diagnostics, path, 0, "water_surface.placement",
                 "Water surface must reference a declared Suvanto ice model placement.");
     }
