@@ -414,6 +414,84 @@ bool FindNearestActiveObjectiveTarget(const SimulationState& state,
 }
 
 
+bool FindNearestHostileCombatant(const SimulationState& state,
+    const std::string_view actorEntityId, const std::array<float, 3>& rayOrigin,
+    const std::array<float, 3>& rayDirection, const float maximumRangeMeters,
+    const float targetRadiusMeters, std::string& outputEntityId, std::string& error)
+{
+    if (!entities::IsValidStableId(actorEntityId) ||
+        !std::isfinite(maximumRangeMeters) || maximumRangeMeters <= 0.0F ||
+        !std::isfinite(targetRadiusMeters) || targetRadiusMeters <= 0.0F ||
+        targetRadiusMeters > 5.0F)
+    {
+        error = "Combat target query contains an invalid actor ID, range, or target radius.";
+        return false;
+    }
+    double directionLengthSquared = 0.0;
+    for (std::size_t axis = 0U; axis < 3U; ++axis)
+    {
+        if (!std::isfinite(rayOrigin[axis]) || !std::isfinite(rayDirection[axis]))
+        {
+            error = "Combat target ray must contain only finite coordinates.";
+            return false;
+        }
+        directionLengthSquared += static_cast<double>(rayDirection[axis]) * rayDirection[axis];
+    }
+    if (!std::isfinite(directionLengthSquared) ||
+        std::abs(directionLengthSquared - 1.0) > 0.02)
+    {
+        error = "Combat target ray direction must be normalized.";
+        return false;
+    }
+
+    const entities::EntityState* actor = state.entities.Find(actorEntityId);
+    const auto attacker = state.combat.combatants.find(actorEntityId);
+    if (actor == nullptr || !actor->active || attacker == state.combat.combatants.end())
+    {
+        error = "Combat target query requires an active registered combatant.";
+        return false;
+    }
+
+    std::string selected;
+    double nearestAlongRay = static_cast<double>(maximumRangeMeters);
+    const double radiusSquared = static_cast<double>(targetRadiusMeters) * targetRadiusMeters;
+    for (const auto& [entityId, combatant] : state.combat.combatants)
+    {
+        if (entityId == actorEntityId || combatant.health <= 0.0F)
+            continue;
+        const entities::EntityState* target = state.entities.Find(entityId);
+        if (target == nullptr || !target->active || target->factionId == actor->factionId)
+            continue;
+
+        const std::array<double, 3> offset{
+            static_cast<double>(target->position[0]) - rayOrigin[0],
+            static_cast<double>(target->position[1]) + 0.9 - rayOrigin[1],
+            static_cast<double>(target->position[2]) - rayOrigin[2]
+        };
+        double along = 0.0;
+        double distanceSquared = 0.0;
+        for (std::size_t axis = 0U; axis < 3U; ++axis)
+        {
+            along += offset[axis] * rayDirection[axis];
+            distanceSquared += offset[axis] * offset[axis];
+        }
+        if (along <= 0.0 || along > maximumRangeMeters || along > nearestAlongRay)
+            continue;
+        const double perpendicularSquared = std::max(0.0, distanceSquared - along * along);
+        if (perpendicularSquared > radiusSquared)
+            continue;
+        if (selected.empty() || along < nearestAlongRay ||
+            (along == nearestAlongRay && entityId < selected))
+        {
+            selected = entityId;
+            nearestAlongRay = along;
+        }
+    }
+    outputEntityId = std::move(selected);
+    error.clear();
+    return true;
+}
+
 bool ApplyCombatMissionEvents(SimulationState& missionState,
     const combat::CombatSimulationState& combatState,
     const std::span<const combat::CombatCommand> commands,
