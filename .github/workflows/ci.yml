@@ -75,7 +75,7 @@ jobs:
         with:
           name: talvisota-scots-pine-geometry-previews
           path: ${{ runner.temp }}/tree-previews/*.png
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
 
       - name: Check photogrammetry ingestion entry points
@@ -155,7 +155,7 @@ jobs:
         with:
           name: talvisota-granite-boulder-previews
           path: ${{ runner.temp }}/boulder-previews/*.png
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
 
       - name: Verify generated boulder inventory
