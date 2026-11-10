@@ -311,6 +311,7 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
                     sourceMaterial.baseColor.z};
                 material.roughness = sourceMaterial.roughness;
                 material.metallic = sourceMaterial.metallic;
+                material.packedMetallicRoughness = sourceMaterial.packedMetallicRoughness;
                 if (!ResolveImportedTexture(sourceMaterial.diffuseTexture, sourceMaterial.embeddedDiffuseTexture, material.baseColorTexture, error) ||
                     !ResolveImportedTexture(sourceMaterial.normalTexture, sourceMaterial.embeddedNormalTexture, material.normalTexture, error) ||
                     !ResolveImportedTexture(sourceMaterial.roughnessTexture, sourceMaterial.embeddedRoughnessTexture, material.roughnessTexture, error) ||
