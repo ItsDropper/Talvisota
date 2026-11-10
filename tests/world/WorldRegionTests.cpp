@@ -813,6 +813,11 @@ void TestTaipaleRiverfrontWorldAndMissionLoad()
                     placement.position[0], placement.position[2], placement.position[1],
                     groundedY, groundingError) && std::isfinite(groundedY),
                 "Taipale landscape collision placement must resolve against terrain.");
+        const auto collision = std::find_if(region.collision.begin(), region.collision.end(),
+            [&collisionId](const auto& box) { return box.id == collisionId; });
+        Require(collision != region.collision.end() &&
+                std::abs((collision->center[1] - collision->halfExtents[1]) - groundedY) <= 0.002F,
+                "Taipale collision bottoms must align with their rendered ground placement.");
     }
     for (const std::string target : {
             "prop.taipale.watch_post", "prop.taipale.farmstead", "prop.taipale.command_hut"}) {
