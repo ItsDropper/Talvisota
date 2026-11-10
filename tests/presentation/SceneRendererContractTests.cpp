@@ -85,7 +85,10 @@ SceneSnapshot ValidScene()
     material.roughness = 0.7F;
     material.metallic = 0.1F;
     scene.materials.push_back(material);
-    scene.instances.push_back({0U, 0U});
+    RenderInstance instance;
+    instance.meshIndex=0U;
+    instance.materialIndex=0U;
+    scene.instances.push_back(instance);
     return scene;
 }
 }
