@@ -1662,7 +1662,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     bool dynamicWorldPersistenceEnabled=false;
     auto lastDynamicWorldSave=std::chrono::steady_clock::now();
     if(captureDir.empty() && talvisota::platform::ResolveUserPaths(worldUserPaths,error)) {
-        dynamicWorldSavePath=worldUserPaths.dataDirectory/"worlds"/"sakkola.state";
+        dynamicWorldSavePath=worldUserPaths.dataDirectory/"worlds"/(selectedWorldId+".state");
         if(dynamicWorld.Load(dynamicWorldSavePath,error)) {
             dynamicWorldPersistenceEnabled=true;
             std::cout<<"Sakkola dynamic world: "<<dynamicWorld.Objects().size()
@@ -1846,11 +1846,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         return 8;
     }
     talvisota::game::PlayerState missionStartPlayerState=playerState;
-    talvisota::content::AuthoredDefinition authoredMission;
-    if(!LoadMission(contentRoot,"mission.sakkola.first-patrol",authoredMission,error)) {
-        std::cerr<<error<<"\n";
-        renderer.reset(); DestroyWindow(window); if(ownsCom) CoUninitialize(); return 8;
-    }
     talvisota::gameplay::GameplayRules gameplayRules;
     talvisota::gameplay::SimulationState gameplayState;
     std::map<std::string,std::size_t,std::less<>> actorRenderInstances;
@@ -2370,7 +2365,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         if(dynamicWorldPersistenceEnabled) {
             if(now-lastDynamicWorldSave>=std::chrono::seconds(15)) {
                 if(!dynamicWorld.Save(dynamicWorldSavePath,error)) {
-                    std::cerr<<"Sakkola world-state save failed: "<<error<<"\\n";
+                    std::cerr<<"World-state save failed: "<<error<<"\\n";
                     break;
                 }
                 lastDynamicWorldSave=now;
@@ -2419,7 +2414,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     if(dynamicWorldPersistenceEnabled) {
         std::string saveError;
         if(!dynamicWorld.Save(dynamicWorldSavePath,saveError))
-            std::cerr<<"Final Sakkola world-state save failed: "<<saveError<<"\n";
+            std::cerr<<"Final world-state save failed: "<<saveError<<"\n";
     }
     renderer.reset(); frontendOverlay=nullptr; mainWindow=nullptr;
     if (IsWindow(window)) DestroyWindow(window);
