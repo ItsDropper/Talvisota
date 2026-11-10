@@ -210,7 +210,7 @@ bool LoadAuthoredDefinition(const std::filesystem::path& path, const ContentRegi
         Add(diagnostics, path, 0U, "header", "Definition is empty or has no version header.");
 
     static constexpr std::string_view common[] = {"id", "name", "description"};
-    static constexpr std::string_view mission[] = {"world_id", "region_id", "player_character_id", "faction_id"};
+    static constexpr std::string_view mission[] = {"world_id", "region_id", "player_character_id", "faction_id", "next_mission_id"};
     static constexpr std::string_view faction[] = {"side"};
     static constexpr std::string_view character[] = {"faction_id", "model_id", "portrait_texture_id"};
     static constexpr std::string_view equipment[] = {"category", "model_id", "icon_texture_id"};
@@ -257,6 +257,7 @@ bool LoadAuthoredDefinition(const std::filesystem::path& path, const ContentRegi
         if (const auto* value = required("region_id")) candidate.regionId = value->first;
         if (const auto* value = required("player_character_id")) candidate.characterId = value->first;
         if (const auto* value = Get(values, "faction_id")) candidate.factionId = value->first;
+        if (const auto* value = Get(values, "next_mission_id")) candidate.nextMissionId = value->first;
         if (missionObjectives.empty())
             Add(diagnostics, path, 0U, "objective", "Mission requires at least one ordered objective.");
         {
@@ -330,6 +331,9 @@ bool LoadAuthoredDefinition(const std::filesystem::path& path, const ContentRegi
         ValidateReference(candidate.factionId, AssetKind::Definition, ".tfaction", registry, owner,
                           path, Get(values, "faction_id") ? Get(values, "faction_id")->second : 0U,
                           "faction_id", diagnostics);
+        ValidateReference(candidate.nextMissionId, AssetKind::Definition, ".tmission", registry, owner,
+                          path, Get(values, "next_mission_id") ? Get(values, "next_mission_id")->second : 0U,
+                          "next_mission_id", diagnostics);
         break;
     case AuthoredDefinitionKind::Character:
         ValidateReference(candidate.factionId, AssetKind::Definition, ".tfaction", registry, owner,
