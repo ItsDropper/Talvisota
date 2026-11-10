@@ -66,7 +66,7 @@ std::wstring Utf8ToWide(const std::string_view value) {
     const int sourceLength=static_cast<int>(std::min<std::size_t>(value.size(),static_cast<std::size_t>(std::numeric_limits<int>::max())));
     const int required=MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,value.data(),sourceLength,nullptr,0);
     if(required<=0) return std::wstring(value.begin(),value.begin()+sourceLength);
-    std::wstring result(static_cast<std::size_t>(required),L'\\0');
+    std::wstring result(static_cast<std::size_t>(required),L'\0');
     if(MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,value.data(),sourceLength,result.data(),required)!=required)
         return std::wstring(value.begin(),value.begin()+sourceLength);
     return result;
@@ -274,7 +274,6 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     if(msg==WM_CLOSE) { DestroyWindow(hwnd); return 0; }
     if(msg==WM_DESTROY) { PostQuitMessage(0); return 0; }
     if(msg==WM_KILLFOCUS) { rawMouseDeltaX=0; rawMouseDeltaY=0; }
-    if(msg==WM_NCHITTEST && frontendState==FrontendState::Playing) return HTCLIENT;
     if(msg==WM_SETCURSOR && LOWORD(lp)==HTCLIENT) {
         SetCursor(frontendState==FrontendState::Playing?nullptr:LoadCursorW(nullptr,IDC_ARROW)); return TRUE;
     }
@@ -629,9 +628,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
         << "; capture mode: " << (captureRequested ? "enabled" : "disabled") << ".\n";
 
     std::filesystem::path contentRoot;
-    if(!ResolveContentRoot(instance,contentRoot,error)) {
-        std::cerr<<error<<"\\n";
-        if(captureLog) captureLog<<error<<"\\n";
+    std::string contentRootError;
+    if(!ResolveContentRoot(instance,contentRoot,contentRootError)) {
+        std::cerr<<contentRootError<<"\\n";
+        if(captureLog) captureLog<<contentRootError<<"\\n";
         if(ownsCom) CoUninitialize();
         return 2;
     }
