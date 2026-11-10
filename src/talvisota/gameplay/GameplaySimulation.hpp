@@ -64,6 +64,8 @@ struct ActiveObjectiveTarget final
 struct SimulationState final
 {
     entities::EntityRegistry entities;
+    // Mission-owned combat state advances alongside the same deterministic simulation.
+    combat::CombatSimulationState combat;
     // Set by authored-mission initialization; empty for generic test/simulation fixtures.
     std::string playerEntityId;
     missions::MissionState mission;
