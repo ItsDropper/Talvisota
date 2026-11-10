@@ -200,7 +200,8 @@ struct SubmeshBinding { std::uint32_t meshIndex; std::uint32_t materialIndex; };
 
 } // namespace
 
-bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
+bool BuildWorldScene(const std::filesystem::path& root, const std::string_view worldId,
+    const std::string_view regionId, SceneSnapshot& scene,
     std::vector<float>& instanceMaxDrawDistances,
     std::size_t& placementCount, std::size_t& drawCount,
     talvisota::world::WorldRegion& outputRegion, std::string& error) {
@@ -211,18 +212,30 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
         error = "Sakkola content manifest failed validation:\n" + FormatDiagnostics(contentDiagnostics);
         return false;
     }
+    const auto* worldAsset = registry.Find(worldId);
+    if (worldAsset == nullptr || worldAsset->kind != talvisota::content::AssetKind::Definition ||
+        worldAsset->relativePath.extension() != ".tworld") {
+        error = "World scene references an unregistered world definition: " + std::string(worldId);
+        return false;
+    }
     talvisota::content::WorldDefinition world;
     std::vector<talvisota::content::WorldDiagnostic> worldDiagnostics;
-    if (!talvisota::content::LoadWorldDefinition(root / "content/worlds/sakkola.tworld",
+    if (!talvisota::content::LoadWorldDefinition(root / worldAsset->relativePath,
             registry, world, worldDiagnostics)) {
-        error = "Sakkola world definition failed validation:\n" + FormatDiagnostics(worldDiagnostics);
+        error = "World definition failed validation:\n" + FormatDiagnostics(worldDiagnostics);
+        return false;
+    }
+    const auto* regionAsset = registry.Find(regionId);
+    if (regionAsset == nullptr || regionAsset->kind != talvisota::content::AssetKind::Definition ||
+        regionAsset->relativePath.extension() != ".tregion") {
+        error = "World scene references an unregistered region definition: " + std::string(regionId);
         return false;
     }
     talvisota::world::WorldRegion region;
     std::vector<talvisota::world::WorldRegionDiagnostic> regionDiagnostics;
-    if (!talvisota::world::LoadWorldRegion(root / "content/worlds/sakkola-church-village.tregion",
+    if (!talvisota::world::LoadWorldRegion(root / regionAsset->relativePath,
             registry, world, region, regionDiagnostics)) {
-        error = "Sakkola region failed validation:\n" + FormatDiagnostics(regionDiagnostics);
+        error = "World region failed validation:\n" + FormatDiagnostics(regionDiagnostics);
         return false;
     }
 
@@ -342,7 +355,7 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
                         return false;
                 }
 
-                if (placement.modelAssetId == "model.terrain.sakkola" && sourceMaterial.name == "snow") {
+                if (placement.modelAssetId == world.terrainModelId && sourceMaterial.name == "snow") {
                     material.terrain = true;
                     material.snowSurface = true;
                     if (!RefineSnowTerrain(mesh, region, error)) {
@@ -383,8 +396,9 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
         // translate the entire road network vertically (the roads placement is
         // intentionally at the world origin).
         const bool worldSpaceGeometry =
-            placement.modelAssetId == "model.terrain.sakkola" ||
+            placement.modelAssetId == world.terrainModelId ||
             placement.modelAssetId == "model.environment.suvanto_ice" ||
+            placement.modelAssetId == "model.environment.taipale_ice" ||
             placement.modelAssetId == "model.environment.sakkola_roads";
         if (!worldSpaceGeometry) {
             float groundedY = placement.position[1];
@@ -440,7 +454,7 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
         }
     }
     if (placementCount == 0U || scene.meshes.empty() || scene.materials.empty() || scene.instances.empty()) {
-        error = "Sakkola scene import produced no renderable world content.";
+        error = "World scene import produced no renderable world content.";
         return false;
     }
     if (world.hasEnvironment) {
@@ -490,3 +504,12 @@ bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
 
 
 } // namespace talvisota::presentation
+
+bool BuildSakkolaScene(const std::filesystem::path& root, SceneSnapshot& scene,
+    std::vector<float>& instanceMaxDrawDistances,
+    std::size_t& placementCount, std::size_t& drawCount,
+    talvisota::world::WorldRegion& outputRegion, std::string& error)
+{
+    return BuildWorldScene(root, "world.sakkola", "region.sakkola.church_village",
+        scene, instanceMaxDrawDistances, placementCount, drawCount, outputRegion, error);
+}
