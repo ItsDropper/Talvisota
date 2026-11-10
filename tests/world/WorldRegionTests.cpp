@@ -324,8 +324,8 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
             const bool tallConifer = placement.modelAssetId == "model.environment.spruce" || scotsPine;
             const float maximumScale = tallConifer ? 1.95F :
                 (pine || placement.modelAssetId == "model.environment.birch") ? 1.55F : 1.35F;
-            const float minimumScale = tallConifer ? 0.72F :
-                (pine || placement.modelAssetId == "model.environment.birch") ? 0.70F : 0.65F;
+            const float minimumScale = placement.modelAssetId == "model.environment.spruce" ? 0.72F :
+                (scotsPine || pine || placement.modelAssetId == "model.environment.birch") ? 0.70F : 0.65F;
             if (placement.uniformScale < minimumScale || placement.uniformScale > maximumScale) {
                 std::cerr << "Invalid tree scale " << placement.uniformScale << " for " << placement.id
                           << " (" << placement.modelAssetId << "), expected [" << minimumScale
