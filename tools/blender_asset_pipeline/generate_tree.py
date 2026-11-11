@@ -639,9 +639,9 @@ def main():
             "vertices": vertex_count,
             "triangles": triangle_count,
             "objects": len(objects),
-            "branchlets_per_secondary": branchlets_per_secondary,
-            "sprays_per_branchlet": sprays_per_branchlet,
-            "needle_pairs_per_spray": needle_pairs_per_spray,
+            "branchlets_per_secondary": preset["branchlets_per_secondary"],
+            "sprays_per_branchlet": preset["sprays_per_branchlet"],
+            "needle_pairs_per_spray": preset["needle_pairs_per_spray"],
             "screen_coverage_hint": {"LOD0": 0.35, "LOD1": 0.12, "LOD2": 0.035, "LOD3": 0.0}[lod_name],
         }
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection
