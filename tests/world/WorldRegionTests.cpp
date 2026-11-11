@@ -487,14 +487,22 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
             const float terrainBaseHeight =
                 region.terrain.elevations[row * region.terrain.columns + column];
             const float terrainMeshHeight = terrainBaseHeight + displacement;
-            const auto waterSurfaceAtSample = std::find_if(region.waterSurfaces.begin(),
-                region.waterSurfaces.end(), [sampleX, sampleZ](const auto& surface)
+            // Match FindWaterSurfaceAt's upper_bound semantics at shared strip
+            // boundaries: an exact X boundary belongs to the segment on its right.
+            const auto afterWaterSurface = std::upper_bound(
+                region.waterSurfaces.begin(), region.waterSurfaces.end(), sampleX,
+                [](const float coordinate, const auto& surface)
                 {
-                    return sampleX >= surface.minX && sampleX <= surface.maxX &&
-                           sampleZ >= surface.minZ && sampleZ <= surface.maxZ;
+                    return coordinate < surface.minX;
                 });
-            const float expectedSampledHeight = waterSurfaceAtSample == region.waterSurfaces.end()
-                ? terrainMeshHeight : waterSurfaceAtSample->elevation;
+            const auto waterSurfaceAtSample = afterWaterSurface == region.waterSurfaces.begin()
+                ? region.waterSurfaces.end() : afterWaterSurface - 1;
+            const bool sampleIsOnIce = waterSurfaceAtSample != region.waterSurfaces.end() &&
+                sampleX <= waterSurfaceAtSample->maxX &&
+                sampleZ >= waterSurfaceAtSample->minZ &&
+                sampleZ <= waterSurfaceAtSample->maxZ;
+            const float expectedSampledHeight = sampleIsOnIce
+                ? waterSurfaceAtSample->elevation : terrainMeshHeight;
             Require(std::abs(terrainBaseHeight - y) <= 1.0e-4F &&
                     std::abs(sampledHeight - expectedSampledHeight) <= 1.0e-4F &&
                     std::abs(x - sampleX) <= 0.001F &&
