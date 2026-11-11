@@ -177,13 +177,16 @@ bool ResolveAsset(const content::ContentRegistry& registry, const content::Asset
 
 const WaterSurface* FindWaterSurfaceAt(const WorldRegion& region, const float x, const float z) noexcept
 {
-    const auto surface = std::find_if(region.waterSurfaces.begin(), region.waterSurfaces.end(),
-        [=](const WaterSurface& candidate)
-        {
-            return x >= candidate.minX && x <= candidate.maxX &&
-                   z >= candidate.minZ && z <= candidate.maxZ;
+    // Water segments are sorted and non-overlapping along X during region loading.
+    // Binary search keeps terrain sampling O(log n) even for finely segmented shores.
+    const auto after = std::upper_bound(region.waterSurfaces.begin(), region.waterSurfaces.end(), x,
+        [](const float coordinate, const WaterSurface& candidate) {
+            return coordinate < candidate.minX;
         });
-    return surface == region.waterSurfaces.end() ? nullptr : &*surface;
+    if (after == region.waterSurfaces.begin()) return nullptr;
+    const auto& candidate = *std::prev(after);
+    return x <= candidate.maxX && z >= candidate.minZ && z <= candidate.maxZ
+        ? &candidate : nullptr;
 }
 } // namespace
 
@@ -720,6 +723,15 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
                 break;
             }
     }
+    std::sort(candidate.waterSurfaces.begin(), candidate.waterSurfaces.end(),
+        [](const WaterSurface& left, const WaterSurface& right) {
+            return left.minX < right.minX;
+        });
+    for (std::size_t i = 1U; i < candidate.waterSurfaces.size(); ++i)
+        if (candidate.waterSurfaces[i - 1U].maxX > candidate.waterSurfaces[i].minX + 1.0e-4F)
+            Add(diagnostics, path, 0, "water_surface.overlap",
+                "Water surface X intervals must not overlap; split crossing water bodies into separate regions.");
+
     for (const auto& node : candidate.navigationNodes)
         if (!Inside(node.position, candidate.boundsMin, candidate.boundsMax))
             Add(diagnostics, path, 0, "nav_node.position", "Navigation node must lie inside region bounds.");
