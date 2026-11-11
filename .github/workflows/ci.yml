@@ -114,7 +114,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: talvisota-scots-pine-runtime-model
-          path: ${{ runner.temp }}/generated-trees/scots_pine_lod*.glb
+          path: |
+            ${{ runner.temp }}/generated-trees/scots_pine_lod*.glb
+            ${{ runner.temp }}/generated-trees/scots_pine.asset.json
           if-no-files-found: error
           retention-days: 7
 

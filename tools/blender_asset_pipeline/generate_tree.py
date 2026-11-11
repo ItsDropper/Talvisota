@@ -31,10 +31,18 @@ TREE_RADIUS = 6.0
 # Mature, open-grown Scots pine proportions. The lower bole remains visible;
 # crown width peaks below mid-height and contracts into an irregular upper crown.
 LOD_PRESETS = {
-    "LOD0": {"whorls": 7, "primary": 3, "secondary": 4, "tertiary": 3, "needle_clusters": 3, "sides": 5},
-    "LOD1": {"whorls": 6, "primary": 3, "secondary": 3, "tertiary": 3, "needle_clusters": 2, "sides": 5},
-    "LOD2": {"whorls": 5, "primary": 3, "secondary": 3, "tertiary": 2, "needle_clusters": 1, "sides": 4},
-    "LOD3": {"whorls": 3, "primary": 2, "secondary": 2, "tertiary": 2, "needle_clusters": 1, "sides": 4},
+    "LOD0": {"whorls": 7, "primary": 3, "secondary": 4, "tertiary": 3,
+             "branchlets_per_secondary": 10, "sprays_per_branchlet": 8,
+             "needle_pairs_per_spray": 8, "sides": 5},
+    "LOD1": {"whorls": 6, "primary": 3, "secondary": 3, "tertiary": 3,
+             "branchlets_per_secondary": 9, "sprays_per_branchlet": 7,
+             "needle_pairs_per_spray": 6, "sides": 5},
+    "LOD2": {"whorls": 5, "primary": 3, "secondary": 2, "tertiary": 2,
+             "branchlets_per_secondary": 6, "sprays_per_branchlet": 5,
+             "needle_pairs_per_spray": 3, "sides": 4},
+    "LOD3": {"whorls": 4, "primary": 2, "secondary": 1, "tertiary": 1,
+             "branchlets_per_secondary": 4, "sprays_per_branchlet": 3,
+             "needle_pairs_per_spray": 3, "sides": 4},
 }
 
 
@@ -341,7 +349,9 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
     primary_count = preset["primary"]
     secondary_count = preset["secondary"]
     tertiary_count = preset["tertiary"]
-    needle_clusters = preset["needle_clusters"]
+    branchlets_per_secondary = preset["branchlets_per_secondary"]
+    sprays_per_branchlet = preset["sprays_per_branchlet"]
+    needle_pairs_per_spray = preset["needle_pairs_per_spray"]
     sides = preset["sides"]
 
     # Mature pine: a substantial clear lower bole, with a broad crown above it.
@@ -435,7 +445,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                 # distributed along the secondary limbs. A pine branch is not a
                 # bare stick ending in a pom-pom: its outer framework is covered
                 # in overlapping sprays from branchlets all along its length.
-                branchlet_count = 7 + needle_clusters
+                branchlet_count = branchlets_per_secondary
                 for branchlet_index in range(branchlet_count):
                     branchlet_t = 0.10 + 0.80 * (
                         (branchlet_index + rng.uniform(0.18, 0.82)) / branchlet_count)
@@ -479,7 +489,6 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                     # Fascicles are spaced along the branchlet, not stacked at
                     # its endpoint. Adjacent branchlets overlap to form a
                     # continuous, irregular needle-bearing crown surface.
-                    sprays_per_branchlet = 5 + needle_clusters
                     for spray_index in range(sprays_per_branchlet):
                         spray_t = 0.12 + 0.78 * (
                             (spray_index + rng.uniform(0.16, 0.84)) /
@@ -492,7 +501,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                         ).normalized()
                         add_needle_spray(
                             foliage, spray_origin, spray_axis, rng,
-                            pairs=max(4, needle_clusters * 2 + 2))
+                            pairs=needle_pairs_per_spray)
 
                 # Retain a smaller number of terminal leaders to break up the
                 # silhouette; they supplement the distributed foliage rather
@@ -528,7 +537,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                         spray_origin = twig_origin.lerp(twig_tip, spray_t)
                         add_needle_spray(
                             foliage, spray_origin, twig_direction, rng,
-                            pairs=max(4, needle_clusters * 2 + 2))
+                            pairs=needle_pairs_per_spray)
 
             # Sparse snow accents sit on upper scaffold sections only.
             if fraction > 0.56 and rng.random() < 0.38:
@@ -605,7 +614,7 @@ def main():
             "lower_bole": {"material": "Scots Pine | Lower grey-brown plated bark", "height_fraction": [0.0, 0.58]},
             "upper_trunk_and_scaffold": {"material": "Scots Pine | Upper orange-yellow smooth bark", "height_fraction": [0.58, 1.0]},
         },
-        "geometry_note": "Mature Scots pine with substantial primary and secondary boughs. Foliage is carried by dense, overlapping needle sprays distributed along many lateral branchlets throughout each secondary limb, with sparse terminal leaders. Paired, curved tapered blade needles are 30-36 cm long and 50-70 mm wide at their bases as a deliberate game-readability exaggeration. LOD2 uses a reduced fascicle count to remain within its triangle budget. Deterministic structural asset, not a photogrammetry scan.",
+        "geometry_note": "Mature Scots pine with substantial primary and secondary boughs. Foliage is carried by overlapping needle sprays distributed along lateral branchlets throughout each secondary limb, with sparse terminal leaders. Paired, curved tapered blade needles are 30-36 cm long and 50-70 mm wide at their bases as a deliberate game-readability exaggeration. LOD0 and LOD1 retain the full close/mid crown structure; LOD2 and LOD3 explicitly reduce secondary-branch, branchlet, spray, and paired-needle density while retaining the authored trunk height and broad-crown growth form. Deterministic structural asset, not a photogrammetry scan.",
         "runtime_note": "Select LOD by projected screen size/distance in Talvisota; files are separate because glTF core has no universal LOD selector.",
     }
     manifest["material_map_status"] = MATERIAL_MAP_STATUS
@@ -630,6 +639,9 @@ def main():
             "vertices": vertex_count,
             "triangles": triangle_count,
             "objects": len(objects),
+            "branchlets_per_secondary": branchlets_per_secondary,
+            "sprays_per_branchlet": sprays_per_branchlet,
+            "needle_pairs_per_spray": needle_pairs_per_spray,
             "screen_coverage_hint": {"LOD0": 0.35, "LOD1": 0.12, "LOD2": 0.035, "LOD3": 0.0}[lod_name],
         }
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection

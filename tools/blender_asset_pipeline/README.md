@@ -118,14 +118,16 @@ path for close-up hero assets when the captured source quality supports it.
 - Each tree LOD is consolidated into no more than three material-grouped mesh
   objects. This avoids per-twig draw calls while retaining separate material
   surfaces.
-- LOD0/1/2/3 progressively reduce scaffold density, secondary/tertiary
-  branching and needle sprays. Individual needles are tapered blade strips,
-  not capped cylinders; this reduces foliage triangles while retaining their
-  paired silhouette. The LOD0 primary scaffold uses five-sided tubes rather
-  than six-sided tubes to keep its branch silhouette while meeting the close-up
-  geometry budget. The verifier enforces budgets of 700k / 300k / 150k / 50k
-  triangles for LOD0 through LOD3. LOD0 is the close-up hero asset; use lower
-  LODs for progressively smaller screen coverage.
+- LOD0 and LOD1 retain the full close/mid scaffold and needle density.
+  LOD2 and LOD3 explicitly reduce secondary limbs, branchlets per limb, sprays
+  per branchlet and paired needles per spray; the far LOD therefore retains the
+  broad-crowned growth form without carrying close-range fascicle geometry.
+  Individual needles remain curved tapered blade strips, not capped cylinders.
+  The LOD0 primary scaffold uses five-sided tubes to retain its branch silhouette.
+  The verifier enforces total budgets of 750k / 300k / 90k / 12k triangles and
+  separate needle-density floors/ceilings of 100k–500k / 34k–180k /
+  10k–25k / 2.5k–6k for LOD0 through LOD3. LOD0 is the close-up hero asset;
+  lower LODs serve progressively smaller screen coverage.
 - The forest must instance individual tree assets at the scene/runtime layer;
   do not merge the entire forest into one world-sized mesh, which destroys
   useful frustum/occlusion-culling granularity.

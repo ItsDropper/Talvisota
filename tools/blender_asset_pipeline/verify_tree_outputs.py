@@ -41,7 +41,7 @@ def main():
         if header[:4] != b"glTF":
             fail(lod_name + " does not have a GLB header")
         triangle_limits = {"LOD0": 750_000, "LOD1": 300_000,
-                           "LOD2": 150_000, "LOD3": 50_000}
+                           "LOD2": 90_000, "LOD3": 12_000}
         if lod["triangles"] > triangle_limits[lod_name]:
             fail(lod_name + " exceeds its triangle budget: " + str(lod["triangles"]) +
                  " > " + str(triangle_limits[lod_name]))
@@ -82,10 +82,29 @@ def main():
             and "Needles" in obj.data.materials[polygon.material_index].name
         )
         minimum_needle_triangles = {"LOD0": 100_000, "LOD1": 34_000,
-                                    "LOD2": 14_000, "LOD3": 3_000}[lod_name]
+                                    "LOD2": 10_000, "LOD3": 2_500}[lod_name]
         if needle_triangles < minimum_needle_triangles:
             fail(lod_name + " needle geometry is under-dense: " +
                  str(needle_triangles) + " < " + str(minimum_needle_triangles))
+        maximum_needle_triangles = {"LOD0": 500_000, "LOD1": 180_000,
+                                    "LOD2": 25_000, "LOD3": 6_000}
+        if needle_triangles > maximum_needle_triangles[lod_name]:
+            fail(lod_name + " needle geometry exceeds its density budget: " +
+                 str(needle_triangles) + " > " + str(maximum_needle_triangles[lod_name]))
+        expected_density = {
+            "LOD0": (10, 8, 8),
+            "LOD1": (9, 7, 6),
+            "LOD2": (6, 5, 3),
+            "LOD3": (4, 3, 3),
+        }[lod_name]
+        actual_density = (
+            lod.get("branchlets_per_secondary"),
+            lod.get("sprays_per_branchlet"),
+            lod.get("needle_pairs_per_spray"),
+        )
+        if actual_density != expected_density:
+            fail(lod_name + " has unexpected foliage-density metadata: " +
+                 str(actual_density) + " != " + str(expected_density))
         print("VERIFIED", lod_name, "meshes=", len(meshes),
               "triangles=", sum(len(p.vertices) - 2 for obj in meshes for p in obj.data.polygons),
               "needle_triangles=", needle_triangles)
