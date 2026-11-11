@@ -554,6 +554,11 @@ bool BuildWorldScene(const std::filesystem::path& root, const std::string_view w
                     material.roughness=sourceMaterial.roughness;
                     material.metallic=sourceMaterial.metallic;
                     material.packedMetallicRoughness=sourceMaterial.packedMetallicRoughness;
+                    // Imported frozen-water sheets are open, single-sided surfaces. Their
+                    // authored winding differs between the two regional meshes and the
+                    // renderer's single-sided PSO can reject the visible face from above.
+                    // Ice must remain visible from either bank and from elevated capture views.
+                    if(sourceMaterial.name=="frozen_ice")material.doubleSided=true;
                     if(!ResolveImportedTexture(sourceMaterial.diffuseTexture,sourceMaterial.embeddedDiffuseTexture,material.baseColorTexture,error)||
                         !ResolveImportedTexture(sourceMaterial.normalTexture,sourceMaterial.embeddedNormalTexture,material.normalTexture,error)||
                         !ResolveImportedTexture(sourceMaterial.roughnessTexture,sourceMaterial.embeddedRoughnessTexture,material.roughnessTexture,error)||
