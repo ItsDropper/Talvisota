@@ -1,4 +1,5 @@
 #include "talvisota/presentation/SakkolaSceneBuilder.hpp"
+#include "talvisota/presentation/EnvironmentLodPolicy.hpp"
 #include "talvisota/presentation/MaterialRenderBridge.hpp"
 #include "talvisota/content/ContentRegistry.hpp"
 #include "talvisota/content/MaterialDefinition.hpp"
@@ -418,10 +419,10 @@ struct ModelBindings { std::vector<ModelLodBindings> lods; std::array<float,3> r
 std::vector<ModelLodSource> GetModelLodSources(const std::string_view modelAssetId)
 {
     if(modelAssetId=="model.environment.scots_pine") return {
-        {std::string(modelAssetId),0.35F,false},
-        {"model.environment.scots_pine_lod1",0.12F,true},
-        {"model.environment.scots_pine_lod2",0.035F,true},
-        {"model.environment.scots_pine_lod3",0.0F,true}};
+        {std::string(modelAssetId),ScotsPineMinimumScreenCoverage[0U],false},
+        {"model.environment.scots_pine_lod1",ScotsPineMinimumScreenCoverage[1U],true},
+        {"model.environment.scots_pine_lod2",ScotsPineMinimumScreenCoverage[2U],true},
+        {"model.environment.scots_pine_lod3",ScotsPineMinimumScreenCoverage[3U],true}};
     if(modelAssetId=="model.environment.boulder") return {
         {std::string(modelAssetId),0.30F,false},
         {"model.environment.boulder_lod1",0.10F,true},

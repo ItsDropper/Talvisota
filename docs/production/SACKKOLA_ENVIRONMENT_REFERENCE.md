@@ -67,6 +67,11 @@ All newly authored OBJ and MTL content in this region is original project conten
 The current 3,094-tree regional composition includes the deterministic 120-tree mature-canopy pass generated with seed `0x5A4B2026`. Its stands are concentrated in the western and eastern woodland belts and the northern tree line rather than uniformly filling village fields or the frozen lake. Candidate placement rejects steep sampled terrain, existing tree spacing below 9 m, building clearances below 14 m, prop clearances below 7 m, and authored navigation corridors below 7 m. The mature layer targets approximately 11–19 m tree heights and has independently aligned trunk collision volumes. These are authored environmental-art distributions, not claims about surveyed 1939 tree locations.
 
 
+### Scots pine screen-space LOD calibration
+
+The mature Scots pine uses the shared EnvironmentLodPolicy.hpp screen-coverage thresholds [0.75, 0.40, 0.18, 0.0] for LOD0 through LOD3. Coverage is the authored LOD0 bound radius divided by camera distance and the tangent of half the vertical field of view; it is not a fixed world-distance switch. Full-detail geometry is therefore reserved for trees that occupy a substantial portion of the image, while distant crowns retain their authored silhouette through the lower-detail meshes. The contract test exercises both sides of every threshold. The thresholds are a performance policy, not evidence of a measured frame-rate gain; the repeatable D3D12 capture logs remain the source for per-view submitted-triangle comparisons.
+
+
 ### World-authored winter lighting and weather parameters
 
 `content/worlds/sakkola.tworld` now carries the first Sakkola winter presentation profile. Its normalized low-angle sun vector is `(-0.45, 0.28, -0.85)`, with a warm linear sun color and intensity of 2.4. Ambient sky color is `(0.32, 0.42, 0.56)` at 0.9 intensity. Atmospheric fog uses a muted blue-gray color `(0.50, 0.59, 0.68)`, density 0.0014, and a 75 m start distance. This reduces atmospheric blending at village and forest viewing distances while retaining a light winter haze. Wind direction is normalized `(0.914, 0.406)` with strength 0.06. These values are art-direction starting points for a winter scene, not meteorological measurements for a particular 1939 date.

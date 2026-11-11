@@ -1,4 +1,5 @@
 #include "talvisota/presentation/SceneRenderer.hpp"
+#include "talvisota/presentation/EnvironmentLodPolicy.hpp"
 #include "talvisota/presentation/MaterialRenderBridge.hpp"
 #include "talvisota/content/ContentRegistry.hpp"
 #include "talvisota/content/MaterialDefinition.hpp"
@@ -305,19 +306,24 @@ int main()
     }
     lodScene.instances[0].lodCount = 4U;
     lodScene.instances[0].lodReferenceRadius = 1.0F;
-    lodScene.instances[0].lodVariants[0] = {0U, 0U, 0.35F};
-    lodScene.instances[0].lodVariants[1] = {1U, 1U, 0.12F};
-    lodScene.instances[0].lodVariants[2] = {2U, 2U, 0.035F};
-    lodScene.instances[0].lodVariants[3] = {3U, 3U, 0.0F};
+    for (std::size_t index = 0U; index < ScotsPineMinimumScreenCoverage.size(); ++index) {
+        lodScene.instances[0].lodVariants[index] = {
+            static_cast<std::uint32_t>(index), static_cast<std::uint32_t>(index),
+            ScotsPineMinimumScreenCoverage[index]};
+    }
     Require(ValidateSceneSnapshot(lodScene, error));
     std::size_t selectedLod = 99U;
-    Require(SelectRenderLod(lodScene.instances[0], 0.35F, selectedLod));
+    Require(SelectRenderLod(lodScene.instances[0], 0.75F, selectedLod));
     Require(selectedLod == 0U && lodScene.instances[0].meshIndex == 0U);
-    Require(SelectRenderLod(lodScene.instances[0], 0.20F, selectedLod));
+    Require(SelectRenderLod(lodScene.instances[0], 0.74F, selectedLod));
     Require(selectedLod == 1U && lodScene.instances[0].meshIndex == 1U);
-    Require(SelectRenderLod(lodScene.instances[0], 0.05F, selectedLod));
+    Require(SelectRenderLod(lodScene.instances[0], 0.40F, selectedLod));
+    Require(selectedLod == 1U && lodScene.instances[0].meshIndex == 1U);
+    Require(SelectRenderLod(lodScene.instances[0], 0.39F, selectedLod));
     Require(selectedLod == 2U && lodScene.instances[0].meshIndex == 2U);
-    Require(SelectRenderLod(lodScene.instances[0], 0.01F, selectedLod));
+    Require(SelectRenderLod(lodScene.instances[0], 0.18F, selectedLod));
+    Require(selectedLod == 2U && lodScene.instances[0].meshIndex == 2U);
+    Require(SelectRenderLod(lodScene.instances[0], 0.17F, selectedLod));
     Require(selectedLod == 3U && lodScene.instances[0].meshIndex == 3U);
     SceneSnapshot invalidLodOrder = lodScene;
     invalidLodOrder.instances[0].lodVariants[1].minimumScreenCoverage = 0.40F;
