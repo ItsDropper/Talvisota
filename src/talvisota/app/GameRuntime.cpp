@@ -1354,9 +1354,9 @@ constexpr std::array<CaptureView, 7> TaipaleViews = {{
     {L"02-taipale-river-bend.png", {-330.0F, 112.0F, 850.0F}, {-120.0F, 4.0F, 620.0F}},
     {L"03-taipale-frozen-river.png", {30.0F, 105.0F, 790.0F}, {0.0F, 4.0F, 590.0F}},
     {L"04-taipale-forest.png", {1400.0F, 16.0F, 1400.0F}, {1500.0F, 6.0F, 1150.0F}, false},
-    {L"05-taipale-farmstead.png", {790.0F, 10.0F, -450.0F}, {720.0F, 5.0F, -560.0F}, false},
-    {L"06-taipale-watch-post.png", {-1240.0F, 12.0F, 1150.0F}, {-1120.0F, 5.0F, 1040.0F}, false},
-    {L"07-taipale-command-hut.png", {1440.0F, 12.0F, -1290.0F}, {1360.0F, 5.0F, -1160.0F}, false}
+    {L"05-taipale-farmstead.png", {755.0F, 8.0F, -500.0F}, {720.0F, 4.5F, -560.0F}, false},
+    {L"06-taipale-watch-post.png", {-1160.0F, 8.0F, 1080.0F}, {-1120.0F, 4.5F, 1040.0F}, false},
+    {L"07-taipale-command-hut.png", {1400.0F, 8.0F, -1200.0F}, {1360.0F, 4.5F, -1160.0F}, false}
 }};
 }
 
