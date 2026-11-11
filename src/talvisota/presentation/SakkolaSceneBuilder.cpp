@@ -687,19 +687,27 @@ bool BuildWorldScene(const std::filesystem::path& root, const std::string_view w
                 }
             }
             instance.world=transform;instance.placementId=placement.id;scene.instances.push_back(instance);
-            // World-space terrain, ice and roads retain their extended draw distance.
+            // The riverfront is a 4 km landscape. A 280 m vegetation cap removes
+            // the entire opposite-bank tree line from overview cameras and makes the
+            // open terrain look unpopulated. Keep the denser Sakkola village conservative.
+            const bool riverfrontRegion = region.id == "region.taipale.riverfront";
             float maxDrawDistance=1200.0F;
             if(placement.modelAssetId==world.terrainModelId||
                 placement.modelAssetId=="model.environment.suvanto_ice"||
                 placement.modelAssetId=="model.environment.taipale_ice"||
                 placement.modelAssetId=="model.environment.sakkola_roads")maxDrawDistance=6000.0F;
-            else if(placement.modelAssetId=="model.environment.juniper"||
-                placement.modelAssetId=="model.environment.winter_brush")maxDrawDistance=280.0F;
+            else if(placement.modelAssetId=="model.environment.juniper")
+                maxDrawDistance=riverfrontRegion?900.0F:350.0F;
+            else if(placement.modelAssetId=="model.environment.winter_brush")
+                maxDrawDistance=riverfrontRegion?600.0F:300.0F;
             else switch(placement.category) {
-            case talvisota::world::PlacementCategory::Vegetation:maxDrawDistance=280.0F;break;
-            case talvisota::world::PlacementCategory::Prop:maxDrawDistance=600.0F;break;
-            case talvisota::world::PlacementCategory::Rock:maxDrawDistance=720.0F;break;
-            case talvisota::world::PlacementCategory::Structure:maxDrawDistance=1200.0F;break;
+            case talvisota::world::PlacementCategory::Vegetation:
+                maxDrawDistance=riverfrontRegion?1400.0F:450.0F;break;
+            case talvisota::world::PlacementCategory::Prop:
+                maxDrawDistance=riverfrontRegion?900.0F:650.0F;break;
+            case talvisota::world::PlacementCategory::Rock:
+                maxDrawDistance=riverfrontRegion?1000.0F:800.0F;break;
+            case talvisota::world::PlacementCategory::Structure:maxDrawDistance=1600.0F;break;
             case talvisota::world::PlacementCategory::Terrain:maxDrawDistance=1200.0F;break;
             }
             instanceMaxDrawDistances.push_back(maxDrawDistance);
