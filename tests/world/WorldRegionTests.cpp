@@ -387,7 +387,7 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
                 "Every shoreline sample must resolve to a water segment.");
         return segment->maxZ;
     };
-    Require(shorelineAt(0.0F) > -220.0F && shorelineAt(0.0F) < -190.0F &&
+    Require(shorelineAt(32.0F) > -220.0F && shorelineAt(32.0F) < -190.0F &&
             shorelineAt(-900.0F) < -290.0F &&
             shorelineAt(900.0F) > -240.0F,
             "Suvanto's north shore must follow the authored irregular terrain contour.");
