@@ -41,25 +41,98 @@ float TerrainFbm(const float x, const float z) noexcept {
     }
     return total / normalization;
 }
-float SnowDriftDisplacement(const float x, const float z) noexcept {
-    // Multi-scale glacial moraine relief, wind-sculpted snow banks, and fine
-    // granular drift. Domain warping avoids the smooth, repeated noise look.
-    // Keep the domain warp itself below the terrain mesh's representable band.
-    // The four-octave FBM multiplies its input frequency by 2.03 per octave;
-    // 0.0018 * 2.03^3 = 0.0151 cycles/m, below the ~0.0304 cycles/m
-    // conservative Nyquist limit of the refined mesh's 16.45 m longest edge.
-    const float warpX = TerrainValueNoise(x*0.0012F+17.3F,z*0.0012F-8.1F)-0.5F;
-    const float warpZ = TerrainValueNoise(x*0.0012F-31.7F,z*0.0012F+22.9F)-0.5F;
-    // Preserve broad glacial relief and wind-shaped moraine shoulders in geometry.
-    // Frequencies above this band belong in tiled PBR detail, not vertex displacement:
-    // the terrain importer expands triangle corners, limiting safe refinement.
-    const float broad = TerrainFbm((x+warpX*68.0F)*0.0012F,(z+warpZ*68.0F)*0.0012F);
-    const float ridgeField = TerrainFbm((x+warpZ*24.0F)*0.0015F-41.0F,(z+warpX*24.0F)*0.0015F+23.0F);
-    const float ridges = 1.0F-std::abs(2.0F*ridgeField-1.0F);
-    const float drift = TerrainFbm((x+warpX*8.0F)*0.0018F+9.1F,(z+warpZ*8.0F)*0.0018F-13.7F);
-    const float granular = TerrainFbm(x*0.0018F+4.7F,z*0.0018F+18.2F);
-    return (broad-0.5F)*5.2F+(ridges-0.5F)*1.55F+
-        (drift-0.5F)*0.72F+(granular-0.5F)*0.20F;
+bool SampleBaseTerrainGradient(const WorldRegion& region, const float x, const float z,
+    float& derivativeX, float& derivativeZ) noexcept
+{
+    const auto& terrain = region.terrain;
+    if (!std::isfinite(x) || !std::isfinite(z) ||
+        terrain.rows < 2U || terrain.columns < 2U ||
+        terrain.elevations.size() != terrain.rows * terrain.columns ||
+        !std::isfinite(terrain.originX) || !std::isfinite(terrain.originZ) ||
+        !std::isfinite(terrain.spacingX) || !std::isfinite(terrain.spacingZ) ||
+        terrain.spacingX <= 0.0F || terrain.spacingZ <= 0.0F)
+        return false;
+
+    const double gridX = (static_cast<double>(x) - terrain.originX) / terrain.spacingX;
+    const double gridZ = (static_cast<double>(z) - terrain.originZ) / terrain.spacingZ;
+    if (gridX < 0.0 || gridZ < 0.0 ||
+        gridX > static_cast<double>(terrain.columns - 1U) ||
+        gridZ > static_cast<double>(terrain.rows - 1U))
+        return false;
+
+    const std::size_t x0 = std::min(static_cast<std::size_t>(gridX), terrain.columns - 2U);
+    const std::size_t z0 = std::min(static_cast<std::size_t>(gridZ), terrain.rows - 2U);
+    const double tx = gridX - static_cast<double>(x0);
+    const double tz = gridZ - static_cast<double>(z0);
+    const auto at = [&](const std::size_t row, const std::size_t column) {
+        return static_cast<double>(terrain.elevations[row * terrain.columns + column]);
+    };
+    const double h00 = at(z0, x0);
+    const double h10 = at(z0, x0 + 1U);
+    const double h01 = at(z0 + 1U, x0);
+    const double h11 = at(z0 + 1U, x0 + 1U);
+    if (!std::isfinite(h00) || !std::isfinite(h10) ||
+        !std::isfinite(h01) || !std::isfinite(h11))
+        return false;
+
+    const double dx = ((h10 - h00) * (1.0 - tz) + (h11 - h01) * tz) / terrain.spacingX;
+    const double dz = ((h01 - h00) * (1.0 - tx) + (h11 - h10) * tx) / terrain.spacingZ;
+    if (!std::isfinite(dx) || !std::isfinite(dz))
+        return false;
+    derivativeX = static_cast<float>(dx);
+    derivativeZ = static_cast<float>(dz);
+    return true;
+}
+
+float SnowDriftDisplacement(const WorldRegion& region, const float x, const float z,
+    const float slopeX, const float slopeZ) noexcept
+{
+    // 0.06 is the authored reference wind strength; the snow response doubles at
+    // 0.12 and then saturates so unusually strong weather cannot create unstable terrain.
+    constexpr float referenceWindStrength = 0.06F;
+    const float rawWindX = region.snowDriftWindDirection[0];
+    const float rawWindZ = region.snowDriftWindDirection[1];
+    const float windLength = std::hypot(rawWindX, rawWindZ);
+    const bool validWind = std::isfinite(windLength) && windLength > 1.0e-4F;
+    const float windX = validWind ? rawWindX / windLength : 0.914F;
+    const float windZ = validWind ? rawWindZ / windLength : 0.406F;
+    const float authoredStrength = std::isfinite(region.snowDriftWindStrength)
+        ? std::clamp(region.snowDriftWindStrength, 0.0F, 2.0F * referenceWindStrength)
+        : referenceWindStrength;
+    const float windScale = authoredStrength / referenceWindStrength;
+
+    // Broad glacial moraine relief remains independent of wind direction.
+    const float warpX = TerrainValueNoise(x * 0.0012F + 17.3F, z * 0.0012F - 8.1F) - 0.5F;
+    const float warpZ = TerrainValueNoise(x * 0.0012F - 31.7F, z * 0.0012F + 22.9F) - 0.5F;
+    const float broad = TerrainFbm((x + warpX * 68.0F) * 0.0012F,
+                                   (z + warpZ * 68.0F) * 0.0012F);
+
+    // Rotate the anisotropic ridge/drift field into the authored wind frame. The
+    // longest FBM frequency is 0.0028 * 2.03^3 = 0.0234 cycles/m, below the
+    // conservative ~0.0304 cycles/m Nyquist limit of the 16.45 m refined mesh.
+    const float alongWind = x * windX + z * windZ;
+    const float acrossWind = -x * windZ + z * windX;
+    const float windWarpAlong = TerrainValueNoise(
+        alongWind * 0.0012F + 17.3F, acrossWind * 0.0012F - 8.1F) - 0.5F;
+    const float windWarpAcross = TerrainValueNoise(
+        alongWind * 0.0012F - 31.7F, acrossWind * 0.0012F + 22.9F) - 0.5F;
+    const float ridgeField = TerrainFbm(
+        (alongWind + windWarpAcross * 24.0F) * 0.0022F - 41.0F,
+        (acrossWind + windWarpAlong * 24.0F) * 0.00075F + 23.0F);
+    const float ridges = 1.0F - std::abs(2.0F * ridgeField - 1.0F);
+    const float drift = TerrainFbm(
+        (alongWind + windWarpAlong * 8.0F) * 0.0028F + 9.1F,
+        (acrossWind + windWarpAcross * 8.0F) * 0.0011F - 13.7F);
+    const float granular = TerrainFbm(x * 0.0018F + 4.7F, z * 0.0018F + 18.2F);
+
+    // Snow accumulates on descending lee slopes. This bounded term is derived
+    // from the same bilinear terrain gradient used by collision and surface normals.
+    const float downwindSlope = slopeX * windX + slopeZ * windZ;
+    const float leeSlope = std::clamp(-downwindSlope, 0.0F, 0.25F);
+    const float leeAccumulation = leeSlope * 1.4F * windScale * (0.6F + 0.4F * drift);
+    return (broad - 0.5F) * 5.2F + (ridges - 0.5F) * 1.55F * windScale +
+        (drift - 0.5F) * 0.72F * windScale + (granular - 0.5F) * 0.20F +
+        leeAccumulation;
 }
 
 constexpr std::string_view Header = "talvisota-region\t1";
@@ -206,9 +279,15 @@ std::array<float, 16> BuildPlacementTransform(const WorldPlacement& placement) n
 
 float SampleTerrainDisplacement(const WorldRegion& region, const float x, const float z) noexcept
 {
-    if (FindWaterSurfaceAt(region, x, z) != nullptr)
+    if (!std::isfinite(x) || !std::isfinite(z) ||
+        region.terrain.surfaceProfile != TerrainSurfaceProfile::SnowDriftV1 ||
+        FindWaterSurfaceAt(region, x, z) != nullptr)
         return 0.0F;
-    return region.terrain.surfaceProfile == TerrainSurfaceProfile::SnowDriftV1 ? SnowDriftDisplacement(x, z) : 0.0F;
+
+    float slopeX = 0.0F;
+    float slopeZ = 0.0F;
+    (void)SampleBaseTerrainGradient(region, x, z, slopeX, slopeZ);
+    return SnowDriftDisplacement(region, x, z, slopeX, slopeZ);
 }
 
 bool SampleTerrainHeight(const WorldRegion& region, float x, float z,
@@ -456,6 +535,25 @@ bool LoadWorldRegion(const std::filesystem::path& path, const content::ContentRe
     }
 
     WorldRegion candidate;
+    if (world.hasEnvironment)
+    {
+        const float windLength = std::hypot(
+            world.environment.windDirection[0], world.environment.windDirection[1]);
+        if (!std::isfinite(windLength) || windLength < 1.0e-4F ||
+            std::abs(windLength - 1.0F) > 0.02F)
+            Add(diagnostics, path, 0, "world.environment.wind_direction",
+                "Parent world wind direction must be finite and normalized.");
+        else
+            candidate.snowDriftWindDirection = {
+                world.environment.windDirection[0] / windLength,
+                world.environment.windDirection[1] / windLength};
+        if (!std::isfinite(world.environment.windStrength) ||
+            world.environment.windStrength < 0.0F || world.environment.windStrength > 1.0F)
+            Add(diagnostics, path, 0, "world.environment.wind_strength",
+                "Parent world wind strength must be within [0,1].");
+        else
+            candidate.snowDriftWindStrength = world.environment.windStrength;
+    }
     std::unordered_set<std::string> ids;
     std::unordered_set<std::string> navNodes;
     std::vector<std::pair<std::size_t, std::string>> pendingEdges;

@@ -472,6 +472,12 @@ bool BuildWorldScene(const std::filesystem::path& root, const std::string_view w
         return false;
     }
 
+    if (region.terrain.surfaceProfile == talvisota::world::TerrainSurfaceProfile::SnowDriftV1) {
+        std::cout << "Snow drift field: wind=(" << region.snowDriftWindDirection[0] << ','
+            << region.snowDriftWindDirection[1] << ") strength=" << region.snowDriftWindStrength
+            << " (wind-aligned ridges, bounded lee-slope accumulation).\n";
+    }
+
     std::map<std::string, ModelBindings> importedModels;
     std::map<std::string, talvisota::content::MaterialDefinition> typedMaterials;
     std::size_t importedModelCount=0U, importedSubmeshRunCount=0U, mergedModelMaterialCount=0U;

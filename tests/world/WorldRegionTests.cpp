@@ -11,6 +11,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <sstream>
 #include <string>
@@ -202,6 +203,10 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
             "The first Karelian region should retain its stable Sakkola identity.");
     Require(region.terrain.surfaceProfile == talvisota::world::TerrainSurfaceProfile::SnowDriftV1,
             "Sakkola declares the shared renderer/gameplay snow surface profile.");
+    Require(std::abs(region.snowDriftWindDirection[0] - world.environment.windDirection[0]) < 0.001F &&
+            std::abs(region.snowDriftWindDirection[1] - world.environment.windDirection[1]) < 0.001F &&
+            std::abs(region.snowDriftWindStrength - world.environment.windStrength) < 0.001F,
+            "The terrain surface must inherit the validated parent-world wind profile.");
     Require(region.terrain.rows == 177U && region.terrain.columns == 177U &&
             std::abs(region.terrain.spacingX - 23.272727272727273F) < 0.001F && std::abs(region.terrain.spacingZ - 23.272727272727273F) < 0.001F,
             "Sakkola should provide a 4,096 metre terrain block with a 177x177 heightfield at approximately 23.2727 metre spacing.");
@@ -702,6 +707,62 @@ void TestRejectsMissingDependenciesAndInvalidSpatialRecords()
             registry, world, region, diagnostics), "Navigation edges to undeclared nodes must be rejected.");
 }
 
+void TestSnowDriftFollowsAuthoredWindAndLeeSlope()
+{
+    talvisota::world::WorldRegion region;
+    region.terrain.rows = 3U;
+    region.terrain.columns = 3U;
+    region.terrain.originX = -100.0F;
+    region.terrain.originZ = -100.0F;
+    region.terrain.spacingX = 100.0F;
+    region.terrain.spacingZ = 100.0F;
+    region.terrain.surfaceProfile = talvisota::world::TerrainSurfaceProfile::SnowDriftV1;
+    region.terrain.elevations.assign(9U, 0.0F);
+    region.snowDriftWindStrength = 0.06F;
+
+    region.snowDriftWindDirection = {1.0F, 0.0F};
+    const float eastWind = talvisota::world::SampleTerrainDisplacement(region, 100.0F, 0.0F);
+    const float repeatedEastWind = talvisota::world::SampleTerrainDisplacement(region, 100.0F, 0.0F);
+    Require(eastWind == repeatedEastWind,
+            "Wind-coupled snow displacement must remain deterministic at identical world coordinates.");
+    region.snowDriftWindDirection = {0.0F, 1.0F};
+    const float northWind = talvisota::world::SampleTerrainDisplacement(region, 100.0F, 0.0F);
+    Require(std::abs(eastWind - northWind) > 0.05F,
+            "Changing the authored wind direction must rotate the directional ridge/drift field.");
+
+    region.snowDriftWindStrength = 0.0F;
+    region.snowDriftWindDirection = {1.0F, 0.0F};
+    const float calmEast = talvisota::world::SampleTerrainDisplacement(region, 100.0F, 0.0F);
+    region.snowDriftWindDirection = {0.0F, 1.0F};
+    const float calmNorth = talvisota::world::SampleTerrainDisplacement(region, 100.0F, 0.0F);
+    Require(std::abs(calmEast - calmNorth) < 1.0e-6F,
+            "A calm world must not retain directional wind ridges or lee-side accumulation.");
+
+    region.terrain.originX = -10.0F;
+    region.terrain.originZ = -10.0F;
+    region.terrain.spacingX = 10.0F;
+    region.terrain.spacingZ = 10.0F;
+    region.snowDriftWindDirection = {1.0F, 0.0F};
+    region.snowDriftWindStrength = 0.06F;
+    region.terrain.elevations = {0.0F, 1.0F, 2.0F,
+                                 0.0F, 1.0F, 2.0F,
+                                 0.0F, 1.0F, 2.0F};
+    const float windwardSlope = talvisota::world::SampleTerrainDisplacement(region, 0.0F, 0.0F);
+    region.terrain.elevations = {2.0F, 1.0F, 0.0F,
+                                 2.0F, 1.0F, 0.0F,
+                                 2.0F, 1.0F, 0.0F};
+    const float leeSlope = talvisota::world::SampleTerrainDisplacement(region, 0.0F, 0.0F);
+    Require(leeSlope > windwardSlope + 0.05F,
+            "Downwind-descending terrain must accumulate more snow than the corresponding windward slope.");
+
+    region.waterSurfaces.push_back({"water.test", "ice.test", -1.0F, 1.0F, -1.0F, 1.0F, 1.0F});
+    Require(talvisota::world::SampleTerrainDisplacement(region, 0.0F, 0.0F) == 0.0F,
+            "Authored frozen-water surfaces must remain free of terrain snow displacement.");
+    Require(talvisota::world::SampleTerrainDisplacement(
+                region, std::numeric_limits<float>::quiet_NaN(), 0.0F) == 0.0F,
+            "Non-finite terrain coordinates must fail closed without entering procedural noise.");
+}
+
 void TestLargeTerrainHeightfieldLoadsAndSamplesAcrossFullExtent()
 {
     TemporaryDirectory directory;
@@ -914,6 +975,7 @@ int main()
         TestTaipaleRiverfrontWorldAndMissionLoad();
         TestLoadsComposedRegionAndIndependentSpatialData();
         TestRejectsMissingDependenciesAndInvalidSpatialRecords();
+        TestSnowDriftFollowsAuthoredWindAndLeeSlope();
         TestLargeTerrainHeightfieldLoadsAndSamplesAcrossFullExtent();
         TestSessionLoadReloadFailureAndUnloadAreAtomic();
     }

@@ -76,6 +76,9 @@ struct WorldRegion final
     std::array<float, 3> boundsMax{};
     std::vector<WorldPlacement> placements;
     TerrainHeightfield terrain;
+    // Snapshot of the parent world's normalized wind used by deterministic snow-surface sampling.
+    std::array<float, 2> snowDriftWindDirection{0.914F, 0.406F};
+    float snowDriftWindStrength = 0.06F;
     std::vector<WaterSurface> waterSurfaces;
     std::vector<CollisionBox> collision;
     std::vector<NavigationNode> navigationNodes;
