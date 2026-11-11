@@ -349,8 +349,10 @@ bool SampleTerrainHeight(const WorldRegion& region, float x, float z,
     const float displacement = SampleTerrainDisplacement(region, x, z);
     if (terrain.surfaceProfile == TerrainSurfaceProfile::SnowDriftV1) {
         constexpr float step = 0.25F;
-        derivativeX += (SnowDriftDisplacement(x + step, z) - SnowDriftDisplacement(x - step, z)) / (2.0F * step);
-        derivativeZ += (SnowDriftDisplacement(x, z + step) - SnowDriftDisplacement(x, z - step)) / (2.0F * step);
+        derivativeX += (SampleTerrainDisplacement(region, x + step, z) -
+            SampleTerrainDisplacement(region, x - step, z)) / (2.0F * step);
+        derivativeZ += (SampleTerrainDisplacement(region, x, z + step) -
+            SampleTerrainDisplacement(region, x, z - step)) / (2.0F * step);
     }
     const double length = std::sqrt(derivativeX * derivativeX + 1.0 + derivativeZ * derivativeZ);
     height = static_cast<float>(sampled) + displacement;
