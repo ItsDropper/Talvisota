@@ -1238,6 +1238,8 @@ std::size_t CullCaptureInstances(SceneSnapshot& scene, const std::vector<float>&
     const float tangentHalfFov=std::tan(safeFovDegrees*0.00872664625997F);
     std::size_t visibleCount=0U;
     std::array<std::size_t,talvisota::presentation::MaximumRenderLodLevels> visibleLodCounts{};
+    std::array<std::size_t,talvisota::presentation::MaximumRenderLodLevels> visibleScotsPineLodCounts{};
+    std::array<std::size_t,talvisota::presentation::MaximumRenderLodLevels> visibleGraniteBoulderLodCounts{};
     std::uint64_t fullDetailTriangles=0U,visibleTriangles=0U;
     std::size_t invalidLodSelections=0U;
     for(std::size_t index=0U;index<scene.instances.size();++index) {
@@ -1279,13 +1281,24 @@ std::size_t CullCaptureInstances(SceneSnapshot& scene, const std::vector<float>&
             ++visibleCount;
             if(fullDetailMeshIndex<scene.meshes.size())fullDetailTriangles+=scene.meshes[fullDetailMeshIndex].indices.size()/3U;
             visibleTriangles+=scene.meshes[instance.meshIndex].indices.size()/3U;
-            if(instance.lodCount>0U)++visibleLodCounts[selectedLod];
+            if(instance.lodCount>0U) {
+                ++visibleLodCounts[selectedLod];
+                if(instance.lodGroup==talvisota::presentation::RenderLodGroup::ScotsPine)
+                    ++visibleScotsPineLodCounts[selectedLod];
+                else if(instance.lodGroup==talvisota::presentation::RenderLodGroup::GraniteBoulder)
+                    ++visibleGraniteBoulderLodCounts[selectedLod];
+            }
         }
     }
     std::ostream& output = diagnostics != nullptr ? *diagnostics : std::cout;
     output<<"Visibility culling: "<<visibleCount<<" / "<<scene.instances.size()
         <<" instances visible; visible LOD0-3 ["<<visibleLodCounts[0U]<<", "<<visibleLodCounts[1U]
-        <<", "<<visibleLodCounts[2U]<<", "<<visibleLodCounts[3U]<<"]; estimated submitted triangles "
+        <<", "<<visibleLodCounts[2U]<<", "<<visibleLodCounts[3U]<<"]; scots_pine LOD0-3 ["
+        <<visibleScotsPineLodCounts[0U]<<", "<<visibleScotsPineLodCounts[1U]<<", "
+        <<visibleScotsPineLodCounts[2U]<<", "<<visibleScotsPineLodCounts[3U]
+        <<"]; granite_boulder LOD0-3 ["<<visibleGraniteBoulderLodCounts[0U]<<", "
+        <<visibleGraniteBoulderLodCounts[1U]<<", "<<visibleGraniteBoulderLodCounts[2U]<<", "
+        <<visibleGraniteBoulderLodCounts[3U]<<"]; estimated submitted triangles "
         <<visibleTriangles<<" / "<<fullDetailTriangles<<" full-detail; invalid LOD selections "
         <<invalidLodSelections<<".\n";
     if (diagnostics != nullptr) output.flush();

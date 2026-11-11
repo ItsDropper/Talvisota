@@ -54,6 +54,13 @@ struct RenderMaterial final
 
 inline constexpr std::size_t MaximumRenderLodLevels = 4U;
 
+enum class RenderLodGroup : std::uint8_t
+{
+    Unclassified,
+    ScotsPine,
+    GraniteBoulder
+};
+
 struct RenderLodVariant final
 {
     std::uint32_t meshIndex = 0U;
@@ -67,6 +74,7 @@ struct RenderInstance final
     std::uint32_t materialIndex = 0;
     std::array<RenderLodVariant, MaximumRenderLodLevels> lodVariants{};
     std::uint8_t lodCount = 0U;
+    RenderLodGroup lodGroup = RenderLodGroup::Unclassified;
     std::array<float, 3> lodReferenceCenter{};
     float lodReferenceRadius = 0.0F;
     // Column-major 4x4 matrix, column vectors, translation in column 3.

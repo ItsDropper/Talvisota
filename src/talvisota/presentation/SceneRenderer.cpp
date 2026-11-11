@@ -210,7 +210,20 @@ bool ValidateInstances(const SceneSnapshot& scene, std::string& error)
             error = "Instance " + std::to_string(instanceIndex) + " exceeds the four-level render LOD limit.";
             return false;
         }
-        if (instance.lodCount == 0U) continue;
+        if (instance.lodCount == 0U) {
+            if (instance.lodGroup != RenderLodGroup::Unclassified) {
+                error = "Instance " + std::to_string(instanceIndex) +
+                    " assigns an LOD group without an LOD chain.";
+                return false;
+            }
+            continue;
+        }
+        if (instance.lodGroup != RenderLodGroup::ScotsPine &&
+            instance.lodGroup != RenderLodGroup::GraniteBoulder) {
+            error = "LOD-enabled instance " + std::to_string(instanceIndex) +
+                " must identify its environment LOD group.";
+            return false;
+        }
         if (instance.lodCount < 2U || instance.lodReferenceRadius <= 1.0e-5F) {
             error = "LOD-enabled instance " + std::to_string(instanceIndex) +
                 " requires at least two levels and a positive reference bound.";

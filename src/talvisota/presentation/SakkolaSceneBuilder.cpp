@@ -682,6 +682,10 @@ bool BuildWorldScene(const std::filesystem::path& root, const std::string_view w
             RenderInstance instance;
             instance.meshIndex=baseBinding.meshIndex;instance.materialIndex=baseBinding.materialIndex;
             if(model->second.lods.size()>1U) {
+                if(placement.modelAssetId=="model.environment.scots_pine")
+                    instance.lodGroup=RenderLodGroup::ScotsPine;
+                else if(placement.modelAssetId=="model.environment.boulder")
+                    instance.lodGroup=RenderLodGroup::GraniteBoulder;
                 instance.lodCount=static_cast<std::uint8_t>(model->second.lods.size());
                 instance.lodReferenceCenter=model->second.referenceCenter;
                 instance.lodReferenceRadius=model->second.referenceRadius;

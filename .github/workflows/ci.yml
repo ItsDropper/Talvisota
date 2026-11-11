@@ -467,6 +467,14 @@ jobs:
           if (Select-String -LiteralPath $rendererLog -Pattern 'invalid LOD selections [1-9][0-9]*' -Quiet) { throw "Sakkola capture reported an invalid LOD selection" }
           $triangleDiagnostics = @(Select-String -LiteralPath $rendererLog -Pattern 'estimated submitted triangles [1-9][0-9]* / [1-9][0-9]* full-detail')
           if ($triangleDiagnostics.Count -eq 0) { throw "Sakkola capture did not report a non-empty visible triangle budget" }
+          $rendererLogText = Get-Content -LiteralPath $rendererLog -Raw
+          $forestMatch = [regex]::Match($rendererLogText, 'Capture camera 04-karelian-forest\\.png:[^\\r\\n]*\\r?\\nVisibility culling:[^\\r\\n]*scots_pine LOD0-3 \\[(?<pine>[0-9, ]+)\\][^\\r\\n]*estimated submitted triangles (?<triangles>[0-9]+)')
+          if (-not $forestMatch.Success) { throw "Sakkola forest capture is missing per-species LOD and triangle diagnostics" }
+          $pineLodCounts = @($forestMatch.Groups['pine'].Value.Split(',') | ForEach-Object { [int]$_.Trim() })
+          if ($pineLodCounts.Count -ne 4 -or $pineLodCounts[3] -eq 0) { throw "Sakkola forest capture did not select the Scots pine LOD3 fallback" }
+          $forestTriangles = [int64]$forestMatch.Groups['triangles'].Value
+          if ($forestTriangles -gt 35000000) { throw "Sakkola forest submitted-triangle estimate exceeded the 35-million budget: $forestTriangles" }
+          Write-Host "Sakkola forest: Scots pine LOD0-3 [$($pineLodCounts -join ', ')], estimated $forestTriangles submitted triangles (35,000,000 budget)."
           Write-Host "Captured $($lodDiagnostics.Count) LOD diagnostics and $($triangleDiagnostics.Count) non-empty triangle budgets."
           $captures = @(Get-ChildItem -LiteralPath $captureDir -Filter '*.png' -File)
           if ($captures.Count -ne 7) { throw "Expected seven rendered PNGs (five exterior and two interior), found $($captures.Count)" }

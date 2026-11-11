@@ -305,6 +305,7 @@ int main()
         lodScene.materials.push_back(lodScene.materials.front());
     }
     lodScene.instances[0].lodCount = 4U;
+    lodScene.instances[0].lodGroup = RenderLodGroup::ScotsPine;
     lodScene.instances[0].lodReferenceRadius = 1.0F;
     for (std::size_t index = 0U; index < ScotsPineMinimumScreenCoverage.size(); ++index) {
         lodScene.instances[0].lodVariants[index] = {
@@ -328,6 +329,15 @@ int main()
     SceneSnapshot invalidLodOrder = lodScene;
     invalidLodOrder.instances[0].lodVariants[1].minimumScreenCoverage = 0.80F;
     Require(!ValidateSceneSnapshot(invalidLodOrder, error));
+    SceneSnapshot missingLodGroup = lodScene;
+    missingLodGroup.instances[0].lodGroup = RenderLodGroup::Unclassified;
+    Require(!ValidateSceneSnapshot(missingLodGroup, error));
+    SceneSnapshot invalidLodGroup = lodScene;
+    invalidLodGroup.instances[0].lodGroup = static_cast<RenderLodGroup>(255U);
+    Require(!ValidateSceneSnapshot(invalidLodGroup, error));
+    SceneSnapshot groupWithoutLod = ValidScene();
+    groupWithoutLod.instances[0].lodGroup = RenderLodGroup::ScotsPine;
+    Require(!ValidateSceneSnapshot(groupWithoutLod, error));
     SceneSnapshot invalidLodResource = lodScene;
     invalidLodResource.instances[0].lodVariants[2].meshIndex = 99U;
     Require(!ValidateSceneSnapshot(invalidLodResource, error));
