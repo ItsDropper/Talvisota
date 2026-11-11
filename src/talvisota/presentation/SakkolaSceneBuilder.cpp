@@ -237,14 +237,18 @@ bool RemoveWaterSurfacesFromTerrain(RenderMesh& mesh,
 
         std::vector<TerrainClipPolygon> fragments{std::move(sourcePolygon)};
         bool overlapsWaterBounds = false;
-        for (const auto& water : region.waterSurfaces) {
-            if (maxX <= water.minX || minX >= water.maxX ||
-                maxZ <= water.minZ || minZ >= water.maxZ)
-                continue;
+        // The region loader sorts and rejects overlapping X intervals, so skip
+        // directly to the first water strip that can intersect this triangle.
+        auto water = std::lower_bound(region.waterSurfaces.begin(), region.waterSurfaces.end(), minX,
+            [](const talvisota::world::WaterSurface& candidate, const float coordinate) {
+                return candidate.maxX <= coordinate;
+            });
+        for (; water != region.waterSurfaces.end() && water->minX < maxX; ++water) {
+            if (maxZ <= water->minZ || minZ >= water->maxZ) continue;
             overlapsWaterBounds = true;
             std::vector<TerrainClipPolygon> nextFragments;
             for (const auto& fragment : fragments) {
-                auto outside = SubtractWaterRectangle(fragment, water);
+                auto outside = SubtractWaterRectangle(fragment, *water);
                 for (auto& piece : outside)
                     nextFragments.push_back(std::move(piece));
             }
