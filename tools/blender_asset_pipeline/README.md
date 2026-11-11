@@ -126,7 +126,7 @@ path for close-up hero assets when the captured source quality supports it.
   The LOD0 primary scaffold uses five-sided tubes to retain its branch silhouette.
   The verifier enforces total budgets of 750k / 300k / 90k / 12k triangles and
   separate needle-density floors/ceilings of 100k–500k / 34k–180k /
-  10k–25k / 2.5k–6k for LOD0 through LOD3. LOD0 is the close-up hero asset;
+  10k–25k / 2k–6k for LOD0 through LOD3. LOD0 is the close-up hero asset;
   lower LODs serve progressively smaller screen coverage.
 - The forest must instance individual tree assets at the scene/runtime layer;
   do not merge the entire forest into one world-sized mesh, which destroys
