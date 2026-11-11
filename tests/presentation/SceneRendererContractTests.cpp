@@ -326,7 +326,7 @@ int main()
     Require(SelectRenderLod(lodScene.instances[0], 0.17F, selectedLod));
     Require(selectedLod == 3U && lodScene.instances[0].meshIndex == 3U);
     SceneSnapshot invalidLodOrder = lodScene;
-    invalidLodOrder.instances[0].lodVariants[1].minimumScreenCoverage = 0.40F;
+    invalidLodOrder.instances[0].lodVariants[1].minimumScreenCoverage = 0.80F;
     Require(!ValidateSceneSnapshot(invalidLodOrder, error));
     SceneSnapshot invalidLodResource = lodScene;
     invalidLodResource.instances[0].lodVariants[2].meshIndex = 99U;
