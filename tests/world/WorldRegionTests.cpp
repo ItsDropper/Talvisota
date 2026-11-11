@@ -366,12 +366,12 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
     Require(water != region.placements.end() &&
             water->modelAssetId == "model.environment.suvanto_ice",
             "Sakkola region should include the frozen Suvanto surface.");
-    Require(region.waterSurfaces.size() == 64U,
+    Require(region.waterSurfaces.size() == 512U,
             "Sakkola should define a continuous Suvanto shoreline aligned to the ice mesh grid.");
     const auto& firstSuvantoSegment = region.waterSurfaces.front();
     const auto& lastSuvantoSegment = region.waterSurfaces.back();
-    Require(firstSuvantoSegment.id == "water.suvanto.01" &&
-            lastSuvantoSegment.id == "water.suvanto.64" &&
+    Require(firstSuvantoSegment.id == "water.suvanto.001" &&
+            lastSuvantoSegment.id == "water.suvanto.512" &&
             firstSuvantoSegment.placementId == "ice.suvanto" &&
             lastSuvantoSegment.placementId == "ice.suvanto" &&
             std::abs(firstSuvantoSegment.minX + 2048.0F) < 0.001F &&
