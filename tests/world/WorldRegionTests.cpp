@@ -366,17 +366,31 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
     Require(water != region.placements.end() &&
             water->modelAssetId == "model.environment.suvanto_ice",
             "Sakkola region should include the frozen Suvanto surface.");
-    Require(region.waterSurfaces.size() == 1U,
-            "Sakkola should define one explicit frozen Suvanto water surface.");
-    const auto& suvantoSurface = region.waterSurfaces.front();
-    Require(suvantoSurface.id == "water.suvanto" &&
-            suvantoSurface.placementId == "ice.suvanto" &&
-            std::abs(suvantoSurface.minX + 2048.0F) < 0.001F &&
-            std::abs(suvantoSurface.maxX - 2048.0F) < 0.001F &&
-            std::abs(suvantoSurface.minZ + 2048.0F) < 0.001F &&
-            std::abs(suvantoSurface.maxZ + 256.0F) < 0.001F &&
-            std::abs(suvantoSurface.elevation - 1.82F) < 0.001F,
-            "Frozen Suvanto must cover the authored sea-level lake footprint.");
+    Require(region.waterSurfaces.size() == 512U,
+            "Sakkola should define a continuous, finely segmented Suvanto shoreline.");
+    const auto& firstSuvantoSegment = region.waterSurfaces.front();
+    const auto& lastSuvantoSegment = region.waterSurfaces.back();
+    Require(firstSuvantoSegment.id == "water.suvanto.001" &&
+            lastSuvantoSegment.id == "water.suvanto.512" &&
+            firstSuvantoSegment.placementId == "ice.suvanto" &&
+            lastSuvantoSegment.placementId == "ice.suvanto" &&
+            std::abs(firstSuvantoSegment.minX + 2048.0F) < 0.001F &&
+            std::abs(lastSuvantoSegment.maxX - 2048.0F) < 0.001F &&
+            std::abs(firstSuvantoSegment.minZ + 2048.0F) < 0.001F &&
+            std::abs(firstSuvantoSegment.elevation - 1.82F) < 0.001F &&
+            std::abs(lastSuvantoSegment.elevation - 1.82F) < 0.001F,
+            "Frozen Suvanto segments must span the lake with the authored ice elevation.");
+    const auto shorelineAt = [&region](const float x) {
+        const auto segment = std::find_if(region.waterSurfaces.begin(), region.waterSurfaces.end(),
+            [x](const auto& surface) { return x >= surface.minX && x <= surface.maxX; });
+        Require(segment != region.waterSurfaces.end(),
+                "Every shoreline sample must resolve to a water segment.");
+        return segment->maxZ;
+    };
+    Require(shorelineAt(0.0F) > -220.0F && shorelineAt(0.0F) < -190.0F &&
+            shorelineAt(-900.0F) < -290.0F &&
+            shorelineAt(900.0F) > -240.0F,
+            "Suvanto's north shore must follow the authored irregular terrain contour.");
     Require(talvisota::world::SampleTerrainDisplacement(region, 0.0F, -1024.0F) == 0.0F,
             "Snow-drift displacement must not deform the frozen lake.");
     Require(talvisota::world::SampleTerrainDisplacement(region, 0.0F, -200.0F) > 0.01F,
@@ -417,13 +431,17 @@ void TestSakkolaRegionHasMapInformedLandscapeAndDiverseComposition()
             "Terrain sampling and player grounding must use the frozen lake surface.");
     for (const auto& placement : region.placements)
     {
-        if (placement.id == suvantoSurface.placementId)
+        if (placement.id == "ice.suvanto")
             continue;
-        Require(placement.position[0] < suvantoSurface.minX ||
-                placement.position[0] > suvantoSurface.maxX ||
-                placement.position[2] < suvantoSurface.minZ ||
-                placement.position[2] > suvantoSurface.maxZ,
-                "Land placements must not be authored inside the frozen lake.");
+        const bool insideFrozenLake = std::any_of(region.waterSurfaces.begin(),
+            region.waterSurfaces.end(), [&placement](const auto& surface) {
+                return placement.position[0] >= surface.minX &&
+                    placement.position[0] <= surface.maxX &&
+                    placement.position[2] >= surface.minZ &&
+                    placement.position[2] <= surface.maxZ;
+            });
+        Require(!insideFrozenLake,
+                "Land placements must remain outside every frozen-lake segment.");
     }
 
     std::vector<std::string> path;
