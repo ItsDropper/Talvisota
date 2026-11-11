@@ -184,7 +184,7 @@ const WaterSurface* FindWaterSurfaceAt(const WorldRegion& region, const float x,
             return coordinate < candidate.minX;
         });
     if (after == region.waterSurfaces.begin()) return nullptr;
-    const auto& candidate = *std::prev(after);
+    const auto& candidate = *(after - 1);
     return x <= candidate.maxX && z >= candidate.minZ && z <= candidate.maxZ
         ? &candidate : nullptr;
 }
