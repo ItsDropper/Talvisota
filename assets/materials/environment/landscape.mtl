@@ -32,10 +32,11 @@ map_Bump ../../textures/environment/snow-normal.bmp
 map_Pr ../../textures/environment/snow-roughness.bmp
 map_AO ../../textures/environment/snow-ao.bmp
 newmtl frozen_ice
-# Blue-grey ice albedo keeps the lake visually distinct from snow-covered banks.
-Kd 0.68 0.78 0.88
-Pr 0.78
-Pm 0.12
+# The blue-grey albedo is complete; frozen water is a dielectric, not a metal.
+# Pr=1 leaves the calibrated roughness map as the absolute linear roughness field.
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
 map_Kd ../../textures/environment/ice-albedo.bmp
 map_Bump ../../textures/environment/ice-normal.bmp
 map_Pr ../../textures/environment/ice-roughness.bmp

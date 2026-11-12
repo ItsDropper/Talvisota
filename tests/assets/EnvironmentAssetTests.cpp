@@ -166,6 +166,92 @@ void TestTaipaleIceTextureDensity()
             "Taipale ice centreline unexpectedly lost its full riverfront extent.");
     std::cout << "Verified Taipale ice PBR UV density: 64 m per repeat along the river and across the channel.\n";
 }
+
+void TestFrozenIceMaterialCalibration()
+{
+    const std::filesystem::path materialPath =
+        std::filesystem::path(TALVISOTA_SOURCE_DIR) /
+        "assets/materials/environment/landscape.mtl";
+    std::ifstream input(materialPath);
+    Require(static_cast<bool>(input), "Could not open the environment landscape material library.");
+
+    bool inFrozenIce = false;
+    bool sawBaseColor = false;
+    bool sawRoughness = false;
+    bool sawMetallic = false;
+    bool sawAlbedoMap = false;
+    bool sawNormalMap = false;
+    bool sawRoughnessMap = false;
+    std::array<double, 3> baseColor{};
+    double roughness = -1.0;
+    double metallic = -1.0;
+    std::string line;
+    while (std::getline(input, line))
+    {
+        if (line.starts_with("newmtl "))
+        {
+            if (inFrozenIce)
+                break;
+            inFrozenIce = line == "newmtl frozen_ice";
+            continue;
+        }
+        if (!inFrozenIce)
+            continue;
+
+        std::istringstream values(line);
+        std::string key;
+        if (!(values >> key))
+            continue;
+        if (key == "Kd")
+        {
+            Require(static_cast<bool>(values >> baseColor[0] >> baseColor[1] >> baseColor[2]),
+                    "Frozen ice base-colour factor is malformed.");
+            sawBaseColor = true;
+        }
+        else if (key == "Pr")
+        {
+            Require(static_cast<bool>(values >> roughness),
+                    "Frozen ice roughness factor is malformed.");
+            sawRoughness = true;
+        }
+        else if (key == "Pm")
+        {
+            Require(static_cast<bool>(values >> metallic),
+                    "Frozen ice metallic factor is malformed.");
+            sawMetallic = true;
+        }
+        else if (key == "map_Kd")
+        {
+            std::string texture;
+            Require(static_cast<bool>(values >> texture), "Frozen ice albedo map path is missing.");
+            sawAlbedoMap = texture.ends_with("ice-albedo.bmp");
+        }
+        else if (key == "map_Bump")
+        {
+            std::string texture;
+            Require(static_cast<bool>(values >> texture), "Frozen ice normal map path is missing.");
+            sawNormalMap = texture.ends_with("ice-normal.bmp");
+        }
+        else if (key == "map_Pr")
+        {
+            std::string texture;
+            Require(static_cast<bool>(values >> texture), "Frozen ice roughness map path is missing.");
+            sawRoughnessMap = texture.ends_with("ice-roughness.bmp");
+        }
+    }
+
+    Require(inFrozenIce && sawBaseColor && sawRoughness && sawMetallic &&
+            sawAlbedoMap && sawNormalMap && sawRoughnessMap,
+            "Frozen ice must retain its complete blue-grey albedo, normal and roughness material maps.");
+    Require(std::all_of(baseColor.begin(), baseColor.end(), [](const double value) {
+                return std::abs(value - 1.0) <= 0.0001;
+            }) &&
+            std::abs(roughness - 1.0) <= 0.0001 &&
+            std::abs(metallic) <= 0.0001,
+            "Frozen ice must use a white dielectric base factor and an unscaled absolute roughness map.");
+
+    std::cout << "Verified frozen ice dielectric factors and absolute roughness-map binding.\n";
+}
 } // namespace
 
 int main()
@@ -174,6 +260,7 @@ int main()
     {
         TestSakkolaTerrainMaterialTiling();
         TestTaipaleIceTextureDensity();
+        TestFrozenIceMaterialCalibration();
         return 0;
     }
     catch (const std::exception& exception)

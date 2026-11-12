@@ -417,7 +417,7 @@ Sample Evaluate(const std::string_view preset, const float u, const float v,
         sample = {0.54F + cloudTint + frost * 0.12F - fracture * 0.085F,
                   0.665F + cloudTint * 0.94F + frost * 0.13F - fracture * 0.082F,
                   0.775F + cloudTint * 0.86F + frost * 0.14F - fracture * 0.078F,
-                  height, 0.11F + frost * 0.52F + iceCloud * 0.08F + fracture * 0.15F,
+                  height, 0.42F + frost * 0.42F + iceCloud * 0.06F + fracture * 0.08F,
                   0.99F - fracture * 0.28F - bubbles * 0.035F};
     }
     else
@@ -446,6 +446,7 @@ bool VerifyProceduralPreset(const std::string_view preset, const std::uint32_t s
     float minimumHeight = 1.0F, maximumHeight = 0.0F;
     float minimumRoughness = 1.0F, maximumRoughness = 0.0F;
     float minimumAlbedo = 1.0F, maximumAlbedo = 0.0F;
+    double roughnessSum = 0.0;
     const auto close = [tolerance](const Sample& a, const Sample& b) {
         return std::abs(a.red-b.red)<=tolerance && std::abs(a.green-b.green)<=tolerance &&
             std::abs(a.blue-b.blue)<=tolerance && std::abs(a.height-b.height)<=tolerance &&
@@ -478,6 +479,7 @@ bool VerifyProceduralPreset(const std::string_view preset, const std::uint32_t s
             maximumHeight = std::max(maximumHeight, sample.height);
             minimumRoughness = std::min(minimumRoughness, sample.roughness);
             maximumRoughness = std::max(maximumRoughness, sample.roughness);
+            roughnessSum += static_cast<double>(sample.roughness);
             minimumAlbedo = std::min(minimumAlbedo, sample.red);
             maximumAlbedo = std::max(maximumAlbedo, sample.red);
             if (preset == "pine_needles" && sample.red > 0.25F)
@@ -491,6 +493,16 @@ bool VerifyProceduralPreset(const std::string_view preset, const std::uint32_t s
         if (snowCoverage < 0.05 || snowCoverage > 0.45)
         {
             error = "Pine needle PBR field must retain broken-up, measurable snow coverage.";
+            return false;
+        }
+    }
+    if (preset == "ice")
+    {
+        const double meanRoughness = roughnessSum / static_cast<double>(sampleCount);
+        if (meanRoughness < 0.56 || meanRoughness > 0.68)
+        {
+            error = "Ice roughness mean " + std::to_string(meanRoughness) +
+                " is outside the calibrated 0.56-0.68 range.";
             return false;
         }
     }
@@ -632,7 +644,9 @@ std::uint32_t ReadU32(const std::array<char, 54>& header, const std::size_t offs
 }
 
 bool VerifyBmp(const std::filesystem::path& path, std::string& error,
-               const float minimumChannelStandardDeviation = 0.0F)
+               const float minimumChannelStandardDeviation = 0.0F,
+               const float minimumChannelMean = 0.0F,
+               const float maximumChannelMean = 255.0F)
 {
     std::ifstream input(path, std::ios::binary);
     if (!input)
@@ -690,19 +704,31 @@ bool VerifyBmp(const std::filesystem::path& path, std::string& error,
         return false;
     }
 
-    if (minimumChannelStandardDeviation > 0.0F)
+    if (minimumChannelStandardDeviation > 0.0F ||
+        minimumChannelMean > 0.0F || maximumChannelMean < 255.0F)
     {
         constexpr double pixelCount = static_cast<double>(TextureSize) *
             static_cast<double>(TextureSize);
         for (std::size_t channel = 0; channel < channelSums.size(); ++channel)
         {
             const double mean = static_cast<double>(channelSums[channel]) / pixelCount;
-            const double meanSquare = static_cast<double>(channelSquaredSums[channel]) / pixelCount;
-            const double variance = std::max(0.0, meanSquare - mean * mean);
-            if (std::sqrt(variance) < static_cast<double>(minimumChannelStandardDeviation))
+            if (mean < static_cast<double>(minimumChannelMean) ||
+                mean > static_cast<double>(maximumChannelMean))
             {
-                error = "Generated albedo channel has insufficient 8-bit variation: " + path.string();
+                error = "Generated texture channel mean " + std::to_string(mean) +
+                    " is outside the calibrated [" + std::to_string(minimumChannelMean) +
+                    ", " + std::to_string(maximumChannelMean) + "] range: " + path.string();
                 return false;
+            }
+            if (minimumChannelStandardDeviation > 0.0F)
+            {
+                const double meanSquare = static_cast<double>(channelSquaredSums[channel]) / pixelCount;
+                const double variance = std::max(0.0, meanSquare - mean * mean);
+                if (std::sqrt(variance) < static_cast<double>(minimumChannelStandardDeviation))
+                {
+                    error = "Generated albedo channel has insufficient 8-bit variation: " + path.string();
+                    return false;
+                }
             }
         }
     }
@@ -731,8 +757,11 @@ bool VerifyAll(const std::filesystem::path& directory, std::string& error)
                 std::string(channel) + ".bmp";
             const float minimumAlbedoDeviation =
                   preset == "snow" ? 2.8F : preset == "packed_snow" ? 1.5F : 0.0F;
+            const bool iceRoughness = preset == "ice" && channel == "roughness";
             if (!VerifyBmp(directory / filename, error,
-                    channel == "albedo" ? minimumAlbedoDeviation : 0.0F))
+                    channel == "albedo" ? minimumAlbedoDeviation : 0.0F,
+                    iceRoughness ? 140.0F : 0.0F,
+                    iceRoughness ? 180.0F : 255.0F))
                 return false;
         }
     }
