@@ -73,16 +73,30 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/blender-python
-          key: blender-python-3.12-numpy-1.26.4-pillow-v1
+          key: blender-python-3.12-numpy-1.26.4-pillow-v2
+
+      - name: Validate Blender Python dependency cache
+        id: blender-python-deps
+        run: |
+          if [[ -d "$RUNNER_TEMP/blender-python/numpy" && -d "$RUNNER_TEMP/blender-python/PIL" ]]; then
+            echo "valid=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "valid=false" >> "$GITHUB_OUTPUT"
+            rm -rf "$RUNNER_TEMP/blender-python"
+          fi
 
       - name: Install NumPy and Pillow for Blender's Python 3.12
-        if: steps.blender-python-cache.outputs.cache-hit != 'true'
+        if: steps.blender-python-deps.outputs.valid != 'true'
         timeout-minutes: 5
         run: |
           python3 -m pip install --disable-pip-version-check --retries 2 --timeout 20 --target "$RUNNER_TEMP/blender-python" --python-version 3.12 --only-binary=:all: numpy==1.26.4 pillow
 
       - name: Configure Blender Python dependencies
         run: echo "PYTHONPATH=$RUNNER_TEMP/blender-python" >> "$GITHUB_ENV"
+
+      - name: Verify Blender Python dependencies
+        run: |
+          blender --background --python-expr "import numpy, PIL; print('NumPy', numpy.__version__, 'Pillow', PIL.__version__)"
 
       - name: Record Blender toolchain version
         id: tree-blender-version
@@ -162,16 +176,30 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/blender-python
-          key: blender-python-3.12-numpy-1.26.4-pillow-v1
+          key: blender-python-3.12-numpy-1.26.4-pillow-v2
+
+      - name: Validate Blender Python dependency cache
+        id: blender-python-deps
+        run: |
+          if [[ -d "$RUNNER_TEMP/blender-python/numpy" && -d "$RUNNER_TEMP/blender-python/PIL" ]]; then
+            echo "valid=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "valid=false" >> "$GITHUB_OUTPUT"
+            rm -rf "$RUNNER_TEMP/blender-python"
+          fi
 
       - name: Install NumPy and Pillow for Blender's Python 3.12
-        if: steps.blender-python-cache.outputs.cache-hit != 'true'
+        if: steps.blender-python-deps.outputs.valid != 'true'
         timeout-minutes: 5
         run: |
           python3 -m pip install --disable-pip-version-check --retries 2 --timeout 20 --target "$RUNNER_TEMP/blender-python" --python-version 3.12 --only-binary=:all: numpy==1.26.4 pillow
 
       - name: Configure Blender Python dependencies
         run: echo "PYTHONPATH=$RUNNER_TEMP/blender-python" >> "$GITHUB_ENV"
+
+      - name: Verify Blender Python dependencies
+        run: |
+          blender --background --python-expr "import numpy, PIL; print('NumPy', numpy.__version__, 'Pillow', PIL.__version__)"
 
       - name: Record Blender toolchain version
         id: boulder-blender-version
