@@ -68,12 +68,24 @@ jobs:
           sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=30
           sudo apt-get install --yes --no-install-recommends blender python3-pip
 
+      - name: Detect Blender Python version
+        id: blender-python-version
+        run: |
+          blender --background --python-expr "import sys; print('BLENDER_PYTHON_VERSION=' + str(sys.version_info.major) + '.' + str(sys.version_info.minor))" | tee "$RUNNER_TEMP/blender-python-version.log"
+          blender_python_version=$(sed -n 's/^BLENDER_PYTHON_VERSION=//p' "$RUNNER_TEMP/blender-python-version.log" | tail -n 1)
+          runner_python_version=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+          if [[ -z "$blender_python_version" || "$blender_python_version" != "$runner_python_version" ]]; then
+            echo "Blender Python $blender_python_version does not match runner Python $runner_python_version" >&2
+            exit 1
+          fi
+          echo "version=$blender_python_version" >> "$GITHUB_OUTPUT"
+
       - name: Restore Blender Python dependency cache
         id: blender-python-cache
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/blender-python
-          key: blender-python-3.12-numpy-1.26.4-pillow-v2
+          key: blender-python-${{ steps.blender-python-version.outputs.version }}-numpy2.4-pillow12-v3
 
       - name: Validate Blender Python dependency cache
         id: blender-python-deps
@@ -85,11 +97,11 @@ jobs:
             rm -rf "$RUNNER_TEMP/blender-python"
           fi
 
-      - name: Install NumPy and Pillow for Blender's Python 3.12
+      - name: Install NumPy and Pillow for Blender's Python version
         if: steps.blender-python-deps.outputs.valid != 'true'
         timeout-minutes: 5
         run: |
-          python3 -m pip install --disable-pip-version-check --retries 2 --timeout 20 --target "$RUNNER_TEMP/blender-python" --python-version 3.12 --only-binary=:all: numpy==1.26.4 pillow
+          python3 -m pip install --disable-pip-version-check --retries 2 --timeout 20 --target "$RUNNER_TEMP/blender-python" --only-binary=:all: "numpy>=2.4,<3" "pillow>=12,<14"
 
       - name: Configure Blender Python dependencies
         run: echo "PYTHONPATH=$RUNNER_TEMP/blender-python" >> "$GITHUB_ENV"
@@ -172,12 +184,24 @@ jobs:
           sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=30
           sudo apt-get install --yes --no-install-recommends blender python3-pip
 
+      - name: Detect Blender Python version
+        id: blender-python-version
+        run: |
+          blender --background --python-expr "import sys; print('BLENDER_PYTHON_VERSION=' + str(sys.version_info.major) + '.' + str(sys.version_info.minor))" | tee "$RUNNER_TEMP/blender-python-version.log"
+          blender_python_version=$(sed -n 's/^BLENDER_PYTHON_VERSION=//p' "$RUNNER_TEMP/blender-python-version.log" | tail -n 1)
+          runner_python_version=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+          if [[ -z "$blender_python_version" || "$blender_python_version" != "$runner_python_version" ]]; then
+            echo "Blender Python $blender_python_version does not match runner Python $runner_python_version" >&2
+            exit 1
+          fi
+          echo "version=$blender_python_version" >> "$GITHUB_OUTPUT"
+
       - name: Restore Blender Python dependency cache
         id: blender-python-cache
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/blender-python
-          key: blender-python-3.12-numpy-1.26.4-pillow-v2
+          key: blender-python-${{ steps.blender-python-version.outputs.version }}-numpy2.4-pillow12-v3
 
       - name: Validate Blender Python dependency cache
         id: blender-python-deps
@@ -189,11 +213,11 @@ jobs:
             rm -rf "$RUNNER_TEMP/blender-python"
           fi
 
-      - name: Install NumPy and Pillow for Blender's Python 3.12
+      - name: Install NumPy and Pillow for Blender's Python version
         if: steps.blender-python-deps.outputs.valid != 'true'
         timeout-minutes: 5
         run: |
-          python3 -m pip install --disable-pip-version-check --retries 2 --timeout 20 --target "$RUNNER_TEMP/blender-python" --python-version 3.12 --only-binary=:all: numpy==1.26.4 pillow
+          python3 -m pip install --disable-pip-version-check --retries 2 --timeout 20 --target "$RUNNER_TEMP/blender-python" --only-binary=:all: "numpy>=2.4,<3" "pillow>=12,<14"
 
       - name: Configure Blender Python dependencies
         run: echo "PYTHONPATH=$RUNNER_TEMP/blender-python" >> "$GITHUB_ENV"
