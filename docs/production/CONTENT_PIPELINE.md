@@ -48,6 +48,10 @@ The parent world's validated `wind_direction` and `wind_strength` are copied int
 
 The deterministic displacement is shared by terrain mesh refinement, `SampleTerrainHeight`, placement grounding, and traversal. `Talvisota.World.Region` tests cover wind-direction changes, zero-wind invariance, lee-slope accumulation, deterministic repeat sampling, parent-world wind propagation, non-finite coordinates, and water exclusion. This is an art-directed wind-coupled surface response, not a snow-transport simulation or a replacement for higher-resolution georeferenced elevation data.
 
+### Frozen river surface texture density
+
+The Taipale frozen-river ribbon uses a 64-metre physical repeat for the shared ice PBR maps. UV U is derived from cumulative distance along the curved river centreline, while V is derived from each cross-section's bank-to-bank width. The previous 8-by-1 UV range stretched the 1024px ice maps over roughly 585 metres along the river and 120 metres across it, making the fracture and granular pattern far too large. The environment asset contract test checks all 65 cross-sections against their world-space distances and verifies the OBJ face-to-UV indices. The Sakkola frozen-water mesh retains its separately authored 64-metre repeat.
+
 ## Typed mission, faction, character, and equipment definitions
 
 The content library parses strict v1 `.tmission`, `.tfaction`, `.tcharacter`, and `.tequipment` records. Their required fields and reference types are documented in [authored-definitions-v1.md](../../data/schemas/authored-definitions-v1.md). The parser validates type/version headers, unique and known fields, required values, manifest identity/path ownership, expected referenced asset kinds, referenced file presence, and explicit manifest dependencies. Failed parsing leaves the caller's previous output unchanged. Generic JSON/TOML/YAML definitions fail closed until parsers are implemented.

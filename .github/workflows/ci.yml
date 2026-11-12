@@ -65,6 +65,7 @@ jobs:
       - name: Install Blender and Python dependency tooling
         timeout-minutes: 8
         run: |
+          sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=30
           sudo apt-get install --yes --no-install-recommends blender python3-pip
 
       - name: Restore Blender Python dependency cache
@@ -153,6 +154,7 @@ jobs:
       - name: Install Blender and Python dependency tooling
         timeout-minutes: 8
         run: |
+          sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=30
           sudo apt-get install --yes --no-install-recommends blender python3-pip
 
       - name: Restore Blender Python dependency cache
