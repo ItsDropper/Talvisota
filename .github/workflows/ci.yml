@@ -96,7 +96,8 @@ jobs:
 
       - name: Verify Blender Python dependencies
         run: |
-          blender --background --python-expr "import numpy, PIL; print('NumPy', numpy.__version__, 'Pillow', PIL.__version__)"
+          blender --background --python-expr "import sys; sys.path.insert(0, r'$RUNNER_TEMP/blender-python'); import numpy, PIL; print('BLENDER_DEPS_OK', numpy.__version__, PIL.__version__)" | tee "$RUNNER_TEMP/blender-python-verify.log"
+          grep -q 'BLENDER_DEPS_OK' "$RUNNER_TEMP/blender-python-verify.log"
 
       - name: Record Blender toolchain version
         id: tree-blender-version
@@ -118,12 +119,12 @@ jobs:
       - name: Generate deterministic Scots pine LODs
         if: steps.tree-output-cache.outputs.cache-hit != 'true'
         run: |
-          blender --background --python tools/blender_asset_pipeline/generate_tree.py -- --output "$RUNNER_TEMP/generated-trees" --texture-root assets/textures/environment --seed 1939
+          blender --background --python-expr "import sys; sys.path.insert(0, r'$RUNNER_TEMP/blender-python')" --python tools/blender_asset_pipeline/generate_tree.py -- --output "$RUNNER_TEMP/generated-trees" --texture-root assets/textures/environment --seed 1939
 
       - name: Re-import and validate generated GLBs
         if: steps.tree-output-cache.outputs.cache-hit != 'true'
         run: |
-          blender --background --python tools/blender_asset_pipeline/verify_tree_outputs.py -- "$RUNNER_TEMP/generated-trees"
+          blender --background --python-expr "import sys; sys.path.insert(0, r'$RUNNER_TEMP/blender-python')" --python tools/blender_asset_pipeline/verify_tree_outputs.py -- "$RUNNER_TEMP/generated-trees"
 
       - name: Upload generated Scots pine runtime model
         uses: actions/upload-artifact@v4
@@ -199,7 +200,8 @@ jobs:
 
       - name: Verify Blender Python dependencies
         run: |
-          blender --background --python-expr "import numpy, PIL; print('NumPy', numpy.__version__, 'Pillow', PIL.__version__)"
+          blender --background --python-expr "import sys; sys.path.insert(0, r'$RUNNER_TEMP/blender-python'); import numpy, PIL; print('BLENDER_DEPS_OK', numpy.__version__, PIL.__version__)" | tee "$RUNNER_TEMP/blender-python-verify.log"
+          grep -q 'BLENDER_DEPS_OK' "$RUNNER_TEMP/blender-python-verify.log"
 
       - name: Record Blender toolchain version
         id: boulder-blender-version
@@ -221,12 +223,12 @@ jobs:
       - name: Generate granite boulder LODs
         if: steps.boulder-output-cache.outputs.cache-hit != 'true'
         run: |
-          blender --background --python tools/blender_asset_pipeline/generate_boulder.py -- --output "$RUNNER_TEMP/generated-boulder" --texture-root assets/textures/environment --seed 1939
+          blender --background --python-expr "import sys; sys.path.insert(0, r'$RUNNER_TEMP/blender-python')" --python tools/blender_asset_pipeline/generate_boulder.py -- --output "$RUNNER_TEMP/generated-boulder" --texture-root assets/textures/environment --seed 1939
 
       - name: Re-import and validate boulder GLBs
         if: steps.boulder-output-cache.outputs.cache-hit != 'true'
         run: |
-          blender --background --python tools/blender_asset_pipeline/verify_boulder_outputs.py -- "$RUNNER_TEMP/generated-boulder"
+          blender --background --python-expr "import sys; sys.path.insert(0, r'$RUNNER_TEMP/blender-python')" --python tools/blender_asset_pipeline/verify_boulder_outputs.py -- "$RUNNER_TEMP/generated-boulder"
 
       - name: Upload generated granite boulder runtime model
         uses: actions/upload-artifact@v4
