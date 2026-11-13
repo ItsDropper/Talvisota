@@ -87,8 +87,9 @@ def main():
             and obj.data.materials[polygon.material_index]
             and "Needles" in obj.data.materials[polygon.material_index].name
         )
-        minimum_needle_triangles = {"LOD0": 100_000, "LOD1": 34_000,
-                                    "LOD2": 10_000, "LOD3": 2_000}[lod_name]
+        minimum_needle_triangles = {
+            "LOD0": 410_112, "LOD1": 139_968, "LOD2": 18_144, "LOD3": 2_160
+        }[lod_name]
         if needle_triangles < minimum_needle_triangles:
             fail(lod_name + " needle geometry is under-dense: " +
                  str(needle_triangles) + " < " + str(minimum_needle_triangles))
@@ -97,6 +98,19 @@ def main():
         if needle_triangles > maximum_needle_triangles[lod_name]:
             fail(lod_name + " needle geometry exceeds its density budget: " +
                  str(needle_triangles) + " > " + str(maximum_needle_triangles[lod_name]))
+        bark_triangles = sum(
+            len(polygon.vertices) - 2
+            for obj in meshes for polygon in obj.data.polygons
+            if polygon.material_index < len(obj.data.materials)
+            and obj.data.materials[polygon.material_index]
+            and "bark" in obj.data.materials[polygon.material_index].name.lower()
+        )
+        minimum_bark_triangles = {
+            "LOD0": 28_188, "LOD1": 15_072, "LOD2": 5_748, "LOD3": 1_452
+        }[lod_name]
+        if bark_triangles < minimum_bark_triangles:
+            fail(lod_name + " woody scaffold geometry regressed: " +
+                 str(bark_triangles) + " < " + str(minimum_bark_triangles))
         snow_triangles = sum(
             len(polygon.vertices) - 2
             for obj in meshes for polygon in obj.data.polygons
@@ -109,10 +123,10 @@ def main():
             fail(lod_name + " snow-load triangle manifest/import mismatch: " +
                  str(expected_snow_triangles) + " != " + str(snow_triangles))
         minimum_snow_triangles = {
-            "LOD0": 700, "LOD1": 500, "LOD2": 260, "LOD3": 120
+            "LOD0": 1000, "LOD1": 800, "LOD2": 500, "LOD3": 200
         }[lod_name]
         maximum_snow_triangles = {
-            "LOD0": 6000, "LOD1": 4500, "LOD2": 3000, "LOD3": 1800
+            "LOD0": 8000, "LOD1": 7000, "LOD2": 5000, "LOD3": 2500
         }[lod_name]
         if snow_triangles < minimum_snow_triangles:
             fail(lod_name + " snow-load geometry is under-dense: " +
@@ -137,6 +151,7 @@ def main():
         print("VERIFIED", lod_name, "meshes=", len(meshes),
               "triangles=", sum(len(p.vertices) - 2 for obj in meshes for p in obj.data.polygons),
               "needle_triangles=", needle_triangles,
+              "bark_triangles=", bark_triangles,
               "snow_triangles=", snow_triangles)
     print("TALVISOTA_TREE_ASSET_VERIFY_OK")
 

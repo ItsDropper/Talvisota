@@ -78,7 +78,7 @@ def main():
         "opposite": Vector((-26.0, -28.0, 11.0)),
         "side": Vector((30.0, 22.0, 12.0)),
         "front": Vector((0.0, -38.0, 11.0)),
-        # A tighter fifth capture checks whether needle sprays fill the crown.
+        # Close upper-crown captures inspect needle fill and rounded snow profiles.
         "crown": Vector((13.0, -17.0, 15.0)),
         "snow_detail": Vector((8.0, -12.0, 20.0)),
         "needle_macro": Vector((4.0, -6.0, 14.0)),

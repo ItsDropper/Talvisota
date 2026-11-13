@@ -60,12 +60,14 @@ conical nursery tree.
   terminal-shoot directions vary independently. The crown should not resolve
   into evenly spaced horizontal whorl rings.
 - Snow load is separate geometry on the upper surfaces of near-horizontal
-  primary and secondary boughs. Irregular, tapered caps use the existing snow
+  primary and secondary boughs. Rounded, tapered caps use the existing snow
   PBR material; slope gating prevents the same accumulation on steep branches.
-  The generator records per-LOD snow triangles, and the Blender verifier checks
-  that imported counts match the manifest and remain within explicit density
-  floors/ceilings. This is deterministic art-directed geometry, not a physical
-  snow-transport simulation or a substitute for reference-driven snow studies.
+  A separate seeded random stream keeps snow variation independent of the
+  established branch and needle topology. The generator records per-LOD snow
+  triangles, and the Blender verifier checks imported counts, preserves baseline
+  bark/needle geometry floors, and enforces explicit snow-density budgets. This
+  is deterministic art-directed geometry, not a physical snow-transport
+  simulation or a substitute for reference-driven snow studies.
 
 This is an evolving structural model. Its branching distribution, needle
 clustering, bark zoning, natural damage and snow deformation still require
@@ -133,7 +135,10 @@ path for close-up hero assets when the captured source quality supports it.
   LOD; the verifier enforces per-LOD snow-triangle floors and ceilings in
   addition to the total budgets. The verifier also enforces total budgets of
   750k / 300k / 90k / 12k triangles and separate needle-density floors/ceilings
-  of 100k–500k / 34k–180k / 10k–25k / 2k–6k for LOD0 through LOD3. LOD0 is the close-up hero asset;
+  of 410k–500k / 140k–180k / 18k–25k / 2.1k–6k for LOD0 through LOD3. The
+  verifier also preserves minimum bark-scaffold counts of 28,188 / 15,072 /
+  5,748 / 1,452 triangles so snow additions cannot silently thin the woody
+  structure. LOD0 is the close-up hero asset;
   lower LODs serve progressively smaller screen coverage.
 - The forest must instance individual tree assets at the scene/runtime layer;
   do not merge the entire forest into one world-sized mesh, which destroys

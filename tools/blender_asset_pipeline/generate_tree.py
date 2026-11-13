@@ -24,7 +24,7 @@ import bpy
 from mathutils import Vector
 
 
-PIPELINE_VERSION = 14
+PIPELINE_VERSION = 15
 MATERIAL_MAP_STATUS = {}
 TREE_HEIGHT = 18.0
 TREE_RADIUS = 6.0
@@ -198,7 +198,7 @@ class MeshBuilder:
         self.face_material_indices.append(material_index)
 
     def snow_cap(self, start, end, branch_radius, width_scale, depth, rng):
-        """Create an irregular, shallow snow ridge on a branch's upper surface."""
+        """Build a rounded, tapered snow ridge on the upper side of a branch."""
         a, b = Vector(start), Vector(end)
         delta = b - a
         length = delta.length
@@ -218,31 +218,35 @@ class MeshBuilder:
         stations = (0.0, 0.18, 0.42, 0.68, 0.90, 1.0)
         width_profile = (0.12, 0.70, 1.0, 0.84, 0.48, 0.08)
         height_profile = (0.12, 0.68, 1.0, 0.76, 0.40, 0.06)
+        cross_section = (
+            (-1.0, 0.06), (-0.56, 0.62), (0.0, 1.0),
+            (0.56, 0.62), (1.0, 0.06),
+        )
         first_vertex = len(self.vertices)
         uv_scale = max(branch_radius * width_scale * 2.0, 0.12)
         for index, t in enumerate(stations):
             center = a.lerp(b, t)
-            base = center + up * (branch_radius * 0.78)
+            base = center + up * (branch_radius * 0.76)
             width = (branch_radius * width_scale * width_profile[index] *
                      rng.uniform(0.88, 1.12))
             rise = depth * height_profile[index] * rng.uniform(0.86, 1.14)
-            left = base + side * width
-            crest = base + up * rise
-            right = base - side * width
-            self.vertices.extend((tuple(left), tuple(crest), tuple(right)))
+            for lateral, vertical in cross_section:
+                point = base + side * (lateral * width) + up * (vertical * rise)
+                self.vertices.append(tuple(point))
 
             if index == 0:
                 continue
-            previous = first_vertex + (index - 1) * 3
-            current = first_vertex + index * 3
+            previous = first_vertex + (index - 1) * len(cross_section)
+            current = first_vertex + index * len(cross_section)
             u0 = stations[index - 1] * length / uv_scale
             u1 = t * length / uv_scale
-            self.faces.append((previous, current, current + 1, previous + 1))
-            self.face_uvs.append([(u0, 0.0), (u1, 0.0), (u1, 0.5), (u0, 0.5)])
-            self.face_material_indices.append(0)
-            self.faces.append((previous + 1, current + 1, current + 2, previous + 2))
-            self.face_uvs.append([(u0, 0.5), (u1, 0.5), (u1, 1.0), (u0, 1.0)])
-            self.face_material_indices.append(0)
+            for row in range(len(cross_section) - 1):
+                v0 = row / (len(cross_section) - 1)
+                v1 = (row + 1) / (len(cross_section) - 1)
+                self.faces.append((previous + row, previous + row + 1,
+                                   current + row + 1, current + row))
+                self.face_uvs.append([(u0, v0), (u0, v1), (u1, v1), (u1, v0)])
+                self.face_material_indices.append(0)
         return True
 
     def cone(self, start, end, radius, sides=4):
@@ -401,13 +405,16 @@ def add_branch_snow(builder, start, end, branch_radius, rng, coverage):
     probability = coverage * (0.78 + 0.22 * slope_weight)
     if rng.random() >= probability:
         return False
-    width_scale = rng.uniform(1.20, 1.55)
-    depth = branch_radius * rng.uniform(0.42, 0.68) + 0.010
+    width_scale = rng.uniform(1.35, 1.75)
+    depth = branch_radius * rng.uniform(0.58, 0.82) + 0.012
     return builder.snow_cap(start, end, branch_radius, width_scale, depth, rng)
 
 
 def build_tree(lod_name, preset, materials, height, crown_radius, seed):
     rng = random.Random(seed)
+    # Snow placement has its own deterministic stream so adding snow never
+    # changes the established branch and needle geometry.
+    snow_rng = random.Random(seed ^ 0x5A17C0DE)
     trunk = MeshBuilder()
     foliage = MeshBuilder()
     snow = MeshBuilder()
@@ -487,7 +494,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                 segment_radius = (primary_radii[segment] + primary_radii[segment + 1]) * 0.5
                 add_branch_snow(
                     snow, primary_points[segment], primary_points[segment + 1],
-                    segment_radius, rng, coverage=0.82)
+                    segment_radius, snow_rng, coverage=0.82)
 
             # Secondary limbs split from the scaffold at uneven intervals and angles.
             for secondary_index in range(secondary_count):
@@ -520,7 +527,7 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                                       secondary_radii[segment + 1]) * 0.5
                     add_branch_snow(
                         snow, secondary_points[segment], secondary_points[segment + 1],
-                        segment_radius, rng, coverage=0.48)
+                        segment_radius, snow_rng, coverage=0.48)
 
                 # Scots pine foliage is carried by many short lateral shoots
                 # distributed along the secondary limbs. A pine branch is not a
@@ -620,6 +627,12 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
                             foliage, spray_origin, twig_direction, rng,
                             pairs=needle_pairs_per_spray)
 
+            # The previous snow accent consumed one structural RNG draw for
+            # upper whorls here. Preserve that stream so branch/needle topology
+            # remains unchanged when the snow mesh is upgraded.
+            if fraction > 0.56:
+                rng.random()
+
     trunk_obj = trunk.make_object("Trunk_Scaffold_And_Twigs_" + lod_name,
                                    [materials["bark_lower"], materials["bark_upper"]])
     objects = [trunk_obj]
@@ -688,7 +701,7 @@ def main():
             "lower_bole": {"material": "Scots Pine | Lower grey-brown plated bark", "height_fraction": [0.0, 0.58]},
             "upper_trunk_and_scaffold": {"material": "Scots Pine | Upper orange-yellow smooth bark", "height_fraction": [0.58, 1.0]},
         },
-        "geometry_note": "Mature Scots pine with substantial primary and secondary boughs. Foliage is carried by overlapping needle sprays distributed along lateral branchlets throughout each secondary limb, with sparse terminal leaders. Paired, curved tapered blade needles are 30-36 cm long and 50-70 mm wide at their bases as a deliberate game-readability exaggeration. Separate irregular snow ridges sit on the upper surfaces of near-horizontal primary and secondary branches; coverage and geometry are deterministic per LOD. LOD0 and LOD1 retain the full close/mid crown structure; LOD2 and LOD3 explicitly reduce secondary-branch, branchlet, spray, paired-needle, and snow-load geometry while retaining the authored trunk height and broad-crown growth form. Deterministic structural asset, not a photogrammetry scan or snow-transport simulation.",
+        "geometry_note": "Mature Scots pine with substantial primary and secondary boughs. Foliage is carried by overlapping needle sprays distributed along lateral branchlets throughout each secondary limb, with sparse terminal leaders. Paired, curved tapered blade needles are 30-36 cm long and 50-70 mm wide at their bases as a deliberate game-readability exaggeration. Separate rounded, irregular snow ridges sit on the upper surfaces of near-horizontal primary and secondary branches; a dedicated deterministic random stream keeps their variation independent of the established branch and needle topology. LOD0 and LOD1 retain the full close/mid crown structure; LOD2 and LOD3 explicitly reduce secondary-branch, branchlet, spray, paired-needle, and snow-load geometry while retaining the authored trunk height and broad-crown growth form. Deterministic structural asset, not a photogrammetry scan or snow-transport simulation.",
         "runtime_note": "Select LOD by projected screen size/distance in Talvisota; files are separate because glTF core has no universal LOD selector.",
     }
     manifest["material_map_status"] = MATERIAL_MAP_STATUS
