@@ -225,17 +225,22 @@ class MeshBuilder:
             (-1.0, 0.05), (-0.72, 0.48), (-0.38, 0.82), (0.0, 1.0),
             (0.38, 0.82), (0.72, 0.48), (1.0, 0.05),
         )
+        # Preserve the prior twelve-draw snow RNG budget per accepted cap:
+        # the first two draws add cap-level asymmetry, while the ten station
+        # draws below keep later branch-selection decisions stable.
+        longitudinal_skew = rng.uniform(-0.025, 0.025)
+        depth_scale = rng.uniform(0.92, 1.08)
         first_vertex = len(self.vertices)
         uv_scale = max(branch_radius * width_scale * 2.0, 0.12)
         section_size = len(cross_section)
         for index, t in enumerate(stations):
-            center = a.lerp(b, t)
+            center = a.lerp(b, t + longitudinal_skew * math.sin(math.pi * t))
             # Bury the flat underside slightly into the branch so the snow
             # reads as a load resting on bark, not a floating white ribbon.
             base = center + up * (branch_radius * 0.76)
             width = (branch_radius * width_scale * width_profile[index] *
                      rng.uniform(0.88, 1.12))
-            rise = depth * height_profile[index] * rng.uniform(0.86, 1.14)
+            rise = depth * depth_scale * height_profile[index] * rng.uniform(0.86, 1.14)
             for lateral, vertical in cross_section:
                 point = base + side * (lateral * width) + up * (vertical * rise)
                 self.vertices.append(tuple(point))
