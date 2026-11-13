@@ -177,7 +177,8 @@ jobs:
           assert manifest["species"] == "Pinus sylvestris"
           assert set(manifest["lods"]) == {"LOD0", "LOD1", "LOD2", "LOD3"}
           assert all(item["objects"] <= 3 for item in manifest["lods"].values())
-          assert all(item["snow_triangles"] > 0 for item in manifest["lods"].values())
+          assert all(item["snow_triangles"] == item["snow_caps"] * 66 for item in manifest["lods"].values())
+          assert [manifest["lods"][f"LOD{lod}"]["snow_caps"] for lod in range(4)] == [120, 80, 42, 18]
           for lod in range(4):
               model = pathlib.Path(sys.argv[1]).parent / f"scots_pine_lod{lod}.glb"
               assert model.is_file() and model.stat().st_size > 128, model

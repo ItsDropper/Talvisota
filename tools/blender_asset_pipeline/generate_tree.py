@@ -14,6 +14,7 @@ vendor-specific MSFT_lod behavior.
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import json
 import math
 import random
@@ -24,7 +25,7 @@ import bpy
 from mathutils import Vector
 
 
-PIPELINE_VERSION = 15
+PIPELINE_VERSION = 16
 MATERIAL_MAP_STATUS = {}
 TREE_HEIGHT = 18.0
 TREE_RADIUS = 6.0
@@ -198,7 +199,7 @@ class MeshBuilder:
         self.face_material_indices.append(material_index)
 
     def snow_cap(self, start, end, branch_radius, width_scale, depth, rng):
-        """Build a rounded, tapered snow ridge on the upper side of a branch."""
+        """Build a closed, rounded snow load on the upper side of a branch."""
         a, b = Vector(start), Vector(end)
         delta = b - a
         length = delta.length
@@ -215,17 +216,22 @@ class MeshBuilder:
             return False
         side.normalize()
 
-        stations = (0.0, 0.18, 0.42, 0.68, 0.90, 1.0)
-        width_profile = (0.12, 0.70, 1.0, 0.84, 0.48, 0.08)
-        height_profile = (0.12, 0.68, 1.0, 0.76, 0.40, 0.06)
+        # Five longitudinal stations and a seven-point transverse arc keep the
+        # cap rounded without pushing the close LOD beyond its snow budget.
+        stations = (0.0, 0.22, 0.50, 0.78, 1.0)
+        width_profile = (0.10, 0.72, 1.0, 0.76, 0.10)
+        height_profile = (0.05, 0.66, 1.0, 0.62, 0.05)
         cross_section = (
-            (-1.0, 0.06), (-0.56, 0.62), (0.0, 1.0),
-            (0.56, 0.62), (1.0, 0.06),
+            (-1.0, 0.05), (-0.72, 0.48), (-0.38, 0.82), (0.0, 1.0),
+            (0.38, 0.82), (0.72, 0.48), (1.0, 0.05),
         )
         first_vertex = len(self.vertices)
         uv_scale = max(branch_radius * width_scale * 2.0, 0.12)
+        section_size = len(cross_section)
         for index, t in enumerate(stations):
             center = a.lerp(b, t)
+            # Bury the flat underside slightly into the branch so the snow
+            # reads as a load resting on bark, not a floating white ribbon.
             base = center + up * (branch_radius * 0.76)
             width = (branch_radius * width_scale * width_profile[index] *
                      rng.uniform(0.88, 1.12))
@@ -236,17 +242,34 @@ class MeshBuilder:
 
             if index == 0:
                 continue
-            previous = first_vertex + (index - 1) * len(cross_section)
-            current = first_vertex + index * len(cross_section)
+            previous = first_vertex + (index - 1) * section_size
+            current = first_vertex + index * section_size
             u0 = stations[index - 1] * length / uv_scale
             u1 = t * length / uv_scale
-            for row in range(len(cross_section) - 1):
-                v0 = row / (len(cross_section) - 1)
-                v1 = (row + 1) / (len(cross_section) - 1)
+            for row in range(section_size - 1):
+                v0 = row / (section_size - 1)
+                v1 = (row + 1) / (section_size - 1)
                 self.faces.append((previous + row, previous + row + 1,
                                    current + row + 1, current + row))
                 self.face_uvs.append([(u0, v0), (u0, v1), (u1, v1), (u1, v0)])
                 self.face_material_indices.append(0)
+
+            # Close the underside between the two buried lower edges.
+            self.faces.append((previous, current, current + section_size - 1,
+                               previous + section_size - 1))
+            self.face_uvs.append([(u0, 0.0), (u1, 0.0), (u1, 1.0), (u0, 1.0)])
+            self.face_material_indices.append(0)
+
+        last_vertex = first_vertex + (len(stations) - 1) * section_size
+        # End faces close the tapered volume; their winding points outward.
+        self.faces.append(tuple(first_vertex + row for row in reversed(range(section_size))))
+        self.face_uvs.append([(0.0, row / (section_size - 1))
+                              for row in reversed(range(section_size))])
+        self.face_material_indices.append(0)
+        self.faces.append(tuple(last_vertex + row for row in range(section_size)))
+        self.face_uvs.append([(length / uv_scale, row / (section_size - 1))
+                              for row in range(section_size)])
+        self.face_material_indices.append(0)
         return True
 
     def cone(self, start, end, radius, sides=4):
@@ -269,6 +292,32 @@ class MeshBuilder:
         obj = bpy.data.objects.new(name, mesh)
         bpy.context.collection.objects.link(obj)
         return obj
+
+
+
+def validate_closed_mesh(builder, label):
+    """Reject open, non-manifold, or degenerate generated snow shells."""
+    edge_uses = Counter()
+    for face_index, face in enumerate(builder.faces):
+        if len(face) < 3 or len(set(face)) != len(face):
+            raise RuntimeError(label + " has an invalid snow face at index " + str(face_index))
+        origin = Vector(builder.vertices[face[0]])
+        for corner in range(1, len(face) - 1):
+            second = Vector(builder.vertices[face[corner]])
+            third = Vector(builder.vertices[face[corner + 1]])
+            if (second - origin).cross(third - origin).length_squared <= 1e-12:
+                raise RuntimeError(label + " contains a degenerate snow face at index " +
+                                   str(face_index))
+        for first, second in zip(face, face[1:] + face[:1]):
+            edge_uses[tuple(sorted((first, second)))] += 1
+    invalid_edges = sum(count != 2 for count in edge_uses.values())
+    if not edge_uses or invalid_edges:
+        boundary_edges = sum(count == 1 for count in edge_uses.values())
+        non_manifold_edges = sum(count > 2 for count in edge_uses.values())
+        raise RuntimeError(
+            label + " snow shells are not closed: " + str(boundary_edges) +
+            " boundary edges, " + str(non_manifold_edges) + " non-manifold edges")
+    return len(edge_uses)
 
 
 def load_map(texture_root, stem, color_space):
@@ -633,6 +682,10 @@ def build_tree(lod_name, preset, materials, height, crown_radius, seed):
             if fraction > 0.56:
                 rng.random()
 
+    if not snow.faces:
+        raise RuntimeError(lod_name + " generated no branch snow loads")
+    validate_closed_mesh(snow, "Scots pine " + lod_name)
+
     trunk_obj = trunk.make_object("Trunk_Scaffold_And_Twigs_" + lod_name,
                                    [materials["bark_lower"], materials["bark_upper"]])
     objects = [trunk_obj]
@@ -721,15 +774,21 @@ def main():
         export_lod(objects, filepath)
         vertex_count = sum(len(obj.data.vertices) for obj in objects)
         triangle_count = sum(len(poly.vertices) - 2 for obj in objects for poly in obj.data.polygons)
+        snow_objects = [obj for obj in objects if obj.name.startswith("Snow_Load_")]
+        if len(snow_objects) != 1:
+            raise RuntimeError(lod_name + " must export exactly one snow-load mesh")
+        snow_triangles = sum(len(poly.vertices) - 2
+                             for poly in snow_objects[0].data.polygons)
+        if snow_triangles % 66 != 0:
+            raise RuntimeError(lod_name + " snow geometry is not composed of complete 66-triangle caps")
+        snow_caps = snow_triangles // 66
         manifest["lods"][lod_name] = {
             "file": filepath.name,
             "vertices": vertex_count,
             "triangles": triangle_count,
-            "snow_triangles": sum(
-                len(poly.vertices) - 2
-                for obj in objects if obj.name.startswith("Snow_Load_")
-                for poly in obj.data.polygons
-            ),
+            "snow_caps": snow_caps,
+            "snow_triangles_per_cap": 66,
+            "snow_triangles": snow_triangles,
             "objects": len(objects),
             "branchlets_per_secondary": preset["branchlets_per_secondary"],
             "sprays_per_branchlet": preset["sprays_per_branchlet"],

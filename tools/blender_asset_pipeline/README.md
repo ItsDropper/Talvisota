@@ -60,12 +60,17 @@ conical nursery tree.
   terminal-shoot directions vary independently. The crown should not resolve
   into evenly spaced horizontal whorl rings.
 - Snow load is separate geometry on the upper surfaces of near-horizontal
-  primary and secondary boughs. Rounded, tapered caps use the existing snow
-  PBR material; slope gating prevents the same accumulation on steep branches.
-  A separate seeded random stream keeps snow variation independent of the
-  established branch and needle topology. The generator records per-LOD snow
-  triangles, and the Blender verifier checks imported counts, preserves baseline
-  bark/needle geometry floors, and enforces explicit snow-density budgets. This
+  primary and secondary boughs. Each cap is a closed shallow volume with a
+  seven-point rounded cross-section, tapered longitudinal profile, buried
+  underside and end faces; the underside intersects the branch so the load does
+  not float as a one-sided white ribbon. Slope gating prevents accumulation on
+  steep branches. A separate seeded random stream keeps snow variation
+  independent of the established branch and needle topology. Each cap has 66
+  triangles; the fixed seed emits 120 / 80 / 42 / 18 caps across LOD0–LOD3.
+  The generator rejects open or degenerate source shells, and the Blender
+  verifier welds duplicated GLB seam vertices by position and requires exactly
+  two incident faces per snow edge after import. It also preserves baseline
+  bark/needle geometry floors and enforces explicit snow-density budgets. This
   is deterministic art-directed geometry, not a physical snow-transport
   simulation or a substitute for reference-driven snow studies.
 

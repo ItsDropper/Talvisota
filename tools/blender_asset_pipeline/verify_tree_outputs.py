@@ -1,5 +1,7 @@
 """Import and validate every GLB emitted by generate_tree.py inside Blender."""
+from collections import Counter
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -8,6 +10,34 @@ import bpy
 
 def fail(message):
     raise SystemExit("TREE_ASSET_VERIFY_FAILED: " + message)
+
+
+
+def validate_closed_snow_mesh(mesh, lod_name):
+    """Weld GLB seam duplicates by position and require a closed snow volume."""
+    positions = [
+        tuple(round(float(component), 5) for component in vertex.co)
+        for vertex in mesh.vertices
+    ]
+    edge_uses = Counter()
+    for polygon in mesh.polygons:
+        area = float(polygon.area)
+        if not math.isfinite(area) or area <= 1e-10:
+            fail(lod_name + " contains a degenerate snow polygon after GLB import")
+        vertices = tuple(polygon.vertices)
+        for index, vertex_index in enumerate(vertices):
+            first = positions[vertex_index]
+            second = positions[vertices[(index + 1) % len(vertices)]]
+            if first == second:
+                fail(lod_name + " contains a zero-length snow edge after GLB import")
+            edge_uses[tuple(sorted((first, second)))] += 1
+    invalid_edges = sum(count != 2 for count in edge_uses.values())
+    if not edge_uses or invalid_edges:
+        boundary_edges = sum(count == 1 for count in edge_uses.values())
+        non_manifold_edges = sum(count > 2 for count in edge_uses.values())
+        fail(lod_name + " snow shell is not closed after GLB round-trip: " +
+             str(boundary_edges) + " boundary edges, " +
+             str(non_manifold_edges) + " non-manifold edges")
 
 
 def main():
@@ -80,6 +110,13 @@ def main():
         )
         if not has_snow_material:
             fail(lod_name + " lost the separate snow-load material")
+        snow_meshes = [
+            obj for obj in meshes
+            if any(material and "Snow" in material.name for material in obj.data.materials)
+        ]
+        if len(snow_meshes) != 1:
+            fail(lod_name + " must contain exactly one snow-load mesh")
+        validate_closed_snow_mesh(snow_meshes[0].data, lod_name)
         needle_triangles = sum(
             len(polygon.vertices) - 2
             for obj in meshes for polygon in obj.data.polygons
@@ -122,6 +159,14 @@ def main():
         if expected_snow_triangles != snow_triangles:
             fail(lod_name + " snow-load triangle manifest/import mismatch: " +
                  str(expected_snow_triangles) + " != " + str(snow_triangles))
+        expected_snow_caps = {"LOD0": 120, "LOD1": 80, "LOD2": 42, "LOD3": 18}[lod_name]
+        if lod.get("snow_triangles_per_cap") != 66:
+            fail(lod_name + " has an unexpected snow-cap topology budget")
+        if snow_triangles % 66 != 0 or lod.get("snow_caps") != snow_triangles // 66:
+            fail(lod_name + " snow-cap count does not match its 66-triangle closed-shell budget")
+        if lod.get("snow_caps") != expected_snow_caps:
+            fail(lod_name + " deterministic snow-cap count changed: " +
+                 str(lod.get("snow_caps")) + " != " + str(expected_snow_caps))
         minimum_snow_triangles = {
             "LOD0": 1000, "LOD1": 800, "LOD2": 500, "LOD3": 200
         }[lod_name]
@@ -152,6 +197,7 @@ def main():
               "triangles=", sum(len(p.vertices) - 2 for obj in meshes for p in obj.data.polygons),
               "needle_triangles=", needle_triangles,
               "bark_triangles=", bark_triangles,
+              "snow_caps=", lod.get("snow_caps"),
               "snow_triangles=", snow_triangles)
     print("TALVISOTA_TREE_ASSET_VERIFY_OK")
 
