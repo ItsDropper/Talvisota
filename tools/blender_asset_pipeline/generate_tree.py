@@ -25,7 +25,8 @@ import bpy
 from mathutils import Vector
 
 
-PIPELINE_VERSION = 16
+PIPELINE_VERSION = 17
+UV_DETERMINANT_EPSILON = 1.0e-8
 MATERIAL_MAP_STATUS = {}
 TREE_HEIGHT = 18.0
 TREE_RADIUS = 6.0
@@ -45,6 +46,26 @@ LOD_PRESETS = {
              "branchlets_per_secondary": 4, "sprays_per_branchlet": 3,
              "needle_pairs_per_spray": 3, "sides": 4},
 }
+
+
+def uv_triangle_determinant(first, second, third):
+    return ((second[0] - first[0]) * (third[1] - first[1]) -
+            (third[0] - first[0]) * (second[1] - first[1]))
+
+
+def validate_face_uv_basis(face_uvs, label):
+    """Reject degenerate fan triangles before normal-mapped meshes are exported."""
+    for face_index, coordinates in enumerate(face_uvs):
+        if len(coordinates) < 3:
+            raise RuntimeError(label + " face " + str(face_index) + " has fewer than three UV corners")
+        for triangle_index in range(1, len(coordinates) - 1):
+            determinant = uv_triangle_determinant(
+                coordinates[0], coordinates[triangle_index], coordinates[triangle_index + 1])
+            if not math.isfinite(determinant) or abs(determinant) < UV_DETERMINANT_EPSILON:
+                raise RuntimeError(
+                    label + " face " + str(face_index) + " triangle " + str(triangle_index - 1) +
+                    " has a degenerate tangent-space UV basis (determinant " +
+                    format(determinant, ".3e") + ")")
 
 
 def parse_args():
@@ -266,14 +287,16 @@ class MeshBuilder:
             self.face_material_indices.append(0)
 
         last_vertex = first_vertex + (len(stations) - 1) * section_size
-        # End faces close the tapered volume; their winding points outward.
+        # End faces close the tapered volume; their UVs use both cross-section
+        # axes. A constant-U projection makes every end-face triangle's tangent
+        # basis singular, which is invalid for the snow normal map.
+        end_cap_uvs = [(0.5 + 0.5 * lateral, vertical)
+                       for lateral, vertical in cross_section]
         self.faces.append(tuple(first_vertex + row for row in reversed(range(section_size))))
-        self.face_uvs.append([(0.0, row / (section_size - 1))
-                              for row in reversed(range(section_size))])
+        self.face_uvs.append(list(reversed(end_cap_uvs)))
         self.face_material_indices.append(0)
         self.faces.append(tuple(last_vertex + row for row in range(section_size)))
-        self.face_uvs.append([(length / uv_scale, row / (section_size - 1))
-                              for row in range(section_size)])
+        self.face_uvs.append(list(end_cap_uvs))
         self.face_material_indices.append(0)
         return True
 
@@ -281,6 +304,12 @@ class MeshBuilder:
         self.tube(start, end, radius, 0.008, sides=sides)
 
     def make_object(self, name, material):
+        if not (len(self.faces) == len(self.face_uvs) == len(self.face_material_indices)):
+            raise RuntimeError(name + " has mismatched face, UV, and material records")
+        for face_index, (face, coordinates) in enumerate(zip(self.faces, self.face_uvs)):
+            if len(face) != len(coordinates):
+                raise RuntimeError(name + " face " + str(face_index) + " has mismatched geometry/UV corners")
+        validate_face_uv_basis(self.face_uvs, name)
         mesh = bpy.data.meshes.new(name + "Mesh")
         mesh.from_pydata(self.vertices, [], self.faces)
         material_list = list(material) if isinstance(material, (list, tuple)) else [material]

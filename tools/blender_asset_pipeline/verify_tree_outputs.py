@@ -40,6 +40,35 @@ def validate_closed_snow_mesh(mesh, lod_name):
              str(non_manifold_edges) + " non-manifold edges")
 
 
+UV_DETERMINANT_EPSILON = 1.0e-8
+
+
+def uv_triangle_determinant(first, second, third):
+    return ((second[0] - first[0]) * (third[1] - first[1]) -
+            (third[0] - first[0]) * (second[1] - first[1]))
+
+
+def validate_normal_map_uv_basis(mesh, lod_name, object_name):
+    """Check Blender's exported triangle split against the engine's UV threshold."""
+    if len(mesh.uv_layers) == 0:
+        fail(lod_name + " " + object_name + " has no UV layer for its normal maps")
+    uv_layer = mesh.uv_layers.active or mesh.uv_layers[0]
+    mesh.calc_loop_triangles()
+    for triangle in mesh.loop_triangles:
+        coordinates = [
+            (float(uv_layer.data[loop_index].uv.x),
+             float(uv_layer.data[loop_index].uv.y))
+            for loop_index in triangle.loops
+        ]
+        determinant = uv_triangle_determinant(*coordinates)
+        if not math.isfinite(determinant) or abs(determinant) < UV_DETERMINANT_EPSILON:
+            fail(lod_name + " " + object_name + " polygon " + str(triangle.polygon_index) +
+                 " triangle " + str(triangle.index) +
+                 " has a degenerate tangent-space UV basis (determinant " +
+                 format(determinant, ".3e") + ")")
+    return len(mesh.loop_triangles)
+
+
 def main():
     args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     if len(args) != 1:
@@ -89,6 +118,10 @@ def main():
             fail(lod_name + " contains no polygons")
         if any(len(obj.data.uv_layers) == 0 for obj in meshes):
             fail(lod_name + " has a mesh without UV coordinates")
+        uv_triangle_count = sum(
+            validate_normal_map_uv_basis(obj.data, lod_name, obj.name)
+            for obj in meshes
+        )
         if any(len(obj.data.materials) == 0 for obj in meshes):
             fail(lod_name + " has a mesh without material assignments")
         imported_material_names = {
@@ -195,6 +228,7 @@ def main():
                  str(actual_density) + " != " + str(expected_density))
         print("VERIFIED", lod_name, "meshes=", len(meshes),
               "triangles=", sum(len(p.vertices) - 2 for obj in meshes for p in obj.data.polygons),
+              "uv_triangles=", uv_triangle_count,
               "needle_triangles=", needle_triangles,
               "bark_triangles=", bark_triangles,
               "snow_caps=", lod.get("snow_caps"),
