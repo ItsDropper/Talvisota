@@ -59,8 +59,13 @@ conical nursery tree.
 - Primary branch lengths, azimuths, vertical positions, secondary splits and
   terminal-shoot directions vary independently. The crown should not resolve
   into evenly spaced horizontal whorl rings.
-- Snow accents are separate geometry and are currently a sparse structural
-  approximation, not a validated snow-load simulation.
+- Snow load is separate geometry on the upper surfaces of near-horizontal
+  primary and secondary boughs. Irregular, tapered caps use the existing snow
+  PBR material; slope gating prevents the same accumulation on steep branches.
+  The generator records per-LOD snow triangles, and the Blender verifier checks
+  that imported counts match the manifest and remain within explicit density
+  floors/ceilings. This is deterministic art-directed geometry, not a physical
+  snow-transport simulation or a substitute for reference-driven snow studies.
 
 This is an evolving structural model. Its branching distribution, needle
 clustering, bark zoning, natural damage and snow deformation still require
@@ -124,9 +129,11 @@ path for close-up hero assets when the captured source quality supports it.
   broad-crowned growth form without carrying close-range fascicle geometry.
   Individual needles remain curved tapered blade strips, not capped cylinders.
   The LOD0 primary scaffold uses five-sided tubes to retain its branch silhouette.
-  The verifier enforces total budgets of 750k / 300k / 90k / 12k triangles and
-  separate needle-density floors/ceilings of 100k–500k / 34k–180k /
-  10k–25k / 2k–6k for LOD0 through LOD3. LOD0 is the close-up hero asset;
+  Snow-load ridges remain a separate material group and are retained in every
+  LOD; the verifier enforces per-LOD snow-triangle floors and ceilings in
+  addition to the total budgets. The verifier also enforces total budgets of
+  750k / 300k / 90k / 12k triangles and separate needle-density floors/ceilings
+  of 100k–500k / 34k–180k / 10k–25k / 2k–6k for LOD0 through LOD3. LOD0 is the close-up hero asset;
   lower LODs serve progressively smaller screen coverage.
 - The forest must instance individual tree assets at the scene/runtime layer;
   do not merge the entire forest into one world-sized mesh, which destroys

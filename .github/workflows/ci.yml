@@ -134,9 +134,23 @@ jobs:
           blender --background --python-expr "import sys; sys.path.insert(0, r'$RUNNER_TEMP/blender-python')" --python tools/blender_asset_pipeline/generate_tree.py -- --output "$RUNNER_TEMP/generated-trees" --texture-root assets/textures/environment --seed 1939
 
       - name: Re-import and validate generated GLBs
-        if: steps.tree-output-cache.outputs.cache-hit != 'true'
         run: |
           blender --background --python-expr "import sys; sys.path.insert(0, r'$RUNNER_TEMP/blender-python')" --python tools/blender_asset_pipeline/verify_tree_outputs.py -- "$RUNNER_TEMP/generated-trees"
+
+      - name: Render Scots pine snow-load review views
+        run: |
+          blender --background --python-expr "import sys; sys.path.insert(0, r'$RUNNER_TEMP/blender-python')" --python tools/blender_asset_pipeline/render_tree_previews.py -- "$RUNNER_TEMP/generated-trees/scots_pine.blend" "$RUNNER_TEMP/tree-previews"
+          test -s "$RUNNER_TEMP/tree-previews/scots_pine_snow_detail.png"
+          test -s "$RUNNER_TEMP/tree-previews/scots_pine_review_contact_sheet.png"
+
+      - name: Upload Scots pine visual review previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: talvisota-scots-pine-review-previews
+          path: ${{ runner.temp }}/tree-previews/*.png
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Upload generated Scots pine runtime model
         uses: actions/upload-artifact@v4
@@ -163,6 +177,7 @@ jobs:
           assert manifest["species"] == "Pinus sylvestris"
           assert set(manifest["lods"]) == {"LOD0", "LOD1", "LOD2", "LOD3"}
           assert all(item["objects"] <= 3 for item in manifest["lods"].values())
+          assert all(item["snow_triangles"] > 0 for item in manifest["lods"].values())
           for lod in range(4):
               model = pathlib.Path(sys.argv[1]).parent / f"scots_pine_lod{lod}.glb"
               assert model.is_file() and model.stat().st_size > 128, model

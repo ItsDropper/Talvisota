@@ -80,13 +80,17 @@ def main():
         "front": Vector((0.0, -38.0, 11.0)),
         # A tighter fifth capture checks whether needle sprays fill the crown.
         "crown": Vector((13.0, -17.0, 15.0)),
+        "snow_detail": Vector((8.0, -12.0, 20.0)),
         "needle_macro": Vector((4.0, -6.0, 14.0)),
     }
     for name, position in views.items():
         camera.location = position
         view_target = (Vector((0.0, 0.0, 13.6)) if name == "needle_macro" else
+                          Vector((0.0, 0.0, 15.2)) if name == "snow_detail" else
                           Vector((0.0, 0.0, 12.8)) if name == "crown" else target)
-        camera_data.ortho_scale = 2.8 if name == "needle_macro" else 10.5 if name == "crown" else 22.5
+        camera_data.ortho_scale = (2.8 if name == "needle_macro" else
+                                   5.8 if name == "snow_detail" else
+                                   10.5 if name == "crown" else 22.5)
         if name == "needle_macro":
             scene.render.resolution_x = 768
             scene.render.resolution_y = 768
@@ -101,12 +105,13 @@ def main():
     # Save a compact contact sheet as a single review screenshot as well as
     # the individual full-resolution camera captures.
     from PIL import Image, ImageOps, ImageDraw
-    view_names = ("oblique", "opposite", "side", "front", "crown", "needle_macro")
+    view_names = ("oblique", "opposite", "side", "front", "crown", "snow_detail", "needle_macro")
     captures = [Image.open(output_dir / ("scots_pine_" + name + ".png")).convert("RGB")
                 for name in view_names]
     thumb_width = 480
     thumbs = []
-    for name, image in zip(("OBLIQUE", "OPPOSITE", "SIDE", "FRONT", "CROWN DETAIL", "NEEDLE MACRO"), captures):
+    for name, image in zip(("OBLIQUE", "OPPOSITE", "SIDE", "FRONT", "CROWN DETAIL",
+                            "SNOW LOAD DETAIL", "NEEDLE MACRO"), captures):
         height = round(image.height * thumb_width / image.width)
         thumb = image.resize((thumb_width, height), Image.Resampling.LANCZOS)
         panel = Image.new("RGB", (thumb_width, height + 42), (24, 27, 31))

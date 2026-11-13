@@ -74,6 +74,12 @@ def main():
         )
         if not has_needle_material:
             fail(lod_name + " lost the Scots pine needle material")
+        has_snow_material = any(
+            material and "Snow" in material.name
+            for obj in meshes for material in obj.data.materials
+        )
+        if not has_snow_material:
+            fail(lod_name + " lost the separate snow-load material")
         needle_triangles = sum(
             len(polygon.vertices) - 2
             for obj in meshes for polygon in obj.data.polygons
@@ -91,6 +97,29 @@ def main():
         if needle_triangles > maximum_needle_triangles[lod_name]:
             fail(lod_name + " needle geometry exceeds its density budget: " +
                  str(needle_triangles) + " > " + str(maximum_needle_triangles[lod_name]))
+        snow_triangles = sum(
+            len(polygon.vertices) - 2
+            for obj in meshes for polygon in obj.data.polygons
+            if polygon.material_index < len(obj.data.materials)
+            and obj.data.materials[polygon.material_index]
+            and "Snow" in obj.data.materials[polygon.material_index].name
+        )
+        expected_snow_triangles = lod.get("snow_triangles")
+        if expected_snow_triangles != snow_triangles:
+            fail(lod_name + " snow-load triangle manifest/import mismatch: " +
+                 str(expected_snow_triangles) + " != " + str(snow_triangles))
+        minimum_snow_triangles = {
+            "LOD0": 700, "LOD1": 500, "LOD2": 260, "LOD3": 120
+        }[lod_name]
+        maximum_snow_triangles = {
+            "LOD0": 6000, "LOD1": 4500, "LOD2": 3000, "LOD3": 1800
+        }[lod_name]
+        if snow_triangles < minimum_snow_triangles:
+            fail(lod_name + " snow-load geometry is under-dense: " +
+                 str(snow_triangles) + " < " + str(minimum_snow_triangles))
+        if snow_triangles > maximum_snow_triangles:
+            fail(lod_name + " snow-load geometry exceeds its budget: " +
+                 str(snow_triangles) + " > " + str(maximum_snow_triangles))
         expected_density = {
             "LOD0": (10, 8, 8),
             "LOD1": (9, 7, 6),
@@ -107,7 +136,8 @@ def main():
                  str(actual_density) + " != " + str(expected_density))
         print("VERIFIED", lod_name, "meshes=", len(meshes),
               "triangles=", sum(len(p.vertices) - 2 for obj in meshes for p in obj.data.polygons),
-              "needle_triangles=", needle_triangles)
+              "needle_triangles=", needle_triangles,
+              "snow_triangles=", snow_triangles)
     print("TALVISOTA_TREE_ASSET_VERIFY_OK")
 
 
