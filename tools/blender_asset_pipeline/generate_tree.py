@@ -310,9 +310,11 @@ def validate_closed_mesh(builder, label):
         for corner in range(1, len(face) - 1):
             second = Vector(builder.vertices[face[corner]])
             third = Vector(builder.vertices[face[corner + 1]])
-            if (second - origin).cross(third - origin).length_squared <= 1e-12:
+            area_squared = (second - origin).cross(third - origin).length_squared
+            if not math.isfinite(area_squared) or area_squared <= 1e-20:
                 raise RuntimeError(label + " contains a degenerate snow face at index " +
-                                   str(face_index))
+                                   str(face_index) + " (area squared " +
+                                   format(area_squared, ".3e") + ")")
         for first, second in zip(face, face[1:] + face[:1]):
             edge_uses[tuple(sorted((first, second)))] += 1
     invalid_edges = sum(count != 2 for count in edge_uses.values())
