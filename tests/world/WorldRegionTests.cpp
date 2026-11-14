@@ -850,11 +850,27 @@ void TestTaipaleRiverfrontWorldAndMissionLoad()
     std::ifstream terrainMesh(root / "assets/models/terrain/taipale-riverfront.obj");
     Require(static_cast<bool>(terrainMesh), "Taipale terrain render mesh should be readable.");
     std::size_t terrainVertexCount = 0U;
+    std::size_t terrainUvCount = 0U;
+    float minimumU = std::numeric_limits<float>::max();
+    float maximumU = std::numeric_limits<float>::lowest();
+    float minimumV = std::numeric_limits<float>::max();
+    float maximumV = std::numeric_limits<float>::lowest();
     std::string terrainLine;
     while (std::getline(terrainMesh, terrainLine)) {
         std::istringstream record(terrainLine);
         std::string type;
         record >> type;
+        if (type == "vt") {
+            float u = 0.0F, v = 0.0F;
+            Require(static_cast<bool>(record >> u >> v) && std::isfinite(u) && std::isfinite(v),
+                    "Taipale terrain texture coordinates must be finite.");
+            minimumU = std::min(minimumU, u);
+            maximumU = std::max(maximumU, u);
+            minimumV = std::min(minimumV, v);
+            maximumV = std::max(maximumV, v);
+            ++terrainUvCount;
+            continue;
+        }
         if (type != "v") continue;
         float x = 0.0F, y = 0.0F, z = 0.0F;
         Require(static_cast<bool>(record >> x >> y >> z),
@@ -876,6 +892,16 @@ void TestTaipaleRiverfrontWorldAndMissionLoad()
     }
     Require(terrainVertexCount == region.terrain.rows * region.terrain.columns,
             "Taipale visual terrain must contain exactly one mesh vertex per heightfield sample.");
+    Require(terrainUvCount == terrainVertexCount &&
+            maximumU > minimumU && maximumV > minimumV,
+            "Taipale terrain must provide one complete UV coordinate per heightfield vertex.");
+    const float terrainWidth = static_cast<float>(region.terrain.columns - 1U) * region.terrain.spacingX;
+    const float terrainDepth = static_cast<float>(region.terrain.rows - 1U) * region.terrain.spacingZ;
+    const float textureRepeatMetersX = terrainWidth / (maximumU - minimumU);
+    const float textureRepeatMetersZ = terrainDepth / (maximumV - minimumV);
+    Require(std::abs(textureRepeatMetersX - 40.0F) < 0.01F &&
+            std::abs(textureRepeatMetersZ - 40.0F) < 0.01F,
+            "Taipale snow terrain must use the calibrated 40 m physical UV repeat.");
 
     float riverHeight = 0.0F;
     std::array<float, 3> riverNormal{};
