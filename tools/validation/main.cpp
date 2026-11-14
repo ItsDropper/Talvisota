@@ -372,10 +372,72 @@ bool RunTerrainMorphologySelfTests(std::string& error)
         "water.metrics-test", "placement.metrics-test",
         -0.1F, 0.1F, -0.1F, 0.1F, 0.0F});
     if (!ComputeTerrainMorphologyMetrics(shoreline, metrics, error) ||
-        metrics.landGridSamples != 8U || metrics.waterGridSamples != 1U)
+        metrics.landGridSamples != 8U || metrics.waterGridSamples != 1U ||
+        metrics.localReliefSamples != 0U)
     {
         if (error.empty())
-            error = "Authored water was not excluded from terrain morphology samples.";
+            error = "Authored water was not excluded from terrain morphology samples and relief windows.";
+        return false;
+    }
+
+    // The derivative and relief windows must use physical X/Z spacing, not
+    // assume square cells or interpret per-cell elevation deltas as slopes.
+    auto anisotropicRamp = makeHeightfield();
+    anisotropicRamp.terrain.spacingX = 20.0F;
+    anisotropicRamp.terrain.spacingZ = 5.0F;
+    for (std::size_t row = 0U; row < anisotropicRamp.terrain.rows; ++row)
+    {
+        for (std::size_t column = 0U; column < anisotropicRamp.terrain.columns; ++column)
+        {
+            const double x = static_cast<double>(column) * anisotropicRamp.terrain.spacingX;
+            const double z = static_cast<double>(row) * anisotropicRamp.terrain.spacingZ;
+            anisotropicRamp.terrain.elevations[row * anisotropicRamp.terrain.columns + column] =
+                static_cast<float>(3.0 + 0.25 * x + 0.4 * z);
+        }
+    }
+    constexpr double expectedAnisotropicSlopeDegrees = 25.304846468766033;
+    if (!ComputeTerrainMorphologyMetrics(anisotropicRamp, metrics, error) ||
+        std::abs(metrics.slopeP50Degrees - expectedAnisotropicSlopeDegrees) > 0.01 ||
+        std::abs(metrics.slopeP95Degrees - expectedAnisotropicSlopeDegrees) > 0.01 ||
+        std::abs(metrics.localReliefP95 - 14.0) > 0.01 ||
+        std::abs(metrics.localReliefWindowX - 40.0) > 0.001 ||
+        std::abs(metrics.localReliefWindowZ - 10.0) > 0.001)
+    {
+        if (error.empty())
+            error = "Anisotropic terrain metrics did not preserve physical X/Z gradients and relief scale.";
+        return false;
+    }
+
+    // Multiple disjoint water intervals exercise the same X-ordered binary
+    // search contract used by the runtime sampler, including inclusive edges.
+    auto segmentedShoreline = makeHeightfield();
+    segmentedShoreline.terrain.rows = 7U;
+    segmentedShoreline.terrain.columns = 7U;
+    segmentedShoreline.terrain.originX = -30.0F;
+    segmentedShoreline.terrain.originZ = -30.0F;
+    segmentedShoreline.terrain.spacingX = 10.0F;
+    segmentedShoreline.terrain.spacingZ = 10.0F;
+    segmentedShoreline.terrain.elevations.assign(49U, 2.0F);
+    segmentedShoreline.waterSurfaces = {
+        {"water.west", "placement.west", -20.0F, -20.0F, 0.0F, 0.0F, 0.0F},
+        {"water.east", "placement.east", 20.0F, 20.0F, 0.0F, 0.0F, 0.0F}
+    };
+    if (!ComputeTerrainMorphologyMetrics(segmentedShoreline, metrics, error) ||
+        metrics.totalGridSamples != 49U || metrics.landGridSamples != 47U ||
+        metrics.waterGridSamples != 2U || metrics.localReliefSamples != 19U)
+    {
+        if (error.empty())
+            error = "Segmented shoreline metrics did not exclude both water samples and affected relief windows.";
+        return false;
+    }
+
+    auto invalidWaterOrder = segmentedShoreline;
+    std::swap(invalidWaterOrder.waterSurfaces[0], invalidWaterOrder.waterSurfaces[1]);
+    const auto preservedLandCount = metrics.landGridSamples;
+    if (ComputeTerrainMorphologyMetrics(invalidWaterOrder, metrics, error) ||
+        metrics.landGridSamples != preservedLandCount)
+    {
+        error = "Terrain morphology accepted unsorted water intervals or modified output on failure.";
         return false;
     }
 
