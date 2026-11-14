@@ -395,7 +395,7 @@ bool RunTerrainMorphologySelfTests(std::string& error)
                 static_cast<float>(3.0 + 0.25 * x + 0.4 * z);
         }
     }
-    constexpr double expectedAnisotropicSlopeDegrees = 25.304846468766033;
+    constexpr double expectedAnisotropicSlopeDegrees = 25.253207609369632;
     if (!ComputeTerrainMorphologyMetrics(anisotropicRamp, metrics, error) ||
         std::abs(metrics.slopeP50Degrees - expectedAnisotropicSlopeDegrees) > 0.01 ||
         std::abs(metrics.slopeP95Degrees - expectedAnisotropicSlopeDegrees) > 0.01 ||
@@ -424,7 +424,7 @@ bool RunTerrainMorphologySelfTests(std::string& error)
     };
     if (!ComputeTerrainMorphologyMetrics(segmentedShoreline, metrics, error) ||
         metrics.totalGridSamples != 49U || metrics.landGridSamples != 47U ||
-        metrics.waterGridSamples != 2U || metrics.localReliefSamples != 19U)
+        metrics.waterGridSamples != 2U || metrics.localReliefSamples != 13U)
     {
         if (error.empty())
             error = "Segmented shoreline metrics did not exclude both water samples and affected relief windows.";
