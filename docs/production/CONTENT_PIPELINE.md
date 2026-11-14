@@ -48,6 +48,14 @@ The parent world's validated `wind_direction` and `wind_strength` are copied int
 
 The deterministic displacement is shared by terrain mesh refinement, `SampleTerrainHeight`, placement grounding, and traversal. `Talvisota.World.Region` tests cover wind-direction changes, zero-wind invariance, lee-slope accumulation, deterministic repeat sampling, parent-world wind propagation, non-finite coordinates, and water exclusion. This is an art-directed wind-coupled surface response, not a snow-transport simulation or a replacement for higher-resolution georeferenced elevation data.
 
+### Terrain morphology diagnostics
+
+Every shipped-content validation now reports a deterministic morphology summary for each loaded world region. The validator samples every heightfield grid vertex through the same `SampleTerrainHeight` function used by gameplay, so the reported elevation and surface-normal distributions include the shared `snow_drift_v1` displacement rather than measuring only the raw source heights. Authored water rectangles are excluded from land statistics.
+
+The report includes source grid dimensions and physical spacing, land/water sample counts, land-grid coverage, elevation percentiles, slope percentiles and maximum, the share of land samples steeper than 5 and 15 degrees, and the 95th-percentile relief over complete 3x3 land windows. The report prints the physical window dimensions alongside the relief value; this is important when comparing Taipale's 64 m source spacing with Sakkola's approximately 23.27 m spacing. These values are diagnostic baselines, not pass/fail visual-quality thresholds or substitutes for reference-image review.
+
+The validator runs synthetic regression checks for a flat plane, a known planar ramp, water exclusion, zero spacing, and non-finite source elevations before validating shipped content. A malformed sample, downward/non-unit normal, invalid water interval, or non-finite metric fails validation with the affected region/grid coordinate.
+
 ### Frozen river surface texture density
 
 The Taipale frozen-river ribbon uses a 64-metre physical repeat for the shared ice PBR maps. UV U is derived from cumulative distance along the curved river centreline, while V is derived from each cross-section's bank-to-bank width. The previous 8-by-1 UV range stretched the 1024px ice maps over roughly 585 metres along the river and 120 metres across it, making the fracture and granular pattern far too large. The environment asset contract test checks all 65 cross-sections against their world-space distances and verifies the OBJ face-to-UV indices. The Sakkola frozen-water mesh retains its separately authored 64-metre repeat.
