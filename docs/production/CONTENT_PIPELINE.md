@@ -54,7 +54,7 @@ Every shipped-content validation now reports a deterministic morphology summary 
 
 The report includes source grid dimensions and physical spacing, land/water sample counts, land-grid coverage, elevation percentiles, slope percentiles and maximum, the share of land samples steeper than 5 and 15 degrees, and the 95th-percentile relief over complete 3x3 land windows. The report prints the physical window dimensions alongside the relief value; this is important when comparing Taipale's 64 m source spacing with Sakkola's approximately 23.27 m spacing. These values are diagnostic baselines, not pass/fail visual-quality thresholds or substitutes for reference-image review.
 
-The validator runs synthetic regression checks for a flat plane, a known planar ramp, water exclusion, zero spacing, and non-finite source elevations before validating shipped content. A malformed sample, downward/non-unit normal, invalid water interval, or non-finite metric fails validation with the affected region/grid coordinate.
+The validator runs synthetic regression checks for a flat plane, a known planar ramp, and an anisotropic ramp whose X/Z gradients and 3x3 relief are checked in physical metres. Shoreline cases verify inclusive water-boundary exclusion across multiple disjoint X intervals and ensure any 3x3 relief window touching water is omitted. Invalid interval ordering, zero spacing, and non-finite source elevations are rejected; failed calculations leave the caller's previous metrics unchanged. A malformed sample, downward/non-unit normal, invalid water interval, or non-finite metric fails validation with the affected region/grid coordinate.
 
 ### Frozen river surface texture density
 
