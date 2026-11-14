@@ -833,7 +833,8 @@ void TestTaipaleRiverfrontWorldAndMissionLoad()
     Require(talvisota::content::LoadWorldDefinition(root / "content/worlds/taipale.tworld",
             registry, world, worldDiagnostics), "Taipale world definition should load.");
     Require(world.id == "world.taipale" && world.terrainModelId == "model.terrain.taipale" &&
-            world.hasEnvironment && world.environment.fogDensity > 0.001F,
+            world.hasEnvironment && world.environment.fogDensity > 0.0005F &&
+            world.environment.fogDensity < 0.0006F && world.environment.fogStart >= 150.0F,
             "Taipale must expose its own terrain and winter atmosphere.");
 
     talvisota::world::WorldRegion region;
