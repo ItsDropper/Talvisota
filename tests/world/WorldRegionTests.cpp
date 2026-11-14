@@ -851,6 +851,7 @@ void TestTaipaleRiverfrontWorldAndMissionLoad()
     Require(static_cast<bool>(terrainMesh), "Taipale terrain render mesh should be readable.");
     std::size_t terrainVertexCount = 0U;
     std::size_t terrainUvCount = 0U;
+    bool usesSnowMaterial = false;
     float minimumU = std::numeric_limits<float>::max();
     float maximumU = std::numeric_limits<float>::lowest();
     float minimumV = std::numeric_limits<float>::max();
@@ -860,6 +861,12 @@ void TestTaipaleRiverfrontWorldAndMissionLoad()
         std::istringstream record(terrainLine);
         std::string type;
         record >> type;
+        if (type == "usemtl") {
+            std::string materialName;
+            record >> materialName;
+            usesSnowMaterial = usesSnowMaterial || materialName == "snow";
+            continue;
+        }
         if (type == "vt") {
             float u = 0.0F, v = 0.0F;
             Require(static_cast<bool>(record >> u >> v) && std::isfinite(u) && std::isfinite(v),
@@ -892,6 +899,8 @@ void TestTaipaleRiverfrontWorldAndMissionLoad()
     }
     Require(terrainVertexCount == region.terrain.rows * region.terrain.columns,
             "Taipale visual terrain must contain exactly one mesh vertex per heightfield sample.");
+    Require(usesSnowMaterial,
+            "Taipale terrain must use the calibrated snow material.");
     Require(terrainUvCount == terrainVertexCount &&
             maximumU > minimumU && maximumV > minimumV,
             "Taipale terrain must provide one complete UV coordinate per heightfield vertex.");
