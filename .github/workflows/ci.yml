@@ -50,6 +50,7 @@ jobs:
               - 'src/talvisota/app/**'
               - 'src/talvisota/presentation/**'
               - 'src/talvisota/world/**'
+              - 'tests/world/WorldRegionTests.cpp'
               - 'CMakeLists.txt'
               - '.github/workflows/ci.yml'
 
