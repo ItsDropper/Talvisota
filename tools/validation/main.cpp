@@ -298,7 +298,10 @@ void PrintTerrainMorphology(const talvisota::world::WorldRegion& region,
         << "Terrain morphology [" << region.id << "]: grid="
         << region.terrain.rows << "x" << region.terrain.columns
         << " spacing=" << region.terrain.spacingX << "x" << region.terrain.spacingZ
-        << "m land/water=" << metrics.landGridSamples << "/" << metrics.waterGridSamples
+        << "m surface=" << (region.terrain.surfaceProfile ==
+            talvisota::world::TerrainSurfaceProfile::SnowDriftV1 ? "snow_drift_v1" : "none")
+        << " land/water/total=" << metrics.landGridSamples << "/"
+        << metrics.waterGridSamples << "/" << metrics.totalGridSamples
         << " land-grid-coverage=" << metrics.landGridCoveragePercent << "%"
         << " elevation-m[min/p05/p50/p95/max]="
         << metrics.minimumElevation << "/" << metrics.elevationP05 << "/"
@@ -306,7 +309,7 @@ void PrintTerrainMorphology(const talvisota::world::WorldRegion& region,
         << metrics.maximumElevation
         << " slope-deg[p50/p95/max]=" << metrics.slopeP50Degrees << "/"
         << metrics.slopeP95Degrees << "/" << metrics.maximumSlopeDegrees
-        << " slope-area-percent[>5/>15]=" << metrics.slopeOverFivePercent << "/"
+        << " slope-sample-percent[>5/>15]=" << metrics.slopeOverFivePercent << "/"
         << metrics.slopeOverFifteenPercent << " local-relief-p95=";
     if (metrics.localReliefSamples == 0U)
         std::cout << "n/a";
@@ -314,7 +317,7 @@ void PrintTerrainMorphology(const talvisota::world::WorldRegion& region,
         std::cout << metrics.localReliefP95 << "m";
     std::cout << " over " << metrics.localReliefWindowX << "x"
         << metrics.localReliefWindowZ << "m (" << metrics.localReliefSamples
-        << " complete 3x3 land windows; snow displacement included, authored water excluded).\\n";
+        << " complete 3x3 land windows; snow displacement included, authored water excluded).\n";
     std::cout.flags(previousFlags);
     std::cout.precision(previousPrecision);
 }
@@ -398,17 +401,6 @@ bool RunTerrainMorphologySelfTests(std::string& error)
 
 int main(int argc, char** argv)
 {
-    if (argc == 2 && std::string_view(argv[1]) == "--help")
-    {
-        PrintUsage(std::cout);
-        return 0;
-    }
-    if (argc != 3)
-    {
-        PrintUsage(std::cerr);
-        return 2;
-    }
-
     try
     {
         std::string terrainMetricsSelfTestError;
@@ -417,6 +409,17 @@ int main(int argc, char** argv)
             std::cerr << "Terrain morphology diagnostics self-test failed: "
                       << terrainMetricsSelfTestError << '\n';
             return 1;
+        }
+
+        if (argc == 2 && std::string_view(argv[1]) == "--help")
+        {
+            PrintUsage(std::cout);
+            return 0;
+        }
+        if (argc != 3)
+        {
+            PrintUsage(std::cerr);
+            return 2;
         }
 
         const std::filesystem::path manifestPath(argv[1]);
