@@ -1,8 +1,8 @@
 talvisota-region	1
 id	region.taipale.riverfront
 world	world.taipale
-bounds_min	-2048,-4,-2048
-bounds_max	2048.1,64,2048.1
+bounds_min	-2076,-4,-2048
+bounds_max	2076.1,64,2048.1
 heightfield	65	65	-2048	-2048	64	64
 terrain_surface	snow_drift_v1
 height_row	0	13.787,13.886,14.052,14.259,14.477,14.671,14.806,14.854,14.792,14.607,14.297,13.872,13.353,12.767,12.150,11.540,10.974,10.484,10.097,9.831,9.691,9.677,9.776,9.971,10.239,10.555,10.899,11.250,11.595,11.929,12.252,12.569,12.892,13.232,13.602,14.008,14.455,14.937,15.442,15.951,16.438,16.873,17.225,17.465,17.569,17.520,17.312,16.951,16.451,15.840,15.153,14.430,13.712,13.042,12.453,11.973,11.620,11.397,11.300,11.312,11.409,11.560,11.735,11.903,12.039
@@ -72,7 +72,7 @@ height_row	63	15.672,16.491,16.729,16.476,15.885,15.128,14.356,13.669,13.112,12.
 height_row	64	17.221,17.277,16.983,16.461,15.831,15.187,14.585,14.047,13.576,13.167,12.814,12.509,12.244,12.006,11.782,11.558,11.321,11.065,10.789,10.499,10.210,9.942,9.720,9.573,9.527,9.606,9.825,10.191,10.700,11.338,12.078,12.885,13.718,14.534,15.289,15.944,16.469,16.842,17.054,17.107,17.016,16.803,16.498,16.136,15.750,15.370,15.021,14.719,14.473,14.281,14.134,14.017,13.911,13.798,13.660,13.486,13.270,13.014,12.726,12.423,12.123,11.848,11.619,11.455,11.366
 placement	terrain.main	terrain	model.terrain.taipale	material.environment.snow	0	0	0	0	1
 placement	river.ice	prop	model.environment.taipale_ice	-	0	0	0	0	1
-water_surface	water.taipale.01	river.ice	-2048.00	-1920.00	1604.85	1807.22	4.60
+water_surface	water.taipale.01	river.ice	-2075.681	-1920.00	1604.85	1807.22	4.60
 water_surface	water.taipale.02	river.ice	-1920.00	-1792.00	1533.47	1740.85	4.60
 water_surface	water.taipale.03	river.ice	-1792.00	-1664.00	1457.50	1669.47	4.60
 water_surface	water.taipale.04	river.ice	-1664.00	-1536.00	1377.84	1593.50	4.60
@@ -103,7 +103,7 @@ water_surface	water.taipale.28	river.ice	1408.00	1536.00	-273.84	-55.67	4.60
 water_surface	water.taipale.29	river.ice	1536.00	1664.00	-353.50	-137.84	4.60
 water_surface	water.taipale.30	river.ice	1664.00	1792.00	-429.47	-217.50	4.60
 water_surface	water.taipale.31	river.ice	1792.00	1920.00	-500.85	-293.47	4.60
-water_surface	water.taipale.32	river.ice	1920.00	2048.00	-567.22	-364.85	4.60
+water_surface	water.taipale.32	river.ice	1920.00	2075.681	-567.22	-364.85	4.60
 placement	tree.taipale.0001	vegetation	model.environment.scots_pine	-	-1389.37	0	941.25	176.83	0.790
 placement	tree.taipale.0002	vegetation	model.environment.scots_pine	-	-1337.98	0	1643.52	310.34	0.914
 placement	tree.taipale.0003	vegetation	model.environment.aspen	-	-1072.26	0	1632.27	351.27	1.327
