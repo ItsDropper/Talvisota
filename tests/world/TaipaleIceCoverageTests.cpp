@@ -245,10 +245,7 @@ std::pair<double, double> VerifyWaterEnvelope(
     for (const Position& vertex : mesh.vertices)
         vertexXs.push_back(vertex[0]);
     std::sort(vertexXs.begin(), vertexXs.end());
-    vertexXs.erase(std::unique(vertexXs.begin(), vertexXs.end(),
-        [](const double left, const double right) {
-            return std::abs(left - right) <= 1.0e-7;
-        }), vertexXs.end());
+    vertexXs.erase(std::unique(vertexXs.begin(), vertexXs.end()), vertexXs.end());
 
     double maximumLowerOverhang = 0.0;
     double maximumUpperOverhang = 0.0;
@@ -261,10 +258,7 @@ std::pair<double, double> VerifyWaterEnvelope(
             vertexXs.begin(), vertexXs.end(), static_cast<double>(water.maxX) - 1.0e-7);
         sampleXs.insert(sampleXs.end(), firstVertex, afterLastVertex);
         std::sort(sampleXs.begin(), sampleXs.end());
-        sampleXs.erase(std::unique(sampleXs.begin(), sampleXs.end(),
-            [](const double left, const double right) {
-                return std::abs(left - right) <= 1.0e-7;
-            }), sampleXs.end());
+        sampleXs.erase(std::unique(sampleXs.begin(), sampleXs.end()), sampleXs.end());
 
         for (const double x : sampleXs)
         {
@@ -311,7 +305,7 @@ void TestCompleteTaipaleIceTriangleCoverage()
                 registry, world, region, regionDiagnostics),
             "Taipale riverfront region must load for the ice coverage test.");
     Require(region.waterSurfaces.size() == 2048U,
-            "Taipale must retain its 32 segmented frozen-river water rectangles.");
+            "Taipale must retain its 2048 mesh-derived narrow frozen-river water strips.");
 
     const IceMesh mesh = LoadIceMesh(root / "assets/models/environment/taipale-ice.obj");
     const auto [maximumLowerOverhang, maximumUpperOverhang] = VerifyWaterEnvelope(mesh, region);
