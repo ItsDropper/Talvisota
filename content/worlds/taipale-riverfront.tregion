@@ -72,17 +72,17 @@ height_row	63	15.672,16.491,16.729,16.476,15.885,15.128,14.356,13.669,13.112,12.
 height_row	64	17.221,17.277,16.983,16.461,15.831,15.187,14.585,14.047,13.576,13.167,12.814,12.509,12.244,12.006,11.782,11.558,11.321,11.065,10.789,10.499,10.210,9.942,9.720,9.573,9.527,9.606,9.825,10.191,10.700,11.338,12.078,12.885,13.718,14.534,15.289,15.944,16.469,16.842,17.054,17.107,17.016,16.803,16.498,16.136,15.750,15.370,15.021,14.719,14.473,14.281,14.134,14.017,13.911,13.798,13.660,13.486,13.270,13.014,12.726,12.423,12.123,11.848,11.619,11.455,11.366
 placement	terrain.main	terrain	model.terrain.taipale	material.environment.snow	0	0	0	0	1
 placement	river.ice	prop	model.environment.taipale_ice	-	0	0	0	0	1
-water_surface	water.taipale.01	river.ice	-2075.681	-1920.00	1604.85	1807.22	4.60
-water_surface	water.taipale.02	river.ice	-1920.00	-1792.00	1533.47	1740.85	4.60
-water_surface	water.taipale.03	river.ice	-1792.00	-1664.00	1457.50	1669.47	4.60
-water_surface	water.taipale.04	river.ice	-1664.00	-1536.00	1377.84	1593.50	4.60
-water_surface	water.taipale.05	river.ice	-1536.00	-1408.00	1295.67	1513.84	4.60
-water_surface	water.taipale.06	river.ice	-1408.00	-1280.00	1212.44	1431.67	4.60
-water_surface	water.taipale.07	river.ice	-1280.00	-1152.00	1129.69	1348.44	4.60
-water_surface	water.taipale.08	river.ice	-1152.00	-1024.00	1048.90	1265.69	4.60
-water_surface	water.taipale.09	river.ice	-1024.00	-896.00	971.40	1184.90	4.60
-water_surface	water.taipale.10	river.ice	-896.00	-768.00	898.18	1107.40	4.60
-water_surface	water.taipale.11	river.ice	-768.00	-640.00	829.86	1034.18	4.60
+water_surface	water.taipale.01	river.ice	-2075.681	-1920.00	1604.39	1807.22	4.60
+water_surface	water.taipale.02	river.ice	-1920.00	-1792.00	1531.98	1740.85	4.60
+water_surface	water.taipale.03	river.ice	-1792.00	-1664.00	1455.16	1670.46	4.60
+water_surface	water.taipale.04	river.ice	-1664.00	-1536.00	1374.88	1595.45	4.60
+water_surface	water.taipale.05	river.ice	-1536.00	-1408.00	1292.40	1516.52	4.60
+water_surface	water.taipale.06	river.ice	-1408.00	-1280.00	1209.19	1434.82	4.60
+water_surface	water.taipale.07	river.ice	-1280.00	-1152.00	1126.78	1351.74	4.60
+water_surface	water.taipale.08	river.ice	-1152.00	-1024.00	1046.64	1268.80	4.60
+water_surface	water.taipale.09	river.ice	-1024.00	-896.00	970.02	1187.52	4.60
+water_surface	water.taipale.10	river.ice	-896.00	-768.00	897.84	1109.24	4.60
+water_surface	water.taipale.11	river.ice	-768.00	-640.00	829.86	1035.05	4.60
 water_surface	water.taipale.12	river.ice	-640.00	-512.00	766.61	965.86	4.60
 water_surface	water.taipale.13	river.ice	-512.00	-384.00	708.11	902.61	4.60
 water_surface	water.taipale.14	river.ice	-384.00	-256.00	653.63	844.11	4.60
@@ -93,17 +93,17 @@ water_surface	water.taipale.18	river.ice	128.00	256.00	450.37	637.94	4.60
 water_surface	water.taipale.19	river.ice	256.00	384.00	395.89	586.37	4.60
 water_surface	water.taipale.20	river.ice	384.00	512.00	337.39	531.89	4.60
 water_surface	water.taipale.21	river.ice	512.00	640.00	274.14	473.39	4.60
-water_surface	water.taipale.22	river.ice	640.00	768.00	205.82	410.14	4.60
-water_surface	water.taipale.23	river.ice	768.00	896.00	132.60	341.82	4.60
-water_surface	water.taipale.24	river.ice	896.00	1024.00	55.10	268.60	4.60
-water_surface	water.taipale.25	river.ice	1024.00	1152.00	-25.69	191.10	4.60
-water_surface	water.taipale.26	river.ice	1152.00	1280.00	-108.44	110.31	4.60
-water_surface	water.taipale.27	river.ice	1280.00	1408.00	-191.67	27.56	4.60
-water_surface	water.taipale.28	river.ice	1408.00	1536.00	-273.84	-55.67	4.60
-water_surface	water.taipale.29	river.ice	1536.00	1664.00	-353.50	-137.84	4.60
-water_surface	water.taipale.30	river.ice	1664.00	1792.00	-429.47	-217.50	4.60
-water_surface	water.taipale.31	river.ice	1792.00	1920.00	-500.85	-293.47	4.60
-water_surface	water.taipale.32	river.ice	1920.00	2075.681	-567.22	-364.85	4.60
+water_surface	water.taipale.22	river.ice	640.00	768.00	204.95	410.14	4.60
+water_surface	water.taipale.23	river.ice	768.00	896.00	130.76	342.16	4.60
+water_surface	water.taipale.24	river.ice	896.00	1024.00	52.48	269.98	4.60
+water_surface	water.taipale.25	river.ice	1024.00	1152.00	-28.80	193.36	4.60
+water_surface	water.taipale.26	river.ice	1152.00	1280.00	-111.74	113.22	4.60
+water_surface	water.taipale.27	river.ice	1280.00	1408.00	-194.82	30.81	4.60
+water_surface	water.taipale.28	river.ice	1408.00	1536.00	-276.52	-52.40	4.60
+water_surface	water.taipale.29	river.ice	1536.00	1664.00	-355.45	-134.88	4.60
+water_surface	water.taipale.30	river.ice	1664.00	1792.00	-430.46	-215.16	4.60
+water_surface	water.taipale.31	river.ice	1792.00	1920.00	-500.85	-291.98	4.60
+water_surface	water.taipale.32	river.ice	1920.00	2075.681	-567.22	-364.39	4.60
 placement	tree.taipale.0001	vegetation	model.environment.scots_pine	-	-1389.37	0	941.25	176.83	0.790
 placement	tree.taipale.0002	vegetation	model.environment.scots_pine	-	-1337.98	0	1643.52	310.34	0.914
 placement	tree.taipale.0003	vegetation	model.environment.aspen	-	-1072.26	0	1632.27	351.27	1.327
