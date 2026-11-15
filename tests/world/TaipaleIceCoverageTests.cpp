@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <charconv>
+#include <cstdint>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -16,6 +17,7 @@
 #include <string_view>
 #include <system_error>
 #include <utility>
+#include <unordered_map>
 #include <vector>
 
 namespace
@@ -443,6 +445,384 @@ void TestCompleteTaipaleIceTriangleCoverage()
               << runtimeSamples << " runtime water samples; maximum terrain-cutout overhang "
               << maximumLowerOverhang << "/" << maximumUpperOverhang << " m.\n";
 }
+
+
+struct TerrainMesh final
+{
+    std::vector<Position> vertices;
+    std::vector<Triangle> triangles;
+};
+
+TerrainMesh LoadTerrainMesh(const std::filesystem::path& path)
+{
+    std::ifstream input(path);
+    Require(static_cast<bool>(input), "Taipale terrain mesh must be readable.");
+
+    TerrainMesh mesh;
+    std::string line;
+    while (std::getline(input, line))
+    {
+        if (line.starts_with("v "))
+        {
+            std::istringstream record(line.substr(2));
+            Position position{};
+            std::string trailing;
+            Require(static_cast<bool>(record >> position[0] >> position[1] >> position[2]) &&
+                    !(record >> trailing),
+                    "Taipale terrain vertex must contain exactly three coordinates.");
+            Require(std::all_of(position.begin(), position.end(),
+                        [](const float value) { return std::isfinite(value); }),
+                    "Taipale terrain vertex coordinates must be finite.");
+            mesh.vertices.push_back(position);
+        }
+        else if (line.starts_with("f "))
+        {
+            std::istringstream record(line.substr(2));
+            Triangle triangle{};
+            std::size_t vertexCount = 0U;
+            std::string token;
+            while (record >> token)
+            {
+                Require(vertexCount < triangle.size(),
+                        "Taipale terrain faces must remain triangulated.");
+                const std::size_t separator = token.find('/');
+                const std::string_view indexText(token.data(),
+                    separator == std::string::npos ? token.size() : separator);
+                std::size_t oneBasedIndex = 0U;
+                const auto [end, error] = std::from_chars(
+                    indexText.data(), indexText.data() + indexText.size(), oneBasedIndex);
+                Require(error == std::errc{} &&
+                        end == indexText.data() + indexText.size() &&
+                        oneBasedIndex > 0U,
+                        "Taipale terrain face must use a valid positive OBJ vertex index.");
+                triangle[vertexCount++] = oneBasedIndex - 1U;
+            }
+            Require(vertexCount == triangle.size(),
+                    "Every Taipale terrain face must contain exactly three vertices.");
+            mesh.triangles.push_back(triangle);
+        }
+    }
+    Require(!input.bad(), "Taipale terrain mesh read failed.");
+    Require(mesh.vertices.size() == 4225U && mesh.triangles.size() == 8192U,
+            "Taipale terrain must retain its 65x65 grid and 8192 source triangles.");
+    for (const Triangle& triangle : mesh.triangles)
+        for (const std::size_t index : triangle)
+            Require(index < mesh.vertices.size(),
+                    "Taipale terrain face references a missing vertex.");
+    return mesh;
+}
+
+std::vector<SurfacePoint> ClipTerrainPolygon(const std::vector<SurfacePoint>& polygon,
+    const bool clipX, const double boundary, const bool keepGreater)
+{
+    if (polygon.size() < 3U)
+        return {};
+
+    const auto coordinate = [clipX](const SurfacePoint& point) {
+        return clipX ? point.x : point.z;
+    };
+    const auto inside = [&](const SurfacePoint& point) {
+        return keepGreater ? coordinate(point) >= boundary : coordinate(point) <= boundary;
+    };
+
+    std::vector<SurfacePoint> output;
+    output.reserve(polygon.size() + 1U);
+    const SurfacePoint* previous = &polygon.back();
+    bool previousInside = inside(*previous);
+    for (const SurfacePoint& current : polygon)
+    {
+        const bool currentInside = inside(current);
+        if (currentInside != previousInside)
+        {
+            const double previousCoordinate = coordinate(*previous);
+            const double currentCoordinate = coordinate(current);
+            const double denominator = currentCoordinate - previousCoordinate;
+            if (std::abs(denominator) > 1.0e-12)
+            {
+                const double t = std::clamp((boundary - previousCoordinate) / denominator, 0.0, 1.0);
+                SurfacePoint intersection{
+                    previous->x + (current.x - previous->x) * t,
+                    previous->y + (current.y - previous->y) * t,
+                    previous->z + (current.z - previous->z) * t
+                };
+                if (clipX)
+                    intersection.x = boundary;
+                else
+                    intersection.z = boundary;
+                output.push_back(intersection);
+            }
+        }
+        if (currentInside)
+            output.push_back(current);
+        previous = &current;
+        previousInside = currentInside;
+    }
+    return output.size() >= 3U ? output : std::vector<SurfacePoint>{};
+}
+
+std::vector<std::vector<SurfacePoint>> SubtractWaterRectangle(
+    const std::vector<SurfacePoint>& polygon,
+    const talvisota::world::WaterSurface& water)
+{
+    std::vector<std::vector<SurfacePoint>> outsidePieces;
+    std::vector<SurfacePoint> remaining = polygon;
+    struct Boundary final
+    {
+        bool clipX;
+        double value;
+        bool keepGreater;
+    };
+    const std::array<Boundary, 4> boundaries{{
+        {true, water.minX, true},
+        {true, water.maxX, false},
+        {false, water.minZ, true},
+        {false, water.maxZ, false}
+    }};
+    for (const Boundary& boundary : boundaries)
+    {
+        auto outside = ClipTerrainPolygon(
+            remaining, boundary.clipX, boundary.value, !boundary.keepGreater);
+        if (outside.size() >= 3U)
+            outsidePieces.push_back(std::move(outside));
+        remaining = ClipTerrainPolygon(
+            remaining, boundary.clipX, boundary.value, boundary.keepGreater);
+        if (remaining.size() < 3U)
+            break;
+    }
+    return outsidePieces;
+}
+
+struct ClippedTerrain final
+{
+    std::size_t vertexCount = 0U;
+    std::vector<std::array<std::uint32_t, 3>> triangles;
+    std::size_t sourceTrianglesTouchedByWater = 0U;
+};
+
+ClippedTerrain BuildWaterClippedTerrain(
+    const TerrainMesh& mesh, const talvisota::world::WorldRegion& region)
+{
+    ClippedTerrain result;
+    result.triangles.reserve(mesh.triangles.size());
+    std::size_t nextVertex = mesh.vertices.size();
+
+    for (const Triangle& sourceIndices : mesh.triangles)
+    {
+        std::vector<SurfacePoint> sourcePolygon;
+        sourcePolygon.reserve(3U);
+        double minimumX = std::numeric_limits<double>::max();
+        double maximumX = std::numeric_limits<double>::lowest();
+        double minimumZ = std::numeric_limits<double>::max();
+        double maximumZ = std::numeric_limits<double>::lowest();
+        for (const std::size_t index : sourceIndices)
+        {
+            const Position& vertex = mesh.vertices[index];
+            sourcePolygon.push_back({vertex[0], vertex[1], vertex[2]});
+            minimumX = std::min(minimumX, static_cast<double>(vertex[0]));
+            maximumX = std::max(maximumX, static_cast<double>(vertex[0]));
+            minimumZ = std::min(minimumZ, static_cast<double>(vertex[2]));
+            maximumZ = std::max(maximumZ, static_cast<double>(vertex[2]));
+        }
+
+        std::vector<std::vector<SurfacePoint>> fragments{std::move(sourcePolygon)};
+        bool overlapsWater = false;
+        const auto firstWater = std::lower_bound(
+            region.waterSurfaces.begin(), region.waterSurfaces.end(), minimumX,
+            [](const auto& candidate, const double coordinate) {
+                return candidate.maxX <= coordinate;
+            });
+        for (auto water = firstWater;
+             water != region.waterSurfaces.end() && water->minX < maximumX; ++water)
+        {
+            if (maximumZ <= water->minZ || minimumZ >= water->maxZ)
+                continue;
+            overlapsWater = true;
+            std::vector<std::vector<SurfacePoint>> nextFragments;
+            for (const auto& fragment : fragments)
+            {
+                auto outside = SubtractWaterRectangle(fragment, *water);
+                for (auto& piece : outside)
+                    nextFragments.push_back(std::move(piece));
+            }
+            fragments.swap(nextFragments);
+            if (fragments.empty())
+                break;
+        }
+
+        if (!overlapsWater)
+        {
+            result.triangles.push_back({
+                static_cast<std::uint32_t>(sourceIndices[0]),
+                static_cast<std::uint32_t>(sourceIndices[1]),
+                static_cast<std::uint32_t>(sourceIndices[2])
+            });
+            continue;
+        }
+        ++result.sourceTrianglesTouchedByWater;
+        for (const auto& polygon : fragments)
+        {
+            if (polygon.size() < 3U)
+                continue;
+            double twiceArea = 0.0;
+            for (std::size_t i = 0U; i < polygon.size(); ++i)
+            {
+                const auto& a = polygon[i];
+                const auto& b = polygon[(i + 1U) % polygon.size()];
+                twiceArea += a.x * b.z - b.x * a.z;
+            }
+            if (std::abs(twiceArea) <= 1.0e-5)
+                continue;
+            Require(nextVertex + polygon.size() <=
+                        static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max()),
+                    "Taipale clipped terrain must remain addressable by 32-bit indices.");
+            const auto first = static_cast<std::uint32_t>(nextVertex);
+            nextVertex += polygon.size();
+            for (std::size_t i = 1U; i + 1U < polygon.size(); ++i)
+                result.triangles.push_back({
+                    first,
+                    first + static_cast<std::uint32_t>(i),
+                    first + static_cast<std::uint32_t>(i + 1U)
+                });
+        }
+    }
+
+    // Match the runtime's compaction: retain only vertices referenced by the
+    // post-cutout index buffer, then make the IDs dense before subdivision.
+    std::unordered_map<std::uint32_t, std::uint32_t> remap;
+    remap.reserve(result.triangles.size());
+    for (auto& triangle : result.triangles)
+    {
+        for (std::uint32_t& index : triangle)
+        {
+            const auto [entry, inserted] = remap.emplace(
+                index, static_cast<std::uint32_t>(remap.size()));
+            (void)inserted;
+            index = entry->second;
+        }
+    }
+    result.vertexCount = remap.size();
+    return result;
+}
+
+struct RefinementPass final
+{
+    std::size_t vertices = 0U;
+    std::size_t triangles = 0U;
+    std::size_t indices = 0U;
+};
+
+std::vector<RefinementPass> EstimateMidpointRefinement(
+    const ClippedTerrain& terrain, const std::size_t passCount)
+{
+    std::vector<RefinementPass> result;
+    auto triangles = terrain.triangles;
+    std::size_t vertexCount = terrain.vertexCount;
+    result.reserve(passCount);
+
+    for (std::size_t pass = 0U; pass < passCount; ++pass)
+    {
+        std::unordered_map<std::uint64_t, std::uint32_t> midpointIndices;
+        midpointIndices.reserve(triangles.size() * 2U);
+        std::vector<std::array<std::uint32_t, 3>> refined;
+        refined.reserve(triangles.size() * 4U);
+        const auto midpoint = [&](std::uint32_t a, std::uint32_t b) {
+            if (a > b)
+                std::swap(a, b);
+            const std::uint64_t key = (static_cast<std::uint64_t>(a) << 32U) | b;
+            const auto found = midpointIndices.find(key);
+            if (found != midpointIndices.end())
+                return found->second;
+            const auto index = static_cast<std::uint32_t>(
+                vertexCount + midpointIndices.size());
+            midpointIndices.emplace(key, index);
+            return index;
+        };
+
+        for (const auto& triangle : triangles)
+        {
+            const std::uint32_t a = triangle[0];
+            const std::uint32_t b = triangle[1];
+            const std::uint32_t c = triangle[2];
+            const std::uint32_t ab = midpoint(a, b);
+            const std::uint32_t bc = midpoint(b, c);
+            const std::uint32_t ca = midpoint(c, a);
+            refined.push_back({a, ab, ca});
+            refined.push_back({ab, b, bc});
+            refined.push_back({ca, bc, c});
+            refined.push_back({ab, bc, ca});
+        }
+        vertexCount += midpointIndices.size();
+        triangles.swap(refined);
+        result.push_back({vertexCount, triangles.size(), triangles.size() * 3U});
+    }
+    return result;
+}
+
+void TestTaipaleTerrainRefinementBudgetEnvelope()
+{
+    const std::filesystem::path root = TALVISOTA_SOURCE_DIR;
+    talvisota::test_support::ContentManifestFixture manifestFixture(root, "taipale-refinement-budget");
+    Require(manifestFixture.Ready(), manifestFixture.Error());
+
+    talvisota::content::ContentRegistry registry;
+    std::vector<talvisota::content::ContentDiagnostic> manifestDiagnostics;
+    Require(talvisota::content::LoadContentManifest(
+                manifestFixture.ManifestPath(), root, registry, manifestDiagnostics),
+            "Shipped content manifest must load for the Taipale refinement-budget test.");
+    talvisota::content::WorldDefinition world;
+    std::vector<talvisota::content::WorldDiagnostic> worldDiagnostics;
+    Require(talvisota::content::LoadWorldDefinition(
+                root / "content/worlds/taipale.tworld", registry, world, worldDiagnostics),
+            "Taipale world definition must load for the refinement-budget test.");
+    talvisota::world::WorldRegion region;
+    std::vector<talvisota::world::WorldRegionDiagnostic> regionDiagnostics;
+    Require(talvisota::world::LoadWorldRegion(
+                root / "content/worlds/taipale-riverfront.tregion",
+                registry, world, region, regionDiagnostics),
+            "Taipale riverfront region must load for the refinement-budget test.");
+
+    Require(region.terrain.rows == 65U && region.terrain.columns == 65U &&
+            std::abs(region.terrain.spacingX - 64.0F) <= 1.0e-4F &&
+            std::abs(region.terrain.spacingZ - 64.0F) <= 1.0e-4F,
+            "Taipale refinement must be budgeted against its physical 64 m source-grid spacing.");
+    const TerrainMesh source = LoadTerrainMesh(
+        root / "assets/models/terrain/taipale-riverfront.obj");
+    const ClippedTerrain clipped = BuildWaterClippedTerrain(source, region);
+    Require(clipped.sourceTrianglesTouchedByWater == 474U &&
+            clipped.triangles.size() == 57542U &&
+            clipped.vertexCount == 104079U,
+            "Taipale water separation must retain its measured clipped-mesh complexity baseline.");
+
+    constexpr std::size_t MaximumVertices = 1000000U;
+    const auto passes = EstimateMidpointRefinement(clipped, 3U);
+    Require(passes.size() == 3U &&
+            passes[0].vertices == 240542U && passes[0].triangles == 230168U &&
+            passes[1].vertices == 686094U && passes[1].triangles == 920672U &&
+            passes[2].vertices == 2267702U && passes[2].triangles == 3682688U,
+            "Taipale midpoint-refinement cost must remain reproducible from the shipped terrain and water strips.");
+    Require(passes[1].vertices < MaximumVertices &&
+            passes[2].vertices > MaximumVertices,
+            "Taipale fits the one-million actual-vertex budget after two midpoint passes, but not after three.");
+
+    const double sourceCellDiagonal = std::hypot(
+        static_cast<double>(region.terrain.spacingX),
+        static_cast<double>(region.terrain.spacingZ));
+    const double afterTwoPasses = sourceCellDiagonal / 4.0;
+    const double afterThreePasses = sourceCellDiagonal / 8.0;
+    Require(afterTwoPasses > 17.0 && afterTwoPasses < 23.0 &&
+            afterThreePasses < 17.0,
+            "Taipale's 64 m cell diagonal requires two passes at a 23 m edge target, but three at 17 m.");
+
+    std::cout << "Taipale refinement budget: " << source.vertices.size()
+        << " source vertices / " << source.triangles.size() << " source triangles; "
+        << clipped.vertexCount << " vertices / " << clipped.triangles.size()
+        << " triangles after water separation; after two passes "
+        << passes[1].vertices << " vertices / " << passes[1].triangles
+        << " triangles; after three passes " << passes[2].vertices
+        << " vertices / " << passes[2].triangles
+        << ". A 23 m maximum edge target stops at the two-pass, sub-million-vertex result.";
+}
+
 } // namespace
 
 int main()
@@ -450,6 +830,7 @@ int main()
     try
     {
         TestCompleteTaipaleIceTriangleCoverage();
+        TestTaipaleTerrainRefinementBudgetEnvelope();
     }
     catch (const std::exception& exception)
     {
