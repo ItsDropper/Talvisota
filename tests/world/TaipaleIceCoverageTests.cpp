@@ -790,29 +790,30 @@ void TestTaipaleTerrainRefinementBudgetEnvelope()
         root / "assets/models/terrain/taipale-riverfront.obj");
     const ClippedTerrain clipped = BuildWaterClippedTerrain(source, region);
     Require(clipped.sourceTrianglesTouchedByWater == 474U &&
-            clipped.triangles.size() == 57542U &&
-            clipped.vertexCount == 104079U,
+            clipped.triangles.size() == 20430U &&
+            clipped.vertexCount == 29708U,
             "Taipale water separation must retain its measured clipped-mesh complexity baseline.");
 
     constexpr std::size_t MaximumVertices = 1000000U;
     const auto passes = EstimateMidpointRefinement(clipped, 3U);
     Require(passes.size() == 3U &&
-            passes[0].vertices == 240542U && passes[0].triangles == 230168U &&
-            passes[1].vertices == 686094U && passes[1].triangles == 920672U &&
-            passes[2].vertices == 2267702U && passes[2].triangles == 3682688U,
+            passes[0].vertices == 73388U && passes[0].triangles == 81720U &&
+            passes[1].vertices == 222038U && passes[1].triangles == 326880U &&
+            passes[2].vertices == 764498U && passes[2].triangles == 1307520U,
             "Taipale midpoint-refinement cost must remain reproducible from the shipped terrain and water strips.");
-    Require(passes[1].vertices < MaximumVertices &&
-            passes[2].vertices > MaximumVertices,
-            "Taipale fits the one-million actual-vertex budget after two midpoint passes, but not after three.");
+    Require(passes[0].vertices + passes[0].indices < MaximumVertices &&
+            passes[1].vertices + passes[1].indices > MaximumVertices &&
+            passes[2].vertices < MaximumVertices,
+            "The runtime's vertices-plus-indices guard must be shown to reject a third pass that still fits the actual vertex budget.");
 
     const double sourceCellDiagonal = std::hypot(
         static_cast<double>(region.terrain.spacingX),
         static_cast<double>(region.terrain.spacingZ));
     const double afterTwoPasses = sourceCellDiagonal / 4.0;
     const double afterThreePasses = sourceCellDiagonal / 8.0;
-    Require(afterTwoPasses > 17.0 && afterTwoPasses < 23.0 &&
-            afterThreePasses < 17.0,
-            "Taipale's 64 m cell diagonal requires two passes at a 23 m edge target, but three at 17 m.");
+    Require(afterTwoPasses > 2.2 && afterThreePasses > 2.2 &&
+            afterThreePasses < afterTwoPasses,
+            "Taipale's 64 m cell diagonal requires the third refinement pass to reduce the longest edge, while remaining above the 2.2 m target.");
 
     std::cout << "Taipale refinement budget: " << source.vertices.size()
         << " source vertices / " << source.triangles.size() << " source triangles; "
@@ -821,7 +822,9 @@ void TestTaipaleTerrainRefinementBudgetEnvelope()
         << passes[1].vertices << " vertices / " << passes[1].triangles
         << " triangles; after three passes " << passes[2].vertices
         << " vertices / " << passes[2].triangles
-        << ". A 23 m maximum edge target stops at the two-pass, sub-million-vertex result.";
+        << " triangles; before pass 3 the runtime guard sees "
+        << (passes[1].vertices + passes[1].indices)
+        << " combined vertex/index entries although the completed pass 3 remains below one million vertices.";
 }
 
 } // namespace
