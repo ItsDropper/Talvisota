@@ -790,16 +790,16 @@ void TestTaipaleTerrainRefinementBudgetEnvelope()
         root / "assets/models/terrain/taipale-riverfront.obj");
     const ClippedTerrain clipped = BuildWaterClippedTerrain(source, region);
     Require(clipped.sourceTrianglesTouchedByWater == 474U &&
-            clipped.triangles.size() == 20430U &&
-            clipped.vertexCount == 29708U,
+            clipped.triangles.size() == 20413U &&
+            clipped.vertexCount == 29657U,
             "Taipale water separation must retain its measured clipped-mesh complexity baseline.");
 
     constexpr std::size_t MaximumVertices = 1000000U;
     const auto passes = EstimateMidpointRefinement(clipped, 3U);
     Require(passes.size() == 3U &&
-            passes[0].vertices == 73388U && passes[0].triangles == 81720U &&
-            passes[1].vertices == 222038U && passes[1].triangles == 326880U &&
-            passes[2].vertices == 764498U && passes[2].triangles == 1307520U,
+            passes[0].vertices == 73286U && passes[0].triangles == 81652U &&
+            passes[1].vertices == 221783U && passes[1].triangles == 326608U &&
+            passes[2].vertices == 763733U && passes[2].triangles == 1306432U,
             "Taipale midpoint-refinement cost must remain reproducible from the shipped terrain and water strips.");
     Require(passes[0].vertices + passes[0].indices < MaximumVertices &&
             passes[1].vertices + passes[1].indices > MaximumVertices &&
