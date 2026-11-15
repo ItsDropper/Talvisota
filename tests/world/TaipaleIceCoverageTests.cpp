@@ -406,7 +406,7 @@ void TestCompleteTaipaleIceTriangleCoverage()
     Require(afterControl != brokenRegion.waterSurfaces.begin(),
             "The negative control must resolve to a Taipale water interval.");
     const auto controlIndex = static_cast<std::size_t>(
-        std::distance(brokenRegion.waterSurfaces.begin(), afterControl) - 1);
+        afterControl - brokenRegion.waterSurfaces.begin() - 1);
     Require(controlX <= brokenRegion.waterSurfaces[controlIndex].maxX,
             "The negative control must lie inside its selected X interval.");
     brokenRegion.waterSurfaces[controlIndex].minZ = 1377.84F;
