@@ -146,12 +146,17 @@ std::vector<SurfacePoint> ClipAgainstX(std::vector<SurfacePoint> polygon,
 const talvisota::world::WaterSurface* FindWaterSurface(
     const talvisota::world::WorldRegion& region, const float x, const float z)
 {
-    const auto found = std::find_if(region.waterSurfaces.begin(), region.waterSurfaces.end(),
-        [x, z](const auto& surface) {
-            return x >= surface.minX && x <= surface.maxX &&
-                   z >= surface.minZ && z <= surface.maxZ;
+    // Match FindWaterSurfaceAt exactly: a shared X boundary belongs to the
+    // interval on its right, not the first rectangle that happens to contain it.
+    const auto after = std::upper_bound(region.waterSurfaces.begin(), region.waterSurfaces.end(), x,
+        [](const float coordinate, const auto& surface) {
+            return coordinate < surface.minX;
         });
-    return found == region.waterSurfaces.end() ? nullptr : &*found;
+    if (after == region.waterSurfaces.begin())
+        return nullptr;
+    const auto& candidate = *(after - 1);
+    return x <= candidate.maxX && z >= candidate.minZ && z <= candidate.maxZ
+        ? &candidate : nullptr;
 }
 
 void VerifyWaterSample(const talvisota::content::WorldDefinition& world,
@@ -193,6 +198,94 @@ void VerifyWaterSample(const talvisota::content::WorldDefinition& world,
     ++sampleCount;
 }
 
+bool FindIceCrossSectionBounds(const IceMesh& mesh, const double x,
+                               double& minimumZ, double& maximumZ)
+{
+    std::vector<double> intersections;
+    intersections.reserve(mesh.triangles.size() * 2U);
+    for (const Triangle& triangle : mesh.triangles)
+    {
+        for (std::size_t edge = 0U; edge < triangle.size(); ++edge)
+        {
+            const Position& start = mesh.vertices[triangle[edge]];
+            const Position& end = mesh.vertices[triangle[(edge + 1U) % triangle.size()]];
+            const double deltaX = static_cast<double>(end[0]) - start[0];
+            if (std::abs(deltaX) <= 1.0e-10)
+            {
+                if (std::abs(x - start[0]) <= 1.0e-7)
+                {
+                    intersections.push_back(start[2]);
+                    intersections.push_back(end[2]);
+                }
+                continue;
+            }
+
+            const double t = (x - start[0]) / deltaX;
+            if (t < -1.0e-9 || t > 1.0 + 1.0e-9)
+                continue;
+            const double clamped = std::clamp(t, 0.0, 1.0);
+            intersections.push_back(static_cast<double>(start[2]) +
+                clamped * (static_cast<double>(end[2]) - start[2]));
+        }
+    }
+    if (intersections.empty())
+        return false;
+    const auto [minimum, maximum] = std::minmax_element(
+        intersections.begin(), intersections.end());
+    minimumZ = *minimum;
+    maximumZ = *maximum;
+    return true;
+}
+
+std::pair<double, double> VerifyWaterEnvelope(
+    const IceMesh& mesh, const talvisota::world::WorldRegion& region)
+{
+    std::vector<double> vertexXs;
+    vertexXs.reserve(mesh.vertices.size());
+    for (const Position& vertex : mesh.vertices)
+        vertexXs.push_back(vertex[0]);
+    std::sort(vertexXs.begin(), vertexXs.end());
+    vertexXs.erase(std::unique(vertexXs.begin(), vertexXs.end(),
+        [](const double left, const double right) {
+            return std::abs(left - right) <= 1.0e-7;
+        }), vertexXs.end());
+
+    double maximumLowerOverhang = 0.0;
+    double maximumUpperOverhang = 0.0;
+    for (const auto& water : region.waterSurfaces)
+    {
+        std::vector<double> sampleXs{water.minX, water.maxX};
+        const auto firstVertex = std::upper_bound(
+            vertexXs.begin(), vertexXs.end(), static_cast<double>(water.minX) + 1.0e-7);
+        const auto afterLastVertex = std::lower_bound(
+            vertexXs.begin(), vertexXs.end(), static_cast<double>(water.maxX) - 1.0e-7);
+        sampleXs.insert(sampleXs.end(), firstVertex, afterLastVertex);
+        std::sort(sampleXs.begin(), sampleXs.end());
+        sampleXs.erase(std::unique(sampleXs.begin(), sampleXs.end(),
+            [](const double left, const double right) {
+                return std::abs(left - right) <= 1.0e-7;
+            }), sampleXs.end());
+
+        for (const double x : sampleXs)
+        {
+            double iceMinimumZ = 0.0;
+            double iceMaximumZ = 0.0;
+            Require(FindIceCrossSectionBounds(mesh, x, iceMinimumZ, iceMaximumZ),
+                    "Every Taipale water strip must intersect the rendered ice ribbon.");
+            const double lowerOverhang = iceMinimumZ - water.minZ;
+            const double upperOverhang = water.maxZ - iceMaximumZ;
+            Require(lowerOverhang >= -0.001 && upperOverhang >= -0.001,
+                    "Every Taipale water strip must contain the complete ice cross-section.");
+            maximumLowerOverhang = std::max(maximumLowerOverhang, lowerOverhang);
+            maximumUpperOverhang = std::max(maximumUpperOverhang, upperOverhang);
+        }
+    }
+
+    Require(maximumLowerOverhang <= 4.0 && maximumUpperOverhang <= 4.0,
+            "Taipale water rectangles must not remove more than 4 m of snow terrain beyond the visible ice ribbon.");
+    return {maximumLowerOverhang, maximumUpperOverhang};
+}
+
 void TestCompleteTaipaleIceTriangleCoverage()
 {
     const std::filesystem::path root = TALVISOTA_SOURCE_DIR;
@@ -217,10 +310,11 @@ void TestCompleteTaipaleIceTriangleCoverage()
                 root / "content/worlds/taipale-riverfront.tregion",
                 registry, world, region, regionDiagnostics),
             "Taipale riverfront region must load for the ice coverage test.");
-    Require(region.waterSurfaces.size() == 32U,
+    Require(region.waterSurfaces.size() == 2048U,
             "Taipale must retain its 32 segmented frozen-river water rectangles.");
 
     const IceMesh mesh = LoadIceMesh(root / "assets/models/environment/taipale-ice.obj");
+    const auto [maximumLowerOverhang, maximumUpperOverhang] = VerifyWaterEnvelope(mesh, region);
     const auto [minimumVertex, maximumVertex] = std::minmax_element(
         mesh.vertices.begin(), mesh.vertices.end(),
         [](const Position& left, const Position& right) { return left[0] < right[0]; });
@@ -248,20 +342,30 @@ void TestCompleteTaipaleIceTriangleCoverage()
             {mesh.vertices[indices[2]][0], mesh.vertices[indices[2]][1], mesh.vertices[indices[2]][2]}
         }};
 
+        const float triangleMinimumX = std::min({static_cast<float>(triangle[0].x),
+            static_cast<float>(triangle[1].x), static_cast<float>(triangle[2].x)});
+        const float triangleMaximumX = std::max({static_cast<float>(triangle[0].x),
+            static_cast<float>(triangle[1].x), static_cast<float>(triangle[2].x)});
+        const auto firstWater = std::lower_bound(region.waterSurfaces.begin(),
+            region.waterSurfaces.end(), triangleMinimumX,
+            [](const auto& candidate, const float coordinate) {
+                return candidate.maxX <= coordinate;
+            });
         std::size_t intersectingSegments = 0U;
-        for (const auto& water : region.waterSurfaces)
+        for (auto water = firstWater;
+             water != region.waterSurfaces.end() && water->minX < triangleMaximumX; ++water)
         {
             std::vector<SurfacePoint> clipped(triangle.begin(), triangle.end());
-            clipped = ClipAgainstX(std::move(clipped), water.minX, true);
-            clipped = ClipAgainstX(std::move(clipped), water.maxX, false);
+            clipped = ClipAgainstX(std::move(clipped), water->minX, true);
+            clipped = ClipAgainstX(std::move(clipped), water->maxX, false);
             if (clipped.empty())
                 continue;
 
             ++intersectingSegments;
             for (const SurfacePoint& point : clipped)
             {
-                Require(point.z >= water.minZ - 0.001F &&
-                        point.z <= water.maxZ + 0.001F,
+                Require(point.z >= water->minZ - 0.001F &&
+                        point.z <= water->maxZ + 0.001F,
                         "Every clipped Taipale ice triangle must fit inside its water rectangle.");
                 VerifyWaterSample(world, region, point, runtimeSamples);
                 ++clippedPolygonPoints;
@@ -288,23 +392,38 @@ void TestCompleteTaipaleIceTriangleCoverage()
         }
     }
 
-    // Recreate the original segment-04 lower bank bound. This known triangle
-    // interior point must fall back to snow, proving the regression catches
-    // the pre-fix sampler hole rather than merely validating a loose mesh count.
+    // Recreate the original 32-strip segment-04 lower-bank bound at an
+    // interior point. The control must still fall back to snow rather than
+    // merely validating a loose mesh count.
     talvisota::world::WorldRegion brokenRegion = region;
-    brokenRegion.waterSurfaces[3].minZ = 1377.84F;
+    constexpr float controlX = -1539.681F;
+    constexpr float controlZ = 1377.28125F;
+    const auto afterControl = std::upper_bound(brokenRegion.waterSurfaces.begin(),
+        brokenRegion.waterSurfaces.end(), controlX,
+        [](const float coordinate, const auto& surface) {
+            return coordinate < surface.minX;
+        });
+    Require(afterControl != brokenRegion.waterSurfaces.begin(),
+            "The negative control must resolve to a Taipale water interval.");
+    const auto controlIndex = static_cast<std::size_t>(
+        std::distance(brokenRegion.waterSurfaces.begin(), afterControl) - 1);
+    Require(controlX <= brokenRegion.waterSurfaces[controlIndex].maxX,
+            "The negative control must lie inside its selected X interval.");
+    brokenRegion.waterSurfaces[controlIndex].minZ = 1377.84F;
     float brokenHeight = 0.0F;
     std::array<float, 3> brokenNormal{};
     std::string brokenError;
     Require(talvisota::world::SampleTerrainHeight(brokenRegion,
-                -1539.681F, 1377.28125F, brokenHeight, brokenNormal, brokenError) &&
+                controlX, controlZ, brokenHeight, brokenNormal, brokenError) &&
             (std::abs(brokenHeight - 4.60F) > 0.001F || brokenNormal[1] < 0.999F),
             "The negative control must reproduce the former ice-to-snow sampler gap.");
 
     std::cout << "Verified Taipale frozen river: " << mesh.vertices.size()
               << " vertices, " << mesh.triangles.size() << " triangles, "
+              << region.waterSurfaces.size() << " narrow water strips, "
               << clippedPolygonPoints << " exact clipped-polygon points and "
-              << runtimeSamples << " runtime water samples.\n";
+              << runtimeSamples << " runtime water samples; maximum terrain-cutout overhang "
+              << maximumLowerOverhang << "/" << maximumUpperOverhang << " m.\n";
 }
 } // namespace
 
