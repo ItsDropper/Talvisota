@@ -845,7 +845,7 @@ void TestTaipaleRiverfrontWorldAndMissionLoad()
     Require(region.id == "region.taipale.riverfront" &&
             region.terrain.rows == 65U && region.terrain.columns == 65U &&
             region.waterSurfaces.size() == 2048U,
-            "Taipale must retain its 4 km terrain grid and segmented river surface.");
+            "Taipale must retain its 4 km terrain grid and 2,048 mesh-derived narrow river strips.");
 
     std::ifstream terrainMesh(root / "assets/models/terrain/taipale-riverfront.obj");
     Require(static_cast<bool>(terrainMesh), "Taipale terrain render mesh should be readable.");
