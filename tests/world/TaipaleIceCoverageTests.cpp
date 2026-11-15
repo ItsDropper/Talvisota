@@ -387,11 +387,25 @@ void TestCompleteTaipaleIceTriangleCoverage()
     }
 
     // Recreate the original 32-strip segment-04 lower-bank bound at an
-    // interior point. The control must still fall back to snow rather than
-    // merely validating a loose mesh count.
-    talvisota::world::WorldRegion brokenRegion = region;
+    // interior point. First prove that this control is genuinely on the fixed
+    // ice surface; otherwise a point that was already snow could make the
+    // negative assertion pass without exercising the regression.
     constexpr float controlX = -1539.681F;
     constexpr float controlZ = 1377.28125F;
+    const auto* originalControlWater = FindWaterSurface(region, controlX, controlZ);
+    Require(originalControlWater != nullptr &&
+            std::abs(originalControlWater->elevation - 4.60F) <= 0.001F,
+            "The negative-control point must be covered by the corrected ice surface before mutation.");
+    float originalControlHeight = 0.0F;
+    std::array<float, 3> originalControlNormal{};
+    std::string originalControlError;
+    Require(talvisota::world::SampleTerrainHeight(region, controlX, controlZ,
+                originalControlHeight, originalControlNormal, originalControlError) &&
+            std::abs(originalControlHeight - originalControlWater->elevation) <= 0.001F &&
+            originalControlNormal[1] > 0.999F,
+            "The negative-control point must sample the corrected flat ice surface before mutation.");
+
+    talvisota::world::WorldRegion brokenRegion = region;
     const auto afterControl = std::upper_bound(brokenRegion.waterSurfaces.begin(),
         brokenRegion.waterSurfaces.end(), controlX,
         [](const float coordinate, const auto& surface) {
@@ -401,15 +415,25 @@ void TestCompleteTaipaleIceTriangleCoverage()
             "The negative control must resolve to a Taipale water interval.");
     const auto controlIndex = static_cast<std::size_t>(
         afterControl - brokenRegion.waterSurfaces.begin() - 1);
-    Require(controlX <= brokenRegion.waterSurfaces[controlIndex].maxX,
-            "The negative control must lie inside its selected X interval.");
+    Require(controlIndex == static_cast<std::size_t>(
+                originalControlWater - region.waterSurfaces.data()) &&
+            controlX >= brokenRegion.waterSurfaces[controlIndex].minX &&
+            controlX <= brokenRegion.waterSurfaces[controlIndex].maxX &&
+            controlZ >= brokenRegion.waterSurfaces[controlIndex].minZ &&
+            controlZ <= brokenRegion.waterSurfaces[controlIndex].maxZ,
+            "The negative control must mutate the exact runtime-selected strip that originally covered it.");
     brokenRegion.waterSurfaces[controlIndex].minZ = 1377.84F;
+    Require(brokenRegion.waterSurfaces[controlIndex].minZ > controlZ &&
+            brokenRegion.waterSurfaces[controlIndex].minZ <=
+                brokenRegion.waterSurfaces[controlIndex].maxZ,
+            "The negative control must move the selected strip's lower bank beyond the sample point.");
     float brokenHeight = 0.0F;
     std::array<float, 3> brokenNormal{};
     std::string brokenError;
     Require(talvisota::world::SampleTerrainHeight(brokenRegion,
                 controlX, controlZ, brokenHeight, brokenNormal, brokenError) &&
-            (std::abs(brokenHeight - 4.60F) > 0.001F || brokenNormal[1] < 0.999F),
+            (std::abs(brokenHeight - originalControlHeight) > 0.001F ||
+                brokenNormal[1] < 0.999F),
             "The negative control must reproduce the former ice-to-snow sampler gap.");
 
     std::cout << "Verified Taipale frozen river: " << mesh.vertices.size()
