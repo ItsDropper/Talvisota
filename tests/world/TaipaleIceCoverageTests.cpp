@@ -513,43 +513,43 @@ TerrainMesh LoadTerrainMesh(const std::filesystem::path& path)
     return mesh;
 }
 
-std::vector<SurfacePoint> ClipTerrainPolygon(const std::vector<SurfacePoint>& polygon,
-    const bool clipX, const double boundary, const bool keepGreater)
+std::vector<Position> ClipTerrainPolygon(const std::vector<Position>& polygon,
+    const bool clipX, const float boundary, const bool keepGreater)
 {
     if (polygon.size() < 3U)
         return {};
 
-    const auto coordinate = [clipX](const SurfacePoint& point) {
-        return clipX ? point.x : point.z;
+    const auto coordinate = [clipX](const Position& point) {
+        return point[clipX ? 0U : 2U];
     };
-    const auto inside = [&](const SurfacePoint& point) {
+    const auto inside = [&](const Position& point) {
         return keepGreater ? coordinate(point) >= boundary : coordinate(point) <= boundary;
     };
 
-    std::vector<SurfacePoint> output;
+    std::vector<Position> output;
     output.reserve(polygon.size() + 1U);
-    const SurfacePoint* previous = &polygon.back();
+    const Position* previous = &polygon.back();
     bool previousInside = inside(*previous);
-    for (const SurfacePoint& current : polygon)
+    for (const Position& current : polygon)
     {
         const bool currentInside = inside(current);
         if (currentInside != previousInside)
         {
-            const double previousCoordinate = coordinate(*previous);
-            const double currentCoordinate = coordinate(current);
-            const double denominator = currentCoordinate - previousCoordinate;
-            if (std::abs(denominator) > 1.0e-12)
+            const float previousCoordinate = coordinate(*previous);
+            const float currentCoordinate = coordinate(current);
+            const float denominator = currentCoordinate - previousCoordinate;
+            if (std::abs(denominator) > 1.0e-8F)
             {
-                const double t = std::clamp((boundary - previousCoordinate) / denominator, 0.0, 1.0);
-                SurfacePoint intersection{
-                    previous->x + (current.x - previous->x) * t,
-                    previous->y + (current.y - previous->y) * t,
-                    previous->z + (current.z - previous->z) * t
-                };
+                const float t = std::clamp(
+                    (boundary - previousCoordinate) / denominator, 0.0F, 1.0F);
+                Position intersection{};
+                for (std::size_t axis = 0U; axis < intersection.size(); ++axis)
+                    intersection[axis] = (*previous)[axis] +
+                        (current[axis] - (*previous)[axis]) * t;
                 if (clipX)
-                    intersection.x = boundary;
+                    intersection[0] = boundary;
                 else
-                    intersection.z = boundary;
+                    intersection[2] = boundary;
                 output.push_back(intersection);
             }
         }
@@ -558,19 +558,19 @@ std::vector<SurfacePoint> ClipTerrainPolygon(const std::vector<SurfacePoint>& po
         previous = &current;
         previousInside = currentInside;
     }
-    return output.size() >= 3U ? output : std::vector<SurfacePoint>{};
+    return output.size() >= 3U ? output : std::vector<Position>{};
 }
 
-std::vector<std::vector<SurfacePoint>> SubtractWaterRectangle(
-    const std::vector<SurfacePoint>& polygon,
+std::vector<std::vector<Position>> SubtractWaterRectangle(
+    const std::vector<Position>& polygon,
     const talvisota::world::WaterSurface& water)
 {
-    std::vector<std::vector<SurfacePoint>> outsidePieces;
-    std::vector<SurfacePoint> remaining = polygon;
+    std::vector<std::vector<Position>> outsidePieces;
+    std::vector<Position> remaining = polygon;
     struct Boundary final
     {
         bool clipX;
-        double value;
+        float value;
         bool keepGreater;
     };
     const std::array<Boundary, 4> boundaries{{
@@ -609,27 +609,27 @@ ClippedTerrain BuildWaterClippedTerrain(
 
     for (const Triangle& sourceIndices : mesh.triangles)
     {
-        std::vector<SurfacePoint> sourcePolygon;
+        std::vector<Position> sourcePolygon;
         sourcePolygon.reserve(3U);
-        double minimumX = std::numeric_limits<double>::max();
-        double maximumX = std::numeric_limits<double>::lowest();
-        double minimumZ = std::numeric_limits<double>::max();
-        double maximumZ = std::numeric_limits<double>::lowest();
+        float minimumX = std::numeric_limits<float>::max();
+        float maximumX = std::numeric_limits<float>::lowest();
+        float minimumZ = std::numeric_limits<float>::max();
+        float maximumZ = std::numeric_limits<float>::lowest();
         for (const std::size_t index : sourceIndices)
         {
             const Position& vertex = mesh.vertices[index];
-            sourcePolygon.push_back({vertex[0], vertex[1], vertex[2]});
-            minimumX = std::min(minimumX, static_cast<double>(vertex[0]));
-            maximumX = std::max(maximumX, static_cast<double>(vertex[0]));
-            minimumZ = std::min(minimumZ, static_cast<double>(vertex[2]));
-            maximumZ = std::max(maximumZ, static_cast<double>(vertex[2]));
+            sourcePolygon.push_back(vertex);
+            minimumX = std::min(minimumX, vertex[0]);
+            maximumX = std::max(maximumX, vertex[0]);
+            minimumZ = std::min(minimumZ, vertex[2]);
+            maximumZ = std::max(maximumZ, vertex[2]);
         }
 
-        std::vector<std::vector<SurfacePoint>> fragments{std::move(sourcePolygon)};
+        std::vector<std::vector<Position>> fragments{std::move(sourcePolygon)};
         bool overlapsWater = false;
         const auto firstWater = std::lower_bound(
             region.waterSurfaces.begin(), region.waterSurfaces.end(), minimumX,
-            [](const auto& candidate, const double coordinate) {
+            [](const auto& candidate, const float coordinate) {
                 return candidate.maxX <= coordinate;
             });
         for (auto water = firstWater;
@@ -638,7 +638,7 @@ ClippedTerrain BuildWaterClippedTerrain(
             if (maximumZ <= water->minZ || minimumZ >= water->maxZ)
                 continue;
             overlapsWater = true;
-            std::vector<std::vector<SurfacePoint>> nextFragments;
+            std::vector<std::vector<Position>> nextFragments;
             for (const auto& fragment : fragments)
             {
                 auto outside = SubtractWaterRectangle(fragment, *water);
@@ -664,14 +664,14 @@ ClippedTerrain BuildWaterClippedTerrain(
         {
             if (polygon.size() < 3U)
                 continue;
-            double twiceArea = 0.0;
+            float twiceArea = 0.0F;
             for (std::size_t i = 0U; i < polygon.size(); ++i)
             {
                 const auto& a = polygon[i];
                 const auto& b = polygon[(i + 1U) % polygon.size()];
-                twiceArea += a.x * b.z - b.x * a.z;
+                twiceArea += a[0] * b[2] - b[0] * a[2];
             }
-            if (std::abs(twiceArea) <= 1.0e-5)
+            if (std::abs(twiceArea) <= 1.0e-5F)
                 continue;
             Require(nextVertex + polygon.size() <=
                         static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max()),
