@@ -844,7 +844,7 @@ void TestTaipaleRiverfrontWorldAndMissionLoad()
             "Taipale riverfront region should load with its frozen-water metadata.");
     Require(region.id == "region.taipale.riverfront" &&
             region.terrain.rows == 65U && region.terrain.columns == 65U &&
-            region.waterSurfaces.size() == 32U,
+            region.waterSurfaces.size() == 2048U,
             "Taipale must retain its 4 km terrain grid and segmented river surface.");
 
     std::ifstream terrainMesh(root / "assets/models/terrain/taipale-riverfront.obj");
@@ -938,18 +938,21 @@ void TestTaipaleRiverfrontWorldAndMissionLoad()
         Require(x >= world.boundsMin[0] && x <= world.boundsMax[0] &&
                 z >= world.boundsMin[2] && z <= world.boundsMax[2],
                 "Taipale ice ribbon must remain inside the declared world bounds.");
-        const auto water = std::find_if(region.waterSurfaces.begin(), region.waterSurfaces.end(),
-            [x, z](const auto& surface) {
-                return x >= surface.minX && x <= surface.maxX &&
-                       z >= surface.minZ && z <= surface.maxZ;
+        const auto afterWaterSurface = std::upper_bound(
+            region.waterSurfaces.begin(), region.waterSurfaces.end(), x,
+            [](const float coordinate, const auto& surface) {
+                return coordinate < surface.minX;
             });
-        Require(water != region.waterSurfaces.end(),
-                "Every Taipale ice vertex must be covered by an authored water surface.");
+        Require(afterWaterSurface != region.waterSurfaces.begin(),
+                "Every Taipale ice vertex must resolve to an authored water interval.");
+        const auto& waterSurface = *(afterWaterSurface - 1);
+        Require(x <= waterSurface.maxX && z >= waterSurface.minZ && z <= waterSurface.maxZ,
+                "Every Taipale ice vertex must be covered by the runtime-selected water interval.");
         float sampledWaterHeight = 0.0F;
         std::array<float, 3> sampledWaterNormal{};
         Require(talvisota::world::SampleTerrainHeight(region, x, z,
                     sampledWaterHeight, sampledWaterNormal, error) &&
-                std::abs(sampledWaterHeight - water->elevation) <= 0.001F &&
+                std::abs(sampledWaterHeight - waterSurface.elevation) <= 0.001F &&
                 sampledWaterNormal[1] > 0.999F,
                 "Every Taipale ice vertex must sample the matching flat water surface, not snow terrain.");
         ++coveredIceVertices;
