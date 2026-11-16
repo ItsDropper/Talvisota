@@ -297,8 +297,14 @@ def analyze_obj(obj_path: Path, content_root: Path, fallback_size=None, source_f
         normal_ref = properties.get("normal_map")
         if normal_ref and library:
             texture = (library.parent / normal_ref).resolve()
+            try:
+                relative_texture = texture.relative_to(root)
+            except ValueError as exc:
+                raise DiagnosticError(
+                    f"normal-map path escapes content root: {texture}"
+                ) from exc
             dimensions = image_dimensions(texture)
-            item["normal_map"] = str(texture.relative_to(root))
+            item["normal_map"] = str(relative_texture)
             item["normal_map_header_found"] = dimensions is not None
             item["texture_size"] = list(dimensions or fallback_size) if (dimensions or fallback_size) else None
         else:
