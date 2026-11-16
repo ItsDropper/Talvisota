@@ -33,12 +33,12 @@ struct TriangleSubdivisionEstimate final
     if (vertexCount == 0U ||
         vertexCount > static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max()))
     {
-        error = "Triangle subdivision requires a non-zero vertex count representable by 32-bit indices.";
+        error = "Triangle subdivision requires a non-zero vertex count "\n            "representable by 32-bit indices.";
         return false;
     }
     if (indices.empty() || indices.size() % 3U != 0U)
     {
-        error = "Triangle subdivision requires a non-empty index list containing complete triangles.";
+        error = "Triangle subdivision requires a non-empty index list "\n            "containing complete triangles.";
         return false;
     }
     if (indices.size() > std::numeric_limits<std::size_t>::max() / 4U)

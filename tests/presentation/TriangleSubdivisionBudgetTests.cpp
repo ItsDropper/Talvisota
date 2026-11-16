@@ -6,6 +6,10 @@
 #include <limits>
 #include <stdexcept>
 #include <string>
+#include <random>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
 using namespace talvisota::presentation;
 
@@ -67,6 +71,45 @@ void TestDegenerateSelfEdgesMatchRuntimeCache()
         "The (0,0) self-edge and the (0,1) edge must each allocate one midpoint.");
 }
 
+
+void TestRandomMeshesMatchRuntimeMidpointCache()
+{
+    std::mt19937 generator(0x5A17U);
+    for (std::size_t iteration = 0U; iteration < 128U; ++iteration)
+    {
+        const std::size_t vertexCount = 1U + generator() % 64U;
+        const std::size_t triangleCount = 1U + generator() % 128U;
+        std::vector<std::uint32_t> indices(triangleCount * 3U);
+        for (std::uint32_t& index : indices)
+            index = static_cast<std::uint32_t>(generator() % vertexCount);
+
+        const auto edgeKey = [](std::uint32_t first, std::uint32_t second) {
+            if (first > second)
+                std::swap(first, second);
+            return (static_cast<std::uint64_t>(first) << 32U) | second;
+        };
+        std::unordered_set<std::uint64_t> runtimeMidpointKeys;
+        for (std::size_t index = 0U; index < indices.size(); index += 3U)
+        {
+            const std::uint32_t first = indices[index];
+            const std::uint32_t second = indices[index + 1U];
+            const std::uint32_t third = indices[index + 2U];
+            runtimeMidpointKeys.insert(edgeKey(first, second));
+            runtimeMidpointKeys.insert(edgeKey(second, third));
+            runtimeMidpointKeys.insert(edgeKey(third, first));
+        }
+
+        TriangleSubdivisionEstimate estimate;
+        std::string error;
+        Require(EstimateFourWayTriangleSubdivision(vertexCount, indices, estimate, error),
+            "A deterministic random mesh must be estimated.");
+        Require(estimate.uniqueEdges == runtimeMidpointKeys.size() &&
+            estimate.resultVertices == vertexCount + runtimeMidpointKeys.size() &&
+            estimate.resultIndices == indices.size() * 4U,
+            "Sorted unique-edge estimates must match the runtime midpoint-cache key set.");
+    }
+}
+
 void TestVertexBudgetBoundary()
 {
     constexpr std::array<std::uint32_t, 6> indices{0U, 1U, 2U, 2U, 1U, 3U};
@@ -103,8 +146,25 @@ void TestInvalidInputsPreserveOutput()
     Require(!EstimateFourWayTriangleSubdivision(2U, incomplete, estimate, error),
         "An incomplete triangle index list must be rejected.");
     constexpr std::array<std::uint32_t, 0> empty{};
+    Require(!EstimateFourWayTriangleSubdivision(3U, empty, estimate, error),
+        "A non-empty vertex array without triangles must be rejected.");
     Require(!EstimateFourWayTriangleSubdivision(0U, empty, estimate, error),
         "An empty mesh must be rejected.");
+}
+
+
+void TestExactThirtyTwoBitVertexCapacityBoundary()
+{
+    constexpr std::array<std::uint32_t, 3> indices{0U, 1U, 2U};
+    TriangleSubdivisionEstimate estimate;
+    std::string error;
+    const std::size_t maximumVertexCount = static_cast<std::size_t>(
+        std::numeric_limits<std::uint32_t>::max());
+    Require(EstimateFourWayTriangleSubdivision(maximumVertexCount - 3U,
+            indices, estimate, error),
+        "A result exactly at 32-bit vertex capacity must be accepted.");
+    Require(estimate.resultVertices == maximumVertexCount,
+        "The exact 32-bit vertex-count boundary must not be rejected as overflow.");
 }
 
 void TestThirtyTwoBitVertexCapacity()
@@ -129,8 +189,10 @@ int main()
         TestSharedEdgesAreCountedOnce();
         TestRepeatedFacesReuseTheSameMidpoints();
         TestDegenerateSelfEdgesMatchRuntimeCache();
+        TestRandomMeshesMatchRuntimeMidpointCache();
         TestVertexBudgetBoundary();
         TestInvalidInputsPreserveOutput();
+        TestExactThirtyTwoBitVertexCapacityBoundary();
         TestThirtyTwoBitVertexCapacity();
         return 0;
     }

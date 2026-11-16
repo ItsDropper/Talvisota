@@ -31,7 +31,9 @@ add_test(NAME Talvisota.Presentation.WeatherParticles COMMAND talvisota_weather_
 add_executable(talvisota_triangle_subdivision_budget_tests
     presentation/TriangleSubdivisionBudgetTests.cpp
 )
-target_link_libraries(talvisota_triangle_subdivision_budget_tests PRIVATE Talvisota::RendererContract)
+target_link_libraries(talvisota_triangle_subdivision_budget_tests
+    PRIVATE Talvisota::RendererContract
+)
 target_compile_features(talvisota_triangle_subdivision_budget_tests PRIVATE cxx_std_23)
 talvisota_apply_compiler_options(talvisota_triangle_subdivision_budget_tests)
 add_test(NAME Talvisota.Presentation.TriangleSubdivisionBudget
