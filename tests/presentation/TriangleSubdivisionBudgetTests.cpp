@@ -110,6 +110,66 @@ void TestRandomMeshesMatchRuntimeMidpointCache()
     }
 }
 
+
+void TestLargeSharedEdgeBudgetMatchesTaipaleReplayCounts()
+{
+    // This synthetic topology preserves the measured post-water-cutout Taipale
+    // pass-three cardinalities without duplicating the world-geometry fixture.
+    constexpr std::size_t sourceVertices = 221783U;
+    constexpr std::size_t sharedEdgeTriangles = sourceVertices - 3U;
+    constexpr std::size_t oneNewEdgeTriangles = 98387U;
+    constexpr std::size_t noNewEdgeTriangles = 6440U;
+    constexpr std::size_t maximumVertices = 1000000U;
+    std::vector<std::uint32_t> indices;
+    indices.reserve(979824U);
+    indices.insert(indices.end(), {0U, 1U, 2U});
+
+    for (std::uint32_t vertex = 3U; vertex < sourceVertices; ++vertex)
+        indices.insert(indices.end(), {0U, 1U, vertex});
+
+    // Each disjoint triple contributes three previously unseen non-spoke edges,
+    // then one face reuses all three edges without increasing the vertex estimate.
+    constexpr std::uint32_t tripleStart = 3U;
+    for (std::size_t triple = 0U; triple < noNewEdgeTriangles; ++triple)
+    {
+        const std::uint32_t first = tripleStart + static_cast<std::uint32_t>(triple * 3U);
+        const std::uint32_t second = first + 1U;
+        const std::uint32_t third = first + 2U;
+        indices.insert(indices.end(), {0U, first, second});
+        indices.insert(indices.end(), {0U, second, third});
+        indices.insert(indices.end(), {0U, third, first});
+        indices.insert(indices.end(), {first, second, third});
+    }
+
+    const std::size_t additionalOneEdgeTriangles =
+        oneNewEdgeTriangles - noNewEdgeTriangles * 3U;
+    const std::uint32_t additionalPairStart =
+        tripleStart + static_cast<std::uint32_t>(noNewEdgeTriangles * 3U);
+    for (std::size_t pair = 0U; pair < additionalOneEdgeTriangles; ++pair)
+    {
+        const std::uint32_t first = additionalPairStart + static_cast<std::uint32_t>(pair);
+        indices.insert(indices.end(), {0U, first, first + 1U});
+    }
+
+    Require(1U + sharedEdgeTriangles + oneNewEdgeTriangles + noNewEdgeTriangles == 326608U &&
+        indices.size() == 979824U,
+        "The synthetic pass-three topology must preserve the measured Taipale "
+        "triangle/index counts.");
+
+    TriangleSubdivisionEstimate estimate;
+    std::string error;
+    Require(EstimateFourWayTriangleSubdivision(sourceVertices, indices, estimate, error),
+        "The high-reuse Taipale-sized mesh must be estimated.");
+    Require(estimate.uniqueEdges == 541950U && estimate.resultVertices == 763733U &&
+        estimate.resultIndices == 3919296U,
+        "The estimator must reproduce the measured Taipale pass-three vertex and index counts.");
+    Require(sourceVertices + indices.size() > maximumVertices &&
+        estimate.resultVertices < maximumVertices &&
+        FitsVertexBudget(estimate, maximumVertices, error),
+        "A vertex-only budget must accept the actual vertex count, not reject "
+        "vertices plus indices.");
+}
+
 void TestVertexBudgetBoundary()
 {
     constexpr std::array<std::uint32_t, 6> indices{0U, 1U, 2U, 2U, 1U, 3U};
@@ -190,6 +250,7 @@ int main()
         TestRepeatedFacesReuseTheSameMidpoints();
         TestDegenerateSelfEdgesMatchRuntimeCache();
         TestRandomMeshesMatchRuntimeMidpointCache();
+        TestLargeSharedEdgeBudgetMatchesTaipaleReplayCounts();
         TestVertexBudgetBoundary();
         TestInvalidInputsPreserveOutput();
         TestExactThirtyTwoBitVertexCapacityBoundary();
