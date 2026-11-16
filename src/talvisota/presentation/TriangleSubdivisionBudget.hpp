@@ -31,10 +31,11 @@ struct TriangleSubdivisionEstimate final
     std::string& error)
 {
     if (vertexCount == 0U ||
-        vertexCount > static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max()))
+        vertexCount - 1U > static_cast<std::size_t>(
+            std::numeric_limits<std::uint32_t>::max()))
     {
-        error = "Triangle subdivision requires a non-zero vertex count "
-            "representable by 32-bit indices.";
+        error = "Triangle subdivision requires a non-zero vertex count whose final index "
+            "is representable by 32-bit indices.";
         return false;
     }
     if (indices.empty() || indices.size() % 3U != 0U)
@@ -92,7 +93,8 @@ struct TriangleSubdivisionEstimate final
     }
 
     const std::size_t resultVertexCount = vertexCount + uniqueEdgeCount;
-    if (resultVertexCount > static_cast<std::size_t>(
+    // uint32_t indices address [0, UINT32_MAX], allowing UINT32_MAX + 1 vertices.
+    if (resultVertexCount - 1U > static_cast<std::size_t>(
             std::numeric_limits<std::uint32_t>::max()))
     {
         error = "Triangle subdivision would exceed the 32-bit vertex-index capacity.";

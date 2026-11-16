@@ -213,31 +213,59 @@ void TestInvalidInputsPreserveOutput()
 }
 
 
-void TestExactThirtyTwoBitVertexCapacityBoundary()
+void TestExactThirtyTwoBitVertexIndexCapacityBoundary()
 {
     constexpr std::array<std::uint32_t, 3> indices{0U, 1U, 2U};
     TriangleSubdivisionEstimate estimate;
     std::string error;
-    const std::size_t maximumVertexCount = static_cast<std::size_t>(
-        std::numeric_limits<std::uint32_t>::max());
+    std::size_t maximumVertexCount = std::numeric_limits<std::size_t>::max();
+    if constexpr (sizeof(std::size_t) > sizeof(std::uint32_t))
+    {
+        maximumVertexCount = static_cast<std::size_t>(
+            static_cast<std::uint64_t>(std::numeric_limits<std::uint32_t>::max()) + 1U);
+    }
+    else
+    {
+        maximumVertexCount = static_cast<std::size_t>(
+            std::numeric_limits<std::uint32_t>::max());
+    }
+
     Require(EstimateFourWayTriangleSubdivision(maximumVertexCount - 3U,
             indices, estimate, error),
-        "A result exactly at 32-bit vertex capacity must be accepted.");
+        "A result whose final index is UINT32_MAX must be accepted.");
     Require(estimate.resultVertices == maximumVertexCount,
-        "The exact 32-bit vertex-count boundary must not be rejected as overflow.");
+        "The full 32-bit index address space must be usable without rejecting its final index.");
 }
 
-void TestThirtyTwoBitVertexCapacity()
+void TestThirtyTwoBitVertexIndexCapacityExceeded()
 {
-    constexpr std::array<std::uint32_t, 3> indices{0U, 1U, 2U};
-    TriangleSubdivisionEstimate estimate;
-    std::string error;
-    const std::size_t maximumVertexCount = static_cast<std::size_t>(
-        std::numeric_limits<std::uint32_t>::max());
-    Require(!EstimateFourWayTriangleSubdivision(maximumVertexCount, indices, estimate, error),
-        "A subdivision that exceeds 32-bit vertex capacity must fail before index truncation.");
-    Require(error.find("32-bit vertex-index capacity") != std::string::npos,
-        "Vertex-capacity overflow must have a specific diagnostic.");
+    if constexpr (sizeof(std::size_t) > sizeof(std::uint32_t))
+    {
+        constexpr std::array<std::uint32_t, 3> indices{0U, 1U, 2U};
+        const std::size_t maximumVertexCount = static_cast<std::size_t>(
+            static_cast<std::uint64_t>(std::numeric_limits<std::uint32_t>::max()) + 1U);
+        TriangleSubdivisionEstimate estimate{7U, 9U, 11U, 13U, 15U};
+        const TriangleSubdivisionEstimate original = estimate;
+        std::string error;
+
+        Require(!EstimateFourWayTriangleSubdivision(maximumVertexCount - 2U,
+                indices, estimate, error),
+            "A subdivision one vertex beyond UINT32_MAX must be rejected.");
+        Require(error.find("32-bit vertex-index capacity") != std::string::npos,
+            "Vertex-index overflow must have a specific diagnostic.");
+        Require(estimate.sourceVertices == original.sourceVertices &&
+            estimate.sourceIndices == original.sourceIndices &&
+            estimate.uniqueEdges == original.uniqueEdges &&
+            estimate.resultVertices == original.resultVertices &&
+            estimate.resultIndices == original.resultIndices,
+            "Capacity failure must preserve the caller's previous estimate.");
+
+        Require(!EstimateFourWayTriangleSubdivision(maximumVertexCount + 1U,
+                indices, estimate, error),
+            "A source vertex count whose final index is not representable must be rejected.");
+        Require(error.find("final index") != std::string::npos,
+            "An oversized source vertex count must have a specific diagnostic.");
+    }
 }
 } // namespace
 
@@ -253,8 +281,8 @@ int main()
         TestLargeSharedEdgeBudgetMatchesTaipaleReplayCounts();
         TestVertexBudgetBoundary();
         TestInvalidInputsPreserveOutput();
-        TestExactThirtyTwoBitVertexCapacityBoundary();
-        TestThirtyTwoBitVertexCapacity();
+        TestExactThirtyTwoBitVertexIndexCapacityBoundary();
+        TestThirtyTwoBitVertexIndexCapacityExceeded();
         return 0;
     }
     catch (const std::exception& exception)
