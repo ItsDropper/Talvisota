@@ -158,6 +158,24 @@ add_test(NAME Talvisota.Environment.PbrMaps
         "${PROJECT_SOURCE_DIR}/assets/textures/environment"
 )
 
+# The OBJ/MTL diagnostics are standard-library-only Python and belong in the
+# ordinary headless test path, not the expensive visual/renderer capture path.
+find_package(Python3 COMPONENTS Interpreter QUIET)
+if(Python3_Interpreter_FOUND)
+    add_test(NAME Talvisota.AssetPipeline.ObjMaterialDiagnostics
+        COMMAND "${Python3_EXECUTABLE}" -m unittest discover
+            -s "${PROJECT_SOURCE_DIR}/tools/asset_pipeline/tests"
+            -p "test_obj_material_diagnostics.py"
+    )
+    set_tests_properties(Talvisota.AssetPipeline.ObjMaterialDiagnostics PROPERTIES
+        WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+        ENVIRONMENT "PYTHONDONTWRITEBYTECODE=1"
+        TIMEOUT 60
+    )
+else()
+    message(STATUS "Python3 interpreter not found; OBJ/MTL diagnostics tests are not registered.")
+endif()
+
 add_dependencies(talvisota_content_tests talvisota_environment_textures)
 add_dependencies(talvisota_world_tests talvisota_environment_textures)
 if(TARGET talvisota_engine_asset_validation_tests)

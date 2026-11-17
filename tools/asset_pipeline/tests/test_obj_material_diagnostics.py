@@ -75,6 +75,34 @@ class ObjMaterialDiagnosticsTests(unittest.TestCase):
             with self.subTest(face=face), self.assertRaises(DiagnosticError):
                 analyze_obj(obj, self.root)
 
+    def test_valid_face_corner_forms_include_missing_uv_with_normal(self):
+        obj = self.write_scene(
+            "mtllib ../materials/scene.mtl\nv 0 0 0\nv 1 0 0\nv 0 1 0\n"
+            "vn 0 0 1\nusemtl wall\nf 1//1 2//1 3//1\n"
+        )
+        wall = analyze_obj(obj, self.root)["materials"]["wall"]
+        self.assertEqual(wall["triangles"], 1)
+        self.assertEqual(wall["missing_uv"], 1)
+        self.assertEqual(wall["valid_mapped_triangles"], 0)
+
+    def test_malformed_face_corner_forms_are_rejected(self):
+        prefix = (
+            "mtllib ../materials/scene.mtl\nv 0 0 0\nv 1 0 0\nv 0 1 0\n"
+            "vt 0 0\nvt 1 0\nvt 0 1\nusemtl wall\n"
+        )
+        for face in (
+            "f 1/1/1/1 2/2 3/3",
+            "f 1/1/ 2/2/ 3/3/",
+            "f 1/ 2/ 3/",
+        ):
+            with self.subTest(face=face):
+                obj = self.write_scene(prefix + face + "\n")
+                with self.assertRaisesRegex(
+                    DiagnosticError,
+                    "malformed face corner|missing texture-coordinate index|missing normal index",
+                ):
+                    analyze_obj(obj, self.root)
+
     def test_degenerate_geometry_and_uv_are_separate(self):
         obj = self.write_scene(
             "mtllib ../materials/scene.mtl\nv 0 0 0\nv 1 0 0\nv 2 0 0\nv 0 1 0\n"

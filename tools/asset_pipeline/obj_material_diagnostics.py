@@ -31,6 +31,37 @@ def resolve_index(raw: str, count: int, context: str) -> int:
     return resolved
 
 
+def parse_face_corner(
+    raw: str,
+    position_count: int,
+    uv_count: int,
+    normal_count: int,
+    context: str,
+) -> tuple[int, int | None]:
+    """Parse one legal OBJ face-corner form and validate every referenced index."""
+    parts = raw.split("/")
+    if len(parts) > 3:
+        raise DiagnosticError(
+            f"{context}: malformed face corner {raw!r}; expected v, v/vt, v//vn, or v/vt/vn"
+        )
+    if not parts[0]:
+        raise DiagnosticError(f"{context}: missing position index")
+    if len(parts) == 2 and not parts[1]:
+        raise DiagnosticError(f"{context}: missing texture-coordinate index in {raw!r}")
+    if len(parts) == 3 and not parts[2]:
+        raise DiagnosticError(f"{context}: missing normal index in {raw!r}")
+
+    position_index = resolve_index(parts[0], position_count, context)
+    texture_index = (
+        resolve_index(parts[1], uv_count, context)
+        if len(parts) > 1 and parts[1]
+        else None
+    )
+    if len(parts) == 3:
+        resolve_index(parts[2], normal_count, context)
+    return position_index, texture_index
+
+
 def parse_map_path(tokens: list[str], context: str) -> str:
     """Remove standard MTL map options while preserving quoted filenames."""
     arity = {"-blendu": 1, "-blendv": 1, "-boost": 1, "-texres": 1,
@@ -237,16 +268,10 @@ def analyze_obj(obj_path: Path, content_root: Path, fallback_size=None, source_f
         elif key == "f":
             if len(values) < 3:
                 raise DiagnosticError(f"{context}: face requires at least three corners")
-            corners = []
-            for value in values:
-                parts = value.split("/")
-                if not parts[0]:
-                    raise DiagnosticError(f"{context}: missing position index")
-                vi = resolve_index(parts[0], len(positions), context)
-                ti = resolve_index(parts[1], len(uvs), context) if len(parts) > 1 and parts[1] else None
-                if len(parts) > 2 and parts[2]:
-                    resolve_index(parts[2], len(normals), context)
-                corners.append((vi, ti))
+            corners = [
+                parse_face_corner(value, len(positions), len(uvs), len(normals), context)
+                for value in values
+            ]
             for i in range(1, len(corners) - 1):
                 tri = (corners[0], corners[i], corners[i + 1])
                 item = stats[material]
