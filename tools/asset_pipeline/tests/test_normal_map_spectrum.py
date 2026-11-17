@@ -87,7 +87,12 @@ class NormalMapSpectrumTests(unittest.TestCase):
         self.assertAlmostEqual(sum(fractions.values()), 1.0, places=12)
         self.assertTrue(all(math.isfinite(value) and 0.0 <= value <= 1.0
             for value in fractions.values()))
-        self.assertAlmostEqual(report["tangent_xy"]["near_nyquist_power_fraction"], 1.0)
+        self.assertAlmostEqual(
+            report["channels"]["green_y"]["near_nyquist_power_fraction"], 1.0
+        )
+        self.assertAlmostEqual(
+            report["tangent_xy"]["near_nyquist_power_fraction"], 0.5, places=3
+        )
 
     def test_bmp_top_down_and_bottom_up_rows_are_equivalent(self):
         red, green = make_signal(64, red_frequency=9, green_frequency=13)
@@ -144,9 +149,11 @@ class NormalMapSpectrumTests(unittest.TestCase):
 
     def test_cli_json_is_deterministic_and_includes_alias_estimates(self):
         path = self.write_signal("cli.bmp", red_frequency=8)
+        baseline = self.write_signal("baseline.bmp", red_frequency=4)
         script = Path(__file__).resolve().parents[1] / "normal_map_spectrum.py"
         command = [
             sys.executable, str(script), str(path),
+            "--compare", str(baseline),
             "--source-frequency", "bark=840",
             "--source-frequency", "granite=1536",
             "--json",
@@ -160,6 +167,11 @@ class NormalMapSpectrumTests(unittest.TestCase):
         estimates = {item["label"]: item for item in report["source_frequency_alias_estimates"]}
         self.assertEqual(estimates["bark"]["folded_cycles_per_uv"], 8.0)
         self.assertEqual(estimates["granite"]["folded_cycles_per_uv"], 0.0)
+        self.assertEqual(report["comparison"]["baseline_image"], "baseline.bmp")
+        self.assertGreater(
+            report["comparison"]["candidate_minus_baseline"]["spectral_centroid_cycles_per_uv"],
+            0.0,
+        )
 
     def test_cli_rejects_duplicate_source_frequency_labels(self):
         path = self.write_signal("duplicate.bmp", red_frequency=4)
