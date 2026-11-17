@@ -54,6 +54,55 @@ integer U/V periods, preserving its anisotropic detail without a wrap seam.
 ranges. Generated maps are build products and are recreated before content validation
 and packaging.
 
+
+## OBJ material and normal-map diagnostics
+
+The read-only `obj_material_diagnostics.py` utility audits Wavefront OBJ/MTL material
+assignments without importing or modifying the asset. It triangulates polygon faces,
+validates positive and negative position/UV/normal indices, resolves MTL sidecars and
+normal-map paths within the content root, and reports per-material missing/degenerate
+mapping counts, singular texel-density bounds, and anisotropy.
+
+Run it against the shipped interior models from the repository root:
+
+```sh
+python3 tools/asset_pipeline/obj_material_diagnostics.py \
+  assets/models/interiors/church-interior.obj --content-root . \
+  --normal-map-size 1024 \
+  --source-frequency bark-normal.bmp=840 \
+  --source-frequency granite-normal.bmp=1536 --json
+
+python3 tools/asset_pipeline/obj_material_diagnostics.py \
+  assets/models/interiors/farmhouse-interior.obj --content-root . \
+  --normal-map-size 1024 \
+  --source-frequency bark-normal.bmp=840 \
+  --source-frequency granite-normal.bmp=1536 --json
+```
+
+The generated environment BMPs are build products and are not required in a clean
+source checkout. `--normal-map-size 1024` supplies their known dimensions only when
+a referenced map is absent or its header cannot be read; an available BMP/PNG header
+takes precedence. The source-frequency values are the highest explicit height-field
+octaves in `EnvironmentTextureGenerator.cpp`, expressed in cycles per UV tile. For a
+1024-pixel map the conservative base-level Nyquist limit is 512 cycles per UV tile.
+
+Interpret the JSON per material. `texels_per_meter_min_singular` and
+`texels_per_meter_max_singular` describe the lower and upper singular values of the
+world-to-texture Jacobian; `anisotropy` is their ratio. A zero missing/degenerate
+count and near-unit anisotropy indicate that the source mapping is well-conditioned,
+not that the material is visually correct. `above_nyquist_warning` means a supplied
+procedural source octave exceeds the map's base-level sampling limit. It is a
+sampling-risk estimate: it does not measure the generated image spectrum, account
+for the complete filtering/mip/render path, or prove the cause of a rendered artifact.
+Compare generated-map spectra and controlled runtime captures before changing
+production material parameters or UVs.
+
+The standard-library regression suite is registered as
+`Talvisota.AssetPipeline.ObjMaterialDiagnostics` in CTest when Python 3 is available.
+It covers parser/geometry boundaries and invokes the CLI against both shipped interior
+models so their material totals, mapping quality, and source-frequency classifications
+remain checked in the normal Debug/Release test path.
+
 ## Deterministic packages
 
 The package tool validates source definitions and media, stages every present manifest
