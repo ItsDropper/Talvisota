@@ -235,5 +235,112 @@ class ObjMaterialDiagnosticsTests(unittest.TestCase):
         self.assertEqual(first, second)
 
 
+    def test_shipped_interior_obj_cli_reports(self):
+        repository_root = Path(__file__).resolve().parents[3]
+        script = Path(__file__).resolve().parents[1] / "obj_material_diagnostics.py"
+        fixtures = {
+            "church-interior.obj": {
+                "triangles": 732,
+                "materials": {
+                    "church_boards": 312,
+                    "door": 24,
+                    "foundation_stone": 12,
+                    "roof_timber": 336,
+                    "roof_wood": 48,
+                },
+            },
+            "farmhouse-interior.obj": {
+                "triangles": 276,
+                "materials": {
+                    "chimney_brick": 12,
+                    "foundation_stone": 24,
+                    "house_logs": 84,
+                    "roof_wood": 48,
+                    "timber": 108,
+                },
+            },
+        }
+
+        for filename, expected in fixtures.items():
+            with self.subTest(obj=filename):
+                obj = repository_root / "assets" / "models" / "interiors" / filename
+                command = [
+                    sys.executable,
+                    str(script),
+                    str(obj),
+                    "--content-root",
+                    str(repository_root),
+                    "--normal-map-size",
+                    "1024",
+                    "--source-frequency",
+                    "bark-normal.bmp=840",
+                    "--source-frequency",
+                    "granite-normal.bmp=1536",
+                    "--json",
+                ]
+                result = subprocess.run(
+                    command,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=30,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                report = json.loads(result.stdout)
+                self.assertEqual(report["obj"], obj.relative_to(repository_root).as_posix())
+                self.assertEqual(
+                    report["material_libraries"],
+                    ["assets/materials/environment/village.mtl"],
+                )
+                materials = report["materials"]
+                self.assertEqual(
+                    {name: item["triangles"] for name, item in materials.items()},
+                    expected["materials"],
+                )
+                self.assertEqual(
+                    sum(item["triangles"] for item in materials.values()),
+                    expected["triangles"],
+                )
+
+                for name, item in materials.items():
+                    with self.subTest(obj=filename, material=name):
+                        triangles = expected["materials"][name]
+                        self.assertEqual(item["valid_mapped_triangles"], triangles)
+                        self.assertEqual(item["missing_uv"], 0)
+                        self.assertEqual(item["degenerate_geometry"], 0)
+                        self.assertEqual(item["degenerate_uv"], 0)
+                        self.assertEqual(item["texture_size"], [1024, 1024])
+
+                        density = item["texels_per_meter_min_singular"]
+                        for statistic in ("min", "p05", "median", "p95", "max"):
+                            self.assertAlmostEqual(density[statistic], 256.0, places=5)
+                        self.assertAlmostEqual(item["anisotropy"]["p95"], 1.0, places=6)
+
+                        normal_map = item["normal_map"]
+                        self.assertIsNotNone(normal_map)
+                        map_name = Path(normal_map).name
+                        if map_name == "bark-normal.bmp":
+                            source_frequency = 840.0
+                        elif map_name == "granite-normal.bmp":
+                            source_frequency = 1536.0
+                        elif map_name == "snow-normal.bmp":
+                            self.assertEqual(
+                                item["sampling_assessment"],
+                                "source_frequency_not_supplied_for_map",
+                            )
+                            continue
+                        else:
+                            self.fail(f"Unexpected interior normal map: {normal_map}")
+
+                        self.assertEqual(item["source_frequency_cycles_per_uv"], source_frequency)
+                        self.assertEqual(item["texture_nyquist_cycles_per_uv"], 512.0)
+                        self.assertAlmostEqual(
+                            item["frequency_margin"],
+                            512.0 / source_frequency,
+                            places=7,
+                        )
+                        self.assertEqual(item["sampling_assessment"], "above_nyquist_warning")
+
+
 if __name__ == "__main__":
     unittest.main()
