@@ -156,8 +156,8 @@ class ObjMaterialDiagnosticsTests(unittest.TestCase):
 
     def test_escaped_map_is_rejected_even_without_valid_uv_faces(self):
         obj = self.write_scene(
-            "mtllib ../materials/scene.mtl\\nv 0 0 0\\nv 1 0 0\\nv 0 1 0\\n"
-            "usemtl wall\\nf 1 2 3\\n"
+            "mtllib ../materials/scene.mtl\nv 0 0 0\nv 1 0 0\nv 0 1 0\n"
+            "usemtl wall\nf 1 2 3\n"
         )
         with self.assertRaisesRegex(DiagnosticError, "escapes content root"):
             analyze_obj(
@@ -165,6 +165,17 @@ class ObjMaterialDiagnosticsTests(unittest.TestCase):
                 self.root,
                 fallback_size=(1024, 1024),
             )
+
+    def test_windows_style_asset_paths_normalize_to_posix(self):
+        obj = self.write_scene(
+            "mtllib \"..\\materials\\scene.mtl\"\nv 0 0 0\nv 2 0 0\nv 2 2 0\n"
+            "vt 0 0\nvt 1 0\nvt 1 1\nusemtl wall\nf 1/1 2/2 3/3\n",
+            mtl_text="newmtl wall\nmap_Bump \"..\\textures\\normal.bmp\"\n",
+        )
+        report = analyze_obj(obj, self.root)
+        self.assertEqual(report["obj"], "models/scene.obj")
+        self.assertEqual(report["material_libraries"], ["materials/scene.mtl"])
+        self.assertEqual(report["materials"]["wall"]["normal_map"], "textures/normal.bmp")
 
     def test_missing_generated_map_uses_explicit_dimensions(self):
         obj = self.write_scene()

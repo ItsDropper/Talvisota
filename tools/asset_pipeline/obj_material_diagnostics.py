@@ -91,7 +91,7 @@ def parse_map_path(tokens: list[str], context: str) -> str:
             raise DiagnosticError(f"{context}: unsupported MTL map option {tokens[i]!r}")
     if i == len(tokens):
         raise DiagnosticError(f"{context}: normal-map filename is missing")
-    return " ".join(tokens[i:])
+    return " ".join(tokens[i:]).replace("\\", "/")
 
 
 def parse_mtl(path: Path) -> dict[str, dict[str, str]]:
@@ -216,7 +216,7 @@ def analyze_obj(obj_path: Path, content_root: Path, fallback_size=None, source_f
             if len(fields) < 2:
                 raise DiagnosticError(f"{obj_path}:{number}: empty mtllib")
             for value in fields[1:]:
-                library = (obj_path.parent / value).resolve()
+                library = (obj_path.parent / value.replace("\\", "/")).resolve()
                 try:
                     library.relative_to(root)
                 except ValueError as exc:
@@ -299,7 +299,7 @@ def analyze_obj(obj_path: Path, content_root: Path, fallback_size=None, source_f
                     except ValueError as exc:
                         raise DiagnosticError(f"normal-map path escapes content root: {texture}") from exc
                     dimensions = image_dimensions(texture)
-                    item["normal_map"] = str(texture.relative_to(root))
+                    item["normal_map"] = texture.relative_to(root).as_posix()
                     item["normal_map_header_found"] = dimensions is not None
                 dimensions = dimensions or fallback_size
                 if dimensions is None:
@@ -329,7 +329,7 @@ def analyze_obj(obj_path: Path, content_root: Path, fallback_size=None, source_f
                     f"normal-map path escapes content root: {texture}"
                 ) from exc
             dimensions = image_dimensions(texture)
-            item["normal_map"] = str(relative_texture)
+            item["normal_map"] = relative_texture.as_posix()
             item["normal_map_header_found"] = dimensions is not None
             item["texture_size"] = list(dimensions or fallback_size) if (dimensions or fallback_size) else None
         else:
@@ -371,9 +371,9 @@ def analyze_obj(obj_path: Path, content_root: Path, fallback_size=None, source_f
 
     return {
         "schema": "talvisota-obj-material-diagnostics-v1",
-        "obj": str(obj_path.relative_to(root)),
+        "obj": obj_path.relative_to(root).as_posix(),
         "position_count": len(positions), "uv_count": len(uvs),
-        "material_libraries": [str(path.relative_to(root)) for path in libraries],
+        "material_libraries": [path.relative_to(root).as_posix() for path in libraries],
         "materials": output,
         "notes": [
             "Texel density uses the singular values of the world-to-texture Jacobian.",
@@ -407,8 +407,8 @@ def main(argv=None) -> int:
             parser.error(f"invalid source frequency: {entry!r}")
         if not math.isfinite(value) or value <= 0.0:
             parser.error(f"source frequency must be finite and positive: {entry!r}")
-        frequencies[Path(name.strip()).name] = value
-        frequencies[Path(name.strip()).stem] = value
+        frequencies[Path(name.strip().replace("\\", "/")).name] = value
+        frequencies[Path(name.strip().replace("\\", "/")).stem] = value
     try:
         report = analyze_obj(
             args.obj, args.content_root,
