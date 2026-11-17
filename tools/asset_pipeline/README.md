@@ -103,6 +103,51 @@ It covers parser/geometry boundaries and invokes the CLI against both shipped in
 models so their material totals, mapping quality, and source-frequency classifications
 remain checked in the normal Debug/Release test path.
 
+
+## Generated normal-map spectrum analysis
+
+Use `normal_map_spectrum.py` to measure the actual sampled red/green tangent components
+of generated normal BMPs. It reads uncompressed 24-bit BMPs without third-party
+dependencies, applies a periodic 2D radix-2 FFT, and reports power fractions in bands
+relative to the per-axis Nyquist limit. The square frequency shells use
+`max(abs(kx), abs(ky))`, matching the square sampling region rather than incorrectly
+treating representable diagonal frequencies as out of band.
+
+Analyze the generated maps and record the source-octave fold estimates:
+
+```sh
+python3 tools/asset_pipeline/normal_map_spectrum.py \
+  assets/textures/environment/bark-normal.bmp \
+  --source-frequency bark=840 --json
+
+python3 tools/asset_pipeline/normal_map_spectrum.py \
+  assets/textures/environment/granite-normal.bmp \
+  --source-frequency granite=1536 --json
+```
+
+Compare a candidate prefiltered map against the original at identical dimensions:
+
+```sh
+python3 tools/asset_pipeline/normal_map_spectrum.py \
+  /path/to/candidate-normal.bmp --compare /path/to/original-normal.bmp --json
+```
+
+The comparison reports candidate-minus-baseline changes in near-Nyquist power,
+spectral centroid, AC RMS and each frequency band. A positive near-Nyquist delta means
+the candidate retains more power in the highest quarter of the representable
+per-axis frequency range. Source-frequency folding assumes an axis-aligned periodic
+component sampled once per texel; it is a diagnostic estimate, not a reconstruction
+of the full multi-axis FBM field. The analysis measures base-level BMP data only: it
+does not model generated mip levels, texture filtering, material binding, surface
+orientation, rasterization or D3D12 sampling, and it cannot prove the cause of a
+rendered artifact.
+
+The standard-library suite is registered separately as
+`Talvisota.AssetPipeline.NormalMapSpectrum`. When the normal build has generated
+`bark-normal.bmp` and `granite-normal.bmp`, the suite also analyzes both real 1024x1024
+maps; synthetic periodic fixtures independently verify exact FFT bins and comparison
+semantics.
+
 ## Deterministic packages
 
 The package tool validates source definitions and media, stages every present manifest

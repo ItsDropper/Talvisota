@@ -172,6 +172,16 @@ if(Python3_Interpreter_FOUND)
         ENVIRONMENT "PYTHONDONTWRITEBYTECODE=1"
         TIMEOUT 60
     )
+    add_test(NAME Talvisota.AssetPipeline.NormalMapSpectrum
+        COMMAND "${Python3_EXECUTABLE}" -m unittest discover
+            -s "${PROJECT_SOURCE_DIR}/tools/asset_pipeline/tests"
+            -p "test_normal_map_spectrum.py"
+    )
+    set_tests_properties(Talvisota.AssetPipeline.NormalMapSpectrum PROPERTIES
+        WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+        ENVIRONMENT "PYTHONDONTWRITEBYTECODE=1"
+        TIMEOUT 120
+    )
 else()
     message(STATUS "Python3 interpreter not found; OBJ/MTL diagnostics tests are not registered.")
 endif()
