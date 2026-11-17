@@ -87,8 +87,9 @@ class NormalMapSpectrumTests(unittest.TestCase):
         self.assertAlmostEqual(sum(fractions.values()), 1.0, places=12)
         self.assertTrue(all(math.isfinite(value) and 0.0 <= value <= 1.0
             for value in fractions.values()))
-        self.assertAlmostEqual(
-            report["channels"]["green_y"]["near_nyquist_power_fraction"], 1.0
+        # Byte quantization introduces tiny harmonics outside the source bin.
+        self.assertGreater(
+            report["channels"]["green_y"]["near_nyquist_power_fraction"], 0.999
         )
         self.assertAlmostEqual(
             report["tangent_xy"]["near_nyquist_power_fraction"], 0.5, places=3
