@@ -316,24 +316,27 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if args.compare:
             baseline = analyze_bmp(args.compare)
             report["comparison"] = compare_reports(report, baseline)
+
+        json_text = json.dumps(report, sort_keys=True, indent=2, allow_nan=False)
+        if args.json_output:
+            try:
+                output_path = args.json_output.resolve()
+                input_paths = {args.image.resolve()}
+                if args.compare:
+                    input_paths.add(args.compare.resolve())
+            except (OSError, RuntimeError) as exc:
+                raise SpectrumError("Could not resolve JSON report or input path: {}".format(exc)) from exc
+            if output_path in input_paths:
+                raise SpectrumError("JSON report path must not overwrite an input BMP")
+            try:
+                args.json_output.write_text(json_text + "\n", encoding="utf-8")
+            except OSError as exc:
+                raise SpectrumError("Could not write JSON report '{}': {}".format(
+                    args.json_output, exc
+                )) from exc
     except SpectrumError as exc:
         print("error: {}".format(exc), file=sys.stderr)
         return 2
-
-    json_text = json.dumps(report, sort_keys=True, indent=2, allow_nan=False)
-    if args.json_output:
-        try:
-            output_path = args.json_output.resolve()
-            input_paths = {args.image.resolve()}
-            if args.compare:
-                input_paths.add(args.compare.resolve())
-            if output_path in input_paths:
-                raise SpectrumError("JSON report path must not overwrite an input BMP")
-            args.json_output.write_text(json_text + "\n", encoding="utf-8")
-        except OSError as exc:
-            raise SpectrumError("Could not write JSON report '{}': {}".format(
-                args.json_output, exc
-            )) from exc
 
     if args.json:
         print(json_text)
