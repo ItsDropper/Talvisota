@@ -305,7 +305,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "--source-frequency", action="append", default=[], metavar="LABEL=CYCLES_PER_UV",
         help="optional axis-aligned source octave for a sampling-fold estimate; repeatable",
     )
-    parser.add_argument("--json", action="store_true", help="write deterministic JSON")
+    parser.add_argument("--json", action="store_true", help="write deterministic JSON to stdout")
+    parser.add_argument("--json-output", type=Path,
+        help="write deterministic UTF-8 JSON to this file while keeping the normal console summary")
     args = parser.parse_args(argv)
 
     try:
@@ -318,8 +320,23 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print("error: {}".format(exc), file=sys.stderr)
         return 2
 
+    json_text = json.dumps(report, sort_keys=True, indent=2, allow_nan=False)
+    if args.json_output:
+        try:
+            output_path = args.json_output.resolve()
+            input_paths = {args.image.resolve()}
+            if args.compare:
+                input_paths.add(args.compare.resolve())
+            if output_path in input_paths:
+                raise SpectrumError("JSON report path must not overwrite an input BMP")
+            args.json_output.write_text(json_text + "\n", encoding="utf-8")
+        except OSError as exc:
+            raise SpectrumError("Could not write JSON report '{}': {}".format(
+                args.json_output, exc
+            )) from exc
+
     if args.json:
-        print(json.dumps(report, sort_keys=True, indent=2, allow_nan=False))
+        print(json_text)
     else:
         _print_human(report)
     return 0

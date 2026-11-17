@@ -125,11 +125,14 @@ python3 tools/asset_pipeline/normal_map_spectrum.py \
   --source-frequency granite=1536 --json
 ```
 
-Compare a candidate prefiltered map against the original at identical dimensions:
+Compare a candidate prefiltered map against the original at identical dimensions. Use
+`--json-output` when the JSON needs to be retained as a CI artifact; the normal
+human-readable summary remains on standard output:
 
 ```sh
 python3 tools/asset_pipeline/normal_map_spectrum.py \
-  /path/to/candidate-normal.bmp --compare /path/to/original-normal.bmp --json
+  /path/to/candidate-normal.bmp --compare /path/to/original-normal.bmp \
+  --json-output normal-map-spectrum.json
 ```
 
 The comparison reports candidate-minus-baseline changes in near-Nyquist power,

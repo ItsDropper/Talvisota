@@ -174,6 +174,37 @@ class NormalMapSpectrumTests(unittest.TestCase):
             0.0,
         )
 
+    def test_cli_writes_utf8_json_report_and_keeps_human_summary(self):
+        candidate = self.write_signal("candidate.bmp", red_frequency=8)
+        report_path = self.root / "reports" / "candidate.json"
+        report_path.parent.mkdir()
+        script = Path(__file__).resolve().parents[1] / "normal_map_spectrum.py"
+        result = subprocess.run(
+            [sys.executable, str(script), str(candidate),
+             "--json-output", str(report_path),
+             "--source-frequency", "bark=840"],
+            capture_output=True, text=True, check=False, timeout=20,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Normal-map spectrum: candidate.bmp", result.stdout)
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        self.assertEqual(report["image"], "candidate.bmp")
+        self.assertEqual(
+            report["source_frequency_alias_estimates"][0]["folded_cycles_per_uv"],
+            8.0,
+        )
+
+    def test_cli_refuses_to_overwrite_an_input_bmp(self):
+        image = self.write_signal("protected.bmp", red_frequency=8)
+        script = Path(__file__).resolve().parents[1] / "normal_map_spectrum.py"
+        result = subprocess.run(
+            [sys.executable, str(script), str(image), "--json-output", str(image)],
+            capture_output=True, text=True, check=False, timeout=20,
+        )
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("must not overwrite", result.stderr)
+        self.assertEqual(spectrum.analyze_bmp(image)["image"], "protected.bmp")
+
     def test_cli_rejects_duplicate_source_frequency_labels(self):
         path = self.write_signal("duplicate.bmp", red_frequency=4)
         script = Path(__file__).resolve().parents[1] / "normal_map_spectrum.py"
