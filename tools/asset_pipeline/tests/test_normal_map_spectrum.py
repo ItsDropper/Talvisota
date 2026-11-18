@@ -760,5 +760,35 @@ class EnvironmentNormalMapReportTests(unittest.TestCase):
         with self.assertRaisesRegex(report_verifier.ReportVerificationError, "non-finite"):
             report_verifier.verify_reports(manifest, self.source_root)
 
+
+    def test_report_validation_rejects_boolean_numbers_and_non_object_mips(self):
+        manifest = self._generate_valid_artifact()
+        self.assertTrue(manifest.is_file())
+        valid = json.loads(
+            (self.output_directory / "bark-normal-spectrum.json").read_text(encoding="utf-8")
+        )
+        invalid_cases = (
+            ("boolean mip count", lambda report: report.__setitem__("mip_count", True)),
+            ("boolean mip level", lambda report: report["mips"][0].__setitem__("level", False)),
+            ("boolean normal metric", lambda report: report["mips"][0]["normal_vector_length"].__setitem__("mean", True)),
+            ("boolean tolerance count", lambda report: report["mips"][0]["normal_vector_length"].__setitem__("samples_outside_2_percent", False)),
+            ("non-object mip", lambda report: report["mips"].__setitem__(0, [])),
+        )
+        for description, mutate in invalid_cases:
+            with self.subTest(description=description):
+                report = json.loads(json.dumps(valid))
+                mutate(report)
+                with self.assertRaises(report_generator.ReportGenerationError):
+                    report_generator._validate_report(report, "bark", 840.0)
+
+    def test_missing_optional_processor_path_returns_verification_error(self):
+        manifest = self._generate_valid_artifact()
+        with self.assertRaisesRegex(
+            report_verifier.ReportVerificationError, "Could not resolve texture processor"
+        ):
+            report_verifier.verify_reports(
+                manifest, self.source_root, self.root / "missing-texture-processor.exe"
+            )
+
 if __name__ == "__main__":
     unittest.main()

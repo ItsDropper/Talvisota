@@ -148,7 +148,12 @@ def verify_reports(
         )
 
     if texture_processor is not None:
-        processor_path = Path(texture_processor).resolve(strict=True)
+        try:
+            processor_path = Path(texture_processor).resolve(strict=True)
+        except (OSError, RuntimeError) as exc:
+            raise ReportVerificationError(
+                "Could not resolve texture processor '{}': {}".format(texture_processor, exc)
+            ) from exc
         if not processor_path.is_file():
             raise ReportVerificationError("Texture processor is not a regular file.")
         if processor_path.name != processor_name or _sha256(processor_path) != processor_hash:

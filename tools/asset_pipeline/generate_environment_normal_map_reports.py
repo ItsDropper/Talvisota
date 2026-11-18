@@ -115,12 +115,13 @@ def _validate_report(
     height = report.get("height")
     mips = report.get("mips")
     if (
-        not isinstance(width, int)
-        or not isinstance(height, int)
+        type(width) is not int
+        or type(height) is not int
         or width != height
         or width < 16
         or width & (width - 1)
         or not isinstance(mips, list)
+        or type(report.get("mip_count")) is not int
         or report.get("mip_count") != len(mips)
         or not mips
     ):
@@ -129,9 +130,16 @@ def _validate_report(
     expected_width = width
     expected_height = height
     for level, mip in enumerate(mips):
+        if not isinstance(mip, dict):
+            raise ReportGenerationError(
+                "{} report has a non-object mip entry at level {}.".format(label, level)
+            )
         if (
-            mip.get("level") != level
+            type(mip.get("level")) is not int
+            or mip.get("level") != level
+            or type(mip.get("width")) is not int
             or mip.get("width") != expected_width
+            or type(mip.get("height")) is not int
             or mip.get("height") != expected_height
         ):
             raise ReportGenerationError(
@@ -145,12 +153,12 @@ def _validate_report(
             )
         for key in ("mean", "minimum", "maximum", "rms_deviation_from_unit"):
             value = normal.get(key)
-            if not isinstance(value, (int, float)) or not math.isfinite(value):
+            if type(value) not in (int, float) or not math.isfinite(value):
                 raise ReportGenerationError(
                     "{} report has an invalid {} metric at mip {}.".format(label, key, level)
                 )
         outside = normal.get("samples_outside_2_percent")
-        if not isinstance(outside, int) or not 0 <= outside <= expected_width * expected_height:
+        if type(outside) is not int or not 0 <= outside <= expected_width * expected_height:
             raise ReportGenerationError(
                 "{} report has an invalid normal-vector tolerance count at mip {}.".format(
                     label, level
@@ -161,6 +169,7 @@ def _validate_report(
         if (
             not isinstance(estimates, list)
             or len(estimates) != 1
+            or not isinstance(estimates[0], dict)
             or estimates[0].get("label") != label
             or estimates[0].get("source_cycles_per_uv") != source_frequency
         ):
