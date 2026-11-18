@@ -135,13 +135,17 @@ def _mean_variance(rows: List[List[int]]) -> Tuple[float, float]:
     return mean, variance
 
 
-def _power_bands(rows: List[List[int]]) -> Tuple[List[float], float, float]:
+def _power_bands(
+    rows: List[List[int]],
+) -> Tuple[List[float], List[float], List[float], float, float]:
     size = len(rows)
     pixel_count = size * size
     mean, variance = _mean_variance(rows)
     bands = [0.0] * (size // 2 + 1)
+    u_bands = [0.0] * (size // 2 + 1)
+    v_bands = [0.0] * (size // 2 + 1)
     if variance <= 1.0e-24:
-        return bands, mean, 0.0
+        return bands, u_bands, v_bands, mean, 0.0
 
     matrix = [
         [complex(float(value) - mean, 0.0) for value in row]
@@ -150,8 +154,8 @@ def _power_bands(rows: List[List[int]]) -> Tuple[List[float], float, float]:
     for row in matrix:
         _fft_in_place(row)
 
-    # Parseval normalization makes total AC power equal the spatial variance
-    # in byte-value squared, independent of image dimensions.
+    # Parseval normalization makes each projection's total AC power equal the
+    # spatial variance in byte-value squared, independent of image dimensions.
     normalization = float(pixel_count) * float(pixel_count)
     nyquist = size // 2
     for frequency_x in range(size):
@@ -160,9 +164,11 @@ def _power_bands(rows: List[List[int]]) -> Tuple[List[float], float, float]:
         _fft_in_place(column)
         for frequency_y, value in enumerate(column):
             signed_y = frequency_y if frequency_y <= nyquist else frequency_y - size
-            shell = max(abs(signed_x), abs(signed_y))
-            bands[shell] += (value.real * value.real + value.imag * value.imag) / normalization
-    return bands, mean, variance
+            power = (value.real * value.real + value.imag * value.imag) / normalization
+            bands[max(abs(signed_x), abs(signed_y))] += power
+            u_bands[abs(signed_x)] += power
+            v_bands[abs(signed_y)] += power
+    return bands, u_bands, v_bands, mean, variance
 
 
 def _summarize_bands(bands: Sequence[float], size: int) -> Dict[str, object]:
@@ -191,6 +197,54 @@ def _summarize_bands(bands: Sequence[float], size: int) -> Dict[str, object]:
 
     return {
         "total_ac_power": total_power,
+        "peak_frequency_cycles_per_uv": peak,
+        "spectral_centroid_cycles_per_uv": centroid,
+        "near_nyquist_power_fraction": fractions[_BAND_NAMES[-1]],
+        "energy_fraction_by_band": fractions,
+    }
+
+
+def _summarize_axis_bands(bands: Sequence[float], size: int) -> Dict[str, object]:
+    nyquist = size // 2
+    total_power = sum(bands)
+    zero_frequency_power = bands[0]
+    nonzero_frequency_power = sum(bands[1:])
+    quarter = nyquist // 4
+    half = nyquist // 2
+    three_quarters = (3 * nyquist) // 4
+    ranges = (
+        (1, quarter),
+        (quarter + 1, half),
+        (half + 1, three_quarters),
+        (three_quarters + 1, nyquist),
+    )
+    fractions: Dict[str, float] = {}
+    for name, (first, last) in zip(_BAND_NAMES, ranges):
+        power = sum(bands[first:last + 1]) if first <= last else 0.0
+        fractions[name] = (
+            power / nonzero_frequency_power if nonzero_frequency_power > 0.0 else 0.0
+        )
+
+    if nonzero_frequency_power > 0.0:
+        peak = max(range(1, nyquist + 1), key=lambda index: bands[index])
+        centroid = (
+            sum(index * bands[index] for index in range(1, nyquist + 1)) /
+            nonzero_frequency_power
+        )
+    else:
+        peak = 0
+        centroid = 0.0
+
+    return {
+        "total_ac_power": total_power,
+        "zero_frequency_power": zero_frequency_power,
+        "zero_frequency_fraction": (
+            zero_frequency_power / total_power if total_power > 0.0 else 0.0
+        ),
+        "nonzero_frequency_power": nonzero_frequency_power,
+        "nonzero_frequency_fraction": (
+            nonzero_frequency_power / total_power if total_power > 0.0 else 0.0
+        ),
         "peak_frequency_cycles_per_uv": peak,
         "spectral_centroid_cycles_per_uv": centroid,
         "near_nyquist_power_fraction": fractions[_BAND_NAMES[-1]],
@@ -228,17 +282,36 @@ def _analyze_channel_pair(
     red_rows: List[List[int]], green_rows: List[List[int]]
 ) -> Tuple[Dict[str, object], Dict[str, object]]:
     size = len(red_rows)
-    red_bands, red_mean, red_variance = _power_bands(red_rows)
-    green_bands, green_mean, green_variance = _power_bands(green_rows)
+    red_bands, red_u_bands, red_v_bands, red_mean, red_variance = _power_bands(red_rows)
+    green_bands, green_u_bands, green_v_bands, green_mean, green_variance = _power_bands(green_rows)
     combined_bands = [red + green for red, green in zip(red_bands, green_bands)]
+    combined_u_bands = [red + green for red, green in zip(red_u_bands, green_u_bands)]
+    combined_v_bands = [red + green for red, green in zip(red_v_bands, green_v_bands)]
+
+    red_summary = dict(
+        _summarize_bands(red_bands, size),
+        mean_byte=red_mean,
+        rms_ac_byte=math.sqrt(red_variance),
+        u_axis=_summarize_axis_bands(red_u_bands, size),
+        v_axis=_summarize_axis_bands(red_v_bands, size),
+    )
+    green_summary = dict(
+        _summarize_bands(green_bands, size),
+        mean_byte=green_mean,
+        rms_ac_byte=math.sqrt(green_variance),
+        u_axis=_summarize_axis_bands(green_u_bands, size),
+        v_axis=_summarize_axis_bands(green_v_bands, size),
+    )
     channels: Dict[str, object] = {
-        "red_x": dict(_summarize_bands(red_bands, size),
-            mean_byte=red_mean, rms_ac_byte=math.sqrt(red_variance)),
-        "green_y": dict(_summarize_bands(green_bands, size),
-            mean_byte=green_mean, rms_ac_byte=math.sqrt(green_variance)),
+        "red_x": red_summary,
+        "green_y": green_summary,
     }
-    tangent = dict(_summarize_bands(combined_bands, size),
-        rms_ac_byte=math.sqrt(red_variance + green_variance))
+    tangent = dict(
+        _summarize_bands(combined_bands, size),
+        rms_ac_byte=math.sqrt(red_variance + green_variance),
+        u_axis=_summarize_axis_bands(combined_u_bands, size),
+        v_axis=_summarize_axis_bands(combined_v_bands, size),
+    )
     return channels, tangent
 
 
@@ -504,6 +577,32 @@ def analyze_processed_texture(
     }
 
 
+def _compare_axis_summaries(
+    candidate: Dict[str, object], baseline: Dict[str, object]
+) -> Dict[str, object]:
+    scalar_keys = (
+        "total_ac_power",
+        "zero_frequency_power",
+        "zero_frequency_fraction",
+        "nonzero_frequency_power",
+        "nonzero_frequency_fraction",
+        "near_nyquist_power_fraction",
+        "peak_frequency_cycles_per_uv",
+        "spectral_centroid_cycles_per_uv",
+    )
+    return {
+        **{
+            key: candidate[key] - baseline[key]
+            for key in scalar_keys
+        },
+        "energy_fraction_by_band": {
+            name: candidate["energy_fraction_by_band"][name] -
+                baseline["energy_fraction_by_band"][name]
+            for name in _BAND_NAMES
+        },
+    }
+
+
 def compare_processed_reports(
     candidate: Dict[str, object], baseline: Dict[str, object]
 ) -> Dict[str, object]:
@@ -557,6 +656,12 @@ def compare_processed_reports(
                     name: current_bands[name] - reference_bands[name]
                     for name in _BAND_NAMES
                 },
+                "u_axis": _compare_axis_summaries(
+                    current_tangent["u_axis"], reference_tangent["u_axis"]
+                ),
+                "v_axis": _compare_axis_summaries(
+                    current_tangent["v_axis"], reference_tangent["v_axis"]
+                ),
             })
         deltas.append(delta)
 
@@ -579,6 +684,11 @@ def _print_processed_human(report: Dict[str, object]) -> None:
                 mip["level"], mip["width"], mip["height"],
                 mip["nyquist_cycles_per_uv"], tangent["near_nyquist_power_fraction"],
                 tangent["spectral_centroid_cycles_per_uv"]))
+            for axis_key, axis_label in (("u_axis", "U"), ("v_axis", "V")):
+                axis = tangent[axis_key]
+                print("    {} axis: near-Nyquist {:.3%} of non-zero-axis power, zero-{} energy {:.3%}, peak {} cycles/UV".format(
+                    axis_label, axis["near_nyquist_power_fraction"], axis_label,
+                    axis["zero_frequency_fraction"], axis["peak_frequency_cycles_per_uv"]))
         else:
             print("  mip {}: {}x{}, insufficient frequency resolution (AC RMS {:.3f})".format(
                 mip["level"], mip["width"], mip["height"], tangent["rms_ac_byte"]))
@@ -599,6 +709,11 @@ def _print_processed_human(report: Dict[str, object]) -> None:
                     delta["near_nyquist_power_fraction"],
                     delta["spectral_centroid_cycles_per_uv"],
                     normal_delta["rms_deviation_from_unit"]))
+                print("    U/V near-Nyquist deltas {:+.3%}/{:+.3%}; zero-U/V energy deltas {:+.3%}/{:+.3%}".format(
+                    delta["u_axis"]["near_nyquist_power_fraction"],
+                    delta["v_axis"]["near_nyquist_power_fraction"],
+                    delta["u_axis"]["zero_frequency_fraction"],
+                    delta["v_axis"]["zero_frequency_fraction"]))
             else:
                 print("  mip {} delta vs {}: AC RMS {:+.3f}, unit-length RMS {:+.5f}".format(
                     delta["level"], comparison["baseline_image"], delta["rms_ac_byte"],
@@ -627,6 +742,8 @@ def compare_reports(candidate: Dict[str, object], baseline: Dict[str, object]) -
                 name: current_bands[name] - reference_bands[name]
                 for name in _BAND_NAMES
             },
+            "u_axis": _compare_axis_summaries(current["u_axis"], reference["u_axis"]),
+            "v_axis": _compare_axis_summaries(current["v_axis"], reference["v_axis"]),
         },
     }
 
@@ -644,6 +761,11 @@ def _print_human(report: Dict[str, object]) -> None:
     print("  XY near-Nyquist power: {:.3%}".format(combined["near_nyquist_power_fraction"]))
     for name, fraction in combined["energy_fraction_by_band"].items():
         print("    {}: {:.3%}".format(name, fraction))
+    for axis_key, axis_label in (("u_axis", "U"), ("v_axis", "V")):
+        axis = combined[axis_key]
+        print("  {} axis: near-Nyquist {:.3%} of non-zero-axis power, zero-{} energy {:.3%}, peak {} cycles/UV".format(
+            axis_label, axis["near_nyquist_power_fraction"], axis_label,
+            axis["zero_frequency_fraction"], axis["peak_frequency_cycles_per_uv"]))
     for estimate in report.get("source_frequency_alias_estimates", []):
         print("  source {}: {:.3f} cycles/UV -> folded {:.3f} (above Nyquist: {})".format(
             estimate["label"], estimate["source_cycles_per_uv"],
@@ -654,6 +776,11 @@ def _print_human(report: Dict[str, object]) -> None:
         print("  candidate minus {}: near-Nyquist {:+.3%}, centroid {:+.3f} cycles/UV".format(
             comparison["baseline_image"], delta["near_nyquist_power_fraction"],
             delta["spectral_centroid_cycles_per_uv"]))
+        print("    U/V near-Nyquist deltas {:+.3%}/{:+.3%}; zero-U/V energy deltas {:+.3%}/{:+.3%}".format(
+            delta["u_axis"]["near_nyquist_power_fraction"],
+            delta["v_axis"]["near_nyquist_power_fraction"],
+            delta["u_axis"]["zero_frequency_fraction"],
+            delta["v_axis"]["zero_frequency_fraction"]))
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:

@@ -104,12 +104,26 @@ class NormalMapSpectrumTests(unittest.TestCase):
     def test_known_u_and_v_frequencies_land_in_exact_fft_bins(self):
         path = self.write_signal("known.bmp", red_frequency=7, green_frequency=11)
         report = spectrum.analyze_bmp(path)
-        self.assertEqual(report["channels"]["red_x"]["peak_frequency_cycles_per_uv"], 7)
-        self.assertEqual(report["channels"]["green_y"]["peak_frequency_cycles_per_uv"], 11)
-        self.assertAlmostEqual(report["channels"]["red_x"]["total_ac_power"],
-            report["channels"]["red_x"]["rms_ac_byte"] ** 2, places=8)
-        self.assertAlmostEqual(report["channels"]["green_y"]["total_ac_power"],
-            report["channels"]["green_y"]["rms_ac_byte"] ** 2, places=8)
+        red = report["channels"]["red_x"]
+        green = report["channels"]["green_y"]
+        tangent = report["tangent_xy"]
+        self.assertEqual(red["peak_frequency_cycles_per_uv"], 7)
+        self.assertEqual(green["peak_frequency_cycles_per_uv"], 11)
+        self.assertEqual(red["u_axis"]["peak_frequency_cycles_per_uv"], 7)
+        self.assertEqual(green["v_axis"]["peak_frequency_cycles_per_uv"], 11)
+        self.assertAlmostEqual(red["v_axis"]["zero_frequency_fraction"], 1.0, places=12)
+        self.assertAlmostEqual(green["u_axis"]["zero_frequency_fraction"], 1.0, places=12)
+        self.assertEqual(tangent["u_axis"]["peak_frequency_cycles_per_uv"], 7)
+        self.assertEqual(tangent["v_axis"]["peak_frequency_cycles_per_uv"], 11)
+        self.assertAlmostEqual(tangent["u_axis"]["zero_frequency_fraction"], 0.5, places=3)
+        self.assertAlmostEqual(tangent["v_axis"]["zero_frequency_fraction"], 0.5, places=3)
+        for channel in (red, green):
+            self.assertAlmostEqual(channel["total_ac_power"],
+                channel["rms_ac_byte"] ** 2, places=8)
+            self.assertAlmostEqual(channel["u_axis"]["total_ac_power"],
+                channel["total_ac_power"], places=8)
+            self.assertAlmostEqual(channel["v_axis"]["total_ac_power"],
+                channel["total_ac_power"], places=8)
 
     def test_constant_normal_components_have_no_ac_power(self):
         red, green = make_signal(64)
@@ -118,6 +132,10 @@ class NormalMapSpectrumTests(unittest.TestCase):
         self.assertEqual(report["tangent_xy"]["total_ac_power"], 0.0)
         self.assertEqual(report["tangent_xy"]["near_nyquist_power_fraction"], 0.0)
         self.assertEqual(report["tangent_xy"]["peak_frequency_cycles_per_uv"], 0)
+        self.assertEqual(report["tangent_xy"]["u_axis"]["total_ac_power"], 0.0)
+        self.assertEqual(report["tangent_xy"]["v_axis"]["total_ac_power"], 0.0)
+        self.assertEqual(report["tangent_xy"]["u_axis"]["zero_frequency_fraction"], 0.0)
+        self.assertEqual(report["tangent_xy"]["v_axis"]["zero_frequency_fraction"], 0.0)
 
     def test_energy_bands_are_finite_and_normalized(self):
         path = self.write_signal("bands.bmp", red_frequency=5, green_frequency=27)
@@ -133,6 +151,16 @@ class NormalMapSpectrumTests(unittest.TestCase):
         self.assertAlmostEqual(
             report["tangent_xy"]["near_nyquist_power_fraction"], 0.5, places=3
         )
+        u_axis = report["tangent_xy"]["u_axis"]
+        v_axis = report["tangent_xy"]["v_axis"]
+        self.assertAlmostEqual(sum(u_axis["energy_fraction_by_band"].values()), 1.0, places=12)
+        self.assertAlmostEqual(sum(v_axis["energy_fraction_by_band"].values()), 1.0, places=12)
+        self.assertGreater(v_axis["near_nyquist_power_fraction"],
+            u_axis["near_nyquist_power_fraction"])
+        self.assertAlmostEqual(u_axis["total_ac_power"],
+            report["tangent_xy"]["total_ac_power"], places=8)
+        self.assertAlmostEqual(v_axis["total_ac_power"],
+            report["tangent_xy"]["total_ac_power"], places=8)
 
     def test_bmp_top_down_and_bottom_up_rows_are_equivalent(self):
         red, green = make_signal(64, red_frequency=9, green_frequency=13)
@@ -179,6 +207,8 @@ class NormalMapSpectrumTests(unittest.TestCase):
         self.assertEqual(comparison["baseline_image"], "baseline.bmp")
         self.assertGreater(delta["near_nyquist_power_fraction"], 0.99)
         self.assertGreater(delta["spectral_centroid_cycles_per_uv"], 0.0)
+        self.assertGreater(delta["u_axis"]["near_nyquist_power_fraction"], 0.99)
+        self.assertAlmostEqual(delta["v_axis"]["near_nyquist_power_fraction"], 0.0, places=12)
 
     def test_baseline_comparison_rejects_different_dimensions(self):
         baseline = spectrum.analyze_bmp(self.write_signal("baseline.bmp", size=64))
@@ -294,6 +324,10 @@ class NormalMapSpectrumTests(unittest.TestCase):
         base = report["mips"][0]
         self.assertEqual(base["channels"]["red_x"]["peak_frequency_cycles_per_uv"], 4)
         self.assertEqual(base["channels"]["green_y"]["peak_frequency_cycles_per_uv"], 7)
+        self.assertEqual(base["tangent_xy"]["u_axis"]["peak_frequency_cycles_per_uv"], 4)
+        self.assertEqual(base["tangent_xy"]["v_axis"]["peak_frequency_cycles_per_uv"], 7)
+        self.assertAlmostEqual(base["tangent_xy"]["u_axis"]["zero_frequency_fraction"], 0.5, places=3)
+        self.assertAlmostEqual(base["tangent_xy"]["v_axis"]["zero_frequency_fraction"], 0.5, places=3)
         aliases = {item["label"]: item for item in base["source_frequency_alias_estimates"]}
         self.assertEqual(aliases["bark"]["folded_cycles_per_uv"], 8.0)
         self.assertEqual(aliases["granite"]["folded_cycles_per_uv"], 0.0)
@@ -305,10 +339,20 @@ class NormalMapSpectrumTests(unittest.TestCase):
             fractions = mip["tangent_xy"]["energy_fraction_by_band"]
             self.assertAlmostEqual(sum(fractions.values()), 1.0, places=10)
             self.assertTrue(all(math.isfinite(value) for value in fractions.values()))
+            for axis_name in ("u_axis", "v_axis"):
+                axis = mip["tangent_xy"][axis_name]
+                self.assertAlmostEqual(
+                    sum(axis["energy_fraction_by_band"].values()), 1.0, places=10
+                )
+                self.assertAlmostEqual(
+                    axis["total_ac_power"], mip["tangent_xy"]["total_ac_power"], places=8
+                )
         for mip in report["mips"][3:]:
             self.assertEqual(mip["minimum_spectrum_dimension"], 16)
             self.assertTrue(math.isfinite(mip["tangent_xy"]["rms_ac_byte"]))
             self.assertNotIn("energy_fraction_by_band", mip["tangent_xy"])
+            self.assertNotIn("u_axis", mip["tangent_xy"])
+            self.assertNotIn("v_axis", mip["tangent_xy"])
 
     def test_processed_texture_comparison_reports_deltas_per_mip(self):
         baseline = write_ttex(
@@ -326,6 +370,9 @@ class NormalMapSpectrumTests(unittest.TestCase):
         deltas = comparison["candidate_minus_baseline_by_mip"]
         self.assertEqual(len(deltas), 7)
         self.assertGreater(deltas[0]["spectral_centroid_cycles_per_uv"], 0.0)
+        self.assertGreater(
+            deltas[0]["u_axis"]["spectral_centroid_cycles_per_uv"], 0.0
+        )
         self.assertIn("near_nyquist_power_fraction", deltas[0])
         self.assertNotIn("near_nyquist_power_fraction", deltas[-1])
         self.assertTrue(math.isfinite(deltas[-1]["rms_ac_byte"]))
@@ -361,6 +408,8 @@ class NormalMapSpectrumTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Normal-map mip spectrum: human.ttex", result.stdout)
+        self.assertIn("U axis: near-Nyquist", result.stdout)
+        self.assertIn("V axis: near-Nyquist", result.stdout)
         report = json.loads(report_path.read_text(encoding="utf-8"))
         self.assertEqual(report["mip_count"], 6)
         self.assertEqual(report["mips"][-1]["analysis_status"], "insufficient_frequency_resolution")

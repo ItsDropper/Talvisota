@@ -115,6 +115,16 @@ bands relative to the per-axis Nyquist limit. The square frequency shells use
 `max(abs(kx), abs(ky))`, matching the square sampling region rather than incorrectly
 treating representable diagonal frequencies as out of band.
 
+Each channel and the combined XY result also contains independent `u_axis` and
+`v_axis` projections. A U projection sums power over every V frequency at each
+absolute U frequency, and vice versa. Its `total_ac_power` therefore remains equal
+to the channel's full spatial variance. The `zero_frequency_fraction` records the
+share of AC power whose frequency on that axis is zero; for example, a pattern that
+varies only along V appears in the U projection's zero-frequency bin. Positive-axis
+frequency bands and near-Nyquist fractions are normalized only over non-zero
+frequencies on that axis. This preserves directional information that the square
+shell summary intentionally combines.
+
 Analyze the generated base-level maps and record the source-octave fold estimates:
 
 ```sh
@@ -159,10 +169,12 @@ artifact; the normal human-readable summary remains on standard output:
 python tools/asset_pipeline/normal_map_spectrum.py artifacts/candidate-normal.ttex --compare artifacts/baseline-normal.ttex --json-output artifacts/normal-map-spectrum-comparison.json
 ```
 
-The comparison reports candidate-minus-baseline changes in near-Nyquist power,
-spectral centroid, AC RMS and each frequency band for every resolvable mip. It also
-compares normal-vector length statistics at every level, including RMS deviation from
-unit length and the count of samples outside the 2% tolerance. A
+The comparison reports candidate-minus-baseline changes in the square-shell
+near-Nyquist power, spectral centroid, AC RMS and frequency bands for every
+resolvable mip. It also reports U- and V-axis projection deltas, including their
+zero-frequency shares, directional near-Nyquist fractions, centroids and bands.
+Normal-vector length statistics are compared at every level, including RMS deviation
+from unit length and the count of samples outside the 2% tolerance. A
 positive near-Nyquist delta means the candidate retains more power in the highest
 quarter of the representable per-axis frequency range. Source-frequency folding
 assumes an axis-aligned periodic component sampled once per texel; it is a diagnostic
@@ -174,8 +186,9 @@ rendered artifact.
 The standard-library suite is registered separately as
 `Talvisota.AssetPipeline.NormalMapSpectrum`. When the normal build has generated
 `bark-normal.bmp` and `granite-normal.bmp`, the suite analyzes both real 1024x1024
-base-level maps; synthetic BMP and `.ttex` fixtures independently verify exact FFT
-bins, per-mip normalization, malformed-container rejection and comparison semantics.
+base-level maps; synthetic BMP and `.ttex` fixtures independently verify exact U/V
+FFT bins, orientation-preserving projections, Parseval power conservation, per-mip
+normalization, malformed-container rejection and comparison semantics.
 ## Deterministic packages
 
 The package tool validates source definitions and media, stages every present manifest
