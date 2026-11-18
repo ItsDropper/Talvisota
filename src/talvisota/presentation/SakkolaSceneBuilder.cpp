@@ -1,6 +1,7 @@
 #include "talvisota/presentation/SakkolaSceneBuilder.hpp"
 #include "talvisota/presentation/EnvironmentLodPolicy.hpp"
 #include "talvisota/presentation/MaterialRenderBridge.hpp"
+#include "talvisota/presentation/TriangleSubdivisionBudget.hpp"
 #include "talvisota/content/ContentRegistry.hpp"
 #include "talvisota/content/MaterialDefinition.hpp"
 #include "talvisota/content/WorldDefinition.hpp"
@@ -357,12 +358,21 @@ bool RefineSnowTerrain(RenderMesh& mesh, const talvisota::world::WorldRegion& re
                 distanceSquared(mesh.vertices[b],mesh.vertices[d]),distanceSquared(mesh.vertices[d],mesh.vertices[a])});
         }
         if(longest<=maximumEdgeLength*maximumEdgeLength) break;
-        if(mesh.vertices.size()+mesh.indices.size()>MaximumVertices) {
-            error="Snow terrain refinement exceeds the 1-million-vertex safety limit."; return false;
+        TriangleSubdivisionEstimate estimate;
+        if (!EstimateFourWayTriangleSubdivision(mesh.vertices.size(), mesh.indices,
+                estimate, error)) {
+            error = "Could not estimate snow terrain subdivision: " + error;
+            return false;
         }
+        if (!FitsVertexBudget(estimate, MaximumVertices, error)) {
+            error = "Snow terrain refinement exceeds its vertex budget: " + error;
+            return false;
+        }
+
         auto vertices=mesh.vertices;
+        vertices.reserve(estimate.resultVertices);
         std::vector<std::uint32_t> indices;
-        indices.reserve(mesh.indices.size()*4U);
+        indices.reserve(estimate.resultIndices);
         std::unordered_map<std::uint64_t,std::uint32_t> cache;
         cache.reserve(mesh.indices.size());
         const auto midpoint=[&](std::uint32_t a,std::uint32_t b) {
