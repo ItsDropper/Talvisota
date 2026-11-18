@@ -233,3 +233,23 @@ or source-frequency mismatch returns a non-zero exit code and does not publish a
 partial report set. The manifest is removed at the start of a run and written last;
 its presence identifies a complete two-map report set. The processed `.ttex` files
 are temporary and are not retained in the output directory.
+
+
+## Verifying generated normal-map report artifacts
+
+After downloading the three-file report artifact, verify it before comparing or
+sharing the measurements:
+
+```powershell
+python tools/asset_pipeline/verify_environment_normal_map_reports.py artifacts/normal-map-spectrum/environment-normal-map-spectrum-manifest.json --source-root assets/textures/environment
+```
+
+The verifier checks the fixed bark/granite report inventory, safe filenames,
+report and source SHA-256 values, analyzer provenance, per-mip dimensions,
+normal-vector metrics, source-frequency assumptions, and consistency between
+the manifest and each JSON report. Pass `--texture-processor` with the original
+executable to verify its recorded binary hash as well.
+
+The manifest is unsigned. These checks detect missing, corrupted, or internally
+inconsistent files relative to that manifest; they do not authenticate who
+created the artifact. Obtain the manifest through a trusted CI artifact channel.

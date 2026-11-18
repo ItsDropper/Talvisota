@@ -12,6 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import normal_map_spectrum as spectrum
 import generate_environment_normal_map_reports as report_generator
+import verify_environment_normal_map_reports as report_verifier
 
 
 def write_bmp(path, red, green, top_down=False):
@@ -701,6 +702,63 @@ class EnvironmentNormalMapReportTests(unittest.TestCase):
                 self.processor, self.source_root, self.output_directory, timeout_seconds=0
             )
 
+
+    def _generate_valid_artifact(self):
+        with mock.patch.object(
+            report_generator.subprocess, "run", side_effect=self._successful_processor
+        ):
+            outputs = report_generator.generate_reports(
+                self.processor, self.source_root, self.output_directory, timeout_seconds=90
+            )
+        return outputs[-1]
+
+    def test_verifies_complete_report_artifact_and_optional_processor_provenance(self):
+        manifest = self._generate_valid_artifact()
+        self.assertEqual(
+            report_verifier.verify_reports(manifest, self.source_root, self.processor),
+            ["bark", "granite"],
+        )
+
+    def test_rejects_report_content_tampering(self):
+        manifest = self._generate_valid_artifact()
+        report = self.output_directory / "bark-normal-spectrum.json"
+        report.write_bytes(report.read_bytes() + b" ")
+        with self.assertRaisesRegex(report_verifier.ReportVerificationError, "SHA-256"):
+            report_verifier.verify_reports(manifest, self.source_root)
+
+    def test_rejects_missing_report_and_source_modification(self):
+        manifest = self._generate_valid_artifact()
+        (self.output_directory / "granite-normal-spectrum.json").unlink()
+        with self.assertRaisesRegex(report_verifier.ReportVerificationError, "regular"):
+            report_verifier.verify_reports(manifest, self.source_root)
+
+        manifest = self._generate_valid_artifact()
+        source = self.source_root / "bark-normal.bmp"
+        source.write_bytes(source.read_bytes() + b" ")
+        with self.assertRaisesRegex(report_verifier.ReportVerificationError, "source map SHA-256"):
+            report_verifier.verify_reports(manifest, self.source_root)
+
+    def test_rejects_unsafe_report_filename_before_opening_it(self):
+        manifest = self._generate_valid_artifact()
+        manifest_data = json.loads(manifest.read_text(encoding="utf-8"))
+        manifest_data["reports"][0]["report_file"] = "../outside.json"
+        manifest.write_text(json.dumps(manifest_data), encoding="utf-8")
+        with self.assertRaisesRegex(report_verifier.ReportVerificationError, "unexpected filename"):
+            report_verifier.verify_reports(manifest, self.source_root)
+
+    def test_rejects_duplicate_json_keys_and_non_finite_constants(self):
+        manifest = self._generate_valid_artifact()
+        report = self.output_directory / "bark-normal-spectrum.json"
+        report.write_text('{"width": 32, "width": 64}', encoding="utf-8")
+        manifest_data = json.loads(manifest.read_text(encoding="utf-8"))
+        manifest_data["reports"][0]["report_sha256"] = hashlib.sha256(report.read_bytes()).hexdigest()
+        manifest.write_text(json.dumps(manifest_data), encoding="utf-8")
+        with self.assertRaisesRegex(report_verifier.ReportVerificationError, "duplicate object key"):
+            report_verifier.verify_reports(manifest, self.source_root)
+
+        manifest.write_text('{"schema_version": NaN}', encoding="utf-8")
+        with self.assertRaisesRegex(report_verifier.ReportVerificationError, "non-finite"):
+            report_verifier.verify_reports(manifest, self.source_root)
 
 if __name__ == "__main__":
     unittest.main()
