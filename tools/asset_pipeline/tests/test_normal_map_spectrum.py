@@ -658,7 +658,7 @@ class EnvironmentNormalMapReportTests(unittest.TestCase):
 
     def test_malformed_processed_texture_is_rejected(self):
         def malformed(command, **kwargs):
-            Path(command[2]).write_bytes(b"not a TVTTEX01 container")
+            Path(command[2]).write_bytes(b"not a TVTTEX01 container" + b"x" * 16)
             return subprocess.CompletedProcess(command, 0, "", "")
 
         with mock.patch.object(report_generator.subprocess, "run", side_effect=malformed):
