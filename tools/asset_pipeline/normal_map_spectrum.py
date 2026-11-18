@@ -402,6 +402,36 @@ def _scalar_channel_summary(rows: List[List[int]]) -> Tuple[Dict[str, float], fl
     }, variance
 
 
+def _normal_vector_length_summary(
+    rgba: bytes, width: int, height: int
+) -> Dict[str, float]:
+    count = width * height
+    minimum = float("inf")
+    maximum = 0.0
+    total = 0.0
+    squared_error = 0.0
+    outside_tolerance = 0
+    for offset in range(0, len(rgba), 4):
+        x = rgba[offset] / 127.5 - 1.0
+        y = rgba[offset + 1] / 127.5 - 1.0
+        z = rgba[offset + 2] / 127.5 - 1.0
+        length = math.sqrt(x * x + y * y + z * z)
+        minimum = min(minimum, length)
+        maximum = max(maximum, length)
+        total += length
+        deviation = length - 1.0
+        squared_error += deviation * deviation
+        if abs(deviation) > 0.02:
+            outside_tolerance += 1
+    return {
+        "mean": total / count,
+        "minimum": minimum,
+        "maximum": maximum,
+        "rms_deviation_from_unit": math.sqrt(squared_error / count),
+        "samples_outside_2_percent": outside_tolerance,
+    }
+
+
 def analyze_processed_texture(
     path: Path, source_frequencies: Sequence[Tuple[str, float]] = ()
 ) -> Dict[str, object]:
@@ -433,6 +463,9 @@ def analyze_processed_texture(
             "width": mip_width,
             "height": mip_height,
             "nyquist_cycles_per_uv": mip_width / 2.0,
+            "normal_vector_length": _normal_vector_length_summary(
+                rgba, mip_width, mip_height
+            ),
         }
         if mip_width >= _MIN_SPECTRUM_DIMENSION:
             channels, tangent = _analyze_channel_pair(red_rows, green_rows)
