@@ -520,11 +520,26 @@ def compare_processed_reports(
             raise SpectrumError("Processed texture comparison has incompatible mip levels.")
         current_tangent = current["tangent_xy"]
         reference_tangent = reference["tangent_xy"]
+        current_normal = current["normal_vector_length"]
+        reference_normal = reference["normal_vector_length"]
         delta: Dict[str, object] = {
             "level": current["level"],
             "width": current["width"],
             "height": current["height"],
             "rms_ac_byte": current_tangent["rms_ac_byte"] - reference_tangent["rms_ac_byte"],
+            "normal_vector_length": {
+                "mean": current_normal["mean"] - reference_normal["mean"],
+                "minimum": current_normal["minimum"] - reference_normal["minimum"],
+                "maximum": current_normal["maximum"] - reference_normal["maximum"],
+                "rms_deviation_from_unit": (
+                    current_normal["rms_deviation_from_unit"] -
+                    reference_normal["rms_deviation_from_unit"]
+                ),
+                "samples_outside_2_percent": (
+                    current_normal["samples_outside_2_percent"] -
+                    reference_normal["samples_outside_2_percent"]
+                ),
+            },
         }
         if current["analysis_status"] == "spectrum":
             current_bands = current_tangent["energy_fraction_by_band"]
@@ -558,6 +573,7 @@ def _print_processed_human(report: Dict[str, object]) -> None:
         report["pixel_format"], report["color_space"]))
     for mip in report["mips"]:
         tangent = mip["tangent_xy"]
+        normal = mip["normal_vector_length"]
         if mip["analysis_status"] == "spectrum":
             print("  mip {}: {}x{}, Nyquist {:.1f} cycles/UV, near-Nyquist {:.3%}, centroid {:.3f}".format(
                 mip["level"], mip["width"], mip["height"],
@@ -566,6 +582,9 @@ def _print_processed_human(report: Dict[str, object]) -> None:
         else:
             print("  mip {}: {}x{}, insufficient frequency resolution (AC RMS {:.3f})".format(
                 mip["level"], mip["width"], mip["height"], tangent["rms_ac_byte"]))
+        print("    normal length mean {:.5f}, range {:.5f}-{:.5f}, RMS unit deviation {:.5f}, outside 2%: {}".format(
+            normal["mean"], normal["minimum"], normal["maximum"],
+            normal["rms_deviation_from_unit"], normal["samples_outside_2_percent"]))
         for estimate in mip.get("source_frequency_alias_estimates", []):
             print("    source {}: {:.3f} cycles/UV -> folded {:.3f} (above Nyquist: {})".format(
                 estimate["label"], estimate["source_cycles_per_uv"],
@@ -573,14 +592,17 @@ def _print_processed_human(report: Dict[str, object]) -> None:
     comparison = report.get("comparison")
     if comparison:
         for delta in comparison["candidate_minus_baseline_by_mip"]:
+            normal_delta = delta["normal_vector_length"]
             if "near_nyquist_power_fraction" in delta:
-                print("  mip {} delta vs {}: near-Nyquist {:+.3%}, centroid {:+.3f}".format(
+                print("  mip {} delta vs {}: near-Nyquist {:+.3%}, centroid {:+.3f}, unit-length RMS {:+.5f}".format(
                     delta["level"], comparison["baseline_image"],
                     delta["near_nyquist_power_fraction"],
-                    delta["spectral_centroid_cycles_per_uv"]))
+                    delta["spectral_centroid_cycles_per_uv"],
+                    normal_delta["rms_deviation_from_unit"]))
             else:
-                print("  mip {} delta vs {}: AC RMS {:+.3f}".format(
-                    delta["level"], comparison["baseline_image"], delta["rms_ac_byte"]))
+                print("  mip {} delta vs {}: AC RMS {:+.3f}, unit-length RMS {:+.5f}".format(
+                    delta["level"], comparison["baseline_image"], delta["rms_ac_byte"],
+                    normal_delta["rms_deviation_from_unit"]))
 
 
 def compare_reports(candidate: Dict[str, object], baseline: Dict[str, object]) -> Dict[str, object]:
