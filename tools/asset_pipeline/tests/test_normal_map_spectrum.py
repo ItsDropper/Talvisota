@@ -329,6 +329,8 @@ class NormalMapSpectrumTests(unittest.TestCase):
         self.assertIn("near_nyquist_power_fraction", deltas[0])
         self.assertNotIn("near_nyquist_power_fraction", deltas[-1])
         self.assertTrue(math.isfinite(deltas[-1]["rms_ac_byte"]))
+        self.assertIn("normal_vector_length", deltas[0])
+        self.assertEqual(deltas[0]["normal_vector_length"]["samples_outside_2_percent"], 0)
 
     def test_processed_texture_cli_json_is_deterministic_and_reports_each_mip(self):
         path = write_ttex(self.root / "cli.ttex", make_ttex_mips(64))
