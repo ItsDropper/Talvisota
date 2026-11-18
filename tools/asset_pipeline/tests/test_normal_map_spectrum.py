@@ -580,6 +580,11 @@ class EnvironmentNormalMapReportTests(unittest.TestCase):
             manifest["processor_sha256"],
             hashlib.sha256(self.processor.read_bytes()).hexdigest(),
         )
+        analyzer_path = Path(report_generator.normal_map_spectrum.__file__).resolve()
+        self.assertEqual(manifest["analyzer_file"], analyzer_path.name)
+        self.assertEqual(
+            manifest["analyzer_sha256"], hashlib.sha256(analyzer_path.read_bytes()).hexdigest()
+        )
         self.assertEqual([item["label"] for item in manifest["reports"]], ["bark", "granite"])
 
         for record in manifest["reports"]:
@@ -675,6 +680,9 @@ class EnvironmentNormalMapReportTests(unittest.TestCase):
 
     def test_missing_source_is_rejected_before_starting_processor(self):
         (self.source_root / "granite-normal.bmp").unlink()
+        self.output_directory.mkdir()
+        stale_manifest = self.output_directory / "environment-normal-map-spectrum-manifest.json"
+        stale_manifest.write_text('{"stale": true}', encoding="utf-8")
         with mock.patch.object(report_generator.subprocess, "run") as run:
             with self.assertRaisesRegex(
                 report_generator.ReportGenerationError, "granite source normal map"
@@ -683,6 +691,7 @@ class EnvironmentNormalMapReportTests(unittest.TestCase):
                     self.processor, self.source_root, self.output_directory
                 )
         run.assert_not_called()
+        self.assertFalse(stale_manifest.exists())
 
     def test_non_positive_processor_timeout_is_rejected(self):
         with self.assertRaisesRegex(
