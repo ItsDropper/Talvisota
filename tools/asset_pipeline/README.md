@@ -139,8 +139,10 @@ python tools/asset_pipeline/normal_map_spectrum.py artifacts\granite-normal.ttex
 ```
 
 A `.ttex` report includes every mip level and recomputes the source-octave folding
-estimate using that level's texel count. Levels at least 16x16 receive a full
-frequency spectrum. Smaller levels retain mean and AC-RMS statistics but are marked
+estimate using that level's texel count. Each level also reports decoded XYZ normal
+length mean/min/max, RMS deviation from unit length, and the count of samples outside
+a 2% tolerance. Levels at least 16x16 receive a full frequency spectrum. Smaller
+levels retain mean and AC-RMS statistics but are marked
 `insufficient_frequency_resolution`; assigning detailed frequency bands to 8x8
 and smaller levels would overstate their spectral resolution. The reader validates
 the complete ceil-halved mip chain, RGBA8 format, linear colour-space metadata,
