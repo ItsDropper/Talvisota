@@ -353,6 +353,7 @@ class NormalMapSpectrumTests(unittest.TestCase):
     def test_processed_texture_human_summary_and_json_output(self):
         path = write_ttex(self.root / "human.ttex", make_ttex_mips(32))
         report_path = self.root / "reports" / "human.json"
+        report_path.parent.mkdir()
         script = Path(__file__).resolve().parents[1] / "normal_map_spectrum.py"
         result = subprocess.run(
             [sys.executable, str(script), str(path), "--json-output", str(report_path)],
