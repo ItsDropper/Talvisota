@@ -60,7 +60,11 @@ def make_ttex_mips(base_width, base_height=None, red_frequency=4, green_frequenc
             red, green = make_signal(width, red_frequency, green_frequency, amplitude)
             for y in range(height):
                 for x in range(width):
-                    pixels.extend((red[y][x], green[y][x], 255, 255))
+                    normal_x = red[y][x] / 127.5 - 1.0
+                    normal_y = green[y][x] / 127.5 - 1.0
+                    normal_z = math.sqrt(max(0.0, 1.0 - normal_x ** 2 - normal_y ** 2))
+                    blue = round((normal_z * 0.5 + 0.5) * 255.0)
+                    pixels.extend((red[y][x], green[y][x], blue, 255))
         else:
             pixels.extend(bytes((128, 128, 255, 255)) * (width * height))
         mips.append((width, height, bytes(pixels)))
@@ -293,6 +297,10 @@ class NormalMapSpectrumTests(unittest.TestCase):
         aliases = {item["label"]: item for item in base["source_frequency_alias_estimates"]}
         self.assertEqual(aliases["bark"]["folded_cycles_per_uv"], 8.0)
         self.assertEqual(aliases["granite"]["folded_cycles_per_uv"], 0.0)
+        for mip in report["mips"]:
+            vector_stats = mip["normal_vector_length"]
+            self.assertLess(vector_stats["rms_deviation_from_unit"], 0.01)
+            self.assertEqual(vector_stats["samples_outside_2_percent"], 0)
         for mip in report["mips"][:3]:
             fractions = mip["tangent_xy"]["energy_fraction_by_band"]
             self.assertAlmostEqual(sum(fractions.values()), 1.0, places=10)
