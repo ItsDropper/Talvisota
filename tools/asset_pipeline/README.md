@@ -106,14 +106,16 @@ remain checked in the normal Debug/Release test path.
 
 ## Generated normal-map spectrum analysis
 
-Use `normal_map_spectrum.py` to measure the actual sampled red/green tangent components
-of generated normal BMPs. It reads uncompressed 24-bit BMPs without third-party
-dependencies, applies a periodic 2D radix-2 FFT, and reports power fractions in bands
-relative to the per-axis Nyquist limit. The square frequency shells use
+Use `normal_map_spectrum.py` to measure the sampled red/green tangent components
+of generated normal maps. BMP input reads uncompressed 24-bit files without
+third-party dependencies. Processed `.ttex` input reads the deterministic
+`TVTTEX01` RGBA8 mip-chain container written by the pinned VantaEngine texture
+processor. Both paths use a periodic 2D radix-2 FFT and report power fractions in
+bands relative to the per-axis Nyquist limit. The square frequency shells use
 `max(abs(kx), abs(ky))`, matching the square sampling region rather than incorrectly
 treating representable diagonal frequencies as out of band.
 
-Analyze the generated maps and record the source-octave fold estimates:
+Analyze the generated base-level maps and record the source-octave fold estimates:
 
 ```sh
 python3 tools/asset_pipeline/normal_map_spectrum.py \
@@ -125,32 +127,51 @@ python3 tools/asset_pipeline/normal_map_spectrum.py \
   --source-frequency granite=1536 --json
 ```
 
-Compare a candidate prefiltered map against the original at identical dimensions. Use
-`--json-output` when the JSON needs to be retained as a CI artifact; the normal
-human-readable summary remains on standard output:
+To measure the actual normal-map mip chain, first use the optional MSVC engine
+adapter's texture processor. The `normal` mode decodes and renormalizes the source
+vectors, averages unit vectors, and renormalizes every successive mip:
+
+```powershell
+.\build-msvc\talvisota_texture_process.exe assets\textures\environment\bark-normal.bmp artifacts\bark-normal.ttex normal
+.\build-msvc\talvisota_texture_process.exe assets\textures\environment\granite-normal.bmp artifacts\granite-normal.ttex normal
+python tools/asset_pipeline/normal_map_spectrum.py artifacts\bark-normal.ttex --source-frequency bark=840 --json-output artifacts\bark-normal-spectrum.json
+python tools/asset_pipeline/normal_map_spectrum.py artifacts\granite-normal.ttex --source-frequency granite=1536 --json-output artifacts\granite-normal-spectrum.json
+```
+
+A `.ttex` report includes every mip level and recomputes the source-octave folding
+estimate using that level's texel count. Levels at least 16x16 receive a full
+frequency spectrum. Smaller levels retain mean and AC-RMS statistics but are marked
+`insufficient_frequency_resolution`; assigning detailed frequency bands to 8x8
+and smaller levels would overstate their spectral resolution. The reader validates
+the complete ceil-halved mip chain, RGBA8 format, linear colour-space metadata,
+byte counts, terminal 1x1 level and absence of trailing data. It accepts dimensions
+up to 2048 and containers up to 64 MiB to bound CPU and memory use. Non-square or
+non-power-of-two base maps can be parsed for format validation but are rejected for
+the current square FFT analysis.
+
+Compare a candidate processed mip chain against the original at identical dimensions
+and mip metadata. Use `--json-output` when the JSON needs to be retained as a CI
+artifact; the normal human-readable summary remains on standard output:
 
 ```sh
-python3 tools/asset_pipeline/normal_map_spectrum.py \
-  /path/to/candidate-normal.bmp --compare /path/to/original-normal.bmp \
-  --json-output normal-map-spectrum.json
+python tools/asset_pipeline/normal_map_spectrum.py artifacts/candidate-normal.ttex --compare artifacts/baseline-normal.ttex --json-output artifacts/normal-map-spectrum-comparison.json
 ```
 
 The comparison reports candidate-minus-baseline changes in near-Nyquist power,
-spectral centroid, AC RMS and each frequency band. A positive near-Nyquist delta means
-the candidate retains more power in the highest quarter of the representable
-per-axis frequency range. Source-frequency folding assumes an axis-aligned periodic
-component sampled once per texel; it is a diagnostic estimate, not a reconstruction
-of the full multi-axis FBM field. The analysis measures base-level BMP data only: it
-does not model generated mip levels, texture filtering, material binding, surface
+spectral centroid, AC RMS and each frequency band for every resolvable mip. A
+positive near-Nyquist delta means the candidate retains more power in the highest
+quarter of the representable per-axis frequency range. Source-frequency folding
+assumes an axis-aligned periodic component sampled once per texel; it is a diagnostic
+estimate, not a reconstruction of the full multi-axis FBM field. The analysis still
+does not model GPU texture filtering, sampler state, material binding, surface
 orientation, rasterization or D3D12 sampling, and it cannot prove the cause of a
 rendered artifact.
 
 The standard-library suite is registered separately as
 `Talvisota.AssetPipeline.NormalMapSpectrum`. When the normal build has generated
-`bark-normal.bmp` and `granite-normal.bmp`, the suite also analyzes both real 1024x1024
-maps; synthetic periodic fixtures independently verify exact FFT bins and comparison
-semantics.
-
+`bark-normal.bmp` and `granite-normal.bmp`, the suite analyzes both real 1024x1024
+base-level maps; synthetic BMP and `.ttex` fixtures independently verify exact FFT
+bins, per-mip normalization, malformed-container rejection and comparison semantics.
 ## Deterministic packages
 
 The package tool validates source definitions and media, stages every present manifest
