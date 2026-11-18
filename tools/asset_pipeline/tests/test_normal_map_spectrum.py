@@ -50,6 +50,41 @@ def make_signal(size, red_frequency=0, green_frequency=0, amplitude=48):
     return red, green
 
 
+def make_ttex_mips(base_width, base_height=None, red_frequency=4, green_frequency=7, amplitude=48):
+    width = base_width
+    height = base_width if base_height is None else base_height
+    mips = []
+    while True:
+        pixels = bytearray()
+        if width == height:
+            red, green = make_signal(width, red_frequency, green_frequency, amplitude)
+            for y in range(height):
+                for x in range(width):
+                    pixels.extend((red[y][x], green[y][x], 255, 255))
+        else:
+            pixels.extend(bytes((128, 128, 255, 255)) * (width * height))
+        mips.append((width, height, bytes(pixels)))
+        if width == 1 and height == 1:
+            break
+        width = max(1, (width + 1) // 2)
+        height = max(1, (height + 1) // 2)
+    return mips
+
+
+def write_ttex(path, mips, color_space=0, version=1, pixel_format=1, trailing=b""):
+    base_width, base_height, _ = mips[0]
+    data = bytearray(b"TVTTEX01")
+    data.extend(struct.pack(
+        "<6I", version, base_width, base_height, pixel_format, color_space, len(mips)
+    ))
+    for width, height, rgba in mips:
+        data.extend(struct.pack("<3I", width, height, len(rgba)))
+        data.extend(rgba)
+    data.extend(trailing)
+    path.write_bytes(data)
+    return path
+
+
 class NormalMapSpectrumTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
@@ -233,6 +268,186 @@ class NormalMapSpectrumTests(unittest.TestCase):
                     sum(report["tangent_xy"]["energy_fraction_by_band"].values()),
                     1.0, places=10,
                 )
+
+
+    def test_processed_texture_reports_frequency_spectra_for_each_resolvable_mip(self):
+        path = write_ttex(self.root / "normal.ttex", make_ttex_mips(64))
+        report = spectrum.analyze_processed_texture(
+            path, [("bark", 840.0), ("granite", 1536.0)]
+        )
+        self.assertEqual(report["container"], "TVTTEX01")
+        self.assertEqual(report["color_space"], "linear")
+        self.assertEqual(report["mip_count"], 7)
+        self.assertEqual(
+            [(mip["width"], mip["height"]) for mip in report["mips"]],
+            [(64, 64), (32, 32), (16, 16), (8, 8), (4, 4), (2, 2), (1, 1)],
+        )
+        self.assertEqual(
+            [mip["analysis_status"] for mip in report["mips"]],
+            ["spectrum", "spectrum", "spectrum"] +
+            ["insufficient_frequency_resolution"] * 4,
+        )
+        base = report["mips"][0]
+        self.assertEqual(base["channels"]["red_x"]["peak_frequency_cycles_per_uv"], 4)
+        self.assertEqual(base["channels"]["green_y"]["peak_frequency_cycles_per_uv"], 7)
+        aliases = {item["label"]: item for item in base["source_frequency_alias_estimates"]}
+        self.assertEqual(aliases["bark"]["folded_cycles_per_uv"], 8.0)
+        self.assertEqual(aliases["granite"]["folded_cycles_per_uv"], 0.0)
+        for mip in report["mips"][:3]:
+            fractions = mip["tangent_xy"]["energy_fraction_by_band"]
+            self.assertAlmostEqual(sum(fractions.values()), 1.0, places=10)
+            self.assertTrue(all(math.isfinite(value) for value in fractions.values()))
+        for mip in report["mips"][3:]:
+            self.assertEqual(mip["minimum_spectrum_dimension"], 16)
+            self.assertTrue(math.isfinite(mip["tangent_xy"]["rms_ac_byte"]))
+            self.assertNotIn("energy_fraction_by_band", mip["tangent_xy"])
+
+    def test_processed_texture_comparison_reports_deltas_per_mip(self):
+        baseline = write_ttex(
+            self.root / "baseline.ttex",
+            make_ttex_mips(64, red_frequency=3, green_frequency=7),
+        )
+        candidate = write_ttex(
+            self.root / "candidate.ttex",
+            make_ttex_mips(64, red_frequency=10, green_frequency=7),
+        )
+        baseline_report = spectrum.analyze_processed_texture(baseline)
+        candidate_report = spectrum.analyze_processed_texture(candidate)
+        comparison = spectrum.compare_processed_reports(candidate_report, baseline_report)
+        self.assertEqual(comparison["baseline_image"], "baseline.ttex")
+        deltas = comparison["candidate_minus_baseline_by_mip"]
+        self.assertEqual(len(deltas), 7)
+        self.assertGreater(deltas[0]["spectral_centroid_cycles_per_uv"], 0.0)
+        self.assertIn("near_nyquist_power_fraction", deltas[0])
+        self.assertNotIn("near_nyquist_power_fraction", deltas[-1])
+        self.assertTrue(math.isfinite(deltas[-1]["rms_ac_byte"]))
+
+    def test_processed_texture_cli_json_is_deterministic_and_reports_each_mip(self):
+        path = write_ttex(self.root / "cli.ttex", make_ttex_mips(64))
+        script = Path(__file__).resolve().parents[1] / "normal_map_spectrum.py"
+        command = [
+            sys.executable, str(script), str(path),
+            "--source-frequency", "bark=840",
+            "--json",
+        ]
+        first = subprocess.run(command, capture_output=True, text=True, check=False, timeout=20)
+        second = subprocess.run(command, capture_output=True, text=True, check=False, timeout=20)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertEqual(first.stdout, second.stdout)
+        report = json.loads(first.stdout)
+        self.assertEqual(report["container"], "TVTTEX01")
+        self.assertEqual(report["mips"][0]["source_frequency_alias_estimates"][0]["label"], "bark")
+        self.assertEqual(len(report["mips"]), 7)
+
+    def test_processed_texture_human_summary_and_json_output(self):
+        path = write_ttex(self.root / "human.ttex", make_ttex_mips(32))
+        report_path = self.root / "reports" / "human.json"
+        script = Path(__file__).resolve().parents[1] / "normal_map_spectrum.py"
+        result = subprocess.run(
+            [sys.executable, str(script), str(path), "--json-output", str(report_path)],
+            capture_output=True, text=True, check=False, timeout=20,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Normal-map mip spectrum: human.ttex", result.stdout)
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        self.assertEqual(report["mip_count"], 6)
+        self.assertEqual(report["mips"][-1]["analysis_status"], "insufficient_frequency_resolution")
+
+    def test_processed_texture_requires_linear_colour_space(self):
+        path = write_ttex(
+            self.root / "srgb.ttex", make_ttex_mips(16), color_space=1
+        )
+        with self.assertRaisesRegex(spectrum.SpectrumError, "linear-colour-space"):
+            spectrum.analyze_processed_texture(path)
+
+    def test_processed_texture_rejects_non_square_and_non_power_of_two_bases(self):
+        rectangular = write_ttex(
+            self.root / "rectangular.ttex", make_ttex_mips(32, base_height=16)
+        )
+        with self.assertRaisesRegex(spectrum.SpectrumError, "square base texture"):
+            spectrum.analyze_processed_texture(rectangular)
+
+        odd = write_ttex(self.root / "odd.ttex", make_ttex_mips(17))
+        with self.assertRaisesRegex(spectrum.SpectrumError, "power of two"):
+            spectrum.analyze_processed_texture(odd)
+
+    def test_processed_texture_parser_matches_ceil_halved_odd_mip_dimensions(self):
+        path = write_ttex(self.root / "odd-chain.ttex", make_ttex_mips(17))
+        container = spectrum._read_processed_texture(path)
+        self.assertEqual(
+            [(mip[0], mip[1]) for mip in container["mips"]],
+            [(17, 17), (9, 9), (5, 5), (3, 3), (2, 2), (1, 1)],
+        )
+        with self.assertRaisesRegex(spectrum.SpectrumError, "power of two"):
+            spectrum.analyze_processed_texture(path)
+
+    def test_processed_texture_rejects_invalid_headers_and_mip_boundaries(self):
+        valid_path = write_ttex(self.root / "valid.ttex", make_ttex_mips(16))
+        valid = valid_path.read_bytes()
+        invalid = []
+
+        bad_magic = bytearray(valid)
+        bad_magic[0] = ord("X")
+        invalid.append(("magic", bytes(bad_magic)))
+
+        invalid.append(("truncated header", valid[:31]))
+
+        bad_version = bytearray(valid)
+        struct.pack_into("<I", bad_version, 8, 2)
+        invalid.append(("version", bytes(bad_version)))
+
+        zero_width = bytearray(valid)
+        struct.pack_into("<I", zero_width, 12, 0)
+        invalid.append(("zero dimensions", bytes(zero_width)))
+
+        bad_format = bytearray(valid)
+        struct.pack_into("<I", bad_format, 20, 2)
+        invalid.append(("pixel format", bytes(bad_format)))
+
+        bad_colour_space = bytearray(valid)
+        struct.pack_into("<I", bad_colour_space, 24, 2)
+        invalid.append(("colour space", bytes(bad_colour_space)))
+
+        zero_mips = bytearray(valid)
+        struct.pack_into("<I", zero_mips, 28, 0)
+        invalid.append(("mip count", bytes(zero_mips)))
+
+        invalid.append(("truncated mip header", valid[:37]))
+
+        bad_mip_width = bytearray(valid)
+        struct.pack_into("<I", bad_mip_width, 32, 8)
+        invalid.append(("mip dimensions", bytes(bad_mip_width)))
+
+        bad_byte_count = bytearray(valid)
+        struct.pack_into("<I", bad_byte_count, 40, 1)
+        invalid.append(("byte count", bytes(bad_byte_count)))
+
+        invalid.append(("truncated pixels", valid[:-1]))
+        invalid.append(("trailing bytes", valid + b"x"))
+        invalid.append((
+            "incomplete chain",
+            write_ttex(self.root / "incomplete.ttex", make_ttex_mips(16)[:-1]).read_bytes(),
+        ))
+
+        malformed_path = self.root / "malformed.ttex"
+        for label, payload in invalid:
+            with self.subTest(case=label):
+                malformed_path.write_bytes(payload)
+                with self.assertRaises(spectrum.SpectrumError):
+                    spectrum._read_processed_texture(malformed_path)
+
+    def test_processed_texture_cli_refuses_to_overwrite_its_container(self):
+        path = write_ttex(self.root / "protected.ttex", make_ttex_mips(16))
+        original = path.read_bytes()
+        script = Path(__file__).resolve().parents[1] / "normal_map_spectrum.py"
+        result = subprocess.run(
+            [sys.executable, str(script), str(path), "--json-output", str(path)],
+            capture_output=True, text=True, check=False, timeout=20,
+        )
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("must not overwrite", result.stderr)
+        self.assertEqual(path.read_bytes(), original)
 
 
 if __name__ == "__main__":
