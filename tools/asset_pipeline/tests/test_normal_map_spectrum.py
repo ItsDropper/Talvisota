@@ -1,3 +1,4 @@
+import hashlib
 import json
 import math
 import struct
@@ -5,10 +6,12 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import normal_map_spectrum as spectrum
+import generate_environment_normal_map_reports as report_generator
 
 
 def write_bmp(path, red, green, top_down=False):
@@ -513,6 +516,181 @@ class NormalMapSpectrumTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("must not overwrite", result.stderr)
         self.assertEqual(path.read_bytes(), original)
+
+
+
+class EnvironmentNormalMapReportTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.root = Path(self.temporary.name)
+        self.source_root = self.root / "sources"
+        self.source_root.mkdir()
+        red, green = make_signal(16, red_frequency=2, green_frequency=3)
+        write_bmp(self.source_root / "bark-normal.bmp", red, green)
+        write_bmp(self.source_root / "granite-normal.bmp", red, green)
+        self.processor = self.root / "talvisota_texture_process.exe"
+        self.processor.write_bytes(b"deterministic fake processor")
+        self.output_directory = self.root / "reports"
+
+    def tearDown(self):
+        self.temporary.cleanup()
+
+    def _successful_processor(self, command, **kwargs):
+        self.assertEqual(command[0], str(self.processor.resolve()))
+        self.assertEqual(command[3], "normal")
+        source = Path(command[1])
+        output = Path(command[2])
+        self.assertEqual(source.parent, self.source_root.resolve())
+        label = source.name.split("-", 1)[0]
+        self.assertIn(label, ("bark", "granite"))
+        write_ttex(
+            output,
+            make_ttex_mips(32, red_frequency=4, green_frequency=7),
+        )
+        self.assertTrue(kwargs["capture_output"])
+        self.assertTrue(kwargs["text"])
+        self.assertEqual(kwargs["timeout"], 90)
+        return subprocess.CompletedProcess(command, 0, "texture processed\n", "")
+
+    def test_generates_deterministic_reports_and_provenance_from_real_processor_outputs(self):
+        with mock.patch.object(
+            report_generator.subprocess, "run", side_effect=self._successful_processor
+        ) as run:
+            outputs = report_generator.generate_reports(
+                self.processor, self.source_root, self.output_directory, timeout_seconds=90
+            )
+
+        self.assertEqual(
+            [path.name for path in outputs],
+            [
+                "bark-normal-spectrum.json",
+                "granite-normal-spectrum.json",
+                "environment-normal-map-spectrum-manifest.json",
+            ],
+        )
+        self.assertEqual(run.call_count, 2)
+        for call in run.call_args_list:
+            command = call.args[0]
+            self.assertEqual(command[3], "normal")
+
+        first_bytes = {path.name: path.read_bytes() for path in outputs}
+        manifest = json.loads(first_bytes["environment-normal-map-spectrum-manifest.json"])
+        self.assertEqual(manifest["schema_version"], 1)
+        self.assertEqual(
+            manifest["processor_sha256"],
+            hashlib.sha256(self.processor.read_bytes()).hexdigest(),
+        )
+        self.assertEqual([item["label"] for item in manifest["reports"]], ["bark", "granite"])
+
+        for record in manifest["reports"]:
+            source = self.source_root / record["source_file"]
+            report_path = self.output_directory / record["report_file"]
+            report_bytes = report_path.read_bytes()
+            report = json.loads(report_bytes)
+            self.assertEqual(record["source_sha256"], hashlib.sha256(source.read_bytes()).hexdigest())
+            self.assertEqual(
+                record["report_sha256"], hashlib.sha256(report_bytes).hexdigest()
+            )
+            self.assertEqual(record["processed_texture_sha256"], hashlib.sha256(
+                write_ttex(
+                    self.root / "hash-reference.ttex",
+                    make_ttex_mips(32, red_frequency=4, green_frequency=7),
+                ).read_bytes()
+            ).hexdigest())
+            self.assertEqual(report["container"], "TVTTEX01")
+            self.assertEqual(report["color_space"], "linear")
+            self.assertEqual(report["width"], 32)
+            self.assertEqual(report["mip_count"], 6)
+            expected_frequency = 840.0 if record["label"] == "bark" else 1536.0
+            for mip in report["mips"]:
+                self.assertEqual(
+                    mip["source_frequency_alias_estimates"][0]["label"], record["label"]
+                )
+                self.assertEqual(
+                    mip["source_frequency_alias_estimates"][0]["source_cycles_per_uv"],
+                    expected_frequency,
+                )
+
+        with mock.patch.object(
+            report_generator.subprocess, "run", side_effect=self._successful_processor
+        ):
+            report_generator.generate_reports(
+                self.processor, self.source_root, self.output_directory, timeout_seconds=90
+            )
+        self.assertEqual(
+            first_bytes,
+            {path.name: path.read_bytes() for path in outputs},
+        )
+
+    def test_processor_failure_does_not_publish_partial_reports(self):
+        def fail_second_map(command, **kwargs):
+            if Path(command[1]).name == "granite-normal.bmp":
+                return subprocess.CompletedProcess(command, 7, "", "deliberate processor failure")
+            return self._successful_processor(command, **kwargs)
+
+        with mock.patch.object(
+            report_generator.subprocess, "run", side_effect=fail_second_map
+        ):
+            with self.assertRaisesRegex(
+                report_generator.ReportGenerationError, "exit code 7.*deliberate processor failure"
+            ):
+                report_generator.generate_reports(
+                    self.processor, self.source_root, self.output_directory, timeout_seconds=90
+                )
+
+        self.assertFalse(
+            (self.output_directory / "environment-normal-map-spectrum-manifest.json").exists()
+        )
+        self.assertFalse((self.output_directory / "bark-normal-spectrum.json").exists())
+        self.assertFalse((self.output_directory / "granite-normal-spectrum.json").exists())
+
+    def test_processor_success_without_output_is_rejected(self):
+        with mock.patch.object(
+            report_generator.subprocess, "run",
+            return_value=subprocess.CompletedProcess([], 0, "", ""),
+        ):
+            with self.assertRaisesRegex(
+                report_generator.ReportGenerationError, "did not create"
+            ):
+                report_generator.generate_reports(
+                    self.processor, self.source_root, self.output_directory
+                )
+
+    def test_malformed_processed_texture_is_rejected(self):
+        def malformed(command, **kwargs):
+            Path(command[2]).write_bytes(b"not a TVTTEX01 container")
+            return subprocess.CompletedProcess(command, 0, "", "")
+
+        with mock.patch.object(report_generator.subprocess, "run", side_effect=malformed):
+            with self.assertRaisesRegex(
+                report_generator.ReportGenerationError, "invalid TVTTEX01 signature"
+            ):
+                report_generator.generate_reports(
+                    self.processor, self.source_root, self.output_directory
+                )
+
+        self.assertFalse(
+            (self.output_directory / "environment-normal-map-spectrum-manifest.json").exists()
+        )
+
+    def test_missing_source_is_rejected_before_starting_processor(self):
+        (self.source_root / "granite-normal.bmp").unlink()
+        with mock.patch.object(report_generator.subprocess, "run") as run:
+            with self.assertRaisesRegex(
+                report_generator.ReportGenerationError, "granite source normal map"
+            ):
+                report_generator.generate_reports(
+                    self.processor, self.source_root, self.output_directory
+                )
+        run.assert_not_called()
+
+    def test_non_positive_processor_timeout_is_rejected(self):
+        with self.assertRaisesRegex(
+            report_generator.ReportGenerationError, "positive"
+        ):
+            report_generator.generate_reports(
+                self.processor, self.source_root, self.output_directory, timeout_seconds=0
+            )
 
 
 if __name__ == "__main__":
