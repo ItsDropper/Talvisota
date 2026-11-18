@@ -160,7 +160,9 @@ python tools/asset_pipeline/normal_map_spectrum.py artifacts/candidate-normal.tt
 ```
 
 The comparison reports candidate-minus-baseline changes in near-Nyquist power,
-spectral centroid, AC RMS and each frequency band for every resolvable mip. A
+spectral centroid, AC RMS and each frequency band for every resolvable mip. It also
+compares normal-vector length statistics at every level, including RMS deviation from
+unit length and the count of samples outside the 2% tolerance. A
 positive near-Nyquist delta means the candidate retains more power in the highest
 quarter of the representable per-axis frequency range. Source-frequency folding
 assumes an axis-aligned periodic component sampled once per texel; it is a diagnostic
