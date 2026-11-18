@@ -194,47 +194,48 @@ def generate_reports(
         raise ReportGenerationError("Processor timeout must be a positive number of seconds.")
 
     try:
-        processor = Path(texture_processor).resolve(strict=True)
+        processor = Path(texture_processor).resolve()
+        analyzer = Path(normal_map_spectrum.__file__).resolve(strict=True)
         output_dir = Path(output_directory).resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
+        source_paths = [
+            (label, (Path(source_root) / filename).resolve(), frequency)
+            for label, filename, frequency in _ENVIRONMENT_MAPS
+        ]
     except (OSError, RuntimeError) as exc:
         raise ReportGenerationError(
-            "Could not resolve texture processor or output directory: {}".format(exc)
+            "Could not resolve report inputs or output directory: {}".format(exc)
         ) from exc
-
-    if not processor.is_file():
-        raise ReportGenerationError("Texture processor is not a file: {}".format(processor))
-
-    source_paths: List[Tuple[str, Path, float]] = []
-    for label, filename, frequency in _ENVIRONMENT_MAPS:
-        source = Path(source_root) / filename
-        if not source.is_file():
-            raise ReportGenerationError(
-                "Required {} source normal map is not a file: {}".format(label, source)
-            )
-        try:
-            source = source.resolve(strict=True)
-        except (OSError, RuntimeError) as exc:
-            raise ReportGenerationError(
-                "Could not resolve {} source normal map '{}': {}".format(label, source, exc)
-            ) from exc
-        source_paths.append((label, source, frequency))
 
     manifest_path = output_dir / "environment-normal-map-spectrum-manifest.json"
     report_names = {
         label: "{}-normal-spectrum.json".format(label)
         for label, _, _ in _ENVIRONMENT_MAPS
     }
-    protected_paths = {processor, *(source for _, source, _ in source_paths)}
-    final_paths = {manifest_path, *(output_dir / name for name in report_names.values())}
+    protected_paths = {
+        processor, analyzer, *(source for _, source, _ in source_paths)
+    }
+    final_paths = {
+        manifest_path, *(output_dir / name for name in report_names.values())
+    }
     if protected_paths & {path.resolve() for path in final_paths}:
-        raise ReportGenerationError("A report output path would overwrite a source or processor input.")
+        raise ReportGenerationError("A report output path would overwrite an input file.")
 
     # A missing manifest means the two reports do not represent one complete run.
-    # Remove it before work starts; publish it only after both reports are ready.
+    # Invalidate any previous run before checking inputs or invoking the processor.
     try:
         manifest_path.unlink(missing_ok=True)
+        if not processor.is_file():
+            raise ReportGenerationError(
+                "Texture processor is not a file: {}".format(processor)
+            )
+        for label, source, _ in source_paths:
+            if not source.is_file():
+                raise ReportGenerationError(
+                    "Required {} source normal map is not a file: {}".format(label, source)
+                )
         processor_hash = _sha256(processor)
+        analyzer_hash = _sha256(analyzer)
         with tempfile.TemporaryDirectory(
             prefix=".environment-normal-map-spectrum-", dir=str(output_dir)
         ) as temporary:
@@ -278,6 +279,8 @@ def generate_reports(
                 "schema_version": 1,
                 "processor_file": processor.name,
                 "processor_sha256": processor_hash,
+                "analyzer_file": analyzer.name,
+                "analyzer_sha256": analyzer_hash,
                 "reports": report_records,
             }
             staged_manifest = staging / manifest_path.name
