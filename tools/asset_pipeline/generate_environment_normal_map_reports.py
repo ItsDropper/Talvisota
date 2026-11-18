@@ -195,25 +195,30 @@ def generate_reports(
 
     try:
         processor = Path(texture_processor).resolve(strict=True)
-        sources = [
-            (label, source_root_path, frequency)
-            for label, filename, frequency in _ENVIRONMENT_MAPS
-            for source_root_path in (Path(source_root) / filename,)
-        ]
-        source_paths = [(label, source.resolve(strict=True), frequency)
-                        for label, source, frequency in sources]
         output_dir = Path(output_directory).resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
     except (OSError, RuntimeError) as exc:
-        raise ReportGenerationError("Could not resolve report inputs or output directory: {}".format(exc)) from exc
+        raise ReportGenerationError(
+            "Could not resolve texture processor or output directory: {}".format(exc)
+        ) from exc
 
     if not processor.is_file():
         raise ReportGenerationError("Texture processor is not a file: {}".format(processor))
-    for label, source, _ in source_paths:
+
+    source_paths: List[Tuple[str, Path, float]] = []
+    for label, filename, frequency in _ENVIRONMENT_MAPS:
+        source = Path(source_root) / filename
         if not source.is_file():
             raise ReportGenerationError(
                 "Required {} source normal map is not a file: {}".format(label, source)
             )
+        try:
+            source = source.resolve(strict=True)
+        except (OSError, RuntimeError) as exc:
+            raise ReportGenerationError(
+                "Could not resolve {} source normal map '{}': {}".format(label, source, exc)
+            ) from exc
+        source_paths.append((label, source, frequency))
 
     manifest_path = output_dir / "environment-normal-map-spectrum-manifest.json"
     report_names = {
