@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Measure periodic tangent-space normal-map spectra in uncompressed 24-bit BMPs.
+"""Measure periodic tangent-space normal-map spectra in BMPs and TVTTEX01 mip chains.
 
-The analysis uses a square, power-of-two image and a periodic 2D FFT. Frequency
+The analysis uses square, power-of-two levels and a periodic 2D FFT. Frequency
 shells use max(abs(kx), abs(ky)), so diagonal frequencies inside the square
-sampling Nyquist region are not incorrectly classified as out of band.
+sampling Nyquist region are not incorrectly classified as out of band. Processed
+mip levels below 16x16 retain scalar statistics but are not assigned a spectrum.
 """
 
 from __future__ import annotations
@@ -602,10 +603,10 @@ def _print_human(report: Dict[str, object]) -> None:
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Measure periodic 2D power spectra of uncompressed 24-bit tangent-space normal BMPs."
+        description="Measure periodic 2D power spectra of tangent-space normal BMPs or TVTTEX01 mip chains."
     )
-    parser.add_argument("image", type=Path, help="candidate normal-map BMP")
-    parser.add_argument("--compare", type=Path, help="baseline BMP with identical dimensions")
+    parser.add_argument("image", type=Path, help="candidate normal-map BMP or processed .ttex container")
+    parser.add_argument("--compare", type=Path, help="baseline BMP or .ttex container with matching dimensions")
     parser.add_argument(
         "--source-frequency", action="append", default=[], metavar="LABEL=CYCLES_PER_UV",
         help="optional axis-aligned source octave for a sampling-fold estimate; repeatable",
@@ -645,7 +646,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             except (OSError, RuntimeError) as exc:
                 raise SpectrumError("Could not resolve JSON report or input path: {}".format(exc)) from exc
             if output_path in input_paths:
-                raise SpectrumError("JSON report path must not overwrite an input BMP")
+                raise SpectrumError("JSON report path must not overwrite an input texture")
             try:
                 args.json_output.write_text(json_text + "\n", encoding="utf-8")
             except OSError as exc:
