@@ -201,3 +201,35 @@ correspondence. `--verify` performs the same semantic and integrity revalidation
 See [content-package-v1.md](../../data/schemas/content-package-v1.md) for the format
 contract and [ASSET_RIGHTS_AUDIT.md](../../docs/production/ASSET_RIGHTS_AUDIT.md) for
 the current shipped-media provenance and vendored-code licence audit.
+
+
+## Reproducible processed environment normal-map reports
+
+The spectrum analyzer can be run directly on an existing `.ttex` file, but the
+following orchestration command is the canonical way to measure the exact normal
+mip chains produced by the pinned engine texture processor. It invokes the processor
+without a shell, checks its exit status and output, analyzes every mip, and writes
+two deterministic JSON reports plus a SHA-256 provenance manifest:
+
+```powershell
+python tools/asset_pipeline/generate_environment_normal_map_reports.py `
+  --texture-processor build-msvc/talvisota_texture_process.exe `
+  --source-root assets/textures/environment `
+  --output-directory artifacts/normal-map-spectrum
+```
+
+The command processes `bark-normal.bmp` (840 source cycles/UV) and
+`granite-normal.bmp` (1,536 source cycles/UV) in the engine's `normal` mode.
+The output directory contains `bark-normal-spectrum.json`,
+`granite-normal-spectrum.json`, and
+`environment-normal-map-spectrum-manifest.json`. The manifest records source,
+processor, processed-container and report SHA-256 digests, dimensions, mip count,
+and the source-frequency assumption for each report. It contains no timestamps or
+absolute paths, so identical inputs and processor binaries produce identical output.
+
+Reports are staged and validated before publication. A failed processor, missing or
+malformed `.ttex` output, incomplete mip inventory, invalid normal-vector metrics,
+or source-frequency mismatch returns a non-zero exit code and does not publish a
+partial report set. The manifest is removed at the start of a run and written last;
+its presence identifies a complete two-map report set. The processed `.ttex` files
+are temporary and are not retained in the output directory.
