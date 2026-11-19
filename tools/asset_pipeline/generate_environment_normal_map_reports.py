@@ -579,6 +579,7 @@ def generate_reports(
 
     try:
         processor = Path(texture_processor).resolve()
+        generator = Path(__file__).resolve(strict=True)
         analyzer = Path(normal_map_spectrum.__file__).resolve(strict=True)
         output_dir = Path(output_directory).resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -592,6 +593,10 @@ def generate_reports(
         ) from exc
 
     manifest_path = output_dir / "environment-normal-map-spectrum-manifest.json"
+    processed_names = {
+        label: "{}-normal.ttex".format(label)
+        for label, _, _ in _ENVIRONMENT_MAPS
+    }
     report_names = {
         label: "{}-normal-spectrum.json".format(label)
         for label, _, _ in _ENVIRONMENT_MAPS
@@ -609,26 +614,38 @@ def generate_reports(
             for label, source, frequency in source_candidates
         ]
         protected_paths = {
-            processor, analyzer, *(source for _, source, _ in source_paths)
+            processor, generator, analyzer, *(source for _, source, _ in source_paths)
         }
         final_paths = {
-            manifest_path, *(output_dir / name for name in report_names.values())
+            manifest_path,
+            *(output_dir / name for name in processed_names.values()),
+            *(output_dir / name for name in report_names.values()),
         }
         if protected_paths & {path.resolve() for path in final_paths}:
             raise ReportGenerationError("A report output path would overwrite an input file.")
 
+        source_hashes = {
+            label: _sha256(source) for label, source, _ in source_paths
+        }
         processor_hash = _sha256(processor)
+        generator_hash = _sha256(generator)
         analyzer_hash = _sha256(analyzer)
         with tempfile.TemporaryDirectory(
             prefix=".environment-normal-map-spectrum-", dir=str(output_dir)
         ) as temporary:
             staging = Path(temporary)
             report_records: List[Dict[str, object]] = []
-            staged_reports: List[Tuple[Path, Path]] = []
+            staged_outputs: List[Tuple[Path, Path]] = []
 
             for label, source, frequency in source_paths:
-                processed = staging / "{}-normal.ttex".format(label)
+                processed = staging / processed_names[label]
                 _run_texture_processor(processor, source, processed, timeout_seconds)
+                if _sha256(source) != source_hashes[label]:
+                    raise ReportGenerationError(
+                        "{} source normal map changed during processing.".format(label)
+                    )
+                if _sha256(processor) != processor_hash:
+                    raise ReportGenerationError("Texture processor changed during report generation.")
 
                 try:
                     report = normal_map_spectrum.analyze_processed_texture(
@@ -643,14 +660,15 @@ def generate_reports(
                 report_data = _json_bytes(report)
                 staged_report = staging / report_names[label]
                 staged_report.write_bytes(report_data)
-                final_report = output_dir / report_names[label]
-                staged_reports.append((staged_report, final_report))
+                staged_outputs.append((processed, output_dir / processed_names[label]))
+                staged_outputs.append((staged_report, output_dir / report_names[label]))
                 report_records.append({
                     "label": label,
                     "source_file": source.name,
-                    "source_sha256": _sha256(source),
+                    "source_sha256": source_hashes[label],
+                    "processed_file": processed_names[label],
                     "processed_texture_sha256": _sha256(processed),
-                    "report_file": final_report.name,
+                    "report_file": report_names[label],
                     "report_sha256": hashlib.sha256(report_data).hexdigest(),
                     "width": report["width"],
                     "height": report["height"],
@@ -658,8 +676,20 @@ def generate_reports(
                     "source_cycles_per_uv": frequency,
                 })
 
+            for label, source, _ in source_paths:
+                if _sha256(source) != source_hashes[label]:
+                    raise ReportGenerationError(
+                        "{} source normal map changed during report generation.".format(label)
+                    )
+            if _sha256(processor) != processor_hash:
+                raise ReportGenerationError("Texture processor changed during report generation.")
+            if _sha256(generator) != generator_hash or _sha256(analyzer) != analyzer_hash:
+                raise ReportGenerationError("Report generation code changed during report generation.")
+
             manifest = {
-                "schema_version": 1,
+                "schema_version": 2,
+                "generator_file": generator.name,
+                "generator_sha256": generator_hash,
                 "processor_file": processor.name,
                 "processor_sha256": processor_hash,
                 "analyzer_file": analyzer.name,
@@ -669,15 +699,19 @@ def generate_reports(
             staged_manifest = staging / manifest_path.name
             staged_manifest.write_bytes(_json_bytes(manifest))
 
-            for staged_report, final_report in staged_reports:
-                os.replace(str(staged_report), str(final_report))
+            for staged_output, final_output in staged_outputs:
+                os.replace(str(staged_output), str(final_output))
             os.replace(str(staged_manifest), str(manifest_path))
     except ReportGenerationError:
         raise
     except (OSError, RuntimeError) as exc:
         raise ReportGenerationError("Could not publish normal-map reports: {}".format(exc)) from exc
 
-    return [output_dir / report_names[label] for label, _, _ in source_paths] + [manifest_path]
+    return (
+        [output_dir / processed_names[label] for label, _, _ in source_paths]
+        + [output_dir / report_names[label] for label, _, _ in source_paths]
+        + [manifest_path]
+    )
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -694,7 +728,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     parser.add_argument(
         "--output-directory", type=Path, default=Path("artifacts/normal-map-spectrum"),
-        help="directory for the two JSON reports and their provenance manifest",
+        help="directory for processed .ttex containers, two JSON reports and the provenance manifest",
     )
     parser.add_argument(
         "--timeout-seconds", type=int, default=300,

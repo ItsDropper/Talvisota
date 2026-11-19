@@ -564,6 +564,8 @@ class EnvironmentNormalMapReportTests(unittest.TestCase):
         self.assertEqual(
             [path.name for path in outputs],
             [
+                "bark-normal.ttex",
+                "granite-normal.ttex",
                 "bark-normal-spectrum.json",
                 "granite-normal-spectrum.json",
                 "environment-normal-map-spectrum-manifest.json",
@@ -576,7 +578,12 @@ class EnvironmentNormalMapReportTests(unittest.TestCase):
 
         first_bytes = {path.name: path.read_bytes() for path in outputs}
         manifest = json.loads(first_bytes["environment-normal-map-spectrum-manifest.json"])
-        self.assertEqual(manifest["schema_version"], 1)
+        self.assertEqual(manifest["schema_version"], 2)
+        generator_path = Path(report_generator.__file__).resolve()
+        self.assertEqual(manifest["generator_file"], generator_path.name)
+        self.assertEqual(
+            manifest["generator_sha256"], hashlib.sha256(generator_path.read_bytes()).hexdigest()
+        )
         self.assertEqual(
             manifest["processor_sha256"],
             hashlib.sha256(self.processor.read_bytes()).hexdigest(),
@@ -590,19 +597,26 @@ class EnvironmentNormalMapReportTests(unittest.TestCase):
 
         for record in manifest["reports"]:
             source = self.source_root / record["source_file"]
+            processed_path = self.output_directory / record["processed_file"]
             report_path = self.output_directory / record["report_file"]
             report_bytes = report_path.read_bytes()
             report = json.loads(report_bytes)
             self.assertEqual(record["source_sha256"], hashlib.sha256(source.read_bytes()).hexdigest())
             self.assertEqual(
+                record["processed_texture_sha256"],
+                hashlib.sha256(processed_path.read_bytes()).hexdigest(),
+            )
+            self.assertEqual(
+                record["processed_texture_sha256"], hashlib.sha256(
+                    write_ttex(
+                        self.root / "hash-reference.ttex",
+                        make_ttex_mips(32, red_frequency=4, green_frequency=7),
+                    ).read_bytes()
+                ).hexdigest()
+            )
+            self.assertEqual(
                 record["report_sha256"], hashlib.sha256(report_bytes).hexdigest()
             )
-            self.assertEqual(record["processed_texture_sha256"], hashlib.sha256(
-                write_ttex(
-                    self.root / "hash-reference.ttex",
-                    make_ttex_mips(32, red_frequency=4, green_frequency=7),
-                ).read_bytes()
-            ).hexdigest())
             self.assertEqual(report["container"], "TVTTEX01")
             self.assertEqual(report["color_space"], "linear")
             self.assertEqual(report["width"], 32)
@@ -647,6 +661,8 @@ class EnvironmentNormalMapReportTests(unittest.TestCase):
         self.assertFalse(
             (self.output_directory / "environment-normal-map-spectrum-manifest.json").exists()
         )
+        self.assertFalse((self.output_directory / "bark-normal.ttex").exists())
+        self.assertFalse((self.output_directory / "granite-normal.ttex").exists())
         self.assertFalse((self.output_directory / "bark-normal-spectrum.json").exists())
         self.assertFalse((self.output_directory / "granite-normal-spectrum.json").exists())
 
@@ -721,6 +737,48 @@ class EnvironmentNormalMapReportTests(unittest.TestCase):
         run.assert_not_called()
         self.assertFalse(stale_manifest.exists())
 
+    def test_source_change_during_processing_invalidates_the_artifact(self):
+        def mutate_source(command, **kwargs):
+            result = self._successful_processor(command, **kwargs)
+            source = Path(command[1])
+            source.write_bytes(source.read_bytes() + b"x")
+            return result
+
+        with mock.patch.object(
+            report_generator.subprocess, "run", side_effect=mutate_source
+        ):
+            with self.assertRaisesRegex(
+                report_generator.ReportGenerationError, "bark source normal map changed during processing"
+            ):
+                report_generator.generate_reports(
+                    self.processor, self.source_root, self.output_directory, timeout_seconds=90
+                )
+
+        self.assertFalse(
+            (self.output_directory / "environment-normal-map-spectrum-manifest.json").exists()
+        )
+        self.assertFalse((self.output_directory / "bark-normal.ttex").exists())
+
+    def test_processor_change_during_processing_invalidates_the_artifact(self):
+        def mutate_processor(command, **kwargs):
+            result = self._successful_processor(command, **kwargs)
+            self.processor.write_bytes(self.processor.read_bytes() + b"x")
+            return result
+
+        with mock.patch.object(
+            report_generator.subprocess, "run", side_effect=mutate_processor
+        ):
+            with self.assertRaisesRegex(
+                report_generator.ReportGenerationError, "Texture processor changed during report generation"
+            ):
+                report_generator.generate_reports(
+                    self.processor, self.source_root, self.output_directory, timeout_seconds=90
+                )
+
+        self.assertFalse(
+            (self.output_directory / "environment-normal-map-spectrum-manifest.json").exists()
+        )
+
     def test_non_positive_processor_timeout_is_rejected(self):
         with self.assertRaisesRegex(
             report_generator.ReportGenerationError, "positive"
@@ -746,6 +804,53 @@ class EnvironmentNormalMapReportTests(unittest.TestCase):
             ["bark", "granite"],
         )
 
+    def test_rejects_generator_provenance_mismatch(self):
+        manifest = self._generate_valid_artifact()
+        manifest_data = json.loads(manifest.read_text(encoding="utf-8"))
+        manifest_data["generator_sha256"] = "0" * 64
+        manifest.write_text(json.dumps(manifest_data), encoding="utf-8")
+        with self.assertRaisesRegex(
+            report_verifier.ReportVerificationError, "Report generator provenance"
+        ):
+            report_verifier.verify_reports(manifest, self.source_root)
+
+    def test_rejects_processed_texture_tampering_and_missing_file(self):
+        manifest = self._generate_valid_artifact()
+        processed = self.output_directory / "bark-normal.ttex"
+        processed.write_bytes(processed.read_bytes() + b"x")
+        with self.assertRaisesRegex(
+            report_verifier.ReportVerificationError, "processed texture SHA-256"
+        ):
+            report_verifier.verify_reports(manifest, self.source_root)
+
+        manifest = self._generate_valid_artifact()
+        processed.unlink()
+        with self.assertRaisesRegex(
+            report_verifier.ReportVerificationError, "processed texture is missing"
+        ):
+            report_verifier.verify_reports(manifest, self.source_root)
+
+    def test_rejects_a_report_that_does_not_match_its_processed_texture(self):
+        manifest = self._generate_valid_artifact()
+        report_path = self.output_directory / "bark-normal-spectrum.json"
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        current = report["mips"][0]["normal_vector_length"]["rms_deviation_from_unit"]
+        report["mips"][0]["normal_vector_length"]["rms_deviation_from_unit"] = (
+            0.6 if current == 0.5 else 0.5
+        )
+        report_bytes = (
+            json.dumps(report, sort_keys=True, indent=2, allow_nan=False) + "\n"
+        ).encode("utf-8")
+        report_path.write_bytes(report_bytes)
+        manifest_data = json.loads(manifest.read_text(encoding="utf-8"))
+        manifest_data["reports"][0]["report_sha256"] = hashlib.sha256(report_bytes).hexdigest()
+        manifest.write_text(json.dumps(manifest_data), encoding="utf-8")
+
+        with self.assertRaisesRegex(
+            report_verifier.ReportVerificationError, "does not match the retained processed texture"
+        ):
+            report_verifier.verify_reports(manifest, self.source_root)
+
     def test_rejects_report_content_tampering(self):
         manifest = self._generate_valid_artifact()
         report = self.output_directory / "bark-normal-spectrum.json"
@@ -769,6 +874,13 @@ class EnvironmentNormalMapReportTests(unittest.TestCase):
         manifest = self._generate_valid_artifact()
         manifest_data = json.loads(manifest.read_text(encoding="utf-8"))
         manifest_data["reports"][0]["report_file"] = "../outside.json"
+        manifest.write_text(json.dumps(manifest_data), encoding="utf-8")
+        with self.assertRaisesRegex(report_verifier.ReportVerificationError, "unexpected filename"):
+            report_verifier.verify_reports(manifest, self.source_root)
+
+        manifest = self._generate_valid_artifact()
+        manifest_data = json.loads(manifest.read_text(encoding="utf-8"))
+        manifest_data["reports"][0]["processed_file"] = "../outside.ttex"
         manifest.write_text(json.dumps(manifest_data), encoding="utf-8")
         with self.assertRaisesRegex(report_verifier.ReportVerificationError, "unexpected filename"):
             report_verifier.verify_reports(manifest, self.source_root)

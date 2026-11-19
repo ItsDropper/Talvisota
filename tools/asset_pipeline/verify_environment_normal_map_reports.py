@@ -23,17 +23,18 @@ class ReportVerificationError(RuntimeError):
 
 
 _REPORTS = {
-    "bark": ("bark-normal.bmp", "bark-normal-spectrum.json", 840.0),
-    "granite": ("granite-normal.bmp", "granite-normal-spectrum.json", 1536.0),
+    "bark": ("bark-normal.bmp", "bark-normal.ttex", "bark-normal-spectrum.json", 840.0),
+    "granite": ("granite-normal.bmp", "granite-normal.ttex", "granite-normal-spectrum.json", 1536.0),
 }
 _MANIFEST_NAME = "environment-normal-map-spectrum-manifest.json"
 _MANIFEST_KEYS = {
-    "schema_version", "processor_file", "processor_sha256",
-    "analyzer_file", "analyzer_sha256", "reports",
+    "schema_version", "generator_file", "generator_sha256",
+    "processor_file", "processor_sha256", "analyzer_file", "analyzer_sha256", "reports",
 }
 _RECORD_KEYS = {
-    "label", "source_file", "source_sha256", "processed_texture_sha256",
-    "report_file", "report_sha256", "width", "height", "mip_count",
+    "label", "source_file", "source_sha256", "processed_file",
+    "processed_texture_sha256", "report_file", "report_sha256",
+    "width", "height", "mip_count",
     "source_cycles_per_uv",
 }
 _HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
@@ -132,14 +133,22 @@ def verify_reports(
     if (
         set(manifest) != _MANIFEST_KEYS
         or type(manifest.get("schema_version")) is not int
-        or manifest.get("schema_version") != 1
+        or manifest.get("schema_version") != 2
     ):
         raise ReportVerificationError("Manifest fields or schema_version are unsupported.")
 
+    generator_name = _require_plain_filename(manifest.get("generator_file"), "generator_file")
+    generator_hash = _require_hash(manifest.get("generator_sha256"), "generator_sha256")
     processor_name = _require_plain_filename(manifest.get("processor_file"), "processor_file")
     processor_hash = _require_hash(manifest.get("processor_sha256"), "processor_sha256")
     analyzer_name = _require_plain_filename(manifest.get("analyzer_file"), "analyzer_file")
     analyzer_hash = _require_hash(manifest.get("analyzer_sha256"), "analyzer_sha256")
+
+    generator_path = Path(report_generator.__file__).resolve(strict=True)
+    if generator_name != generator_path.name or _sha256(generator_path) != generator_hash:
+        raise ReportVerificationError(
+            "Report generator provenance does not match generate_environment_normal_map_reports.py."
+        )
 
     analyzer_path = Path(normal_map_spectrum.__file__).resolve(strict=True)
     if analyzer_name != analyzer_path.name or _sha256(analyzer_path) != analyzer_hash:
@@ -175,14 +184,21 @@ def verify_reports(
         raise ReportVerificationError("Manifest must contain exactly bark and granite reports.")
 
     verified: List[str] = []
-    for label, (source_name, report_name, frequency) in _REPORTS.items():
+    for label, (source_name, processed_name, report_name, frequency) in _REPORTS.items():
         record = indexed[label]
-        if record.get("source_file") != source_name or record.get("report_file") != report_name:
+        if (
+            record.get("source_file") != source_name
+            or record.get("processed_file") != processed_name
+            or record.get("report_file") != report_name
+        ):
             raise ReportVerificationError("{} report record uses an unexpected filename.".format(label))
         _require_plain_filename(record.get("source_file"), "{} source_file".format(label))
+        _require_plain_filename(record.get("processed_file"), "{} processed_file".format(label))
         _require_plain_filename(record.get("report_file"), "{} report_file".format(label))
         source_hash = _require_hash(record.get("source_sha256"), "{} source_sha256".format(label))
-        _require_hash(record.get("processed_texture_sha256"), "{} processed_texture_sha256".format(label))
+        processed_hash = _require_hash(
+            record.get("processed_texture_sha256"), "{} processed_texture_sha256".format(label)
+        )
         report_hash = _require_hash(record.get("report_sha256"), "{} report_sha256".format(label))
 
         source_path = source_directory / source_name
@@ -190,6 +206,16 @@ def verify_reports(
             raise ReportVerificationError("{} source map is missing or not a regular file.".format(label))
         if _sha256(source_path) != source_hash:
             raise ReportVerificationError("{} source map SHA-256 does not match the manifest.".format(label))
+
+        processed_path = manifest_path.parent / processed_name
+        if processed_path.is_symlink() or not processed_path.is_file():
+            raise ReportVerificationError(
+                "{} processed texture is missing or not a regular file.".format(label)
+            )
+        if _sha256(processed_path) != processed_hash:
+            raise ReportVerificationError(
+                "{} processed texture SHA-256 does not match the manifest.".format(label)
+            )
 
         report_path = manifest_path.parent / report_name
         if report_path.is_symlink() or not report_path.is_file():
@@ -199,8 +225,21 @@ def verify_reports(
         report = _read_json(report_path)
         try:
             report_generator._validate_report(report, label, frequency)
-        except (report_generator.ReportGenerationError, KeyError, TypeError, AttributeError) as exc:
-            raise ReportVerificationError("{} report structure is invalid: {}".format(label, exc)) from exc
+            processed_report = normal_map_spectrum.analyze_processed_texture(
+                processed_path, [(label, frequency)]
+            )
+        except (
+            report_generator.ReportGenerationError,
+            normal_map_spectrum.SpectrumError,
+            KeyError,
+            TypeError,
+            AttributeError,
+        ) as exc:
+            raise ReportVerificationError("{} report or processed texture is invalid: {}".format(label, exc)) from exc
+        if report != processed_report:
+            raise ReportVerificationError(
+                "{} report does not match the retained processed texture.".format(label)
+            )
 
         if (
             type(record.get("width")) is not int

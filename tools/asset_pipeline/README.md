@@ -209,7 +209,8 @@ The spectrum analyzer can be run directly on an existing `.ttex` file, but the
 following orchestration command is the canonical way to measure the exact normal
 mip chains produced by the pinned engine texture processor. It invokes the processor
 without a shell, checks its exit status and output, analyzes every mip, and writes
-two deterministic JSON reports plus a SHA-256 provenance manifest:
+the processed `.ttex` containers, two deterministic JSON reports and a SHA-256
+provenance manifest:
 
 ```powershell
 python tools/asset_pipeline/generate_environment_normal_map_reports.py `
@@ -222,35 +223,39 @@ The command processes `bark-normal.bmp` (840 source cycles/UV) and
 `granite-normal.bmp` (1,536 source cycles/UV) in the engine's `normal` mode.
 Both source maps must be regular files, not file-level symbolic links; the generator
 and verifier enforce the same input-path contract so a generated artifact is immediately
-verifiable. The output directory contains `bark-normal-spectrum.json`,
-`granite-normal-spectrum.json`, and
-`environment-normal-map-spectrum-manifest.json`. The manifest records source,
-processor, processed-container and report SHA-256 digests, dimensions, mip count,
-and the source-frequency assumption for each report. It contains no timestamps or
-absolute paths, so identical inputs and processor binaries produce identical output.
+verifiable. The output directory contains `bark-normal.ttex`, `granite-normal.ttex`,
+`bark-normal-spectrum.json`, `granite-normal-spectrum.json`, and
+`environment-normal-map-spectrum-manifest.json`. The schema-v2 manifest records
+generator, analyzer, processor, source, processed-container and report SHA-256 digests,
+dimensions, mip count, and the source-frequency assumption for each report. It contains
+no timestamps or absolute paths, so identical inputs and processor binaries produce
+identical output.
 
-Reports are staged and validated before publication. A failed processor, missing or
-malformed `.ttex` output, incomplete mip inventory, invalid normal-vector metrics,
-or source-frequency mismatch returns a non-zero exit code and does not publish a
-partial report set. The manifest is removed at the start of a run and written last;
-its presence identifies a complete two-map report set. The processed `.ttex` files
-are temporary and are not retained in the output directory.
+Reports and processed containers are staged and validated before publication. A failed
+processor, missing or malformed `.ttex` output, incomplete mip inventory, invalid
+normal-vector metrics, source-frequency mismatch, or source/processor mutation during
+the run returns a non-zero exit code and does not publish a complete report set. The
+two processed `.ttex` containers are retained beside their JSON reports so the
+verifier can check their SHA-256 digests and independently recompute the report data.
+The manifest is removed at the start of a run and written last; its presence identifies
+a complete five-file report set.
 
 
 ## Verifying generated normal-map report artifacts
 
-After downloading the three-file report artifact, verify it before comparing or
+After downloading the five-file report artifact, verify it before comparing or
 sharing the measurements:
 
 ```powershell
 python tools/asset_pipeline/verify_environment_normal_map_reports.py artifacts/normal-map-spectrum/environment-normal-map-spectrum-manifest.json --source-root assets/textures/environment
 ```
 
-The verifier checks the fixed bark/granite report inventory, safe filenames,
-report and source SHA-256 values, analyzer provenance, every per-mip spectrum field,
-normalized frequency-band distributions, U/V Parseval power conservation,
-normal-vector ranges, source-frequency folding metadata, and consistency between
-the manifest and each JSON report. Pass `--texture-processor` with the original
+The verifier checks the fixed bark/granite inventory, safe filenames, generator
+and analyzer provenance, source/processed-container/report SHA-256 values, and
+re-analyzes each retained `.ttex` file to require an exact match with its JSON report.
+It also validates every per-mip spectrum field, normalized frequency-band distributions,
+U/V Parseval power conservation, normal-vector ranges, source-frequency folding
+metadata, and manifest dimensions. Pass `--texture-processor` with the original
 executable to verify its recorded binary hash as well.
 
 The manifest is unsigned. These checks detect missing, corrupted, or internally
