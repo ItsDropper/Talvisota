@@ -220,7 +220,9 @@ python tools/asset_pipeline/generate_environment_normal_map_reports.py `
 
 The command processes `bark-normal.bmp` (840 source cycles/UV) and
 `granite-normal.bmp` (1,536 source cycles/UV) in the engine's `normal` mode.
-The output directory contains `bark-normal-spectrum.json`,
+Both source maps must be regular files, not file-level symbolic links; the generator
+and verifier enforce the same input-path contract so a generated artifact is immediately
+verifiable. The output directory contains `bark-normal-spectrum.json`,
 `granite-normal-spectrum.json`, and
 `environment-normal-map-spectrum-manifest.json`. The manifest records source,
 processor, processed-container and report SHA-256 digests, dimensions, mip count,

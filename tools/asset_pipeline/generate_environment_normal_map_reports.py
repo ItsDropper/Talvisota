@@ -545,6 +545,29 @@ def _json_bytes(value: object) -> bytes:
         raise ReportGenerationError("Could not serialize deterministic report JSON: {}".format(exc)) from exc
 
 
+def _resolve_source_file(path: Path, label: str) -> Path:
+    """Resolve one shipped source map without following a file-level symlink."""
+    try:
+        if path.is_symlink():
+            raise ReportGenerationError(
+                "Required {} source normal map must not be a symbolic link: {}".format(
+                    label, path
+                )
+            )
+        source = path.resolve(strict=True)
+    except ReportGenerationError:
+        raise
+    except (OSError, RuntimeError) as exc:
+        raise ReportGenerationError(
+            "Required {} source normal map is not a regular file: {}".format(label, path)
+        ) from exc
+    if not source.is_file():
+        raise ReportGenerationError(
+            "Required {} source normal map is not a regular file: {}".format(label, path)
+        )
+    return source
+
+
 def generate_reports(
     texture_processor: Path,
     source_root: Path,
@@ -559,8 +582,8 @@ def generate_reports(
         analyzer = Path(normal_map_spectrum.__file__).resolve(strict=True)
         output_dir = Path(output_directory).resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
-        source_paths = [
-            (label, (Path(source_root) / filename).resolve(), frequency)
+        source_candidates = [
+            (label, Path(source_root) / filename, frequency)
             for label, filename, frequency in _ENVIRONMENT_MAPS
         ]
     except (OSError, RuntimeError) as exc:
@@ -573,15 +596,6 @@ def generate_reports(
         label: "{}-normal-spectrum.json".format(label)
         for label, _, _ in _ENVIRONMENT_MAPS
     }
-    protected_paths = {
-        processor, analyzer, *(source for _, source, _ in source_paths)
-    }
-    final_paths = {
-        manifest_path, *(output_dir / name for name in report_names.values())
-    }
-    if protected_paths & {path.resolve() for path in final_paths}:
-        raise ReportGenerationError("A report output path would overwrite an input file.")
-
     # A missing manifest means the two reports do not represent one complete run.
     # Invalidate any previous run before checking inputs or invoking the processor.
     try:
@@ -590,11 +604,19 @@ def generate_reports(
             raise ReportGenerationError(
                 "Texture processor is not a file: {}".format(processor)
             )
-        for label, source, _ in source_paths:
-            if not source.is_file():
-                raise ReportGenerationError(
-                    "Required {} source normal map is not a file: {}".format(label, source)
-                )
+        source_paths = [
+            (label, _resolve_source_file(source, label), frequency)
+            for label, source, frequency in source_candidates
+        ]
+        protected_paths = {
+            processor, analyzer, *(source for _, source, _ in source_paths)
+        }
+        final_paths = {
+            manifest_path, *(output_dir / name for name in report_names.values())
+        }
+        if protected_paths & {path.resolve() for path in final_paths}:
+            raise ReportGenerationError("A report output path would overwrite an input file.")
+
         processor_hash = _sha256(processor)
         analyzer_hash = _sha256(analyzer)
         with tempfile.TemporaryDirectory(

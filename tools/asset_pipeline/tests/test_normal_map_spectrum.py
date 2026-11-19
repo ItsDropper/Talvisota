@@ -694,6 +694,33 @@ class EnvironmentNormalMapReportTests(unittest.TestCase):
         run.assert_not_called()
         self.assertFalse(stale_manifest.exists())
 
+    def test_symlink_source_is_rejected_before_starting_processor(self):
+        candidate = self.source_root / "bark-normal.bmp"
+        self.output_directory.mkdir()
+        stale_manifest = self.output_directory / "environment-normal-map-spectrum-manifest.json"
+        stale_manifest.write_text('{"stale": true}', encoding="utf-8")
+        real_is_symlink = Path.is_symlink
+
+        def simulated_symlink(path):
+            if path == candidate:
+                return True
+            return real_is_symlink(path)
+
+        with mock.patch.object(
+            Path, "is_symlink", autospec=True, side_effect=simulated_symlink
+        ):
+            with mock.patch.object(report_generator.subprocess, "run") as run:
+                with self.assertRaisesRegex(
+                    report_generator.ReportGenerationError,
+                    "bark source normal map.*symbolic link",
+                ):
+                    report_generator.generate_reports(
+                        self.processor, self.source_root, self.output_directory
+                    )
+
+        run.assert_not_called()
+        self.assertFalse(stale_manifest.exists())
+
     def test_non_positive_processor_timeout_is_rejected(self):
         with self.assertRaisesRegex(
             report_generator.ReportGenerationError, "positive"
