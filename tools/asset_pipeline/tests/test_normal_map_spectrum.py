@@ -697,10 +697,13 @@ class EnvironmentNormalMapReportTests(unittest.TestCase):
             ):
                 with self.assertRaisesRegex(
                     report_generator.ReportGenerationError,
-                    "regular, non-symlink file",
+                    "symbolic link",
                 ):
                     report_generator.generate_reports(
-                        self.processor, self.source_root, self.output_directory, timeout_seconds=90
+                        self.processor,
+                        self.source_root,
+                        self.output_directory,
+                        timeout_seconds=90,
                     )
 
         self.assertFalse(

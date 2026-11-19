@@ -3,7 +3,8 @@
 
 The engine texture processor is deliberately invoked as a child process: this
 checks the same executable and command-line contract used by the Windows build.
-The resulting TVTTEX01 files are analyzed and retained beside the reports for independent verification.
+The resulting TVTTEX01 files are analyzed and retained beside the reports
+for independent verification.
 """
 
 from __future__ import annotations
@@ -83,9 +84,15 @@ def _run_texture_processor(
                 source.name, result.returncode, details
             )
         )
-    if output.is_symlink() or not output.is_file():
+    if output.is_symlink():
         raise ReportGenerationError(
-            "Texture processor output must be a regular, non-symlink file: {}".format(output)
+            "Texture processor output must not be a symbolic link: {}".format(output)
+        )
+    if not output.is_file():
+        raise ReportGenerationError(
+            "Texture processor returned success but did not create a regular file: {}".format(
+                output
+            )
         )
     try:
         size = output.stat().st_size
