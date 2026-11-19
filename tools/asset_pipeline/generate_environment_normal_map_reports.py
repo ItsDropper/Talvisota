@@ -105,7 +105,7 @@ def _require_report_object(value: object, keys: Sequence[str], description: str)
     if not isinstance(value, dict) or set(value) != set(keys):
         raise ReportGenerationError(
             "{} must be an object with exactly these fields: {}.".format(
-                description, ", ".join(sorted(keys)
+                description, ", ".join(sorted(keys))
             )
         )
     return value
