@@ -678,6 +678,37 @@ class EnvironmentNormalMapReportTests(unittest.TestCase):
                     self.processor, self.source_root, self.output_directory
                 )
 
+    def test_processor_symlink_output_is_rejected(self):
+        real_is_symlink = Path.is_symlink
+
+        def simulated_symlink(path):
+            if (
+                path.name == "bark-normal.ttex"
+                and path.parent.parent == self.output_directory.resolve()
+            ):
+                return True
+            return real_is_symlink(path)
+
+        with mock.patch.object(
+            Path, "is_symlink", autospec=True, side_effect=simulated_symlink
+        ):
+            with mock.patch.object(
+                report_generator.subprocess, "run", side_effect=self._successful_processor
+            ):
+                with self.assertRaisesRegex(
+                    report_generator.ReportGenerationError,
+                    "regular, non-symlink file",
+                ):
+                    report_generator.generate_reports(
+                        self.processor, self.source_root, self.output_directory, timeout_seconds=90
+                    )
+
+        self.assertFalse(
+            (self.output_directory / "environment-normal-map-spectrum-manifest.json").exists()
+        )
+        self.assertFalse((self.output_directory / "bark-normal.ttex").exists())
+        self.assertFalse((self.output_directory / "bark-normal-spectrum.json").exists())
+
     def test_malformed_processed_texture_is_rejected(self):
         def malformed(command, **kwargs):
             Path(command[2]).write_bytes(b"not a TVTTEX01 container" + b"x" * 16)
