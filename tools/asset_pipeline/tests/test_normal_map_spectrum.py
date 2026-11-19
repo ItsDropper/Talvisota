@@ -790,5 +790,89 @@ class EnvironmentNormalMapReportTests(unittest.TestCase):
                 manifest, self.source_root, self.root / "missing-texture-processor.exe"
             )
 
+
+    def _generated_report(self):
+        self._generate_valid_artifact()
+        return json.loads(
+            (self.output_directory / "bark-normal-spectrum.json").read_text(encoding="utf-8")
+        )
+
+    def test_report_schema_validates_spectral_fields_and_power_conservation(self):
+        report = self._generated_report()
+        report_generator._validate_report(report, "bark", 840.0)
+
+        invalid_cases = (
+            (
+                "missing tangent U projection",
+                lambda value: value["mips"][0]["tangent_xy"].pop("u_axis"),
+            ),
+            (
+                "boolean band fraction",
+                lambda value: value["mips"][0]["tangent_xy"]["energy_fraction_by_band"].__setitem__(
+                    "0_to_25_percent_nyquist", True
+                ),
+            ),
+            (
+                "non-normalized band fractions",
+                lambda value: value["mips"][0]["tangent_xy"]["energy_fraction_by_band"].__setitem__(
+                    "0_to_25_percent_nyquist", 0.95
+                ),
+            ),
+            (
+                "inconsistent U-axis Parseval total",
+                lambda value: value["mips"][0]["tangent_xy"]["u_axis"].__setitem__(
+                    "total_ac_power",
+                    value["mips"][0]["tangent_xy"]["u_axis"]["total_ac_power"] + 1.0,
+                ),
+            ),
+            (
+                "out-of-range near-Nyquist fraction",
+                lambda value: value["mips"][0]["tangent_xy"].__setitem__(
+                    "near_nyquist_power_fraction", 1.01
+                ),
+            ),
+        )
+        for description, mutate in invalid_cases:
+            with self.subTest(description=description):
+                candidate = json.loads(json.dumps(report))
+                mutate(candidate)
+                with self.assertRaises(report_generator.ReportGenerationError):
+                    report_generator._validate_report(candidate, "bark", 840.0)
+
+    def test_report_schema_validates_normal_vectors_and_folded_source_metadata(self):
+        report = self._generated_report()
+        invalid_cases = (
+            (
+                "normal mean outside range",
+                lambda value: value["mips"][0]["normal_vector_length"].__setitem__("mean", 2.0),
+            ),
+            (
+                "incorrect above-Nyquist flag",
+                lambda value: value["mips"][0]["source_frequency_alias_estimates"][0].__setitem__(
+                    "above_nyquist", False
+                ),
+            ),
+            (
+                "incorrect folded frequency",
+                lambda value: value["mips"][0]["source_frequency_alias_estimates"][0].__setitem__(
+                    "folded_cycles_per_uv", 1.0
+                ),
+            ),
+            (
+                "missing low-resolution marker",
+                lambda value: value["mips"][-1].pop("minimum_spectrum_dimension"),
+            ),
+            (
+                "boolean low-resolution marker",
+                lambda value: value["mips"][-1].__setitem__("minimum_spectrum_dimension", True),
+            ),
+        )
+        for description, mutate in invalid_cases:
+            with self.subTest(description=description):
+                candidate = json.loads(json.dumps(report))
+                mutate(candidate)
+                with self.assertRaises(report_generator.ReportGenerationError):
+                    report_generator._validate_report(candidate, "bark", 840.0)
+
 if __name__ == "__main__":
     unittest.main()

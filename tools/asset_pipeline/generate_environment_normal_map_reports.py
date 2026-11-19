@@ -101,31 +101,277 @@ def _run_texture_processor(
         )
 
 
+def _require_report_object(value: object, keys: Sequence[str], description: str) -> Dict[str, object]:
+    if not isinstance(value, dict) or set(value) != set(keys):
+        raise ReportGenerationError(
+            "{} must be an object with exactly these fields: {}.".format(
+                description, ", ".join(sorted(keys)
+            )
+        )
+    return value
+
+
+def _require_report_number(
+    value: object,
+    description: str,
+    minimum: Optional[float] = None,
+    maximum: Optional[float] = None,
+) -> float:
+    if type(value) not in (int, float) or not math.isfinite(float(value)):
+        raise ReportGenerationError("{} must be a finite number.".format(description))
+    number = float(value)
+    if minimum is not None and number < minimum:
+        raise ReportGenerationError("{} must be at least {}.".format(description, minimum))
+    if maximum is not None and number > maximum:
+        raise ReportGenerationError("{} must be at most {}.".format(description, maximum))
+    return number
+
+
+def _require_report_close(actual: float, expected: float, description: str) -> None:
+    if not math.isclose(actual, expected, rel_tol=1.0e-6, abs_tol=1.0e-7):
+        raise ReportGenerationError(
+            "{} is inconsistent: expected {:.12g}, found {:.12g}.".format(
+                description, expected, actual
+            )
+        )
+
+
+def _validate_frequency_distribution(
+    summary: Dict[str, object],
+    dimension: int,
+    description: str,
+    axis_projection: bool = False,
+) -> float:
+    base_keys = {
+        "peak_frequency_cycles_per_uv",
+        "spectral_centroid_cycles_per_uv",
+        "near_nyquist_power_fraction",
+        "energy_fraction_by_band",
+    }
+    if axis_projection:
+        keys = base_keys | {
+            "total_ac_power",
+            "zero_frequency_power",
+            "zero_frequency_fraction",
+            "nonzero_frequency_power",
+            "nonzero_frequency_fraction",
+        }
+        _require_report_object(summary, keys, description)
+    else:
+        keys = base_keys | {"total_ac_power"}
+        if not isinstance(summary, dict) or not keys.issubset(summary):
+            raise ReportGenerationError(
+                "{} is missing required frequency-summary fields.".format(description)
+            )
+
+    nyquist = dimension // 2
+    total_power = _require_report_number(
+        summary["total_ac_power"], description + ".total_ac_power", 0.0
+    )
+    if axis_projection:
+        zero_power = _require_report_number(
+            summary["zero_frequency_power"], description + ".zero_frequency_power", 0.0
+        )
+        nonzero_power = _require_report_number(
+            summary["nonzero_frequency_power"], description + ".nonzero_frequency_power", 0.0
+        )
+        _require_report_close(
+            zero_power + nonzero_power, total_power,
+            description + " zero/non-zero power conservation",
+        )
+        zero_fraction = _require_report_number(
+            summary["zero_frequency_fraction"], description + ".zero_frequency_fraction", 0.0, 1.0
+        )
+        nonzero_fraction = _require_report_number(
+            summary["nonzero_frequency_fraction"], description + ".nonzero_frequency_fraction", 0.0, 1.0
+        )
+        if total_power > 0.0:
+            _require_report_close(
+                zero_fraction, zero_power / total_power,
+                description + ".zero_frequency_fraction",
+            )
+            _require_report_close(
+                nonzero_fraction, nonzero_power / total_power,
+                description + ".nonzero_frequency_fraction",
+            )
+            _require_report_close(
+                zero_fraction + nonzero_fraction, 1.0,
+                description + " zero/non-zero frequency fractions",
+            )
+        elif zero_fraction != 0.0 or nonzero_fraction != 0.0:
+            raise ReportGenerationError(
+                "{} must report zero fractions when it has no AC power.".format(description)
+            )
+        normalization_power = nonzero_power
+    else:
+        normalization_power = total_power
+
+    peak = summary["peak_frequency_cycles_per_uv"]
+    if type(peak) is not int or not 0 <= peak <= nyquist:
+        raise ReportGenerationError(
+            "{}.peak_frequency_cycles_per_uv must be an integer in [0, {}].".format(
+                description, nyquist
+            )
+        )
+    centroid = _require_report_number(
+        summary["spectral_centroid_cycles_per_uv"],
+        description + ".spectral_centroid_cycles_per_uv",
+        0.0,
+        float(nyquist),
+    )
+    near_nyquist = _require_report_number(
+        summary["near_nyquist_power_fraction"],
+        description + ".near_nyquist_power_fraction",
+        0.0,
+        1.0,
+    )
+    bands = _require_report_object(
+        summary["energy_fraction_by_band"],
+        normal_map_spectrum._BAND_NAMES,
+        description + ".energy_fraction_by_band",
+    )
+    fractions = [
+        _require_report_number(bands[name], description + "." + name, 0.0, 1.0)
+        for name in normal_map_spectrum._BAND_NAMES
+    ]
+    expected_fraction_sum = 1.0 if normalization_power > 0.0 else 0.0
+    _require_report_close(
+        sum(fractions), expected_fraction_sum,
+        description + " frequency-band normalization",
+    )
+    _require_report_close(
+        near_nyquist, fractions[-1], description + " near-Nyquist band",
+    )
+    if normalization_power > 0.0 and peak == 0:
+        raise ReportGenerationError(
+            "{} must have a non-zero peak when non-zero frequency power exists.".format(description)
+        )
+    if normalization_power == 0.0 and (peak != 0 or centroid != 0.0):
+        raise ReportGenerationError(
+            "{} must report a zero peak and centroid without frequency power.".format(description)
+        )
+    return total_power
+
+
+def _validate_spectrum_summary(
+    summary: Dict[str, object],
+    dimension: int,
+    description: str,
+    combined: bool,
+) -> None:
+    keys = {
+        "total_ac_power",
+        "peak_frequency_cycles_per_uv",
+        "spectral_centroid_cycles_per_uv",
+        "near_nyquist_power_fraction",
+        "energy_fraction_by_band",
+        "rms_ac_byte",
+        "u_axis",
+        "v_axis",
+    }
+    if not combined:
+        keys.add("mean_byte")
+    _require_report_object(summary, keys, description)
+
+    rms = _require_report_number(
+        summary["rms_ac_byte"],
+        description + ".rms_ac_byte",
+        0.0,
+        math.sqrt(2.0) * 127.5 if combined else 127.5,
+    )
+    expected_power = rms * rms
+    radial_power = _validate_frequency_distribution(summary, dimension, description)
+    _require_report_close(
+        radial_power, expected_power, description + " RMS/power consistency",
+    )
+    if not combined:
+        _require_report_number(
+            summary["mean_byte"], description + ".mean_byte", 0.0, 255.0
+        )
+
+    u_power = _validate_frequency_distribution(
+        summary["u_axis"], dimension, description + ".u_axis", axis_projection=True
+    )
+    v_power = _validate_frequency_distribution(
+        summary["v_axis"], dimension, description + ".v_axis", axis_projection=True
+    )
+    _require_report_close(
+        u_power, expected_power, description + " U-axis Parseval conservation",
+    )
+    _require_report_close(
+        v_power, expected_power, description + " V-axis Parseval conservation",
+    )
+    _require_report_close(
+        u_power, v_power, description + " U/V power conservation",
+    )
+
+
+def _validate_scalar_summary(
+    summary: Dict[str, object], description: str, combined: bool
+) -> None:
+    if combined:
+        _require_report_object(
+            summary, {"total_ac_power", "rms_ac_byte"}, description
+        )
+        rms = _require_report_number(
+            summary["rms_ac_byte"], description + ".rms_ac_byte", 0.0,
+            math.sqrt(2.0) * 127.5,
+        )
+        power = _require_report_number(
+            summary["total_ac_power"], description + ".total_ac_power", 0.0
+        )
+        _require_report_close(power, rms * rms, description + " RMS/power consistency")
+    else:
+        _require_report_object(summary, {"mean_byte", "rms_ac_byte"}, description)
+        _require_report_number(
+            summary["mean_byte"], description + ".mean_byte", 0.0, 255.0
+        )
+        _require_report_number(
+            summary["rms_ac_byte"], description + ".rms_ac_byte", 0.0, 127.5
+        )
+
+
 def _validate_report(
     report: Dict[str, object], label: str, source_frequency: float
 ) -> None:
-    if report.get("container") != "TVTTEX01":
-        raise ReportGenerationError("{} report is not a TVTTEX01 analysis.".format(label))
-    if report.get("pixel_format") != "RGBA8" or report.get("color_space") != "linear":
+    _require_report_object(
+        report,
+        {
+            "image", "container", "version", "width", "height",
+            "pixel_format", "color_space", "mip_count", "mips",
+        },
+        label + " report",
+    )
+    if (
+        report["image"] != "{}-normal.ttex".format(label)
+        or report["container"] != "TVTTEX01"
+        or type(report["version"]) is not int
+        or report["version"] != 1
+        or report["pixel_format"] != "RGBA8"
+        or report["color_space"] != "linear"
+    ):
         raise ReportGenerationError(
-            "{} report does not describe a linear RGBA8 normal texture.".format(label)
+            "{} report has unsupported image, container, version, or format metadata.".format(label)
         )
 
-    width = report.get("width")
-    height = report.get("height")
-    mips = report.get("mips")
+    width = report["width"]
+    height = report["height"]
+    mips = report["mips"]
     if (
         type(width) is not int
         or type(height) is not int
         or width != height
         or width < 16
+        or width > 2048
         or width & (width - 1)
         or not isinstance(mips, list)
-        or type(report.get("mip_count")) is not int
-        or report.get("mip_count") != len(mips)
-        or not mips
+        or type(report["mip_count"]) is not int
+        or report["mip_count"] != width.bit_length()
+        or report["mip_count"] != len(mips)
     ):
-        raise ReportGenerationError("{} report has invalid base dimensions or mip inventory.".format(label))
+        raise ReportGenerationError(
+            "{} report has invalid base dimensions or mip inventory.".format(label)
+        )
 
     expected_width = width
     expected_height = height
@@ -134,30 +380,65 @@ def _validate_report(
             raise ReportGenerationError(
                 "{} report has a non-object mip entry at level {}.".format(label, level)
             )
+        resolvable = expected_width >= normal_map_spectrum._MIN_SPECTRUM_DIMENSION
+        mip_keys = {
+            "level", "width", "height", "nyquist_cycles_per_uv",
+            "normal_vector_length", "analysis_status", "channels",
+            "tangent_xy", "source_frequency_alias_estimates",
+        }
+        if not resolvable:
+            mip_keys.add("minimum_spectrum_dimension")
+        _require_report_object(mip, mip_keys, "{} mip {}".format(label, level))
+
         if (
-            type(mip.get("level")) is not int
-            or mip.get("level") != level
-            or type(mip.get("width")) is not int
-            or mip.get("width") != expected_width
-            or type(mip.get("height")) is not int
-            or mip.get("height") != expected_height
+            type(mip["level"]) is not int
+            or mip["level"] != level
+            or type(mip["width"]) is not int
+            or mip["width"] != expected_width
+            or type(mip["height"]) is not int
+            or mip["height"] != expected_height
         ):
             raise ReportGenerationError(
                 "{} report has an invalid dimension at mip {}.".format(label, level)
             )
+        nyquist = _require_report_number(
+            mip["nyquist_cycles_per_uv"],
+            "{} mip {} Nyquist frequency".format(label, level),
+            0.0,
+        )
+        _require_report_close(
+            nyquist, expected_width / 2.0,
+            "{} mip {} Nyquist frequency".format(label, level),
+        )
 
-        normal = mip.get("normal_vector_length")
-        if not isinstance(normal, dict):
+        normal = _require_report_object(
+            mip["normal_vector_length"],
+            {
+                "mean", "minimum", "maximum", "rms_deviation_from_unit",
+                "samples_outside_2_percent",
+            },
+            "{} mip {} normal-vector metrics".format(label, level),
+        )
+        normal_mean = _require_report_number(
+            normal["mean"], "{} mip {} normal mean".format(label, level), 0.0, math.sqrt(3.0)
+        )
+        normal_minimum = _require_report_number(
+            normal["minimum"], "{} mip {} normal minimum".format(label, level), 0.0, math.sqrt(3.0)
+        )
+        normal_maximum = _require_report_number(
+            normal["maximum"], "{} mip {} normal maximum".format(label, level), 0.0, math.sqrt(3.0)
+        )
+        _require_report_number(
+            normal["rms_deviation_from_unit"],
+            "{} mip {} normal-length RMS deviation".format(label, level),
+            0.0,
+            1.0,
+        )
+        if not normal_minimum <= normal_mean <= normal_maximum:
             raise ReportGenerationError(
-                "{} report is missing normal-vector metrics at mip {}.".format(label, level)
+                "{} mip {} normal-length mean is outside its reported range.".format(label, level)
             )
-        for key in ("mean", "minimum", "maximum", "rms_deviation_from_unit"):
-            value = normal.get(key)
-            if type(value) not in (int, float) or not math.isfinite(value):
-                raise ReportGenerationError(
-                    "{} report has an invalid {} metric at mip {}.".format(label, key, level)
-                )
-        outside = normal.get("samples_outside_2_percent")
+        outside = normal["samples_outside_2_percent"]
         if type(outside) is not int or not 0 <= outside <= expected_width * expected_height:
             raise ReportGenerationError(
                 "{} report has an invalid normal-vector tolerance count at mip {}.".format(
@@ -165,26 +446,97 @@ def _validate_report(
                 )
             )
 
-        estimates = mip.get("source_frequency_alias_estimates")
+        estimates = mip["source_frequency_alias_estimates"]
+        if not isinstance(estimates, list) or len(estimates) != 1 or not isinstance(estimates[0], dict):
+            raise ReportGenerationError(
+                "{} report has an invalid source-frequency estimate at mip {}.".format(label, level)
+            )
+        estimate = _require_report_object(
+            estimates[0],
+            {"label", "source_cycles_per_uv", "above_nyquist", "folded_cycles_per_uv"},
+            "{} mip {} source-frequency estimate".format(label, level),
+        )
+        expected_above_nyquist = source_frequency > expected_width / 2.0
+        expected_folded = normal_map_spectrum.fold_source_frequency(
+            source_frequency, expected_width
+        )
         if (
-            not isinstance(estimates, list)
-            or len(estimates) != 1
-            or not isinstance(estimates[0], dict)
-            or estimates[0].get("label") != label
-            or estimates[0].get("source_cycles_per_uv") != source_frequency
+            estimate["label"] != label
+            or type(estimate["above_nyquist"]) is not bool
+            or estimate["above_nyquist"] != expected_above_nyquist
         ):
             raise ReportGenerationError(
-                "{} report is missing its expected source-frequency estimate at mip {}.".format(
+                "{} report has inconsistent source-frequency metadata at mip {}.".format(
                     label, level
                 )
             )
+        _require_report_close(
+            _require_report_number(
+                estimate["source_cycles_per_uv"],
+                "{} mip {} source frequency".format(label, level),
+                0.0,
+            ),
+            source_frequency,
+            "{} mip {} source frequency".format(label, level),
+        )
+        _require_report_close(
+            _require_report_number(
+                estimate["folded_cycles_per_uv"],
+                "{} mip {} folded source frequency".format(label, level),
+                0.0,
+                expected_width / 2.0,
+            ),
+            expected_folded,
+            "{} mip {} folded source frequency".format(label, level),
+        )
 
+        channels = _require_report_object(
+            mip["channels"], {"red_x", "green_y"},
+            "{} mip {} channels".format(label, level),
+        )
+        tangent = mip["tangent_xy"]
+        if resolvable:
+            if mip["analysis_status"] != "spectrum":
+                raise ReportGenerationError(
+                    "{} mip {} must contain a frequency spectrum.".format(label, level)
+                )
+            _validate_spectrum_summary(
+                channels["red_x"], expected_width,
+                "{} mip {} red_x".format(label, level), combined=False,
+            )
+            _validate_spectrum_summary(
+                channels["green_y"], expected_width,
+                "{} mip {} green_y".format(label, level), combined=False,
+            )
+            _validate_spectrum_summary(
+                tangent, expected_width,
+                "{} mip {} tangent_xy".format(label, level), combined=True,
+            )
+        else:
+            if (
+                mip["analysis_status"] != "insufficient_frequency_resolution"
+                or type(mip["minimum_spectrum_dimension"]) is not int
+                or mip["minimum_spectrum_dimension"] != normal_map_spectrum._MIN_SPECTRUM_DIMENSION
+            ):
+                raise ReportGenerationError(
+                    "{} mip {} has invalid low-resolution spectrum metadata.".format(label, level)
+                )
+            _validate_scalar_summary(
+                channels["red_x"], "{} mip {} red_x".format(label, level), combined=False
+            )
+            _validate_scalar_summary(
+                channels["green_y"], "{} mip {} green_y".format(label, level), combined=False
+            )
+            _validate_scalar_summary(
+                tangent, "{} mip {} tangent_xy".format(label, level), combined=True
+            )
         expected_width = max(1, (expected_width + 1) // 2)
         expected_height = max(1, (expected_height + 1) // 2)
 
-    if (mips[-1].get("width"), mips[-1].get("height")) != (1, 1):
-        raise ReportGenerationError("{} report does not contain a complete mip chain.".format(label))
-
+    if (mips[-1]["width"], mips[-1]["height"]) != (1, 1):
+        raise ReportGenerationError(
+            "{} report does not contain a complete mip chain.".format(label)
+        )
 
 def _json_bytes(value: object) -> bytes:
     try:

@@ -245,8 +245,9 @@ python tools/asset_pipeline/verify_environment_normal_map_reports.py artifacts/n
 ```
 
 The verifier checks the fixed bark/granite report inventory, safe filenames,
-report and source SHA-256 values, analyzer provenance, per-mip dimensions,
-normal-vector metrics, source-frequency assumptions, and consistency between
+report and source SHA-256 values, analyzer provenance, every per-mip spectrum field,
+normalized frequency-band distributions, U/V Parseval power conservation,
+normal-vector ranges, source-frequency folding metadata, and consistency between
 the manifest and each JSON report. Pass `--texture-processor` with the original
 executable to verify its recorded binary hash as well.
 
