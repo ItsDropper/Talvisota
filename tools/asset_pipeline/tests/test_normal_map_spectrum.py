@@ -643,6 +643,10 @@ class EnvironmentNormalMapReportTests(unittest.TestCase):
         )
 
     def test_processor_failure_does_not_publish_partial_reports(self):
+        self._generate_valid_artifact()
+        unrelated = self.output_directory / "keep.txt"
+        unrelated.write_text("not owned by the report generator", encoding="utf-8")
+
         def fail_second_map(command, **kwargs):
             if Path(command[1]).name == "granite-normal.bmp":
                 return subprocess.CompletedProcess(command, 7, "", "deliberate processor failure")
@@ -658,13 +662,30 @@ class EnvironmentNormalMapReportTests(unittest.TestCase):
                     self.processor, self.source_root, self.output_directory, timeout_seconds=90
                 )
 
-        self.assertFalse(
-            (self.output_directory / "environment-normal-map-spectrum-manifest.json").exists()
-        )
-        self.assertFalse((self.output_directory / "bark-normal.ttex").exists())
-        self.assertFalse((self.output_directory / "granite-normal.ttex").exists())
-        self.assertFalse((self.output_directory / "bark-normal-spectrum.json").exists())
-        self.assertFalse((self.output_directory / "granite-normal-spectrum.json").exists())
+        for name in (
+            "environment-normal-map-spectrum-manifest.json",
+            "bark-normal.ttex",
+            "granite-normal.ttex",
+            "bark-normal-spectrum.json",
+            "granite-normal-spectrum.json",
+        ):
+            self.assertFalse((self.output_directory / name).exists(), name)
+        self.assertEqual(unrelated.read_text(encoding="utf-8"), "not owned by the report generator")
+
+    def test_output_collision_does_not_delete_texture_processor(self):
+        self.output_directory.mkdir()
+        processor = self.output_directory / "environment-normal-map-spectrum-manifest.json"
+        processor.write_bytes(b"processor input collides with manifest output")
+        original = processor.read_bytes()
+
+        with self.assertRaisesRegex(
+            report_generator.ReportGenerationError, "overwrite an input file"
+        ):
+            report_generator.generate_reports(
+                processor, self.source_root, self.output_directory
+            )
+
+        self.assertEqual(processor.read_bytes(), original)
 
     def test_processor_success_without_output_is_rejected(self):
         with mock.patch.object(
@@ -730,10 +751,8 @@ class EnvironmentNormalMapReportTests(unittest.TestCase):
         )
 
     def test_missing_source_is_rejected_before_starting_processor(self):
+        self._generate_valid_artifact()
         (self.source_root / "granite-normal.bmp").unlink()
-        self.output_directory.mkdir()
-        stale_manifest = self.output_directory / "environment-normal-map-spectrum-manifest.json"
-        stale_manifest.write_text('{"stale": true}', encoding="utf-8")
         with mock.patch.object(report_generator.subprocess, "run") as run:
             with self.assertRaisesRegex(
                 report_generator.ReportGenerationError, "granite source normal map"
@@ -742,7 +761,14 @@ class EnvironmentNormalMapReportTests(unittest.TestCase):
                     self.processor, self.source_root, self.output_directory
                 )
         run.assert_not_called()
-        self.assertFalse(stale_manifest.exists())
+        for name in (
+            "environment-normal-map-spectrum-manifest.json",
+            "bark-normal.ttex",
+            "granite-normal.ttex",
+            "bark-normal-spectrum.json",
+            "granite-normal-spectrum.json",
+        ):
+            self.assertFalse((self.output_directory / name).exists(), name)
 
     def test_symlink_source_is_rejected_before_starting_processor(self):
         candidate = self.source_root / "bark-normal.bmp"

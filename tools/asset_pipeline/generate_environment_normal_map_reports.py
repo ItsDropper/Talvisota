@@ -608,10 +608,34 @@ def generate_reports(
         label: "{}-normal-spectrum.json".format(label)
         for label, _, _ in _ENVIRONMENT_MAPS
     }
-    # A missing manifest means the two reports do not represent one complete run.
-    # Invalidate any previous run before checking inputs or invoking the processor.
+    # A missing manifest means the payload files do not represent a complete run.
+    # Check aliases before cleanup: the manifest path itself may be the processor.
+    previous_outputs = [
+        manifest_path,
+        *(output_dir / name for name in processed_names.values()),
+        *(output_dir / name for name in report_names.values()),
+    ]
     try:
-        manifest_path.unlink(missing_ok=True)
+        protected_paths = {
+            processor,
+            generator,
+            analyzer,
+            *(source.resolve() for _, source, _ in source_candidates),
+        }
+        resolved_outputs = {path.resolve() for path in previous_outputs}
+        if protected_paths & resolved_outputs:
+            raise ReportGenerationError("A report output path would overwrite an input file.")
+
+        # Invalidate the previous artifact before validating inputs or running the
+        # processor. Unlink removes a stale symlink itself, never its target.
+        for path in previous_outputs:
+            try:
+                path.unlink(missing_ok=True)
+            except OSError as exc:
+                raise ReportGenerationError(
+                    "Could not invalidate previous report output '{}': {}".format(path, exc)
+                ) from exc
+
         if not processor.is_file():
             raise ReportGenerationError(
                 "Texture processor is not a file: {}".format(processor)
@@ -620,16 +644,6 @@ def generate_reports(
             (label, _resolve_source_file(source, label), frequency)
             for label, source, frequency in source_candidates
         ]
-        protected_paths = {
-            processor, generator, analyzer, *(source for _, source, _ in source_paths)
-        }
-        final_paths = {
-            manifest_path,
-            *(output_dir / name for name in processed_names.values()),
-            *(output_dir / name for name in report_names.values()),
-        }
-        if protected_paths & {path.resolve() for path in final_paths}:
-            raise ReportGenerationError("A report output path would overwrite an input file.")
 
         source_hashes = {
             label: _sha256(source) for label, source, _ in source_paths

@@ -232,14 +232,18 @@ dimensions, mip count, and the source-frequency assumption for each report. It c
 no timestamps or absolute paths, so identical inputs and processor binaries produce
 identical output.
 
-Reports and processed containers are staged and validated before publication. A failed
-processor, missing or malformed `.ttex` output, incomplete mip inventory, invalid
-normal-vector metrics, source-frequency mismatch, or source/processor mutation during
-the run returns a non-zero exit code and does not publish a complete report set. The
-two processed `.ttex` containers are retained beside their JSON reports so the
-verifier can check their SHA-256 digests and independently recompute the report data.
-The manifest is removed at the start of a run and written last; its presence identifies
-a complete five-file report set.
+Reports and processed containers are staged and validated before publication. Before
+cleanup, the generator checks that none of the five output paths aliases the processor,
+generator, analyzer, or either source map. It then removes the previous manifest and
+the four known generated files before validating inputs or running the processor.
+This prevents a failed regeneration from leaving stale payloads beside a missing
+manifest; unrelated files in the output directory are preserved. A failed processor,
+missing or malformed `.ttex` output, incomplete mip inventory, invalid normal-vector
+metrics, source-frequency mismatch, or source/processor mutation during the run
+returns a non-zero exit code and publishes no partial report set. The two processed
+`.ttex` containers are retained beside their JSON reports so the verifier can check
+their SHA-256 digests and independently recompute the report data. The manifest is
+written last; its presence identifies a complete five-file report set.
 
 
 ## Verifying generated normal-map report artifacts
