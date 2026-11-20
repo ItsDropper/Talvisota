@@ -1,0 +1,84 @@
+# Original physically-based winter forest material set. Values are linear reflectance factors.
+newmtl pine_bark
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
+newmtl pine_needles
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/pine_needles-albedo.bmp
+map_Bump ../../textures/environment/pine_needles-normal.bmp
+map_Pr ../../textures/environment/pine_needles-roughness.bmp
+map_AO ../../textures/environment/pine_needles-ao.bmp
+newmtl birch_bark
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/birch_bark-albedo.bmp
+map_Bump ../../textures/environment/birch_bark-normal.bmp
+map_Pr ../../textures/environment/birch_bark-roughness.bmp
+map_AO ../../textures/environment/birch_bark-ao.bmp
+newmtl birch_dark
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
+newmtl aspen_bark
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/aspen_bark-albedo.bmp
+map_Bump ../../textures/environment/aspen_bark-normal.bmp
+map_Pr ../../textures/environment/aspen_bark-roughness.bmp
+map_AO ../../textures/environment/aspen_bark-ao.bmp
+newmtl alder_bark
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/alder_bark-albedo.bmp
+map_Bump ../../textures/environment/alder_bark-normal.bmp
+map_Pr ../../textures/environment/alder_bark-roughness.bmp
+map_AO ../../textures/environment/alder_bark-ao.bmp
+newmtl twig
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
+
+newmtl juniper_stem
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
+
+newmtl juniper_needles
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/pine_needles-albedo.bmp
+map_Bump ../../textures/environment/pine_needles-normal.bmp
+map_Pr ../../textures/environment/pine_needles-roughness.bmp
+map_AO ../../textures/environment/pine_needles-ao.bmp
+
+newmtl juniper_snow
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/snow-albedo.bmp
+map_Bump ../../textures/environment/snow-normal.bmp
+map_Pr ../../textures/environment/snow-roughness.bmp
+map_AO ../../textures/environment/snow-ao.bmp

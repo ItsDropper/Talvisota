@@ -1,0 +1,98 @@
+TALVISOTA SOURCE-AVAILABLE REFERENCE LICENCE
+Version 1.0
+Copyright (c) 2026 ItsDropper. All rights reserved.
+
+IMPORTANT: This is a custom, restrictive licence. It is not an open-source
+licence and does not grant the rights commonly granted by MIT, BSD, Apache-2.0,
+GPL, or similar licences.
+
+1. OWNERSHIP
+
+The project source code, original documentation, original artwork, original
+audio, original models, textures, animations, designs, and other materials
+published in this repository (collectively, the "Materials") are protected by
+applicable intellectual-property laws. Copyright and all other rights remain
+with their respective owners.
+
+2. LIMITED INSPECTION PERMISSION
+
+You may access, view, read, and study the Materials through this public
+repository for personal evaluation, learning, criticism, and reference.
+
+You may independently develop your own work using general ideas, concepts,
+techniques, methods, functionality, facts, and skills learned from studying
+the Materials, provided that your work is independently created and does not
+copy, reproduce, adapt, translate, or otherwise reuse protected expression
+from the Materials.
+
+This limited permission does not grant any right to use the Materials in a
+product, project, repository, dataset, model-training corpus, or other
+distribution.
+
+3. PROHIBITED USES
+
+Unless you receive prior, explicit, written permission from the relevant
+rights holder, you may not:
+
+- Copy, reproduce, republish, mirror, redistribute, sublicense, sell, or
+  otherwise make any part of the Materials available elsewhere.
+- Incorporate source code, code fragments, assets, documentation text, or
+  other protected expression from the Materials into another project.
+- Modify, translate, adapt, port, or create derivative works based on the
+  Materials.
+- Present any part of the Materials as your own work.
+- Use the Materials as training data or input for training, fine-tuning, or
+  evaluating machine-learning or generative-AI models.
+- Remove, obscure, or alter copyright, attribution, or licence notices.
+
+Access to the repository, the ability to fork it on a hosting platform, or
+the availability of a download does not grant any of the rights listed above.
+A platform's technical features do not expand this licence.
+
+4. INDEPENDENT IMPLEMENTATION AND INSPIRATION
+
+This licence does not claim ownership over abstract ideas, gameplay concepts,
+historical facts, general techniques, algorithms as such, or methods of
+operation. Independent implementations of those unprotected elements are
+permitted, provided they do not copy protected expression, confidential
+information, or third-party material.
+
+Similarity of high-level functionality alone does not automatically establish
+permission to copy code or assets. When in doubt, create an independent
+implementation and obtain qualified legal advice.
+
+5. THIRD-PARTY MATERIALS
+
+Third-party components, libraries, fonts, trademarks, historical materials,
+and other externally sourced content are not relicensed by this document.
+They remain subject to their own applicable terms. Their licences and notices
+must be respected independently.
+
+6. NO WARRANTY
+
+THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT, TO THE MAXIMUM EXTENT
+PERMITTED BY APPLICABLE LAW.
+
+7. TERMINATION
+
+Any permission granted under this licence terminates automatically if you
+materially breach its terms. Termination does not affect rights or remedies
+that may exist independently under applicable law.
+
+8. PERMISSIONS AND CONTACT
+
+Requests for permissions beyond the limited inspection permission must be
+made to the relevant copyright holder and must be granted explicitly in
+writing. Silence, public availability, issue discussion, or informal
+acknowledgement does not constitute permission.
+
+9. GOVERNING LAW
+
+This document does not attempt to override mandatory rights or protections
+under applicable law. Any governing-law or jurisdiction question must be
+determined with qualified legal advice appropriate to the relevant parties
+and circumstances.
+
+END OF LICENCE

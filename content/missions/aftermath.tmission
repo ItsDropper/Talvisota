@@ -1,0 +1,12 @@
+talvisota-mission	1
+id = mission.sakkola.aftermath
+name = Sakkola Aftermath
+world_id = world.sakkola
+region_id = region.sakkola.church_village
+player_character_id = character.sakkola_infantryman
+faction_id = faction.finnish
+environment_profile = low_visibility
+description = The approach has fallen quiet. Check the damaged roadside boundary and the northern barn, then report to the church post. The villagers have been kept away from the fighting; the section must confirm the route is safe before they return. This is fictional connective storytelling, not a claim about a documented incident.
+objective = objective.check-damaged-fence -> prop.fence.05
+objective = objective.check-northern-barn -> barn.north
+objective = objective.report-aftermath -> church.sakkola

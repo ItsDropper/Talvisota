@@ -1,0 +1,11 @@
+talvisota-mission	1
+id = mission.taipale.riverfront-watch
+name = Taipale Riverfront — Before the Storm
+world_id = world.taipale
+region_id = region.taipale.riverfront
+player_character_id = character.sakkola_infantryman
+faction_id = faction.finnish
+description = A quiet riverfront patrol brings you to the Taipale sector. Check the watch post and nearby farmstead, then report to the command hut. The landscape is prepared for a later, larger fictional battle; this opening mission focuses on arrival and place.
+objective = objective.taipale.reach-watch-post -> prop.taipale.watch_post
+objective = objective.taipale.check-farmstead -> prop.taipale.farmstead
+objective = objective.taipale.report-command -> prop.taipale.command_hut

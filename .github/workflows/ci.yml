@@ -1,0 +1,600 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      validation:
+        description: 'Validation depth for a manual run'
+        type: choice
+        options: [fast, full]
+        default: fast
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: talvisota-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect expensive visual validation changes
+    runs-on: ubuntu-latest
+    outputs:
+      full_visual: ${{ steps.filter.outputs.full_visual == 'true' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.validation == 'full') }}
+    steps:
+      - name: Check out source for path detection
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect visual and asset changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          token: ${{ github.token }}
+          base: ${{ github.event_name == 'push' && github.event.before || 'main' }}
+          filters: |
+            full_visual:
+              - 'tools/blender_asset_pipeline/**'
+              - 'tools/asset_pipeline/**'
+              - 'assets/**'
+              - 'content/**'
+              - 'src/talvisota/app/**'
+              - 'src/talvisota/presentation/**'
+              - 'src/talvisota/world/**'
+              - 'tests/world/WorldRegionTests.cpp'
+              - 'CMakeLists.txt'
+              - '.github/workflows/ci.yml'
+
+  blender-tree-assets:
+    name: Blender procedural tree assets
+    needs: changes
+    if: needs.changes.outputs.full_visual == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install Blender and Python dependency tooling
+        timeout-minutes: 8
+        run: |
+          sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=30
+          sudo apt-get install --yes --no-install-recommends blender python3-pip
+
+      - name: Detect Blender Python version
+        id: blender-python-version
+        run: |
+          blender --background --python-expr "import sys; print('BLENDER_PYTHON_VERSION=' + str(sys.version_info.major) + '.' + str(sys.version_info.minor))" | tee "$RUNNER_TEMP/blender-python-version.log"
+          blender_python_version=$(sed -n 's/^BLENDER_PYTHON_VERSION=//p' "$RUNNER_TEMP/blender-python-version.log" | tail -n 1)
+          runner_python_version=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+          if [[ -z "$blender_python_version" || "$blender_python_version" != "$runner_python_version" ]]; then
+            echo "Blender Python $blender_python_version does not match runner Python $runner_python_version" >&2
+            exit 1
+          fi
+          echo "version=$blender_python_version" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Blender Python dependency cache
+        id: blender-python-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/blender-python
+          key: blender-python-${{ steps.blender-python-version.outputs.version }}-numpy2.4-pillow12-v3
+
+      - name: Validate Blender Python dependency cache
+        id: blender-python-deps
+        run: |
+          if [[ -d "$RUNNER_TEMP/blender-python/numpy" && -d "$RUNNER_TEMP/blender-python/PIL" ]]; then
+            echo "valid=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "valid=false" >> "$GITHUB_OUTPUT"
+            rm -rf "$RUNNER_TEMP/blender-python"
+          fi
+
+      - name: Install NumPy and Pillow for Blender's Python version
+        if: steps.blender-python-deps.outputs.valid != 'true'
+        timeout-minutes: 5
+        run: |
+          python3 -m pip install --disable-pip-version-check --retries 2 --timeout 20 --target "$RUNNER_TEMP/blender-python" --only-binary=:all: "numpy>=2.4,<3" "pillow>=12,<14"
+
+      - name: Configure Blender Python dependencies
+        run: echo "PYTHONPATH=$RUNNER_TEMP/blender-python" >> "$GITHUB_ENV"
+
+      - name: Verify Blender Python dependencies
+        run: |
+          blender --background --python-expr "import sys; sys.path.insert(0, r'$RUNNER_TEMP/blender-python'); import numpy, PIL; print('BLENDER_DEPS_OK', numpy.__version__, PIL.__version__)" | tee "$RUNNER_TEMP/blender-python-verify.log"
+          grep -q 'BLENDER_DEPS_OK' "$RUNNER_TEMP/blender-python-verify.log"
+
+      - name: Record Blender toolchain version
+        id: tree-blender-version
+        run: echo "version=$(blender --version | head -n 1 | tr ' ' '-')" >> "$GITHUB_OUTPUT"
+
+      - name: Restore deterministic Scots pine outputs
+        id: tree-output-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/generated-trees
+          key: talvisota-scots-pine-${{ runner.os }}-${{ steps.tree-blender-version.outputs.version }}-${{ hashFiles('tools/blender_asset_pipeline/**/*.py', 'assets/models/environment/**', 'assets/materials/environment/**', 'assets/textures/environment/**', 'tools/asset_pipeline/**', 'CMakeLists.txt') }}
+
+      - name: Generate source PBR maps
+        if: steps.tree-output-cache.outputs.cache-hit != 'true'
+        run: |
+          cmake -S . -B build-blender -DBUILD_TESTING=OFF
+          cmake --build build-blender --target talvisota_environment_textures --parallel
+
+      - name: Generate deterministic Scots pine LODs
+        if: steps.tree-output-cache.outputs.cache-hit != 'true'
+        run: |
+          blender --background --python-expr "import sys; sys.path.insert(0, r'$RUNNER_TEMP/blender-python')" --python tools/blender_asset_pipeline/generate_tree.py -- --output "$RUNNER_TEMP/generated-trees" --texture-root assets/textures/environment --seed 1939
+
+      - name: Re-import and validate generated GLBs
+        run: |
+          blender --background --python-expr "import sys; sys.path.insert(0, r'$RUNNER_TEMP/blender-python')" --python tools/blender_asset_pipeline/verify_tree_outputs.py -- "$RUNNER_TEMP/generated-trees"
+
+      - name: Render Scots pine snow-load review views
+        run: |
+          blender --background --python-expr "import sys; sys.path.insert(0, r'$RUNNER_TEMP/blender-python')" --python tools/blender_asset_pipeline/render_tree_previews.py -- "$RUNNER_TEMP/generated-trees/scots_pine.blend" "$RUNNER_TEMP/tree-previews"
+          test -s "$RUNNER_TEMP/tree-previews/scots_pine_snow_detail.png"
+          test -s "$RUNNER_TEMP/tree-previews/scots_pine_review_contact_sheet.png"
+
+      - name: Upload Scots pine visual review previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: talvisota-scots-pine-review-previews
+          path: ${{ runner.temp }}/tree-previews/*.png
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload generated Scots pine runtime model
+        uses: actions/upload-artifact@v4
+        with:
+          name: talvisota-scots-pine-runtime-model
+          path: |
+            ${{ runner.temp }}/generated-trees/scots_pine_lod*.glb
+            ${{ runner.temp }}/generated-trees/scots_pine.asset.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Check photogrammetry ingestion entry points
+        if: steps.tree-output-cache.outputs.cache-hit != 'true'
+        run: |
+          python3 -m py_compile tools/blender_asset_pipeline/ingest_scanned_tree.py tools/blender_asset_pipeline/verify_scanned_tree.py
+          blender --background --python tools/blender_asset_pipeline/ingest_scanned_tree.py -- --help
+
+      - name: Verify generated asset inventory
+        shell: bash
+        run: |
+          python3 - "$RUNNER_TEMP/generated-trees/scots_pine.asset.json" <<'PY'
+          import json, pathlib, sys
+          manifest = json.loads(pathlib.Path(sys.argv[1]).read_text())
+          assert manifest["species"] == "Pinus sylvestris"
+          assert set(manifest["lods"]) == {"LOD0", "LOD1", "LOD2", "LOD3"}
+          assert all(item["objects"] <= 3 for item in manifest["lods"].values())
+          assert all(item["snow_triangles"] == item["snow_caps"] * 66 for item in manifest["lods"].values())
+          assert [manifest["lods"][f"LOD{lod}"]["snow_caps"] for lod in range(4)] == [120, 80, 42, 18]
+          for lod in range(4):
+              model = pathlib.Path(sys.argv[1]).parent / f"scots_pine_lod{lod}.glb"
+              assert model.is_file() and model.stat().st_size > 128, model
+          print(json.dumps(manifest["lods"], indent=2))
+          PY
+
+  blender-boulder-assets:
+    name: Blender granite boulder assets
+    needs: changes
+    if: needs.changes.outputs.full_visual == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install Blender and Python dependency tooling
+        timeout-minutes: 8
+        run: |
+          sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=30
+          sudo apt-get install --yes --no-install-recommends blender python3-pip
+
+      - name: Detect Blender Python version
+        id: blender-python-version
+        run: |
+          blender --background --python-expr "import sys; print('BLENDER_PYTHON_VERSION=' + str(sys.version_info.major) + '.' + str(sys.version_info.minor))" | tee "$RUNNER_TEMP/blender-python-version.log"
+          blender_python_version=$(sed -n 's/^BLENDER_PYTHON_VERSION=//p' "$RUNNER_TEMP/blender-python-version.log" | tail -n 1)
+          runner_python_version=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+          if [[ -z "$blender_python_version" || "$blender_python_version" != "$runner_python_version" ]]; then
+            echo "Blender Python $blender_python_version does not match runner Python $runner_python_version" >&2
+            exit 1
+          fi
+          echo "version=$blender_python_version" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Blender Python dependency cache
+        id: blender-python-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/blender-python
+          key: blender-python-${{ steps.blender-python-version.outputs.version }}-numpy2.4-pillow12-v3
+
+      - name: Validate Blender Python dependency cache
+        id: blender-python-deps
+        run: |
+          if [[ -d "$RUNNER_TEMP/blender-python/numpy" && -d "$RUNNER_TEMP/blender-python/PIL" ]]; then
+            echo "valid=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "valid=false" >> "$GITHUB_OUTPUT"
+            rm -rf "$RUNNER_TEMP/blender-python"
+          fi
+
+      - name: Install NumPy and Pillow for Blender's Python version
+        if: steps.blender-python-deps.outputs.valid != 'true'
+        timeout-minutes: 5
+        run: |
+          python3 -m pip install --disable-pip-version-check --retries 2 --timeout 20 --target "$RUNNER_TEMP/blender-python" --only-binary=:all: "numpy>=2.4,<3" "pillow>=12,<14"
+
+      - name: Configure Blender Python dependencies
+        run: echo "PYTHONPATH=$RUNNER_TEMP/blender-python" >> "$GITHUB_ENV"
+
+      - name: Verify Blender Python dependencies
+        run: |
+          blender --background --python-expr "import sys; sys.path.insert(0, r'$RUNNER_TEMP/blender-python'); import numpy, PIL; print('BLENDER_DEPS_OK', numpy.__version__, PIL.__version__)" | tee "$RUNNER_TEMP/blender-python-verify.log"
+          grep -q 'BLENDER_DEPS_OK' "$RUNNER_TEMP/blender-python-verify.log"
+
+      - name: Record Blender toolchain version
+        id: boulder-blender-version
+        run: echo "version=$(blender --version | head -n 1 | tr ' ' '-')" >> "$GITHUB_OUTPUT"
+
+      - name: Restore deterministic Granite boulder outputs
+        id: boulder-output-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/generated-boulder
+          key: talvisota-granite-boulder-${{ runner.os }}-${{ steps.boulder-blender-version.outputs.version }}-${{ hashFiles('tools/blender_asset_pipeline/**/*.py', 'assets/models/environment/**', 'assets/materials/environment/**', 'assets/textures/environment/**', 'tools/asset_pipeline/**', 'CMakeLists.txt') }}
+
+      - name: Generate source PBR maps
+        if: steps.boulder-output-cache.outputs.cache-hit != 'true'
+        run: |
+          cmake -S . -B build-blender -DBUILD_TESTING=OFF
+          cmake --build build-blender --target talvisota_environment_textures --parallel
+
+      - name: Generate granite boulder LODs
+        if: steps.boulder-output-cache.outputs.cache-hit != 'true'
+        run: |
+          blender --background --python-expr "import sys; sys.path.insert(0, r'$RUNNER_TEMP/blender-python')" --python tools/blender_asset_pipeline/generate_boulder.py -- --output "$RUNNER_TEMP/generated-boulder" --texture-root assets/textures/environment --seed 1939
+
+      - name: Re-import and validate boulder GLBs
+        if: steps.boulder-output-cache.outputs.cache-hit != 'true'
+        run: |
+          blender --background --python-expr "import sys; sys.path.insert(0, r'$RUNNER_TEMP/blender-python')" --python tools/blender_asset_pipeline/verify_boulder_outputs.py -- "$RUNNER_TEMP/generated-boulder"
+
+      - name: Upload generated granite boulder runtime model
+        uses: actions/upload-artifact@v4
+        with:
+          name: talvisota-granite-boulder-runtime-model
+          path: ${{ runner.temp }}/generated-boulder/granite_boulder_lod*.glb
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Verify generated boulder inventory
+        run: |
+          python3 - "$RUNNER_TEMP/generated-boulder/granite_boulder.asset.json" <<'PY'
+          import json, pathlib, sys
+          manifest = json.loads(pathlib.Path(sys.argv[1]).read_text())
+          assert manifest["asset"] == "model.environment.boulder"
+          assert set(manifest["lods"]) == {"LOD0", "LOD1", "LOD2", "LOD3"}
+          assert all(item["objects"] == 1 for item in manifest["lods"].values())
+          for lod in range(4):
+              model = pathlib.Path(sys.argv[1]).parent / f"granite_boulder_lod{lod}.glb"
+              assert model.is_file() and model.stat().st_size > 128, model
+          print(json.dumps(manifest["lods"], indent=2))
+          PY
+
+  windows:
+    name: Windows x64 / ${{ matrix.configuration }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [Debug, Release]
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Configure
+        run: >-
+          cmake -S . -B build
+          -G Ninja
+          -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
+          -DCMAKE_CXX_STANDARD=23
+          -DCMAKE_CXX_STANDARD_REQUIRED=ON
+          -DCMAKE_CXX_EXTENSIONS=OFF
+          -DBUILD_TESTING=ON
+          -DTALVISOTA_WARNINGS_AS_ERRORS=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Application smoke test
+        run: .\\build\talvisota.exe --help
+
+      - name: Content validator help smoke test
+        run: .\\build\talvisota_content_validate.exe --help
+
+
+  windows-msvc-renderer-adapter:
+    needs: [changes, blender-tree-assets, blender-boulder-assets]
+    if: >-
+      always() &&
+      needs.changes.result == 'success' &&
+      (
+        needs.changes.outputs.full_visual != 'true' ||
+        (
+          needs.blender-tree-assets.result == 'success' &&
+          needs.blender-boulder-assets.result == 'success'
+        )
+      )
+    name: Windows x64 / MSVC renderer adapter
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Download generated environment runtime models
+        if: needs.changes.outputs.full_visual == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: talvisota-*-runtime-model
+          path: assets/models/environment/generated
+          merge-multiple: true
+
+      - name: Verify generated runtime model inputs
+        if: needs.changes.outputs.full_visual == 'true'
+        shell: pwsh
+        run: |
+          $required = @(
+            "assets/models/environment/generated/scots_pine_lod0.glb",
+            "assets/models/environment/generated/scots_pine_lod1.glb",
+            "assets/models/environment/generated/scots_pine_lod2.glb",
+            "assets/models/environment/generated/scots_pine_lod3.glb",
+            "assets/models/environment/generated/granite_boulder_lod0.glb",
+            "assets/models/environment/generated/granite_boulder_lod1.glb",
+            "assets/models/environment/generated/granite_boulder_lod2.glb",
+            "assets/models/environment/generated/granite_boulder_lod3.glb"
+          )
+          foreach ($path in $required) {
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Generated runtime model missing: $path" }
+            if ((Get-Item -LiteralPath $path).Length -lt 128) { throw "Generated runtime model is empty: $path" }
+          }
+
+      - name: Verify Sakkola Blender placement migration and tree collision heights
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          lines = Path("content/worlds/sakkola-church-village.tregion").read_text().splitlines()
+          placements = {}
+          collisions = {}
+          counts = {}
+          for line in lines:
+              fields = line.split("\t")
+              if fields[0] == "placement":
+                  counts[fields[3]] = counts.get(fields[3], 0) + 1
+                  if fields[3] == "model.environment.scots_pine":
+                      placements[fields[1]] = float(fields[9])
+              elif fields[0] == "collision" and fields[1].endswith(".trunk"):
+                  collisions[fields[1][:-6]] = float(fields[6])
+          assert counts.get("model.environment.scots_pine") == 1667, counts
+          assert counts.get("model.environment.boulder") == 32, counts
+          assert counts.get("model.environment.pine") == 100, counts
+          assert counts.get("model.environment.spruce") == 140, counts
+          assert sum(counts.get(name, 0) for name in (
+              "model.environment.scots_pine", "model.environment.spruce",
+              "model.environment.pine", "model.environment.birch",
+              "model.environment.aspen", "model.environment.alder")) == 3094, counts
+          assert len(placements) == 1667, len(placements)
+          variations = set()
+          for placement_id, scale in placements.items():
+              hash_value = 14695981039346656037
+              for byte in placement_id.encode("ascii"):
+                  hash_value = ((hash_value ^ byte) * 1099511628211) & 0xFFFFFFFFFFFFFFFF
+              variation = 0.78 + (hash_value % 10001) / 10000.0 * 0.50
+              variations.add(round(variation, 5))
+              assert placement_id in collisions, f"Missing trunk collision: {placement_id}"
+              expected_half_height = 9.0 * scale * variation
+              assert abs(collisions[placement_id] - expected_half_height) <= 0.0006, (
+                  placement_id, collisions[placement_id], expected_half_height)
+          assert len(variations) > 1500, f"Tree height variation collapsed: {len(variations)}"
+          print("Sakkola Blender asset migration and matching trunk colliders verified:", {
+              "Blender Scots pine": len(placements),
+              "spruce": counts["model.environment.spruce"],
+              "pine": counts["model.environment.pine"],
+              "Blender granite boulder": counts["model.environment.boulder"],
+              "distinct pine height factors": len(variations),
+              "retained broadleaf trees": sum(counts.get(name, 0) for name in (
+                  "model.environment.birch", "model.environment.aspen", "model.environment.alder"))
+          })
+          PY
+
+      - name: Configure MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure pinned VantaEngine adapter
+        run: >-
+          cmake -S . -B build-msvc -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_TESTING=ON
+          -DTALVISOTA_WARNINGS_AS_ERRORS=ON
+          -DTALVISOTA_ENABLE_VANTA_ENGINE=ON
+
+      - name: Build renderer adapter and content asset tools
+        run: cmake --build build-msvc --target talvisota talvisota_renderer_sample talvisota_renderer_contract_tests talvisota_asset_validate talvisota_content_validate talvisota_content_package talvisota_texture_process talvisota_engine_asset_validation_tests talvisota_engine_asset_package_tests talvisota_engine_asset_pipeline_tests --parallel
+
+      - name: Validate shipped content
+        if: needs.changes.outputs.full_visual == 'true'
+        run: .\\build-msvc\talvisota_content_validate.exe content/catalog.tmanifest .
+
+      - name: Authored campaign runtime smoke test
+        run: .\\build-msvc\talvisota.exe --mission-smoke
+
+      - name: Test game-owned renderer and asset contracts
+        run: ctest --test-dir build-msvc --output-on-failure -R "Talvisota.Presentation.SceneRendererContract|Talvisota.Content.EngineAssetValidation|Talvisota.Content.EngineAssetPackage|Talvisota.Content.EngineAssetPipeline|Talvisota.Environment.PbrMaps"
+
+      - name: Engine-backed content asset validation smoke test
+        if: needs.changes.outputs.full_visual == 'true'
+        run: .\\build-msvc\talvisota_asset_validate.exe content/catalog.tmanifest .
+
+      - name: Build deterministic content package
+        if: needs.changes.outputs.full_visual == 'true'
+        run: .\\build-msvc\talvisota_content_package.exe content/catalog.tmanifest . "$env:RUNNER_TEMP\talvisota-content-package"
+
+      - name: Verify packaged content integrity
+        if: needs.changes.outputs.full_visual == 'true'
+        run: .\\build-msvc\talvisota_content_package.exe --verify "$env:RUNNER_TEMP\talvisota-content-package"
+
+      - name: Texture processor help smoke test
+        run: .\\build-msvc\talvisota_texture_process.exe --help
+
+      - name: Assemble playable Sakkola download
+        if: needs.changes.outputs.full_visual == 'true'
+        shell: pwsh
+        run: |
+          $packageRoot = Join-Path $env:RUNNER_TEMP 'talvisota-sakkola-windows-x64'
+          New-Item -ItemType Directory -Force -Path $packageRoot | Out-Null
+          Copy-Item -LiteralPath '.\\build-msvc\talvisota.exe' -Destination (Join-Path $packageRoot 'Talvisota.exe')
+          Copy-Item -Path 'content', 'assets' -Destination $packageRoot -Recurse
+          $runtimeDlls = @(Get-ChildItem -LiteralPath 'build-msvc' -Filter '*.dll' -File -Recurse)
+          foreach ($dll in $runtimeDlls) {
+            $destination = Join-Path $packageRoot $dll.Name
+            if (Test-Path -LiteralPath $destination) {
+              throw "Runtime DLL name collision while packaging: $($dll.Name)"
+            }
+            Copy-Item -LiteralPath $dll.FullName -Destination $destination
+          }
+          @'
+          @echo off
+          cd /d "%~dp0"
+          Talvisota.exe
+          '@ | Set-Content -LiteralPath (Join-Path $packageRoot 'Start-Talvisota.bat') -Encoding Ascii
+          @'
+          @echo off
+          cd /d "%~dp0"
+          Talvisota.exe --mission=mission.taipale.riverfront-watch
+          '@ | Set-Content -LiteralPath (Join-Path $packageRoot 'Start-Taipale.bat') -Encoding Ascii
+          @'
+          TALVISOTA - CAMPAIGN LOCATIONS
+
+          Double-click Start-Talvisota.bat to launch the first-person game.
+          WASD move, mouse look, Shift sprint, Ctrl crouch, Space jump,
+          E interact or continue campaign, and Esc pause or open the menu.
+
+          First Patrol: inspect the farmstead well, check the western
+          woodpile, then report to the Sakkola church.
+          Northern Watch: reach the northern barn, check the eastern
+          village boundary, then report to the church watch post.
+          
+          Taipale Riverfront: double-click Start-Taipale.bat to load the
+          separate riverfront location and its introductory landmarks.
+          '@ | Set-Content -LiteralPath (Join-Path $packageRoot 'README.txt') -Encoding UTF8
+          if (-not (Test-Path -LiteralPath (Join-Path $packageRoot 'content\\catalog.tmanifest'))) {
+            throw 'Packaged Sakkola content manifest is missing.'
+          }
+          if (-not (Test-Path -LiteralPath (Join-Path $packageRoot 'assets'))) {
+            throw 'Packaged game assets are missing.'
+          }
+          if (-not (Test-Path -LiteralPath (Join-Path $packageRoot 'Start-Taipale.bat'))) {
+            throw 'Taipale launcher is missing from the packaged game.'
+          }
+          Get-ChildItem -LiteralPath $packageRoot -Force | Select-Object Name, Length
+
+      - name: Upload playable Sakkola Windows build
+        if: needs.changes.outputs.full_visual == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: talvisota-sakkola-windows-x64
+          path: ${{ runner.temp }}/talvisota-sakkola-windows-x64/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Render Sakkola terrain viewpoints
+        if: needs.changes.outputs.full_visual == 'true'
+        timeout-minutes: 8
+        shell: pwsh
+        run: |
+          $captureDir = Join-Path $env:RUNNER_TEMP 'sakkola-captures'
+          New-Item -ItemType Directory -Force -Path $captureDir | Out-Null
+          $process = Start-Process -FilePath .\\build-msvc\talvisota.exe -ArgumentList @('--backend=d3d12', "--capture-dir=$captureDir", '--frames-per-view=9') -Wait -PassThru
+          $rendererLog = Join-Path $captureDir 'renderer.log'
+          if (Test-Path -LiteralPath $rendererLog) { Get-Content -LiteralPath $rendererLog }
+          if ($process.ExitCode -ne 0) { throw "Sakkola renderer exited with code $($process.ExitCode)" }
+          if (-not (Test-Path -LiteralPath $rendererLog -PathType Leaf)) { throw "Sakkola renderer log is missing" }
+          $lodDiagnostics = @(Select-String -LiteralPath $rendererLog -Pattern 'visible LOD0-3 \[')
+          if ($lodDiagnostics.Count -eq 0) { throw "Sakkola capture did not emit screen-space LOD diagnostics" }
+          if (Select-String -LiteralPath $rendererLog -Pattern 'invalid LOD selections [1-9][0-9]*' -Quiet) { throw "Sakkola capture reported an invalid LOD selection" }
+          $triangleDiagnostics = @(Select-String -LiteralPath $rendererLog -Pattern 'estimated submitted triangles [1-9][0-9]* / [1-9][0-9]* full-detail')
+          if ($triangleDiagnostics.Count -eq 0) { throw "Sakkola capture did not report a non-empty visible triangle budget" }
+          $rendererLogText = Get-Content -LiteralPath $rendererLog -Raw
+          $forestMatch = [regex]::Match($rendererLogText, 'Capture camera 04-karelian-forest\.png:[^\r\n]*\r?\nVisibility culling:[^\r\n]*scots_pine LOD0-3 \[(?<pine>[0-9, ]+)\][^\r\n]*estimated submitted triangles (?<triangles>[0-9]+)')
+          if (-not $forestMatch.Success) { throw "Sakkola forest capture is missing per-species LOD and triangle diagnostics" }
+          $pineLodCounts = @($forestMatch.Groups['pine'].Value.Split(',') | ForEach-Object { [int]$_.Trim() })
+          if ($pineLodCounts.Count -ne 4 -or $pineLodCounts[3] -eq 0) { throw "Sakkola forest capture did not select the Scots pine LOD3 fallback" }
+          $forestTriangles = [int64]$forestMatch.Groups['triangles'].Value
+          if ($forestTriangles -gt 35000000) { throw "Sakkola forest submitted-triangle estimate exceeded the 35-million budget: $forestTriangles" }
+          Write-Host "Sakkola forest: Scots pine LOD0-3 [$($pineLodCounts -join ', ')], estimated $forestTriangles submitted triangles (35,000,000 budget)."
+          Write-Host "Captured $($lodDiagnostics.Count) LOD diagnostics and $($triangleDiagnostics.Count) non-empty triangle budgets."
+          $captures = @(Get-ChildItem -LiteralPath $captureDir -Filter '*.png' -File)
+          if ($captures.Count -ne 7) { throw "Expected seven rendered PNGs (five exterior and two interior), found $($captures.Count)" }
+          $captures | Format-Table Name, Length
+
+      - name: Upload Sakkola terrain screenshots
+        if: always() && needs.changes.outputs.full_visual == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: talvisota-sakkola-terrain-screenshots
+          path: |
+            ${{ runner.temp }}/sakkola-captures/*.png
+            ${{ runner.temp }}/sakkola-captures/renderer.log
+          if-no-files-found: warn
+          retention-days: 30
+      
+      - name: Render Taipale riverfront viewpoints
+        if: needs.changes.outputs.full_visual == 'true'
+        timeout-minutes: 8
+        shell: pwsh
+        run: |
+          $captureDir = Join-Path $env:RUNNER_TEMP 'taipale-captures'
+          New-Item -ItemType Directory -Force -Path $captureDir | Out-Null
+          $process = Start-Process -FilePath .\\build-msvc\talvisota.exe -ArgumentList @('--backend=d3d12', '--mission=mission.taipale.riverfront-watch', "--capture-dir=$captureDir", '--frames-per-view=9') -Wait -PassThru
+          $rendererLog = Join-Path $captureDir 'renderer.log'
+          if (Test-Path -LiteralPath $rendererLog) { Get-Content -LiteralPath $rendererLog }
+          if ($process.ExitCode -ne 0) { throw "Taipale renderer exited with code $($process.ExitCode)" }
+          if (-not (Test-Path -LiteralPath $rendererLog -PathType Leaf)) { throw "Taipale renderer log is missing" }
+          $lodDiagnostics = @(Select-String -LiteralPath $rendererLog -Pattern 'visible LOD0-3 \[')
+          if ($lodDiagnostics.Count -eq 0) { throw "Taipale capture did not emit screen-space LOD diagnostics" }
+          if (Select-String -LiteralPath $rendererLog -Pattern 'invalid LOD selections [1-9][0-9]*' -Quiet) { throw "Taipale capture reported an invalid LOD selection" }
+          $triangleDiagnostics = @(Select-String -LiteralPath $rendererLog -Pattern 'estimated submitted triangles [1-9][0-9]* / [1-9][0-9]* full-detail')
+          if ($triangleDiagnostics.Count -eq 0) { throw "Taipale capture did not report a non-empty visible triangle budget" }
+          Write-Host "Captured $($lodDiagnostics.Count) LOD diagnostics and $($triangleDiagnostics.Count) non-empty triangle budgets."
+          $captures = @(Get-ChildItem -LiteralPath $captureDir -Filter '*.png' -File)
+          if ($captures.Count -ne 7) { throw "Expected seven Taipale PNGs, found $($captures.Count)" }
+          $captures | Format-Table Name, Length
+
+      - name: Upload Taipale riverfront screenshots
+        if: always() && needs.changes.outputs.full_visual == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: talvisota-taipale-riverfront-screenshots
+          path: |
+            ${{ runner.temp }}/taipale-captures/*.png
+            ${{ runner.temp }}/taipale-captures/renderer.log
+          if-no-files-found: warn
+          retention-days: 30

@@ -1,0 +1,125 @@
+# Original winter village material set.
+newmtl foundation_stone
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/granite-albedo.bmp
+map_Bump ../../textures/environment/granite-normal.bmp
+map_Pr ../../textures/environment/granite-roughness.bmp
+map_AO ../../textures/environment/granite-ao.bmp
+newmtl house_logs
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
+newmtl barn_boards
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
+newmtl church_boards
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
+newmtl door
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
+newmtl barn_doors
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
+newmtl window_frame
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
+newmtl window_glass
+Kd 0.42 0.54 0.62
+Pr 0.12
+Pm 0.18
+newmtl roof_timber
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
+newmtl roof_wood
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
+newmtl roof_snow
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/snow-albedo.bmp
+map_Bump ../../textures/environment/snow-normal.bmp
+map_Pr ../../textures/environment/snow-roughness.bmp
+map_AO ../../textures/environment/snow-ao.bmp
+newmtl porch_timber
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
+newmtl timber
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
+newmtl chimney_brick
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/granite-albedo.bmp
+map_Bump ../../textures/environment/granite-normal.bmp
+map_Pr ../../textures/environment/granite-roughness.bmp
+map_AO ../../textures/environment/granite-ao.bmp
+newmtl hayloft
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp
+newmtl tower_wood
+Kd 1.0 1.0 1.0
+Pr 1.0
+Pm 0.0
+map_Kd ../../textures/environment/bark-albedo.bmp
+map_Bump ../../textures/environment/bark-normal.bmp
+map_Pr ../../textures/environment/bark-roughness.bmp
+map_AO ../../textures/environment/bark-ao.bmp

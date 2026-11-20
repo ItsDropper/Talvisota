@@ -1,0 +1,21 @@
+talvisota-world	1
+id = world.sakkola
+name = Sakkola — Kirkonkylä, Suvanto north shore and surrounding countryside, winter 1939
+unit = meter
+up_axis = y
+north_axis = +z
+handedness = right
+bounds_min = -2048, -4, -2048
+bounds_max = 2048.1, 64, 2048.1
+sea_level = 1.78
+terrain_model_id = model.terrain.sakkola
+sun_direction = -0.45,0.62,-0.65
+sun_color = 0.90,0.94,1.0
+sun_intensity = 1.15
+ambient_color = 0.30,0.40,0.53
+ambient_intensity = 0.66
+fog_color = 0.58,0.66,0.76
+fog_density = 0.0014
+fog_start = 65
+wind_direction = 0.914,0.406
+wind_strength = 0.06
