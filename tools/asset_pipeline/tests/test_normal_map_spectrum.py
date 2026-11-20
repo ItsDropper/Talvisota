@@ -672,6 +672,56 @@ class EnvironmentNormalMapReportTests(unittest.TestCase):
             self.assertFalse((self.output_directory / name).exists(), name)
         self.assertEqual(unrelated.read_text(encoding="utf-8"), "not owned by the report generator")
 
+    def test_publication_failure_rolls_back_every_published_output(self):
+        unrelated = self.output_directory / "keep.txt"
+        unrelated.write_text("not owned by the report generator", encoding="utf-8")
+        generated_names = (
+            "environment-normal-map-spectrum-manifest.json",
+            "bark-normal.ttex",
+            "granite-normal.ttex",
+            "bark-normal-spectrum.json",
+            "granite-normal-spectrum.json",
+        )
+        real_replace = report_generator.os.replace
+
+        for fail_on_call in (2, 5):
+            with self.subTest(fail_on_call=fail_on_call):
+                self._generate_valid_artifact()
+                replace_calls = 0
+
+                def fail_publication(source, destination):
+                    nonlocal replace_calls
+                    replace_calls += 1
+                    if replace_calls == fail_on_call:
+                        raise OSError("deliberate publication failure")
+                    return real_replace(source, destination)
+
+                with mock.patch.object(
+                    report_generator.os, "replace", side_effect=fail_publication
+                ):
+                    with mock.patch.object(
+                        report_generator.subprocess, "run",
+                        side_effect=self._successful_processor,
+                    ):
+                        with self.assertRaisesRegex(
+                            report_generator.ReportGenerationError,
+                            "Could not publish normal-map reports.*deliberate publication failure",
+                        ):
+                            report_generator.generate_reports(
+                                self.processor,
+                                self.source_root,
+                                self.output_directory,
+                                timeout_seconds=90,
+                            )
+
+                self.assertEqual(replace_calls, fail_on_call)
+                for name in generated_names:
+                    self.assertFalse((self.output_directory / name).exists(), name)
+                self.assertEqual(
+                    unrelated.read_text(encoding="utf-8"),
+                    "not owned by the report generator",
+                )
+
     def test_output_collision_does_not_delete_texture_processor(self):
         self.output_directory.mkdir()
         processor = self.output_directory / "environment-normal-map-spectrum-manifest.json"

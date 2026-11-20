@@ -240,10 +240,13 @@ This prevents a failed regeneration from leaving stale payloads beside a missing
 manifest; unrelated files in the output directory are preserved. A failed processor,
 missing or malformed `.ttex` output, incomplete mip inventory, invalid normal-vector
 metrics, source-frequency mismatch, or source/processor mutation during the run
-returns a non-zero exit code and publishes no partial report set. The two processed
-`.ttex` containers are retained beside their JSON reports so the verifier can check
-their SHA-256 digests and independently recompute the report data. The manifest is
-written last; its presence identifies a complete five-file report set.
+returns a non-zero exit code and publishes no partial report set. If a filesystem
+error occurs during publication, every payload already renamed by that attempt is
+removed before the error is returned; rollback failures are reported explicitly.
+Unrelated files in the output directory are preserved. The two processed `.ttex`
+containers are retained beside their JSON reports so the verifier can check their
+SHA-256 digests and independently recompute the report data. The manifest is written
+last; its presence identifies a complete five-file report set.
 
 
 ## Verifying generated normal-map report artifacts

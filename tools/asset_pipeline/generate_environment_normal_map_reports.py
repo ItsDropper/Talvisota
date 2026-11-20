@@ -720,9 +720,27 @@ def generate_reports(
             staged_manifest = staging / manifest_path.name
             staged_manifest.write_bytes(_json_bytes(manifest))
 
-            for staged_output, final_output in staged_outputs:
-                os.replace(str(staged_output), str(final_output))
-            os.replace(str(staged_manifest), str(manifest_path))
+            published_outputs: List[Path] = []
+            try:
+                for staged_output, final_output in staged_outputs:
+                    os.replace(str(staged_output), str(final_output))
+                    published_outputs.append(final_output)
+                os.replace(str(staged_manifest), str(manifest_path))
+            except OSError as exc:
+                rollback_errors = []
+                for published_output in reversed(published_outputs):
+                    try:
+                        published_output.unlink(missing_ok=True)
+                    except OSError as rollback_exc:
+                        rollback_errors.append(
+                            "{}: {}".format(published_output, rollback_exc)
+                        )
+                if rollback_errors:
+                    raise ReportGenerationError(
+                        "Could not publish normal-map reports: {}; rollback also failed for {}."
+                        .format(exc, "; ".join(rollback_errors))
+                    ) from exc
+                raise
     except ReportGenerationError:
         raise
     except (OSError, RuntimeError) as exc:
